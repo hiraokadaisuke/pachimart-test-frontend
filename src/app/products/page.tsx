@@ -1,10 +1,9 @@
-import MainContainer from '@/components/layout/MainContainer';
 import ProductListPage from '@/components/products/ProductListPage';
 
 export default function ProductsPage() {
   return (
-    <MainContainer variant="wide">
+    <div className="w-full max-w-none mx-0 px-0">
       <ProductListPage />
-    </MainContainer>
+    </div>
   );
 }
