@@ -20,7 +20,7 @@ export default function MyPageExhibitsPage() {
         <button className="rounded bg-[#007bff] px-4 py-2 text-sm font-semibold text-white">新規出品</button>
       </div>
 
-      <div className="mt-4 overflow-x-auto rounded bg-white shadow-sm">
+      <div className="mt-4 overflow-x-auto">
         <table className="w-full table-fixed border-collapse text-sm">
           <thead>
             <tr>
