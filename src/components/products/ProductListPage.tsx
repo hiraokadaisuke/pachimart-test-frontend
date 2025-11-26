@@ -12,9 +12,9 @@ const sortOptions = ['古い順', '新しい順', '安い順', '高い順'];
 const formatPrice = (price: number) => `${price.toLocaleString()} 円`;
 
 const statusStyles: Record<Product['status'], string> = {
-  出品中: 'text-emerald-700 bg-emerald-50 border-emerald-200',
-  成約済: 'text-slate-600 bg-slate-100 border-slate-200',
-  下書き: 'text-amber-700 bg-amber-50 border-amber-200',
+  出品中: 'bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded',
+  成約済: 'bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded',
+  下書き: 'bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded',
 };
 
 export default function ProductListPage() {
@@ -23,53 +23,54 @@ export default function ProductListPage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <h1 className="text-xl font-bold text-slate-800">商品一覧から探す</h1>
-        <div className="flex gap-2">
-          {productTabs.map((tab) => {
-            const isActive = tab === activeTab;
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                  isActive
-                    ? 'bg-blue-600 text-white shadow'
-                    : 'border border-slate-300 bg-white text-slate-700 hover:border-blue-500 hover:text-blue-600'
-                }`}
-              >
-                {tab}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <div className="bg-slate-900">
+        <div className="mx-auto flex max-w-[1360px] flex-wrap items-center gap-3 px-4 py-4">
+          <div className="flex rounded-full bg-blue-800 p-1">
+            {productTabs.map((tab) => {
+              const isActive = tab === activeTab;
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
+                    isActive ? 'bg-white text-blue-900' : 'bg-transparent text-white'
+                  }`}
+                >
+                  {tab}
+                </button>
+              );
+            })}
+          </div>
 
-      <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-3">
-          <select className="w-full min-w-[160px] rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 md:w-auto">
+          <select className="h-9 rounded border border-gray-300 px-2 text-sm text-gray-800">
             <option>メーカー指定なし</option>
           </select>
+
           <input
             type="text"
             placeholder="機種名を指定"
-            className="min-w-[200px] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+            className="h-9 min-w-[220px] flex-1 rounded border border-gray-300 px-2 text-sm text-gray-800"
           />
-          <button type="button" className="text-sm font-semibold text-blue-600 hover:underline">
-            絞り込み条件を追加
-          </button>
-          <div className="ml-auto flex items-center">
+
+          <div className="ml-auto flex items-center gap-3">
+            <button type="button" className="text-xs text-blue-100 underline">
+              絞り込み条件を追加
+            </button>
             <button
               type="button"
-              className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
+              className="h-9 rounded bg-[#007bff] px-5 text-sm font-semibold text-white"
             >
               検索
             </button>
           </div>
         </div>
+      </div>
 
-        <div className="flex flex-wrap justify-end gap-4 text-sm font-semibold text-slate-600">
+      <div className="mx-auto max-w-[1360px] px-4">
+        <h1 className="text-xl font-bold text-slate-800">商品一覧から探す</h1>
+
+        <div className="mt-3 flex justify-end gap-4 text-xs">
           {sortOptions.map((option) => {
             const isActive = option === activeSort;
             return (
@@ -77,8 +78,8 @@ export default function ProductListPage() {
                 key={option}
                 type="button"
                 onClick={() => setActiveSort(option)}
-                className={`transition-colors hover:text-blue-600 ${
-                  isActive ? 'text-blue-600 underline underline-offset-8' : 'text-slate-600'
+                className={`transition-colors ${
+                  isActive ? 'font-semibold text-blue-600 underline' : 'text-gray-500 hover:underline'
                 }`}
               >
                 {option}
@@ -86,63 +87,57 @@ export default function ProductListPage() {
             );
           })}
         </div>
-      </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-        <table className="w-full table-fixed border-collapse divide-y divide-slate-200 text-sm text-slate-700">
-          <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-            <tr>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">更新日</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">状況</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">前設置</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">メーカー</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">機種名</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">タイプ</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">台数</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">価格</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">撤去日</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">返答時間</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">出品者</th>
-              <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">備考</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.map((product, idx) => {
-              const isContracted = product.status === '成約済';
-              const zebra = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50';
-              const rowStyle = isContracted ? 'bg-slate-100 text-slate-500' : zebra;
+        <div className="mt-3 overflow-x-auto">
+          <table className="w-full table-fixed border-collapse text-sm">
+            <thead>
+              <tr className="bg-gray-50 border-b border-gray-200">
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">更新日</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">状況</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">前設置</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">メーカー</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">機種名</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">タイプ</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">台数</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">価格</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">撤去日</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">返答時間</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">出品者</th>
+                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">備考</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((product, idx) => {
+                const isContracted = product.status === '成約済';
+                const zebra = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+                const rowStyle = isContracted ? 'bg-gray-100' : zebra;
 
-              return (
-                <tr key={product.id} className={`${rowStyle} transition-colors`}>
-                  <td className="whitespace-nowrap px-4 py-3 align-top">{product.updatedAt}</td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top">
-                    <span
-                      className={`inline-flex items-center rounded border px-2 py-1 text-xs font-semibold ${statusStyles[product.status]}`}
-                    >
-                      {product.status}
-                    </span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top">{product.prefecture}</td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top">{product.maker}</td>
-                  <td className="px-4 py-3 align-top">
-                    <Link href={`/products/${product.id}`} className="text-blue-600 hover:underline">
-                      {product.name}
-                    </Link>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top">{product.type}</td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top">{`${product.quantity} / ${product.quantity}`}</td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top font-semibold text-slate-900">
-                    {formatPrice(product.price)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top">{product.removalDate}</td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top">{product.replyTime}</td>
-                  <td className="whitespace-nowrap px-4 py-3 align-top">{product.sellerName}</td>
-                  <td className="px-4 py-3 align-top text-slate-600">{product.note ?? '-'}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                return (
+                  <tr key={product.id} className={rowStyle}>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{product.updatedAt}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top border-b border-gray-100">
+                      <span className={`inline-flex items-center ${statusStyles[product.status]}`}>{product.status}</span>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{product.prefecture}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{product.maker}</td>
+                    <td className="px-3 py-2 align-top whitespace-normal break-words text-gray-900 border-b border-gray-100">
+                      <Link href={`/products/${product.id}`} className="text-blue-700 hover:underline">
+                        {product.name}
+                      </Link>
+                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{product.type}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{`${product.quantity} / ${product.quantity}`}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top font-semibold text-gray-900 border-b border-gray-100">{formatPrice(product.price)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{product.removalDate}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{product.replyTime}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{product.sellerName}</td>
+                    <td className="px-3 py-2 align-top whitespace-normal break-words text-gray-700 border-b border-gray-100">{product.note ?? '-'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
