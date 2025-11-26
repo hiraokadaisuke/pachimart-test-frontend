@@ -1,0 +1,26 @@
+import type { Metadata } from 'next';
+import './globals.css';
+import Header from '@/components/layout/Header';
+import Footer from '@/components/layout/Footer';
+import MainContainer from '@/components/layout/MainContainer';
+
+export const metadata: Metadata = {
+  title: 'パチマート | 中古機売買サービス（クローンUI）',
+  description: 'パチンコ・スロット中古機売買サービス「パチマート」のクローンUIデモ',
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="ja">
+      <body className="min-h-screen bg-gray-100 text-slate-900">
+        <div className="flex min-h-screen flex-col">
+          <Header />
+          <main className="flex-1">
+            <MainContainer>{children}</MainContainer>
+          </main>
+          <Footer />
+        </div>
+      </body>
+    </html>
+  );
+}
