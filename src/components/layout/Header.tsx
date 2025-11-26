@@ -22,7 +22,7 @@ export default function Header() {
 
   return (
     <header className="w-full bg-white border-b border-gray-200">
-      <div className="flex items-center justify-between w-full px-4 xl:px-8 max-w-[1400px] mx-auto h-[60px]">
+      <div className="mx-auto flex h-[56px] w-full max-w-[1280px] items-center justify-between px-4">
         <div className="flex items-center">
           <Link href="/products" className="text-[26px] font-extrabold tracking-tight text-blue-800">
             パチマート
@@ -32,7 +32,7 @@ export default function Header() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="ml-6 transition hover:text-blue-600"
+                className="ml-6 transition hover:text-blue-600 whitespace-nowrap"
               >
                 {link.label}
               </Link>
@@ -41,29 +41,33 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-3">
-          <span className="rounded bg-[#E53935] text-white px-3 py-[6px] text-xs font-semibold">
-            パチマート2大新サービス登場!!
-          </span>
           <div className="flex items-center gap-2">
-            <span className="rounded bg-red-600 text-white text-xs font-semibold px-3 py-[6px]">パチ通知</span>
-            <span className="rounded bg-blue-600 text-white text-xs font-semibold px-3 py-[6px]">オファー型売買</span>
+            <button className="h-9 rounded bg-red-600 px-3 text-[11px] font-semibold text-white whitespace-nowrap">
+              パチマート2大新サービス登場!!
+            </button>
+            <button className="h-9 rounded bg-red-500 px-3 text-xs font-semibold text-white whitespace-nowrap">
+              パチ通知
+            </button>
+            <button className="h-9 rounded bg-blue-600 px-3 text-xs font-semibold text-white whitespace-nowrap">
+              オファー型売買
+            </button>
+            <Link
+              href="#"
+              className="flex h-9 items-center rounded border border-blue-600 bg-white px-4 text-sm text-blue-600 whitespace-nowrap"
+            >
+              お問い合わせ
+            </Link>
+            <Link
+              href="/mypage/exhibits"
+              className="flex h-9 items-center gap-1 rounded bg-blue-700 px-4 text-sm font-semibold text-white whitespace-nowrap"
+            >
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-blue-700">👤</span>
+              <span>マイページ</span>
+            </Link>
           </div>
-          <Link
-            href="#"
-            className="border border-blue-600 text-blue-600 bg-white px-4 py-[6px] text-sm rounded"
-          >
-            お問い合わせ
-          </Link>
-          <Link
-            href="/mypage/exhibits"
-            className="bg-blue-700 text-white px-4 py-[6px] text-sm rounded flex items-center gap-1"
-          >
-            <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-blue-700">👤</span>
-            <span>マイページ</span>
-          </Link>
-          <div className="flex flex-col text-sm text-gray-700 leading-tight">
-            <span className="font-semibold">平岡大祐 さん</span>
-            <span className="font-semibold text-blue-800">パチマート残高 ¥2,270,650</span>
+          <div className="ml-3 text-xs leading-tight text-gray-700 whitespace-normal">
+            <div className="whitespace-nowrap">平岡大祐 さん</div>
+            <div className="whitespace-nowrap">パチマート残高 ¥2,270,650</div>
           </div>
         </div>
       </div>
