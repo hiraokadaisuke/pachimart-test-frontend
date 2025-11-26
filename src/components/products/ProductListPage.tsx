@@ -50,20 +50,20 @@ export default function ProductListPage() {
         </div>
 
         <div className="mt-3 w-full overflow-x-auto px-0">
-          <table className="w-full table-fixed border-collapse text-sm">
+          <table className="w-full table-fixed border-collapse text-xs">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700 min-w-[90px]">更新日</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700 min-w-[70px]">状況</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700 min-w-[90px]">前設置</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700 min-w-[85px]">メーカー</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700 min-w-[240px]">機種名</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">タイプ</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700 min-w-[70px]">台数</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700 min-w-[90px]">価格</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700 min-w-[90px]">撤去日</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">出品者</th>
-                <th className="whitespace-nowrap px-3 py-2 text-left text-xs font-semibold text-gray-700">備考</th>
+                <th className="px-3 py-2 text-left min-w-[60px]">更新日</th>
+                <th className="px-3 py-2 text-left min-w-[70px]">状況</th>
+                <th className="px-3 py-2 text-left min-w-[80px]">前設置</th>
+                <th className="px-3 py-2 text-left min-w-[90px]">メーカー</th>
+                <th className="px-3 py-2 text-left min-w-[260px]">機種名</th>
+                <th className="px-3 py-2 text-left min-w-[60px]">タイプ</th>
+                <th className="px-3 py-2 text-right min-w-[70px]">台数</th>
+                <th className="px-3 py-2 text-right min-w-[100px]">価格</th>
+                <th className="px-3 py-2 text-left min-w-[80px]">撤去日</th>
+                <th className="px-3 py-2 text-left min-w-[140px]">出品者</th>
+                <th className="px-3 py-2 text-left min-w-[160px]">備考</th>
               </tr>
             </thead>
             <tbody>
@@ -74,23 +74,34 @@ export default function ProductListPage() {
 
                 return (
                   <tr key={product.id} className={rowStyle}>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[90px]">{formatMonthDay(product.updatedAt)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[60px]">{formatMonthDay(product.updatedAt)}</td>
                     <td className="whitespace-nowrap px-3 py-2 align-top border-b border-gray-100 min-w-[70px]">
                       <span className={`inline-flex items-center ${statusStyles[product.status]}`}>{product.status}</span>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[90px]">{product.prefecture}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[85px]">{product.maker}</td>
-                    <td className="px-3 py-2 align-top whitespace-nowrap text-gray-900 border-b border-gray-100 min-w-[240px]">
-                      <Link href={`/products/${product.id}`} className="text-blue-700 hover:underline">
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[80px]">{product.prefecture}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[90px]">{product.maker}</td>
+                    <td className="px-3 py-2 align-top text-gray-900 border-b border-gray-100 min-w-[260px]">
+                      <Link
+                        href={`/products/${product.id}`}
+                        className="block max-w-full text-xs leading-snug whitespace-normal break-words text-blue-700 hover:underline"
+                      >
                         {product.name}
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{product.type}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[60px]">{product.type}</td>
                     <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[70px]">{`${product.quantity} / ${product.quantity}`}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top font-semibold text-gray-900 border-b border-gray-100 min-w-[90px]">{formatPrice(product.price)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[90px]">{formatMonthDay(product.removalDate)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100">{product.sellerName}</td>
-                    <td className="px-3 py-2 align-top whitespace-normal break-words text-gray-700 border-b border-gray-100">{product.note ?? '-'}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top font-semibold text-gray-900 border-b border-gray-100 min-w-[100px]">{formatPrice(product.price)}</td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[80px]">{formatMonthDay(product.removalDate)}</td>
+                    <td className="px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[140px]">
+                      <span className="block max-w-full text-xs leading-snug whitespace-normal break-words">
+                        {product.sellerName}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 align-top text-gray-700 border-b border-gray-100 min-w-[160px]">
+                      <span className="block max-w-full text-xs leading-snug whitespace-normal break-words">
+                        {product.note ?? '-'}
+                      </span>
+                    </td>
                   </tr>
                 );
               })}
