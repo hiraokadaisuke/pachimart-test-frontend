@@ -16,6 +16,13 @@ type TradeNaviRow = {
   pdfUrl: string;
 };
 
+const tabs = [
+  { key: "request", label: "依頼入力" },
+  { key: "in-progress", label: "進行中一覧" },
+  { key: "sell-history", label: "売却履歴" },
+  { key: "buy-history", label: "購入履歴" },
+];
+
 const dummyTrades: TradeNaviRow[] = [
   {
     id: "T-2025111901",
@@ -193,19 +200,41 @@ export default function TradeNaviPage() {
   const buyChecking = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "確認中");
   const sellWaiting = dummyTrades.filter((trade) => trade.kind === "sell" && trade.status === "入金待ち");
   const sellChecking = dummyTrades.filter((trade) => trade.kind === "sell" && trade.status === "確認中");
+  const activeTab: (typeof tabs)[number]["key"] = "in-progress";
 
   return (
     <MainContainer variant="wide">
       <div className="flex flex-col gap-8">
-        <header className="space-y-2">
+        <header className="space-y-3">
           <h1 className="text-2xl font-bold text-slate-900">取引Navi</h1>
+          <div className="mb-6 border-b border-slate-200">
+            <div className="flex gap-2">
+              {tabs.map((tab) => {
+                const isActive = tab.key === activeTab;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    className={[
+                      "px-4 py-2 text-sm rounded-t-md border",
+                      isActive
+                        ? "border-slate-200 border-b-white bg-white font-semibold text-slate-900"
+                        : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200",
+                    ].join(" ")}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
           <p className="text-sm text-slate-700">
             電話などで合意した取引内容を、パチマート上で確認・管理するための画面です。
           </p>
         </header>
 
         <section className="space-y-4">
-          <div className="rounded border border-slate-200 bg-slate-100 px-4 py-3 text-sm font-semibold text-slate-800">
+          <div className="mb-2 rounded-t-sm bg-sky-600 px-4 py-2 text-sm font-semibold text-white">
             買いたい物件 – 入金・確認状況
           </div>
           <p className="text-xs font-semibold text-red-500">
@@ -222,7 +251,7 @@ export default function TradeNaviPage() {
         </section>
 
         <section className="space-y-4">
-          <div className="rounded border border-orange-300 bg-orange-400 px-4 py-3 text-sm font-semibold text-white">
+          <div className="mb-2 rounded-t-sm bg-orange-500 px-4 py-2 text-sm font-semibold text-white">
             売りたい物件 – 入金・確認状況
           </div>
           <p className="text-xs font-semibold text-red-500">
