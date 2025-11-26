@@ -6,7 +6,6 @@ import { useState } from 'react';
 import { products } from '@/lib/dummyData';
 import type { Product } from '@/types/product';
 
-const productTabs = ['パチンコ', 'スロット'];
 const sortOptions = ['古い順', '新しい順', '安い順', '高い順'];
 
 const formatPrice = (price: number) => `${price.toLocaleString()} 円`;
@@ -18,56 +17,11 @@ const statusStyles: Record<Product['status'], string> = {
 };
 
 export default function ProductListPage() {
-  const [activeTab, setActiveTab] = useState<string>('パチンコ');
   const [activeSort, setActiveSort] = useState<string>('新しい順');
 
   return (
-    <div className="space-y-6">
-      <div className="bg-slate-900">
-        <div className="flex w-full flex-wrap items-center gap-3 px-0 py-4">
-          <div className="flex rounded-full bg-blue-800 p-1">
-            {productTabs.map((tab) => {
-              const isActive = tab === activeTab;
-              return (
-                <button
-                  key={tab}
-                  type="button"
-                  onClick={() => setActiveTab(tab)}
-                  className={`rounded-full px-4 py-1.5 text-sm font-semibold ${
-                    isActive ? 'bg-white text-blue-900' : 'bg-transparent text-white'
-                  }`}
-                >
-                  {tab}
-                </button>
-              );
-            })}
-          </div>
-
-          <select className="h-9 rounded border border-gray-300 px-2 text-sm text-gray-800">
-            <option>メーカー指定なし</option>
-          </select>
-
-          <input
-            type="text"
-            placeholder="機種名を指定"
-            className="h-9 min-w-[220px] flex-1 rounded border border-gray-300 px-2 text-sm text-gray-800"
-          />
-
-          <div className="ml-auto flex items-center gap-3">
-            <button type="button" className="text-xs text-blue-100 underline">
-              絞り込み条件を追加
-            </button>
-            <button
-              type="button"
-              className="h-9 rounded bg-[#007bff] px-5 text-sm font-semibold text-white"
-            >
-              検索
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="w-full px-0">
+    <div className="w-full max-w-[1400px] mx-auto px-4 xl:px-8 py-6 space-y-6">
+      <div className="w-full">
         <h1 className="text-xl font-bold text-slate-800">商品一覧から探す</h1>
 
         <div className="mt-3 flex justify-end gap-4 text-xs">
