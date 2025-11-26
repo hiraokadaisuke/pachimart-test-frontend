@@ -25,7 +25,7 @@ export default function MyPageExhibitsPage() {
       <p className="text-sm text-slate-600">全件数：{listedProducts.length}件</p>
 
       <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200 text-sm text-slate-700">
+        <table className="w-full table-fixed border-collapse divide-y divide-slate-200 text-sm text-slate-700">
           <thead className="bg-slate-50 text-xs uppercase text-slate-500">
             <tr>
               <th className="whitespace-nowrap px-4 py-3 text-left font-semibold">更新日</th>

@@ -16,7 +16,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <div className="flex min-h-screen flex-col">
           <Header />
           <main className="flex-1">
-            <MainContainer>{children}</MainContainer>
+            <MainContainer variant="wide">{children}</MainContainer>
           </main>
           <Footer />
         </div>
