@@ -3,7 +3,7 @@ import ProductListPage from '@/components/products/ProductListPage';
 
 export default function ProductsPage() {
   return (
-    <MainContainer>
+    <MainContainer variant="wide">
       <ProductListPage />
     </MainContainer>
   );

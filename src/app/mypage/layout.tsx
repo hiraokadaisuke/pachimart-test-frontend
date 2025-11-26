@@ -7,8 +7,8 @@ import MainContainer from '@/components/layout/MainContainer';
 
 export default function MypageLayout({ children }: { children: ReactNode }) {
   return (
-    <MainContainer>
-      <div className="grid gap-8 md:grid-cols-[240px_1fr]">
+    <MainContainer variant="wide">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-[220px_1fr]">
         <MypageSideMenu />
         <div className="space-y-6">{children}</div>
       </div>
