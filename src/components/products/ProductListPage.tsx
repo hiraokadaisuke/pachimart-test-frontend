@@ -24,7 +24,7 @@ export default function ProductListPage() {
   return (
     <div className="space-y-6">
       <div className="bg-slate-900">
-        <div className="mx-auto flex max-w-[1360px] flex-wrap items-center gap-3 px-4 py-4">
+        <div className="flex w-full flex-wrap items-center gap-3 px-0 py-4">
           <div className="flex rounded-full bg-blue-800 p-1">
             {productTabs.map((tab) => {
               const isActive = tab === activeTab;
@@ -67,7 +67,7 @@ export default function ProductListPage() {
         </div>
       </div>
 
-      <div className="mx-auto max-w-[1360px] px-4">
+      <div className="w-full px-0">
         <h1 className="text-xl font-bold text-slate-800">商品一覧から探す</h1>
 
         <div className="mt-3 flex justify-end gap-4 text-xs">
@@ -88,7 +88,7 @@ export default function ProductListPage() {
           })}
         </div>
 
-        <div className="mt-3 overflow-x-auto">
+        <div className="mt-3 w-full overflow-x-auto px-0">
           <table className="w-full table-fixed border-collapse text-sm">
             <thead>
               <tr className="bg-gray-50 border-b border-gray-200">

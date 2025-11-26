@@ -12,7 +12,7 @@ const navLinks = [
 export default function Header() {
   return (
     <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-4 md:flex-nowrap">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 pt-4 pb-0 md:flex-nowrap">
         <div className="flex flex-wrap items-center gap-6 md:flex-nowrap">
           <Link href="/products" className="text-2xl font-extrabold tracking-tight text-sky-800">
             パチマート
