@@ -26,6 +26,7 @@ export default function MyPageExhibitsPage() {
   return (
     <MainContainer>
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-[220px_1fr]">
+        {/* サイドメニュー */}
         <aside className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <nav className="space-y-4 text-sm text-slate-800">
             {menuSections.map((section) => (
@@ -52,6 +53,7 @@ export default function MyPageExhibitsPage() {
           </nav>
         </aside>
 
+        {/* 出品中リスト */}
         <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex flex-wrap items-center gap-4">
             <h1 className="text-lg font-bold text-slate-900">出品中の商品</h1>
@@ -64,6 +66,7 @@ export default function MyPageExhibitsPage() {
               </button>
             </div>
           </div>
+
           <p className="text-sm text-slate-600">全件数：{listedProducts.length}件</p>
 
           <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
@@ -100,21 +103,18 @@ export default function MyPageExhibitsPage() {
                         <div className="flex flex-wrap gap-2">
                           <button
                             type="button"
-                            onClick={() => {}}
                             className="rounded-md bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-blue-700"
                           >
                             編集
                           </button>
                           <button
                             type="button"
-                            onClick={() => {}}
                             className="rounded-md border border-slate-300 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                           >
                             取り下げ
                           </button>
                           <button
                             type="button"
-                            onClick={() => {}}
                             className="rounded-md bg-red-600 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-red-700"
                           >
                             削除
