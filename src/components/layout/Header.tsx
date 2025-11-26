@@ -51,7 +51,7 @@ export default function Header() {
                 お問い合わせ
               </Link>
               <Link
-                href="#"
+                href="/mypage/exhibits"
                 className="flex items-center gap-1 rounded bg-sky-700 px-3 py-1 text-white shadow hover:bg-sky-800"
               >
                 <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-sky-700">👤</span>
