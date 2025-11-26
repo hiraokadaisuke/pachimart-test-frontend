@@ -21,6 +21,7 @@ export function MypageLayoutClient({ children }: { children: ReactNode }) {
     {
       title: "取引の管理",
       items: [
+        { label: "取引Navi", href: "/trade-navi" },
         { label: "購入一覧", href: "#" },
         { label: "売却一覧", href: "#" },
       ],

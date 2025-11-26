@@ -41,6 +41,12 @@ export default function Header() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Link
+            href="/trade-navi"
+            className="flex h-9 items-center rounded border border-orange-400 bg-white px-4 text-sm font-semibold text-orange-600 transition hover:bg-orange-50 whitespace-nowrap"
+          >
+            取引Navi
+          </Link>
           <div className="flex items-center gap-2">
             <Link
               href="#"
