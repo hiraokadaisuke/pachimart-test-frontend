@@ -24,8 +24,8 @@ export default function Header() {
     <header className="w-full bg-white border-b border-gray-200">
       <div className="mx-auto flex h-[56px] w-full max-w-[1280px] items-center justify-between px-4">
         <div className="flex items-center">
-          <Link href="/products" className="text-[26px] font-extrabold tracking-tight text-blue-800">
-            パチマート
+          <Link href="/products" className="flex items-center">
+            <span className="text-xl font-bold text-[#0070a8] whitespace-nowrap">パチマート</span>
           </Link>
           <nav className="ml-6 flex items-center text-sm font-medium text-gray-700">
             {navLinks.map((link) => (
@@ -42,15 +42,6 @@ export default function Header() {
 
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <button className="h-9 rounded bg-red-600 px-3 text-[11px] font-semibold text-white whitespace-nowrap">
-              パチマート2大新サービス登場!!
-            </button>
-            <button className="h-9 rounded bg-red-500 px-3 text-xs font-semibold text-white whitespace-nowrap">
-              パチ通知
-            </button>
-            <button className="h-9 rounded bg-blue-600 px-3 text-xs font-semibold text-white whitespace-nowrap">
-              オファー型売買
-            </button>
             <Link
               href="#"
               className="flex h-9 items-center rounded border border-blue-600 bg-white px-4 text-sm text-blue-600 whitespace-nowrap"
