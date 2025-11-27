@@ -1,9 +1,36 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
-import { formatCurrency, useDummyNavi, type MessageLog } from "@/lib/useDummyNavi";
+import { calculateQuote, type QuoteResult } from "@/lib/quotes/calculateQuote";
+import { loadNaviDraft } from "@/lib/navi/storage";
+import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
+import { formatCurrency, useDummyNavi } from "@/lib/useDummyNavi";
+
+const convertShippingType = (type?: TradeConditions["shippingType"]): string => {
+  const mapping: Record<NonNullable<TradeConditions["shippingType"]>, string> = {
+    prepaid: "元払",
+    collect: "着払",
+    pickup: "引取",
+  };
+
+  return type ? mapping[type] : "未設定";
+};
+
+const convertDocumentShippingType = (
+  type?: TradeConditions["documentsShippingType"]
+): string => {
+  const mapping: Record<NonNullable<TradeConditions["documentsShippingType"]>, string> = {
+    prepaid: "元払",
+    collect: "着払",
+    included: "同梱",
+    none: "不要",
+  };
+
+  return type ? mapping[type] : "未設定";
+};
 
 export default function TransactionNaviConfirmPage() {
   const router = useRouter();
@@ -11,38 +38,96 @@ export default function TransactionNaviConfirmPage() {
   const transactionId = Array.isArray(params?.transactionId)
     ? params?.transactionId[0]
     : params?.transactionId ?? "dummy-1";
-  const {
-    confirmBreadcrumbItems,
-    buyerInfo,
-    propertyInfo,
-    updatedConditions,
-    documentFiles,
-    photoThumbnails,
-    messageLogs,
-    statusLabel,
-  } = useDummyNavi(transactionId);
-  const [newMessage, setNewMessage] = useState("");
+  const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
 
-  const handleDownload = (file: string) => {
-    console.log("download", file);
-  };
+  useEffect(() => {
+    if (!transactionId) return;
+    const storedDraft = loadNaviDraft(transactionId);
+    if (storedDraft) {
+      setDraft(storedDraft);
+    }
+  }, [transactionId]);
 
-  const handlePreviewPhoto = (name: string) => {
-    console.log("open photo", name);
-  };
+  const naviTargetId = draft?.productId ?? transactionId;
+  const { confirmBreadcrumbItems, buyerInfo, propertyInfo, statusLabel } =
+    useDummyNavi(naviTargetId);
 
-  const handleSendMessage = () => {
-    console.log("send message", newMessage);
-    setNewMessage("");
-  };
+  const quoteResult = useMemo<QuoteResult | null>(() => {
+    if (!draft) return null;
+    const taxRate = 0.1;
+    const quoteInput = {
+      unitPrice: draft.conditions.price,
+      quantity: draft.conditions.quantity,
+      shippingFee: draft.conditions.freightCost ?? 0,
+      handlingFee: draft.conditions.extraFee1Amount ?? 0,
+      taxRate,
+    } satisfies Parameters<typeof calculateQuote>[0];
+
+    return calculateQuote(quoteInput);
+  }, [draft]);
+
+  const displayConditions = useMemo(() => {
+    if (!draft) return null;
+    const { conditions } = draft;
+
+    return {
+      price: conditions.price,
+      quantity: conditions.quantity,
+      removalDate: conditions.removalDate ?? "未設定",
+      machineShipmentDate: conditions.shippingDate ?? "未設定",
+      machineShipmentType: convertShippingType(conditions.shippingType),
+      documentShipmentDate: conditions.documentsShippingDate ?? "未設定",
+      documentShipmentType: convertDocumentShippingType(conditions.documentsShippingType),
+      paymentDue: conditions.paymentDueDate ?? "未設定",
+      freightCost: conditions.freightCost ?? 0,
+      otherFee1Label: conditions.extraFee1Label ?? "出庫手数料",
+      otherFee1Amount: conditions.extraFee1Amount ?? 0,
+      otherFee2Label: conditions.extraFee2Label ?? "その他料金2",
+      otherFee2Amount: conditions.extraFee2Amount ?? 0,
+      notes: conditions.notes ?? "未設定",
+      terms:
+        conditions.terms ??
+        "取引条件がまだ設定されていません。内容をご確認のうえご相談ください。",
+    };
+  }, [draft]);
 
   const handleApprove = () => {
-    router.push(`/transactions/navi/${transactionId}/completed`);
+    alert("この条件で取引を承認しました（ダミー）");
+    router.push("/mypage/transactions?tab=pending");
   };
 
-  const handleRequestRevision = () => {
+  const handleRequestChanges = () => {
+    alert("修正依頼を送信しました（ダミー）");
+    console.log("request changes", draft);
     router.push(`/transactions/navi/${transactionId}/edit`);
   };
+
+  if (!draft || !displayConditions || !quoteResult) {
+    return (
+      <MainContainer>
+        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-xl font-semibold text-slate-900">取引Naviが見つかりません</h1>
+          <p className="text-sm text-slate-600">
+            もう一度ページを読み込み直すか、マイページから取引を選択してください。
+          </p>
+          <div className="flex justify-center gap-3 text-sm font-semibold">
+            <Link
+              href="/mypage"
+              className="rounded border border-slate-300 px-4 py-2 text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+            >
+              マイページへ戻る
+            </Link>
+            <Link
+              href="/"
+              className="rounded bg-sky-600 px-4 py-2 text-white shadow hover:bg-sky-700"
+            >
+              トップに戻る
+            </Link>
+          </div>
+        </div>
+      </MainContainer>
+    );
+  }
 
   return (
     <MainContainer variant="wide">
@@ -64,7 +149,7 @@ export default function TransactionNaviConfirmPage() {
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-slate-900">取引Naviの確認</h1>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
+              <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                 {statusLabel}
               </span>
             </div>
@@ -74,157 +159,102 @@ export default function TransactionNaviConfirmPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2">
-          <InfoCard title="買手情報" badge="取引先">
-            <InfoRow label="会社名" value={buyerInfo.companyName} emphasis />
-            <InfoRow label="担当者" value={buyerInfo.contactPerson} />
-            <InfoRow label="電話" value={buyerInfo.phoneNumber} />
-            <InfoRow label="メール" value={buyerInfo.email} />
-            {buyerInfo.notes && <InfoRow label="備考" value={buyerInfo.notes} muted />}
-          </InfoCard>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <section className="grid gap-4 md:grid-cols-2">
+              <InfoCard title="買手情報" badge="取引先">
+                <InfoRow label="会社名" value={buyerInfo.companyName} emphasis />
+                <InfoRow label="担当者" value={buyerInfo.contactPerson} />
+                <InfoRow label="電話" value={buyerInfo.phoneNumber} />
+                <InfoRow label="メール" value={buyerInfo.email} />
+                {buyerInfo.notes && <InfoRow label="備考" value={buyerInfo.notes} muted />}
+              </InfoCard>
 
-          <InfoCard title="物件情報" badge="対象機器">
-            <InfoRow label="機種名" value={propertyInfo.modelName} emphasis />
-            <InfoRow label="メーカー" value={propertyInfo.maker} />
-            <InfoRow label="台数" value={`${propertyInfo.quantity} 台`} />
-            <InfoRow label="台番号" value={propertyInfo.machineNumber ?? "-"} />
-            <InfoRow label="保管場所" value={propertyInfo.storageLocation} />
-          </InfoCard>
-        </section>
+              <InfoCard title="物件情報" badge="対象機器">
+                <InfoRow label="機種名" value={propertyInfo.modelName} emphasis />
+                <InfoRow label="メーカー" value={propertyInfo.maker} />
+                <InfoRow label="台数" value={`${displayConditions.quantity} 台`} />
+                <InfoRow label="台番号" value={propertyInfo.machineNumber ?? "-"} />
+                <InfoRow label="保管場所" value={propertyInfo.storageLocation} />
+              </InfoCard>
+            </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">最終取引条件</h2>
-            <span className="text-xs font-semibold text-slate-500">変更後</span>
+            <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">最終取引条件</h2>
+                <span className="text-xs font-semibold text-slate-500">確認用</span>
+              </div>
+              <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <ConditionRow label="金額 (1台あたり)" value={`${formatCurrency(displayConditions.price)} / 税抜`} />
+                <ConditionRow label="台数" value={`${displayConditions.quantity} 台`} />
+                <ConditionRow label="撤去日" value={displayConditions.removalDate} />
+                <ConditionRow
+                  label="機械発送予定日"
+                  value={`${displayConditions.machineShipmentDate}（${displayConditions.machineShipmentType}）`}
+                />
+                <ConditionRow
+                  label="書類発送予定日"
+                  value={`${displayConditions.documentShipmentDate}（${displayConditions.documentShipmentType}）`}
+                />
+                <ConditionRow label="支払期日" value={displayConditions.paymentDue} />
+                <ConditionRow label="機械運賃" value={formatCurrency(displayConditions.freightCost)} />
+                <ConditionRow
+                  label="出庫手数料"
+                  value={`${displayConditions.otherFee1Label}: ${formatCurrency(displayConditions.otherFee1Amount)}`}
+                />
+                <ConditionRow
+                  label="その他料金"
+                  value={`${displayConditions.otherFee2Label}: ${formatCurrency(displayConditions.otherFee2Amount)}`}
+                />
+                <ConditionRow label="特記事項" value={displayConditions.notes} />
+                <ConditionRow label="取引条件" value={displayConditions.terms} fullWidth />
+              </dl>
+            </section>
           </div>
-          <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <ConditionRow label="金額" value={`${formatCurrency(updatedConditions.price)} / 税込`} />
-            <ConditionRow label="台数" value={`${updatedConditions.quantity} 台`} />
-            <ConditionRow label="撤去日" value={updatedConditions.removalDate} />
-            <ConditionRow
-              label="機械発送予定日"
-              value={`${updatedConditions.machineShipmentDate}（${updatedConditions.machineShipmentType}）`}
-            />
-            <ConditionRow
-              label="書類発送予定日"
-              value={`${updatedConditions.documentShipmentDate}（${updatedConditions.documentShipmentType}）`}
-            />
-            <ConditionRow label="支払期日" value={updatedConditions.paymentDue} />
-            <ConditionRow label="機械運賃" value={formatCurrency(updatedConditions.freightCost)} />
-            <ConditionRow
-              label="その他料金1"
-              value={
-                updatedConditions.otherFee1
-                  ? `${updatedConditions.otherFee1.label}: ${formatCurrency(updatedConditions.otherFee1.amount)}`
-                  : "-"
-              }
-            />
-            <ConditionRow
-              label="その他料金2"
-              value={
-                updatedConditions.otherFee2
-                  ? `${updatedConditions.otherFee2.label}: ${formatCurrency(updatedConditions.otherFee2.amount)}`
-                  : "-"
-              }
-            />
-            <ConditionRow label="特記事項" value={updatedConditions.notes} />
-            <ConditionRow label="取引条件" value={updatedConditions.terms} fullWidth />
-          </dl>
-        </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">書類一覧</h2>
-            <span className="text-xs font-semibold text-slate-500">ダウンロードのみ</span>
-          </div>
-          <div className="flex flex-wrap gap-2 text-sm text-slate-700">
-            {documentFiles.map((file) => (
-              <button
-                key={file}
-                type="button"
-                onClick={() => handleDownload(file)}
-                className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 font-medium text-slate-800 shadow-sm transition hover:border-sky-200 hover:bg-sky-50"
-              >
-                <span className="text-sky-700">⬇</span>
-                <span>{file}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+          <div className="space-y-4 lg:col-span-1">
+            <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">お支払い金額</h2>
+                <span className="text-xs font-semibold text-slate-500">再計算</span>
+              </div>
+              <div className="space-y-3 text-sm text-slate-800">
+                <SummaryRow label="商品代金" value={formatCurrency(quoteResult.productSubtotal)} />
+                <SummaryRow label="送料" value={formatCurrency(quoteResult.shippingFee)} />
+                <SummaryRow label="出庫手数料" value={formatCurrency(quoteResult.handlingFee)} />
+                <div className="h-px bg-slate-200" aria-hidden />
+                <SummaryRow label="小計" value={formatCurrency(quoteResult.subtotal)} />
+                <SummaryRow label="消費税" value={formatCurrency(quoteResult.tax)} />
+                <div className="flex items-center justify-between rounded bg-slate-50 px-3 py-2 text-base font-semibold text-slate-900">
+                  <span>合計</span>
+                  <span className="text-xl text-emerald-700">{formatCurrency(quoteResult.total)}</span>
+                </div>
+              </div>
+            </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">写真一覧</h2>
-            <span className="text-xs font-semibold text-slate-500">参考画像</span>
-          </div>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            {photoThumbnails.map((thumb) => (
-              <button
-                key={thumb}
-                type="button"
-                onClick={() => handlePreviewPhoto(thumb)}
-                className="flex h-28 items-center justify-center rounded border border-slate-200 bg-slate-50 text-xs font-medium text-slate-700 shadow-sm transition hover:border-sky-200 hover:bg-sky-50"
-              >
-                {thumb}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">取引メッセージ</h2>
-            <span className="text-xs font-semibold text-slate-500">やり取りログ</span>
-          </div>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              {messageLogs.map((log) => (
-                <MessageBubble key={log.id} log={log} />
-              ))}
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-800">新しくメッセージを送る</label>
-              <textarea
-                className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                rows={3}
-                placeholder="確認事項や依頼事項を入力"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-              />
-              <div className="flex justify-end">
+            <section className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+              <p className="text-sm text-slate-700">
+                内容を確認のうえ、承認または差戻しを選択してください。選択後に担当者へ通知されます。
+              </p>
+              <div className="flex flex-col gap-3">
                 <button
                   type="button"
-                  onClick={handleSendMessage}
-                  className="rounded bg-slate-800 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-900"
+                  onClick={handleApprove}
+                  className="rounded bg-emerald-600 px-5 py-2 text-sm font-semibold text-white shadow transition hover:bg-emerald-700"
                 >
-                  送信
+                  この条件で承認する
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRequestChanges}
+                  className="rounded border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
+                >
+                  修正を依頼する（差戻し）
                 </button>
               </div>
-            </div>
+            </section>
           </div>
-        </section>
-
-        <section className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <p className="text-sm text-slate-700">
-            内容を確認のうえ、承認または差戻しを選択してください。選択後に担当者へ通知されます。
-          </p>
-          <div className="flex flex-col gap-3 md:flex-row md:justify-end">
-            <button
-              type="button"
-              onClick={handleRequestRevision}
-              className="rounded border border-slate-300 px-5 py-2 text-sm font-semibold text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50"
-            >
-              差戻しを依頼する
-            </button>
-            <button
-              type="button"
-              onClick={handleApprove}
-              className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
-            >
-              承認する
-            </button>
-          </div>
-        </section>
+        </div>
       </div>
     </MainContainer>
   );
@@ -290,20 +320,11 @@ function ConditionRow({
   );
 }
 
-function MessageBubble({ log }: { log: MessageLog }) {
-  const isSeller = log.sender === "seller";
-
+function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
-    <div
-      className={`rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm ${
-        isSeller ? "border-sky-100 bg-sky-50" : ""
-      }`}
-    >
-      <div className="flex items-center justify-between text-xs text-slate-500">
-        <span>{isSeller ? "売手 (あなた)" : "買手"}</span>
-        <span>{log.timestamp}</span>
-      </div>
-      <p className="mt-1 whitespace-pre-wrap text-slate-800">{log.message}</p>
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-slate-600">{label}</span>
+      <span className="font-semibold text-slate-900">{value}</span>
     </div>
   );
 }
