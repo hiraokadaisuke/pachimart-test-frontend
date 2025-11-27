@@ -8,17 +8,13 @@ import { products } from "@/lib/dummyData";
 
 export default function MyPageExhibitsPage() {
   const router = useRouter();
-  const statusOptions = Array.from(new Set(products.map((product) => product.status)));
   const makerOptions = Array.from(new Set(products.map((product) => product.maker)));
-  const typeOptions = Array.from(new Set(products.map((product) => product.type)));
-  const removalStatusOptions = Array.from(new Set(products.map((product) => product.removalStatus).filter(Boolean)));
 
   const defaultFilters = {
-    keyword: "",
     status: "出品中",
     maker: "",
-    type: "",
-    removalStatus: "",
+    model: "",
+    noteKeyword: "",
   };
 
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
@@ -36,17 +32,16 @@ export default function MyPageExhibitsPage() {
 
   const listedProducts = useMemo(() => {
     return products.filter((product) => {
-      const keywordMatched = appliedFilters.keyword
-        ? `${product.name} ${product.note ?? ""}`.toLowerCase().includes(appliedFilters.keyword.toLowerCase())
+      const makerMatched = appliedFilters.maker ? product.maker === appliedFilters.maker : true;
+      const modelMatched = appliedFilters.model
+        ? product.name.toLowerCase().includes(appliedFilters.model.toLowerCase())
+        : true;
+      const noteMatched = appliedFilters.noteKeyword
+        ? (product.note ?? "").toLowerCase().includes(appliedFilters.noteKeyword.toLowerCase())
         : true;
       const statusMatched = appliedFilters.status ? product.status === appliedFilters.status : true;
-      const makerMatched = appliedFilters.maker ? product.maker === appliedFilters.maker : true;
-      const typeMatched = appliedFilters.type ? product.type === appliedFilters.type : true;
-      const removalStatusMatched = appliedFilters.removalStatus
-        ? product.removalStatus === appliedFilters.removalStatus
-        : true;
 
-      return keywordMatched && statusMatched && makerMatched && typeMatched && removalStatusMatched;
+      return makerMatched && modelMatched && noteMatched && statusMatched;
     });
   }, [appliedFilters]);
 
@@ -81,109 +76,67 @@ export default function MyPageExhibitsPage() {
         </Link>
       </div>
 
-      <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-        <div className="grid grid-cols-1 gap-3 px-4 py-3 sm:grid-cols-2 lg:grid-cols-4 lg:gap-4">
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold text-slate-600">キーワード</label>
-            <input
-              type="search"
-              value={draftFilters.keyword}
-              onChange={(event) => setDraftFilters({ ...draftFilters, keyword: event.target.value })}
-              placeholder="機種名・備考を検索"
-              className="rounded-md border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold text-slate-600">状況</label>
-            <select
-              value={draftFilters.status}
-              onChange={(event) => setDraftFilters({ ...draftFilters, status: event.target.value })}
-              className="rounded-md border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">すべて</option>
-              {statusOptions.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold text-slate-600">メーカー</label>
-            <select
-              value={draftFilters.maker}
-              onChange={(event) => setDraftFilters({ ...draftFilters, maker: event.target.value })}
-              className="rounded-md border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">すべて</option>
-              {makerOptions.map((maker) => (
-                <option key={maker} value={maker}>
-                  {maker}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1">
-            <label className="text-[11px] font-semibold text-slate-600">タイプ</label>
-            <select
-              value={draftFilters.type}
-              onChange={(event) => setDraftFilters({ ...draftFilters, type: event.target.value })}
-              className="rounded-md border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-            >
-              <option value="">すべて</option>
-              {typeOptions.map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="flex flex-col gap-1 sm:col-span-1 lg:col-span-2">
-            <label className="text-[11px] font-semibold text-slate-600">撤去状況 / 倉庫</label>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <select
-                value={draftFilters.removalStatus}
-                onChange={(event) => setDraftFilters({ ...draftFilters, removalStatus: event.target.value })}
-                className="rounded-md border border-slate-200 px-3 py-2 text-xs focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              >
-                <option value="">すべて</option>
-                {removalStatusOptions.map((status) => (
-                  <option key={status} value={status}>
-                    {status}
-                  </option>
-                ))}
-              </select>
-              <div className="rounded-md border border-dashed border-slate-200 px-3 py-2 text-[11px] text-slate-500">
-                倉庫指定や搬出条件は備考欄をご確認ください。
-              </div>
-            </div>
-          </div>
+      <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md bg-slate-50 px-4 py-3">
+        <div className="flex flex-col">{/* メーカー */}
+          <label className="mb-1 block text-xs font-semibold text-slate-600">メーカー</label>
+          <select
+            value={draftFilters.maker}
+            onChange={(event) => setDraftFilters({ ...draftFilters, maker: event.target.value })}
+            className="h-8 rounded-md border border-slate-300 px-2 text-sm"
+          >
+            <option value="">すべて</option>
+            {makerOptions.map((maker) => (
+              <option key={maker} value={maker}>
+                {maker}
+              </option>
+            ))}
+          </select>
         </div>
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-slate-100 px-4 py-3 text-xs">
+        <div className="flex flex-col">{/* 機種名 */}
+          <label className="mb-1 block text-xs font-semibold text-slate-600">機種名</label>
+          <input
+            type="search"
+            value={draftFilters.model}
+            onChange={(event) => setDraftFilters({ ...draftFilters, model: event.target.value })}
+            placeholder="機種名で検索"
+            className="h-8 rounded-md border border-slate-300 px-2 text-sm"
+          />
+        </div>
+        <div className="flex flex-col sm:min-w-[220px]">{/* 備考キーワード */}
+          <label className="mb-1 block text-xs font-semibold text-slate-600">備考</label>
+          <input
+            type="search"
+            value={draftFilters.noteKeyword}
+            onChange={(event) => setDraftFilters({ ...draftFilters, noteKeyword: event.target.value })}
+            placeholder="備考キーワード"
+            className="h-8 rounded-md border border-slate-300 px-2 text-sm"
+          />
+        </div>
+        <div className="ml-auto flex flex-wrap items-center gap-2">{/* ボタン群 */}
+          <button
+            type="button"
+            onClick={handleApplyFilters}
+            className="h-9 rounded-md bg-slate-900 px-4 text-xs font-semibold text-white shadow-sm transition hover:bg-slate-800"
+          >
+            検索
+          </button>
           <button
             type="button"
             onClick={handleResetFilters}
-            className="rounded-md border border-slate-200 px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="h-9 rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
           >
-            リセット
+            クリア
           </button>
           <button
             type="button"
             onClick={handleReload}
-            className="rounded-md border border-slate-200 px-3 py-2 font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="h-9 rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
           >
-            再読み込み
-          </button>
-          <button
-            type="button"
-            onClick={handleApplyFilters}
-            className="rounded-md bg-slate-900 px-4 py-2 font-semibold text-white shadow-sm transition hover:bg-slate-800"
-          >
-            絞り込み
+            一覧を更新
           </button>
           <Link
             href="/sell"
-            className="inline-flex items-center justify-center rounded-md border border-blue-600 bg-blue-50 px-4 py-2 font-semibold text-blue-700 transition hover:bg-blue-100"
+            className="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 px-3 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
           >
             新規出品
           </Link>
