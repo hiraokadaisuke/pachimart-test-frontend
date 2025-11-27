@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import { calculateQuote, type QuoteInput, type QuoteResult } from "@/lib/quotes/calculateQuote";
@@ -326,7 +326,7 @@ function NaviStatusTable() {
   );
 }
 
-export default function TradeNaviPage() {
+function TradeNaviPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const buyWaiting = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "入金待ち");
@@ -442,5 +442,21 @@ export default function TradeNaviPage() {
         )}
       </div>
     </MainContainer>
+  );
+}
+
+export default function TradeNaviPage() {
+  return (
+    <Suspense
+      fallback={
+        <MainContainer variant="wide">
+          <div className="rounded border border-slate-200 bg-white p-8 text-center text-sm text-slate-700">
+            取引Naviを読み込んでいます…
+          </div>
+        </MainContainer>
+      }
+    >
+      <TradeNaviPageContent />
+    </Suspense>
   );
 }
