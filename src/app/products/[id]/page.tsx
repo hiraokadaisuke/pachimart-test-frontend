@@ -2,8 +2,7 @@
 
 import MainContainer from '@/components/layout/MainContainer';
 import { products } from '@/lib/dummyData';
-import { createNaviDraftFromOffer, type OfferInputForNavi } from '@/lib/navi/createFromOffer';
-import { saveNaviDraft } from '@/lib/navi/storage';
+import { createEmptyNaviDraft, saveNaviDraft } from '@/lib/navi/storage';
 import { calculateQuote, type QuoteResult } from '@/lib/quotes/calculateQuote';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -66,21 +65,30 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   };
 
   const handleOfferClick = () => {
-    if (!quoteResult) {
-      alert('金額を試算してからオファーしてください。');
-      return;
-    }
+    const quote = calculateQuote(quoteInput);
+    setQuoteResult(quote);
 
-    const offerPayload: OfferInputForNavi = {
-      productId: String(product.id),
+    const draft = createEmptyNaviDraft();
+
+    draft.productId = String(product.id);
+    draft.buyerId = 'dummy-buyer-id';
+    draft.buyerCompanyName = 'テストホール株式会社';
+    draft.buyerContactName = '担当者 名';
+    draft.buyerTel = '03-0000-0000';
+    draft.buyerPending = false;
+
+    draft.conditions = {
+      ...draft.conditions,
+      unitPrice: quoteInput.unitPrice,
       quantity,
-      unitPrice,
-      selfPickup,
-      deliveryWarehouseId,
-      quote: quoteResult,
+      shippingFee: quote.shippingFee,
+      handlingFee: quote.handlingFee,
+      taxRate: quoteInput.taxRate,
+      productName: product.name,
+      makerName: product.maker,
+      location: warehouses.find((warehouse) => warehouse.id === deliveryWarehouseId)?.name ?? null,
     };
 
-    const draft = createNaviDraftFromOffer(offerPayload);
     saveNaviDraft(draft);
 
     router.push(`/transactions/navi/${draft.id}/edit`);
@@ -253,7 +261,9 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             >
               オンラインでオファーする
             </button>
-            <p className="max-w-[240px] text-[12px] leading-[16px] text-slate-600">入力した条件でオンラインオファーを送信します。</p>
+            <p className="max-w-[240px] text-[12px] leading-[16px] text-slate-500">
+              オンラインでオファーすると、売手側で取引Naviが作成され、内容が調整されたうえで送られてきます。
+            </p>
           </div>
         </div>
       </div>
