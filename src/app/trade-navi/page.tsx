@@ -3,22 +3,13 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
-import { createEmptyNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
+import { products } from "@/lib/dummyData";
+import { loadAllNavis, createEmptyNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
+import { NaviStatus, TradeNaviDraft } from "@/lib/navi/types";
+import { calculateQuote } from "@/lib/quotes/calculateQuote";
 
 type TradeStatus = "入金待ち" | "確認中";
 type TradeKind = "buy" | "sell";
-
-type TradeNaviApproval = {
-  id: number;
-  role: "buyer" | "seller";
-  kind: "inquiry" | "need_my_approval" | "waiting_buyer";
-  statusLabel: string;
-  updatedAt: string;
-  counterparty: string;
-  maker: string;
-  title: string;
-  totalAmount: number;
-};
 
 type TradeNaviRow = {
   id: string;
@@ -144,55 +135,10 @@ const dummyTrades: TradeNaviRow[] = [
   },
 ];
 
-const buyerApprovals: TradeNaviApproval[] = [
-  {
-    id: 1,
-    role: "buyer",
-    kind: "inquiry",
-    statusLabel: "売手の条件入力待ち",
-    updatedAt: "2025/11/19 14:55",
-    counterparty: "株式会社パチテック",
-    maker: "SANKYO",
-    title: "Ｐフィーバー機動戦士ガンダムSEED",
-    totalAmount: 1520000,
-  },
-  {
-    id: 2,
-    role: "buyer",
-    kind: "need_my_approval",
-    statusLabel: "あなたの承認待ち",
-    updatedAt: "2025/11/18 10:20",
-    counterparty: "株式会社スマイル",
-    maker: "三洋",
-    title: "Ｐスーパー海物語 JAPAN2 L1",
-    totalAmount: 980000,
-  },
-];
-
-const sellerApprovals: TradeNaviApproval[] = [
-  {
-    id: 3,
-    role: "seller",
-    kind: "waiting_buyer",
-    statusLabel: "買手の承認待ち",
-    updatedAt: "2025/11/18 17:40",
-    counterparty: "株式会社アミューズ流通",
-    maker: "SANKYO",
-    title: "Ｐフィーバー機動戦士ガンダムSEED",
-    totalAmount: 1520000,
-  },
-];
-
 type TradeNaviTableProps = {
   title: string;
   rows: TradeNaviRow[];
   actionType: "pay" | "confirm";
-};
-
-type TradeNaviApprovalTableProps = {
-  title: string;
-  approvals: TradeNaviApproval[];
-  role: "buyer" | "seller";
 };
 
 function TradeNaviTable({ title, rows, actionType }: TradeNaviTableProps) {
@@ -262,91 +208,120 @@ function TradeNaviTable({ title, rows, actionType }: TradeNaviTableProps) {
   );
 }
 
-function TradeNaviApprovalTable({ title, approvals, role }: TradeNaviApprovalTableProps) {
-  const formatter = useMemo(
-    () => new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }),
-    []
+function getStatusLabel(status: NaviStatus) {
+  switch (status) {
+    case "draft":
+      return { text: "下書き", className: "bg-slate-200 text-slate-700" };
+    case "sent_to_buyer":
+      return { text: "承認待ち", className: "bg-amber-100 text-amber-700" };
+    case "buyer_approved":
+      return { text: "承認済み", className: "bg-emerald-100 text-emerald-700" };
+    case "buyer_rejected":
+      return { text: "差戻し", className: "bg-rose-100 text-rose-700" };
+    default:
+      // eslint-disable-next-line no-case-declarations
+      const unreachable: never = status;
+      return { text: unreachable, className: "" };
+  }
+}
+
+function formatDateTime(iso: string) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function getBuyerLabel(draft: TradeNaviDraft) {
+  return draft.buyerCompanyName ?? draft.buyerId ?? "未設定";
+}
+
+function getProductLabel(draft: TradeNaviDraft) {
+  const product =
+    draft.productId != null
+      ? products.find((p) => String(p.id) === String(draft.productId))
+      : undefined;
+
+  return product?.name ?? draft.conditions.productName ?? "未設定";
+}
+
+function formatCurrency(amount: number) {
+  const formatter = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" });
+  return formatter.format(amount);
+}
+
+type TradeNaviDraftTableProps = {
+  title: string;
+  navis: TradeNaviDraft[];
+};
+
+function TradeNaviDraftTable({ title, navis }: TradeNaviDraftTableProps) {
+  const router = useRouter();
+
+  const sortedNavis = useMemo(
+    () =>
+      [...navis].sort(
+        (a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      ),
+    [navis]
   );
 
-  const getCategoryLabel = (kind: TradeNaviApproval["kind"]) => {
-    if (kind === "inquiry") return "問い合わせ中";
-    return "承認待ち";
-  };
-
-  const getActionStyle = (kind: TradeNaviApproval["kind"]) => {
-    if (kind === "need_my_approval") {
-      return "inline-flex items-center rounded border border-blue-600 bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-blue-700";
-    }
-    return "inline-flex items-center rounded border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-100";
-  };
-
-  const getActionLabel = (kind: TradeNaviApproval["kind"]) => {
-    if (kind === "need_my_approval") return "内容確認・承認";
-    return "詳細を見る";
-  };
-
-  const renderStatus = (approval: TradeNaviApproval) => {
-    if (role === "seller") {
-      return "買手の承認待ち";
-    }
-    if (approval.kind === "inquiry") return "売手の条件入力待ち";
-    if (approval.kind === "need_my_approval") return "あなたの承認待ち";
-    return approval.statusLabel;
-  };
-
   return (
-    <div className="rounded border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700">
-        {title}
-      </div>
-      <div className="overflow-hidden">
-        <table className="w-full table-fixed">
-          <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
-            <tr>
-              <th className="w-28 px-3 py-2 text-left">状況</th>
-              <th className="w-24 px-3 py-2 text-left">区分</th>
-              <th className="w-32 px-3 py-2 text-left">更新日時</th>
-              <th className="w-40 px-3 py-2 text-left">取引先</th>
-              <th className="w-28 px-3 py-2 text-left">メーカー</th>
-              <th className="px-3 py-2 text-left">物件名（機種名）</th>
-              <th className="w-36 px-3 py-2 text-left">合計金額（税込）</th>
-              <th className="w-28 px-3 py-2 text-left">操作</th>
-            </tr>
-          </thead>
-          <tbody className="text-xs text-slate-700">
-            {approvals.length === 0 && (
+    <section className="space-y-4">
+      <h2 className="text-base font-semibold">{title}</h2>
+
+      {sortedNavis.length === 0 ? (
+        <p className="text-sm text-slate-500">現在進行中の取引Naviはありません。</p>
+      ) : (
+        <div className="overflow-hidden rounded border border-slate-200 bg-white">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
               <tr>
-                <td className="px-3 py-3 text-center text-slate-500" colSpan={8}>
-                  取引条件の承認状況に該当する案件はありません。
-                </td>
+                <th className="px-3 py-2 text-left">状況</th>
+                <th className="px-3 py-2 text-left">更新日時</th>
+                <th className="px-3 py-2 text-left">取引先</th>
+                <th className="px-3 py-2 text-left">物件名</th>
+                <th className="px-3 py-2 text-right">金額（税込）</th>
+                <th className="px-3 py-2 text-right">操作</th>
               </tr>
-            )}
-            {approvals.map((approval) => (
-              <tr key={approval.id} className="border-t border-slate-200 hover:bg-slate-50">
-                <td className="px-3 py-2 align-top font-semibold text-orange-600">
-                  {renderStatus(approval)}
-                </td>
-                <td className="px-3 py-2 align-top text-slate-700">
-                  {getCategoryLabel(approval.kind)}
-                </td>
-                <td className="px-3 py-2 align-top text-slate-600">{approval.updatedAt}</td>
-                <td className="px-3 py-2 align-top">{approval.counterparty}</td>
-                <td className="px-3 py-2 align-top">{approval.maker}</td>
-                <td className="px-3 py-2 align-top">{approval.title}</td>
-                <td className="px-3 py-2 align-top font-semibold">
-                  {formatter.format(approval.totalAmount)}
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <button type="button" className={getActionStyle(approval.kind)}>
-                    {getActionLabel(approval.kind)}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+            </thead>
+            <tbody className="divide-y divide-slate-200 text-slate-700">
+              {sortedNavis.map((draft) => {
+                const statusInfo = getStatusLabel(draft.status);
+                const quote = calculateQuote(draft.conditions);
+                const totalLabel =
+                  quote.total && quote.total > 0 ? formatCurrency(quote.total) : "-";
+
+                return (
+                  <tr key={draft.id} className="hover:bg-slate-50">
+                    <td className="px-3 py-2 align-top">
+                      <span
+                        className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${statusInfo.className}`}
+                      >
+                        {statusInfo.text}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 align-top">{formatDateTime(draft.updatedAt)}</td>
+                    <td className="px-3 py-2 align-top">{getBuyerLabel(draft)}</td>
+                    <td className="px-3 py-2 align-top">{getProductLabel(draft)}</td>
+                    <td className="px-3 py-2 align-top text-right font-semibold">{totalLabel}</td>
+                    <td className="px-3 py-2 align-top text-right">
+                      <button
+                        type="button"
+                        className="pm-secondary-button"
+                        onClick={() => router.push(`/transactions/navi/${draft.id}/edit`)}
+                      >
+                        Navi確認
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -371,6 +346,7 @@ function TradeNaviPageContent() {
     getDefaultTab(searchParams?.get("tab"))
   );
   const [hasRedirected, setHasRedirected] = useState(false);
+  const [navis, setNavis] = useState<TradeNaviDraft[]>([]);
 
   useEffect(() => {
     const tabParam = searchParams?.get("tab");
@@ -392,6 +368,10 @@ function TradeNaviPageContent() {
       router.replace(`/transactions/navi/${draft.id}/edit`);
     }
   }, [activeTab, hasRedirected, router]);
+
+  useEffect(() => {
+    setNavis(loadAllNavis());
+  }, []);
 
   const handleTabClick = (tabKey: (typeof tabs)[number]["key"]) => {
     const params = new URLSearchParams(searchParams?.toString());
@@ -447,11 +427,7 @@ function TradeNaviPageContent() {
                 入金待ちの案件は、発注予定日までに必ずご確認ください。
               </p>
 
-              <TradeNaviApprovalTable
-                title="取引条件の承認状況（Navi）"
-                approvals={buyerApprovals}
-                role="buyer"
-              />
+              <TradeNaviDraftTable title="取引条件の承認状況（Navi）" navis={navis} />
 
               <TradeNaviTable title="入金待ち" rows={buyWaiting} actionType="pay" />
 
@@ -473,11 +449,7 @@ function TradeNaviPageContent() {
               売りたい物件の入金・動作確認状況を確認できます。入金手続き中の案件は、買い手様の手続き完了までお待ちください。
             </p>
 
-            <TradeNaviApprovalTable
-              title="取引条件の承認状況（Navi）"
-              approvals={sellerApprovals}
-              role="seller"
-            />
+            <TradeNaviDraftTable title="取引条件の承認状況（Navi）" navis={navis} />
 
             <TradeNaviTable title="入金待ち" rows={sellWaiting} actionType="pay" />
             <TradeNaviTable title="確認中" rows={sellChecking} actionType="confirm" />
