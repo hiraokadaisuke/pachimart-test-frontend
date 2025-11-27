@@ -1,5 +1,7 @@
 import { TradeConditions, NaviStatus } from "./types";
 
+export type { NaviStatus } from "./types";
+
 const STORAGE_KEY = "trade_navis";
 
 export interface TradeNavi {
