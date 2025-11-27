@@ -2,7 +2,10 @@
 
 import MainContainer from '@/components/layout/MainContainer';
 import { products } from '@/lib/dummyData';
+import { createNaviDraftFromOffer, type OfferInputForNavi } from '@/lib/navi/createFromOffer';
+import { saveNaviDraft } from '@/lib/navi/storage';
 import { calculateQuote, type QuoteResult } from '@/lib/quotes/calculateQuote';
+import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
 interface ProductDetailPageProps {
@@ -13,6 +16,7 @@ const formatPrice = (price: number) => `¥${price.toLocaleString()} 税抜`;
 const formatCurrency = (value: number) => `¥${value.toLocaleString()}`;
 
 export default function ProductDetailPage({ params }: ProductDetailPageProps) {
+  const router = useRouter();
   const productId = Number(params.id);
   const product = products.find((item) => item.id === productId);
 
@@ -62,18 +66,24 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   };
 
   const handleOfferClick = () => {
-    const result = calculateQuote(quoteInput);
-    setQuoteResult(result);
+    if (!quoteResult) {
+      alert('金額を試算してからオファーしてください。');
+      return;
+    }
 
-    const offerPayload = {
-      productId: product.id,
+    const offerPayload: OfferInputForNavi = {
+      productId: String(product.id),
       quantity,
+      unitPrice,
       selfPickup,
       deliveryWarehouseId,
-      quote: result,
+      quote: quoteResult,
     };
 
-    console.log('Offer payload for TradeNavi draft:', offerPayload);
+    const draft = createNaviDraftFromOffer(offerPayload);
+    saveNaviDraft(draft);
+
+    router.push(`/transactions/navi/${draft.id}/edit`);
   };
 
   return (
