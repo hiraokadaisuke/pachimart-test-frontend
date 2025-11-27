@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 
 import { products } from "@/lib/dummyData";
+import { type AdditionalFee } from "@/lib/navi/types";
 
 export interface BuyerInfo {
   companyName: string;
@@ -21,11 +22,6 @@ export interface PropertyInfo {
 type ShippingType = "元払" | "着払" | "引取";
 type DocumentShippingType = "元払" | "着払" | "同梱" | "不要";
 
-export interface AdditionalFee {
-  label: string;
-  amount: number;
-}
-
 export interface TransactionConditions {
   price: number;
   quantity: number;
@@ -36,6 +32,8 @@ export interface TransactionConditions {
   documentShipmentType: DocumentShippingType;
   paymentDue: string;
   freightCost: number;
+  handlingFee: number;
+  taxRate: number;
   otherFee1?: AdditionalFee;
   otherFee2?: AdditionalFee;
   notes: string;
@@ -77,6 +75,8 @@ const currentConditions: TransactionConditions = {
   documentShipmentType: "同梱",
   paymentDue: "2025-11-21",
   freightCost: 22000,
+  handlingFee: 10000,
+  taxRate: 0.1,
   otherFee1: { label: "設置補助", amount: 15000 },
   otherFee2: { label: "下見費用", amount: 8000 },
   notes: "撤去作業は午後14時以降でお願いします。",
@@ -94,6 +94,8 @@ const updatedConditions: TransactionConditions = {
   documentShipmentType: "同梱",
   paymentDue: "2025-11-21",
   freightCost: 22000,
+  handlingFee: 10000,
+  taxRate: 0.1,
   otherFee1: { label: "設置補助", amount: 15000 },
   otherFee2: { label: "下見費用", amount: 8000 },
   notes: "撤去作業は午後14時以降でお願いします。",

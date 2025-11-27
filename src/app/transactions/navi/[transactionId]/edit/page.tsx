@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
-import { loadNaviDraft } from "@/lib/navi/storage";
+import { calculateQuote } from "@/lib/quotes/calculateQuote";
+import { loadNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
 import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
 import {
   formatCurrency,
@@ -19,24 +21,51 @@ const mapDraftConditions = (
 ): TransactionConditions => ({
   price: conditions.unitPrice ?? fallback.price,
   quantity: conditions.quantity ?? fallback.quantity,
-  removalDate: fallback.removalDate,
-  machineShipmentDate: fallback.machineShipmentDate,
-  machineShipmentType: fallback.machineShipmentType,
-  documentShipmentDate: fallback.documentShipmentDate,
-  documentShipmentType: fallback.documentShipmentType,
-  paymentDue: fallback.paymentDue,
+  removalDate: conditions.removalDate ?? fallback.removalDate,
+  machineShipmentDate: conditions.machineShipmentDate ?? fallback.machineShipmentDate,
+  machineShipmentType: (conditions.machineShipmentType as ShippingType | undefined) ?? fallback.machineShipmentType,
+  documentShipmentDate: conditions.documentShipmentDate ?? fallback.documentShipmentDate,
+  documentShipmentType:
+    (conditions.documentShipmentType as DocumentShippingType | undefined) ?? fallback.documentShipmentType,
+  paymentDue: conditions.paymentDue ?? fallback.paymentDue,
   freightCost: conditions.shippingFee ?? fallback.freightCost,
-  otherFee1: {
-    label: "出庫手数料",
-    amount: conditions.handlingFee ?? 0,
-  },
-  otherFee2: {
-    label: "税率",
-    amount: conditions.taxRate,
-  },
-  notes: fallback.notes,
-  terms: fallback.terms,
+  handlingFee: conditions.handlingFee ?? fallback.handlingFee,
+  taxRate: conditions.taxRate ?? fallback.taxRate,
+  otherFee1: conditions.otherFee1 ?? fallback.otherFee1,
+  otherFee2: conditions.otherFee2 ?? fallback.otherFee2,
+  notes: conditions.notes ?? fallback.notes,
+  terms: conditions.terms ?? fallback.terms,
 });
+
+const mapTransactionToTradeConditions = (
+  conditions: TransactionConditions,
+  prev: TradeConditions
+): TradeConditions => ({
+  ...prev,
+  unitPrice: conditions.price,
+  quantity: conditions.quantity,
+  shippingFee: conditions.freightCost,
+  handlingFee: conditions.handlingFee,
+  taxRate: conditions.taxRate,
+  removalDate: conditions.removalDate,
+  machineShipmentDate: conditions.machineShipmentDate,
+  machineShipmentType: conditions.machineShipmentType,
+  documentShipmentDate: conditions.documentShipmentDate,
+  documentShipmentType: conditions.documentShipmentType,
+  paymentDue: conditions.paymentDue,
+  otherFee1: conditions.otherFee1,
+  otherFee2: conditions.otherFee2,
+  notes: conditions.notes,
+  terms: conditions.terms,
+});
+
+const dummyBuyers = [
+  { id: "store-1", companyName: "株式会社パテテック", contactName: "営業部 田中太郎", tel: "03-1234-5678" },
+  { id: "store-2", companyName: "有限会社テスト商会", contactName: "営業部 佐藤花子", tel: "06-9876-5432" },
+  { id: "store-3", companyName: "合同会社デモリンク", contactName: "営業部 山本正樹", tel: "052-123-9876" },
+];
+
+const defaultManualBuyer = { companyName: "", contactName: "", tel: "" };
 
 export default function TransactionNaviEditPage() {
   const router = useRouter();
@@ -45,6 +74,9 @@ export default function TransactionNaviEditPage() {
     ? params?.transactionId[0]
     : params?.transactionId ?? "dummy-1";
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
+  const [notFound, setNotFound] = useState(false);
+  const [searchKeyword, setSearchKeyword] = useState("");
+  const [manualBuyer, setManualBuyer] = useState(defaultManualBuyer);
   const naviTargetId = draft?.productId ?? transactionId;
   const {
     editBreadcrumbItems,
@@ -78,12 +110,117 @@ export default function TransactionNaviEditPage() {
     const storedDraft = loadNaviDraft(transactionId);
     if (storedDraft) {
       setDraft(storedDraft);
+      setNotFound(false);
+    } else {
+      setNotFound(true);
     }
   }, [transactionId]);
 
   useEffect(() => {
     setEditedConditions(initialEditedConditions);
   }, [initialEditedConditions]);
+
+  const persistDraft = (updater: (prev: TradeNaviDraft) => TradeNaviDraft) => {
+    setDraft((prev) => {
+      if (!prev) return prev;
+      const nextDraft = updater(prev);
+      saveNaviDraft(nextDraft);
+      return nextDraft;
+    });
+  };
+
+  const syncEditedConditions = (updater: (prev: TransactionConditions) => TransactionConditions) => {
+    setEditedConditions((prev) => {
+      const next = updater(prev);
+      persistDraft((draft) => ({
+        ...draft,
+        conditions: mapTransactionToTradeConditions(next, draft.conditions),
+      }));
+      return next;
+    });
+  };
+
+  const handleBuyerSelect = (buyer: (typeof dummyBuyers)[number]) => {
+    persistDraft((prev) => ({
+      ...prev,
+      buyerId: buyer.id,
+      buyerCompanyName: buyer.companyName,
+      buyerContactName: buyer.contactName,
+      buyerTel: buyer.tel,
+      buyerPending: false,
+    }));
+  };
+
+  const handleManualBuyerSave = () => {
+    if (!manualBuyer.companyName.trim()) return;
+    persistDraft((prev) => ({
+      ...prev,
+      buyerId: null,
+      buyerCompanyName: manualBuyer.companyName,
+      buyerContactName: manualBuyer.contactName || null,
+      buyerTel: manualBuyer.tel || null,
+      buyerPending: false,
+    }));
+    setManualBuyer(defaultManualBuyer);
+  };
+
+  const buyerSearchResults = useMemo(() => {
+    if (!searchKeyword.trim()) return dummyBuyers;
+    return dummyBuyers.filter((buyer) => {
+      const keyword = searchKeyword.trim();
+      return (
+        buyer.companyName.includes(keyword) ||
+        buyer.contactName.includes(keyword) ||
+        buyer.tel.includes(keyword) ||
+        buyer.id.includes(keyword)
+      );
+    });
+  }, [searchKeyword]);
+
+  const handlePropertyChange = (key: keyof TradeConditions, value: string | number | null) => {
+    persistDraft((prev) => ({
+      ...prev,
+      conditions: {
+        ...prev.conditions,
+        [key]: value,
+      },
+    }));
+
+    if (key === "quantity" && typeof value === "number") {
+      syncEditedConditions((prev) => ({ ...prev, quantity: value }));
+    }
+  };
+
+  const quoteResult = useMemo(() => {
+    if (!draft) return null;
+    const quoteInput = {
+      unitPrice: draft.conditions.unitPrice,
+      quantity: draft.conditions.quantity,
+      shippingFee: draft.conditions.shippingFee ?? 0,
+      handlingFee: draft.conditions.handlingFee ?? 0,
+      taxRate: draft.conditions.taxRate ?? 0.1,
+    } satisfies Parameters<typeof calculateQuote>[0];
+    return calculateQuote(quoteInput);
+  }, [draft]);
+
+  if (notFound) {
+    return (
+      <MainContainer>
+        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
+          <h1 className="text-xl font-semibold text-slate-900">取引Naviが見つかりません</h1>
+          <p className="text-sm text-slate-600">
+            セッションの有効期限切れか、存在しないIDです。再度一覧からやり直してください。
+          </p>
+          <Link
+            href="/trade-navi"
+            className="inline-flex items-center justify-center rounded bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
+          >
+            取引Navi一覧へ戻る
+          </Link>
+        </div>
+      </MainContainer>
+    );
+  }
 
   const handleSendToBuyer = () => {
     console.log("Send to buyer", editedConditions);
@@ -127,6 +264,52 @@ export default function TransactionNaviEditPage() {
     );
   };
 
+  const isBuyerSet = Boolean(draft?.buyerId || draft?.buyerCompanyName);
+  const isProductLinked = Boolean(draft?.productId);
+  const referenceConditions = draftConditions ?? currentConditions;
+  const displayBuyer = {
+    companyName: draft?.buyerCompanyName ?? buyerInfo.companyName,
+    contactPerson: draft?.buyerContactName ?? buyerInfo.contactPerson,
+    phoneNumber: draft?.buyerTel ?? buyerInfo.phoneNumber,
+    email: draft?.buyerEmail ?? buyerInfo.email,
+    notes: draft?.buyerNote ?? buyerInfo.notes,
+  };
+  const editableProperty = {
+    modelName: draft?.conditions.productName ?? "",
+    maker: draft?.conditions.makerName ?? "",
+    quantity: draft?.conditions.quantity ?? referenceConditions.quantity,
+    location: draft?.conditions.location ?? "",
+  };
+
+  const handleNumberConditionChange = (field: keyof TransactionConditions, value: number) => {
+    syncEditedConditions((prev) => ({ ...prev, [field]: value } as TransactionConditions));
+  };
+
+  const handleTextConditionChange = (field: keyof TransactionConditions, value: string) => {
+    syncEditedConditions((prev) => ({ ...prev, [field]: value } as TransactionConditions));
+  };
+
+  const handleOtherFeeChange = (
+    key: "otherFee1" | "otherFee2",
+    part: "label" | "amount",
+    value: string | number
+  ) => {
+    syncEditedConditions((prev) => ({
+      ...prev,
+      [key]: {
+        label: part === "label" ? String(value) : prev[key]?.label ?? "",
+        amount: part === "amount" ? Number(value) || 0 : prev[key]?.amount ?? 0,
+      },
+    }));
+  };
+
+  const handleManualBuyerInput = (
+    field: keyof typeof manualBuyer,
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    setManualBuyer((prev) => ({ ...prev, [field]: event.target.value }));
+  };
+
   return (
     <MainContainer variant="wide">
       <div className="flex flex-col gap-8 pb-8">
@@ -168,33 +351,119 @@ export default function TransactionNaviEditPage() {
         <section className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">買手情報</h2>
+              <div>
+                <h2 className="text-lg font-semibold text-slate-900">買手情報</h2>
+                {!isBuyerSet && (
+                  <p className="text-xs text-amber-600">買手が未設定です。設定してから送信してください。</p>
+                )}
+              </div>
               <span className="text-xs font-semibold text-slate-500">取引先</span>
             </div>
-            <div className="space-y-2 text-sm text-slate-700">
-              <div className="flex gap-2">
-                <span className="w-24 text-slate-500">会社名</span>
-                <span className="font-medium">{buyerInfo.companyName}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="w-24 text-slate-500">担当者</span>
-                <span>{buyerInfo.contactPerson}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="w-24 text-slate-500">電話</span>
-                <span>{buyerInfo.phoneNumber}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="w-24 text-slate-500">メール</span>
-                <span>{buyerInfo.email}</span>
-              </div>
-              {buyerInfo.notes && (
-                <div className="flex gap-2">
-                  <span className="w-24 text-slate-500">備考</span>
-                  <span className="text-slate-600">{buyerInfo.notes}</span>
+
+            {isBuyerSet ? (
+              <div className="space-y-2 text-sm text-slate-700">
+                <div className="flex items-center justify-between">
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-600">設定済み</span>
+                  <button
+                    type="button"
+                    className="text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
+                  >
+                    買手情報を変更
+                  </button>
                 </div>
-              )}
-            </div>
+                <InfoRow label="会社名" value={displayBuyer.companyName} emphasis />
+                <InfoRow label="担当者" value={displayBuyer.contactPerson ?? "-"} />
+                <InfoRow label="電話" value={displayBuyer.phoneNumber ?? "-"} />
+                <InfoRow label="メール" value={displayBuyer.email ?? "-"} />
+                {displayBuyer.notes && <InfoRow label="備考" value={displayBuyer.notes} muted />}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-slate-700">
+                  買手が未設定です。パチマート会員を検索するか、会員外として登録してください。
+                </p>
+                <div className="space-y-2 rounded border border-slate-200 bg-slate-50 p-3">
+                  <label className="text-xs font-semibold text-slate-600">会員検索</label>
+                  <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                    <input
+                      type="text"
+                      className="flex-1 rounded border border-slate-300 px-3 py-2 text-sm"
+                      placeholder="会社名 / 店舗名 / 会員ID / 電話番号 / 担当者名 で検索"
+                      value={searchKeyword}
+                      onChange={(e) => setSearchKeyword(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="rounded bg-slate-800 px-4 py-2 text-xs font-semibold text-white shadow"
+                    >
+                      検索
+                    </button>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {buyerSearchResults.map((buyer) => (
+                      <div
+                        key={buyer.id}
+                        className="flex flex-col gap-1 rounded border border-slate-200 bg-white px-3 py-2 md:flex-row md:items-center md:justify-between"
+                      >
+                        <div>
+                          <p className="font-semibold text-slate-900">{buyer.companyName}</p>
+                          <p className="text-xs text-slate-600">
+                            {buyer.contactName}｜{buyer.tel}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleBuyerSelect(buyer)}
+                          className="mt-2 inline-flex items-center justify-center rounded bg-sky-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-sky-700 md:mt-0"
+                        >
+                          この買手を選択
+                        </button>
+                      </div>
+                    ))}
+                    {buyerSearchResults.length === 0 && (
+                      <p className="text-xs text-slate-500">該当する買手が見つかりませんでした。</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded border border-dashed border-slate-300 p-3">
+                  <p className="text-xs font-semibold text-slate-700">パチマート会員ではない取引先の場合はこちら</p>
+                  <div className="space-y-2 text-sm">
+                    <input
+                      type="text"
+                      required
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                      placeholder="会社名（必須）"
+                      value={manualBuyer.companyName}
+                      onChange={(e) => handleManualBuyerInput("companyName", e)}
+                    />
+                    <input
+                      type="text"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                      placeholder="担当者名（任意）"
+                      value={manualBuyer.contactName}
+                      onChange={(e) => handleManualBuyerInput("contactName", e)}
+                    />
+                    <input
+                      type="tel"
+                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                      placeholder="電話番号（任意）"
+                      value={manualBuyer.tel}
+                      onChange={(e) => handleManualBuyerInput("tel", e)}
+                    />
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleManualBuyerSave}
+                        className="rounded bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-emerald-700"
+                      >
+                        この内容で買手として設定
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -202,281 +471,279 @@ export default function TransactionNaviEditPage() {
               <h2 className="text-lg font-semibold text-slate-900">物件情報</h2>
               <span className="text-xs font-semibold text-slate-500">対象機器</span>
             </div>
-            <div className="space-y-2 text-sm text-slate-700">
-              <div className="flex gap-2">
-                <span className="w-28 text-slate-500">機種名</span>
-                <span className="font-medium">{propertyInfo.modelName}</span>
+            {isProductLinked ? (
+              <div className="space-y-2 text-sm text-slate-700">
+                <InfoRow label="機種名" value={propertyInfo.modelName} emphasis />
+                <InfoRow label="メーカー" value={propertyInfo.maker} />
+                <InfoRow label="台数" value={`${propertyInfo.quantity} 台`} />
+                <InfoRow label="台番号" value={propertyInfo.machineNumber ?? "-"} />
+                <InfoRow label="保管場所" value={propertyInfo.storageLocation} />
               </div>
-              <div className="flex gap-2">
-                <span className="w-28 text-slate-500">メーカー</span>
-                <span>{propertyInfo.maker}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="w-28 text-slate-500">台数</span>
-                <span>{propertyInfo.quantity} 台</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="w-28 text-slate-500">台番号</span>
-                <span>{propertyInfo.machineNumber}</span>
-              </div>
-              <div className="flex gap-2">
-                <span className="w-28 text-slate-500">保管場所</span>
-                <span>{propertyInfo.storageLocation}</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">現在の取引条件</h2>
-            <span className="text-xs font-semibold text-slate-500">プレビュー</span>
-          </div>
-          <dl className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <ConditionRow label="金額" value={`${formattedNumber(currentConditions.price)} / 税込`} />
-            <ConditionRow label="台数" value={`${currentConditions.quantity} 台`} />
-            <ConditionRow label="撤去日" value={currentConditions.removalDate} />
-            <ConditionRow
-              label="機械発送予定日"
-              value={`${currentConditions.machineShipmentDate}（${currentConditions.machineShipmentType}）`}
-            />
-            <ConditionRow
-              label="書類発送予定日"
-              value={`${currentConditions.documentShipmentDate}（${currentConditions.documentShipmentType}）`}
-            />
-            <ConditionRow label="支払期日" value={currentConditions.paymentDue} />
-            <ConditionRow label="機械運賃" value={formattedNumber(currentConditions.freightCost)} />
-            <ConditionRow
-              label="その他料金1"
-              value={
-                currentConditions.otherFee1
-                  ? `${currentConditions.otherFee1.label}: ${formattedNumber(currentConditions.otherFee1.amount)}`
-                  : "-"
-              }
-            />
-            <ConditionRow
-              label="その他料金2"
-              value={
-                currentConditions.otherFee2
-                  ? `${currentConditions.otherFee2.label}: ${formattedNumber(currentConditions.otherFee2.amount)}`
-                  : "-"
-              }
-            />
-            <ConditionRow label="特記事項" value={currentConditions.notes} />
-            <ConditionRow label="取引条件" value={currentConditions.terms} fullWidth />
-          </dl>
-        </section>
-
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">取引条件の編集</h2>
-            <span className="text-xs font-semibold text-slate-500">変更前｜変更後</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full border border-slate-200 text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-left text-xs text-slate-600">
-                  <th className="w-40 px-3 py-2">項目</th>
-                  <th className="w-56 px-3 py-2">変更前</th>
-                  <th className="px-3 py-2">変更後</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200 text-slate-800">
-                <EditRow label="金額" required>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500">{formattedNumber(currentConditions.price)}</span>
-                  </div>
+            ) : (
+              <div className="space-y-3 text-sm text-slate-700">
+                <p className="text-xs text-slate-500">商品が紐付いていないため、ここで情報を入力してください。</p>
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-600">機種名</label>
                   <input
-                    type="number"
-                    className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={editedConditions.price}
-                    onChange={(e) =>
-                      setEditedConditions((prev) => ({ ...prev, price: Number(e.target.value) || 0 }))
-                    }
+                    type="text"
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    value={editableProperty.modelName}
+                    onChange={(e) => handlePropertyChange("productName", e.target.value)}
                   />
-                </EditRow>
-
-                <EditRow label="台数" required>
-                  <span className="text-slate-500">{currentConditions.quantity} 台</span>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-600">メーカー</label>
+                  <input
+                    type="text"
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    value={editableProperty.maker}
+                    onChange={(e) => handlePropertyChange("makerName", e.target.value)}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-600">台数</label>
                   <input
                     type="number"
                     className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={editedConditions.quantity}
-                    onChange={(e) =>
-                      setEditedConditions((prev) => ({ ...prev, quantity: Number(e.target.value) || 0 }))
-                    }
+                    value={editableProperty.quantity}
+                    onChange={(e) => handlePropertyChange("quantity", Number(e.target.value) || 0)}
                   />
-                </EditRow>
-
-                <EditRow label="撤去日" required>
-                  <span className="text-slate-500">{currentConditions.removalDate}</span>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-xs font-semibold text-slate-600">保管場所</label>
                   <input
-                    type="date"
-                    className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={editedConditions.removalDate}
-                    onChange={(e) =>
-                      setEditedConditions((prev) => ({ ...prev, removalDate: e.target.value }))
-                    }
+                    type="text"
+                    className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                    value={editableProperty.location}
+                    onChange={(e) => handlePropertyChange("location", e.target.value)}
                   />
-                </EditRow>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
 
-                <EditRow label="機械発送予定日" required>
-                  <span className="text-slate-500">
-                    {currentConditions.machineShipmentDate}（{currentConditions.machineShipmentType}）
-                  </span>
-                  <div className="space-y-2">
-                    <input
-                      type="date"
-                      className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
-                      value={editedConditions.machineShipmentDate}
-                      onChange={(e) =>
-                        setEditedConditions((prev) => ({ ...prev, machineShipmentDate: e.target.value }))
-                      }
-                    />
-                    {renderRadioGroup<ShippingType>(
-                      "machine-shipping",
-                      ["元払", "着払", "引取"],
-                      editedConditions.machineShipmentType,
-                      (next) => setEditedConditions((prev) => ({ ...prev, machineShipmentType: next }))
-                    )}
-                  </div>
-                </EditRow>
+        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">取引条件</h2>
+            <span className="text-xs font-semibold text-slate-500">参考値｜編集</span>
+          </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2">
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-slate-200 text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-left text-xs text-slate-600">
+                      <th className="w-40 px-3 py-2">項目</th>
+                      <th className="w-56 px-3 py-2">参考値</th>
+                      <th className="px-3 py-2">編集</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-200 text-slate-800">
+                    <EditRow label="単価 (税抜)" required>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500">{formattedNumber(referenceConditions.price)}</span>
+                      </div>
+                      <input
+                        type="number"
+                        className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
+                        value={editedConditions.price}
+                        onChange={(e) => handleNumberConditionChange("price", Number(e.target.value) || 0)}
+                      />
+                    </EditRow>
 
-                <EditRow label="書類発送予定日" required>
-                  <span className="text-slate-500">
-                    {currentConditions.documentShipmentDate}（{currentConditions.documentShipmentType}）
-                  </span>
-                  <div className="space-y-2">
-                    <input
-                      type="date"
-                      className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
-                      value={editedConditions.documentShipmentDate}
-                      onChange={(e) =>
-                        setEditedConditions((prev) => ({ ...prev, documentShipmentDate: e.target.value }))
-                      }
-                    />
-                    {renderRadioGroup<DocumentShippingType>(
-                      "document-shipping",
-                      ["元払", "着払", "同梱", "不要"],
-                      editedConditions.documentShipmentType,
-                      (next) => setEditedConditions((prev) => ({ ...prev, documentShipmentType: next }))
-                    )}
-                  </div>
-                </EditRow>
+                    <EditRow label="台数" required>
+                      <span className="text-slate-500">{referenceConditions.quantity} 台</span>
+                      <input
+                        type="number"
+                        className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
+                        value={editedConditions.quantity}
+                        onChange={(e) => handleNumberConditionChange("quantity", Number(e.target.value) || 0)}
+                      />
+                    </EditRow>
 
-                <EditRow label="支払期日" required>
-                  <span className="text-slate-500">{currentConditions.paymentDue}</span>
-                  <input
-                    type="date"
-                    className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={editedConditions.paymentDue}
-                    onChange={(e) =>
-                      setEditedConditions((prev) => ({ ...prev, paymentDue: e.target.value }))
-                    }
-                  />
-                </EditRow>
+                    <EditRow label="撤去日" required>
+                      <span className="text-slate-500">{referenceConditions.removalDate}</span>
+                      <input
+                        type="date"
+                        className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                        value={editedConditions.removalDate}
+                        onChange={(e) => handleTextConditionChange("removalDate", e.target.value)}
+                      />
+                    </EditRow>
 
-                <EditRow label="機械運賃">
-                  <span className="text-slate-500">{formattedNumber(currentConditions.freightCost)}</span>
-                  <input
-                    type="number"
-                    className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
-                    value={editedConditions.freightCost}
-                    onChange={(e) =>
-                      setEditedConditions((prev) => ({ ...prev, freightCost: Number(e.target.value) || 0 }))
-                    }
-                  />
-                </EditRow>
+                    <EditRow label="機械発送予定日" required>
+                      <span className="text-slate-500">
+                        {referenceConditions.machineShipmentDate}（{referenceConditions.machineShipmentType}）
+                      </span>
+                      <div className="space-y-2">
+                        <input
+                          type="date"
+                          className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                          value={editedConditions.machineShipmentDate}
+                          onChange={(e) => handleTextConditionChange("machineShipmentDate", e.target.value)}
+                        />
+                        {renderRadioGroup<ShippingType>(
+                          "machine-shipping",
+                          ["元払", "着払", "引取"],
+                          editedConditions.machineShipmentType,
+                          (next) => handleTextConditionChange("machineShipmentType", next)
+                        )}
+                      </div>
+                    </EditRow>
 
-                <EditRow label="その他料金1">
-                  <span className="text-slate-500">
-                    {currentConditions.otherFee1
-                      ? `${currentConditions.otherFee1.label}: ${formattedNumber(currentConditions.otherFee1.amount)}`
-                      : "-"}
-                  </span>
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-                    <input
-                      type="text"
-                      className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="種別"
-                      value={editedConditions.otherFee1?.label ?? ""}
-                      onChange={(e) =>
-                        setEditedConditions((prev) => ({
-                          ...prev,
-                          otherFee1: { label: e.target.value, amount: prev.otherFee1?.amount ?? 0 },
-                        }))
-                      }
-                    />
-                    <input
-                      type="number"
-                      className="w-40 rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="金額"
-                      value={editedConditions.otherFee1?.amount ?? 0}
-                      onChange={(e) =>
-                        setEditedConditions((prev) => ({
-                          ...prev,
-                          otherFee1: { label: prev.otherFee1?.label ?? "", amount: Number(e.target.value) || 0 },
-                        }))
-                      }
-                    />
-                  </div>
-                </EditRow>
+                    <EditRow label="書類発送予定日" required>
+                      <span className="text-slate-500">
+                        {referenceConditions.documentShipmentDate}（{referenceConditions.documentShipmentType}）
+                      </span>
+                      <div className="space-y-2">
+                        <input
+                          type="date"
+                          className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                          value={editedConditions.documentShipmentDate}
+                          onChange={(e) => handleTextConditionChange("documentShipmentDate", e.target.value)}
+                        />
+                        {renderRadioGroup<DocumentShippingType>(
+                          "document-shipping",
+                          ["元払", "着払", "同梱", "不要"],
+                          editedConditions.documentShipmentType,
+                          (next) => handleTextConditionChange("documentShipmentType", next)
+                        )}
+                      </div>
+                    </EditRow>
 
-                <EditRow label="その他料金2">
-                  <span className="text-slate-500">
-                    {currentConditions.otherFee2
-                      ? `${currentConditions.otherFee2.label}: ${formattedNumber(currentConditions.otherFee2.amount)}`
-                      : "-"}
-                  </span>
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-                    <input
-                      type="text"
-                      className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="種別"
-                      value={editedConditions.otherFee2?.label ?? ""}
-                      onChange={(e) =>
-                        setEditedConditions((prev) => ({
-                          ...prev,
-                          otherFee2: { label: e.target.value, amount: prev.otherFee2?.amount ?? 0 },
-                        }))
-                      }
-                    />
-                    <input
-                      type="number"
-                      className="w-40 rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="金額"
-                      value={editedConditions.otherFee2?.amount ?? 0}
-                      onChange={(e) =>
-                        setEditedConditions((prev) => ({
-                          ...prev,
-                          otherFee2: { label: prev.otherFee2?.label ?? "", amount: Number(e.target.value) || 0 },
-                        }))
-                      }
-                    />
-                  </div>
-                </EditRow>
+                    <EditRow label="支払期日" required>
+                      <span className="text-slate-500">{referenceConditions.paymentDue}</span>
+                      <input
+                        type="date"
+                        className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                        value={editedConditions.paymentDue}
+                        onChange={(e) => handleTextConditionChange("paymentDue", e.target.value)}
+                      />
+                    </EditRow>
 
-                <EditRow label="特記事項">
-                  <span className="whitespace-pre-wrap text-slate-500">{currentConditions.notes}</span>
-                  <textarea
-                    className="w-64 rounded border border-slate-300 px-3 py-2 text-sm"
-                    rows={3}
-                    value={editedConditions.notes}
-                    onChange={(e) => setEditedConditions((prev) => ({ ...prev, notes: e.target.value }))}
-                  />
-                </EditRow>
+                    <EditRow label="送料 / 機械運賃">
+                      <span className="text-slate-500">{formattedNumber(referenceConditions.freightCost)}</span>
+                      <input
+                        type="number"
+                        className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
+                        value={editedConditions.freightCost}
+                        onChange={(e) => handleNumberConditionChange("freightCost", Number(e.target.value) || 0)}
+                      />
+                    </EditRow>
 
-                <EditRow label="取引条件">
-                  <span className="whitespace-pre-wrap text-slate-500">{currentConditions.terms}</span>
-                  <textarea
-                    className="w-72 rounded border border-slate-300 px-3 py-2 text-sm"
-                    rows={5}
-                    value={editedConditions.terms}
-                    onChange={(e) => setEditedConditions((prev) => ({ ...prev, terms: e.target.value }))}
-                  />
-                </EditRow>
-              </tbody>
-            </table>
+                    <EditRow label="出庫手数料">
+                      <span className="text-slate-500">{formattedNumber(referenceConditions.handlingFee)}</span>
+                      <input
+                        type="number"
+                        className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
+                        value={editedConditions.handlingFee}
+                        onChange={(e) => handleNumberConditionChange("handlingFee", Number(e.target.value) || 0)}
+                      />
+                    </EditRow>
+
+                    <EditRow label="税率">
+                      <span className="text-slate-500">{referenceConditions.taxRate}</span>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
+                        value={editedConditions.taxRate}
+                        onChange={(e) => handleNumberConditionChange("taxRate", Number(e.target.value) || 0)}
+                      />
+                    </EditRow>
+
+                    <EditRow label="その他料金1">
+                      <span className="text-slate-500">
+                        {referenceConditions.otherFee1
+                          ? `${referenceConditions.otherFee1.label}: ${formattedNumber(referenceConditions.otherFee1.amount)}`
+                          : "-"}
+                      </span>
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+                        <input
+                          type="text"
+                          className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                          placeholder="種別"
+                          value={editedConditions.otherFee1?.label ?? ""}
+                          onChange={(e) => handleOtherFeeChange("otherFee1", "label", e.target.value)}
+                        />
+                        <input
+                          type="number"
+                          className="w-40 rounded border border-slate-300 px-3 py-2 text-sm"
+                          placeholder="金額"
+                          value={editedConditions.otherFee1?.amount ?? 0}
+                          onChange={(e) => handleOtherFeeChange("otherFee1", "amount", Number(e.target.value) || 0)}
+                        />
+                      </div>
+                    </EditRow>
+
+                    <EditRow label="その他料金2">
+                      <span className="text-slate-500">
+                        {referenceConditions.otherFee2
+                          ? `${referenceConditions.otherFee2.label}: ${formattedNumber(referenceConditions.otherFee2.amount)}`
+                          : "-"}
+                      </span>
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+                        <input
+                          type="text"
+                          className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                          placeholder="種別"
+                          value={editedConditions.otherFee2?.label ?? ""}
+                          onChange={(e) => handleOtherFeeChange("otherFee2", "label", e.target.value)}
+                        />
+                        <input
+                          type="number"
+                          className="w-40 rounded border border-slate-300 px-3 py-2 text-sm"
+                          placeholder="金額"
+                          value={editedConditions.otherFee2?.amount ?? 0}
+                          onChange={(e) => handleOtherFeeChange("otherFee2", "amount", Number(e.target.value) || 0)}
+                        />
+                      </div>
+                    </EditRow>
+
+                    <EditRow label="特記事項">
+                      <span className="whitespace-pre-wrap text-slate-500">{referenceConditions.notes}</span>
+                      <textarea
+                        className="w-64 rounded border border-slate-300 px-3 py-2 text-sm"
+                        rows={3}
+                        value={editedConditions.notes}
+                        onChange={(e) => handleTextConditionChange("notes", e.target.value)}
+                      />
+                    </EditRow>
+
+                    <EditRow label="取引条件">
+                      <span className="whitespace-pre-wrap text-slate-500">{referenceConditions.terms}</span>
+                      <textarea
+                        className="w-72 rounded border border-slate-300 px-3 py-2 text-sm"
+                        rows={5}
+                        value={editedConditions.terms}
+                        onChange={(e) => handleTextConditionChange("terms", e.target.value)}
+                      />
+                    </EditRow>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="space-y-3 rounded border border-slate-200 bg-slate-50 p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-slate-900">お支払いサマリー</h3>
+                <span className="text-[11px] font-semibold text-slate-500">自動再計算</span>
+              </div>
+              {quoteResult ? (
+                <div className="space-y-2 text-sm text-slate-800">
+                  <SummaryRow label="商品代金" value={formattedNumber(quoteResult.productSubtotal)} />
+                  <SummaryRow label="送料" value={formattedNumber(quoteResult.shippingFee)} />
+                  <SummaryRow label="出庫手数料" value={formattedNumber(quoteResult.handlingFee)} />
+                  <div className="h-px bg-slate-200" aria-hidden />
+                  <SummaryRow label="小計" value={formattedNumber(quoteResult.subtotal)} />
+                  <SummaryRow label="消費税" value={formattedNumber(quoteResult.tax)} />
+                  <SummaryRow label="合計" value={formattedNumber(quoteResult.total)} emphasis />
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">金額を入力すると自動計算されます。</p>
+              )}
+            </div>
           </div>
         </section>
 
@@ -621,5 +888,35 @@ function EditRow({
       <td className="bg-slate-50 px-3 py-3 text-slate-600">{beforeContent}</td>
       <td className="px-3 py-3">{afterContent}</td>
     </tr>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  emphasis,
+  muted,
+}: {
+  label: string;
+  value: string;
+  emphasis?: boolean;
+  muted?: boolean;
+}) {
+  return (
+    <div className="flex gap-2 text-sm text-slate-700">
+      <span className="w-24 text-slate-500">{label}</span>
+      <span className={`${emphasis ? "font-semibold" : ""} ${muted ? "text-slate-500" : ""}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
+  return (
+    <div className="flex items-center justify-between text-sm">
+      <span className="text-slate-600">{label}</span>
+      <span className={`font-semibold ${emphasis ? "text-sky-700" : "text-slate-900"}`}>{value}</span>
+    </div>
   );
 }

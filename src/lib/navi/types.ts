@@ -1,11 +1,26 @@
 export type NaviStatus = "draft" | "sent_to_buyer" | "buyer_approved" | "buyer_rejected";
 
+export type AdditionalFee = {
+  label: string;
+  amount: number;
+};
+
 export type TradeConditions = {
   unitPrice: number;
   quantity: number;
   shippingFee: number;
   handlingFee: number;
   taxRate: number;
+  removalDate?: string | null;
+  machineShipmentDate?: string | null;
+  machineShipmentType?: string | null;
+  documentShipmentDate?: string | null;
+  documentShipmentType?: string | null;
+  paymentDue?: string | null;
+  otherFee1?: AdditionalFee | null;
+  otherFee2?: AdditionalFee | null;
+  notes?: string | null;
+  terms?: string | null;
   productName?: string | null;
   makerName?: string | null;
   location?: string | null;
