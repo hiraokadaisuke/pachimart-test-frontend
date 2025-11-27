@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 
+import { products } from "@/lib/dummyData";
+
 export interface BuyerInfo {
   companyName: string;
   contactPerson: string;
@@ -57,7 +59,7 @@ const buyerInfo: BuyerInfo = {
   notes: "平日10-18時に連絡可。",
 };
 
-const propertyInfo: PropertyInfo = {
+const basePropertyInfo: PropertyInfo = {
   modelName: "P スーパー海物語 JAPAN2 L1",
   maker: "三共",
   quantity: 4,
@@ -124,11 +126,62 @@ const messageLogs: MessageLog[] = [
   },
 ];
 
+const fallbackRemovalDate = "2025-11-22";
+
+const buildPropertyInfo = (transactionId?: string): PropertyInfo => {
+  const product = transactionId
+    ? products.find((item) => String(item.id) === transactionId)
+    : undefined;
+
+  if (!product) return basePropertyInfo;
+
+  return {
+    modelName: product.name,
+    maker: product.maker,
+    quantity: product.quantity,
+    storageLocation: product.warehouseName ?? basePropertyInfo.storageLocation,
+    machineNumber: `#${product.id}`,
+  };
+};
+
+const buildConditions = (transactionId?: string) => {
+  const product = transactionId
+    ? products.find((item) => String(item.id) === transactionId)
+    : undefined;
+
+  if (!product) {
+    return { currentConditions, updatedConditions };
+  }
+
+  const basePrice = product.price * product.quantity;
+  const removalDate = product.removalDate ?? fallbackRemovalDate;
+
+  const nextCurrent = {
+    ...currentConditions,
+    price: basePrice,
+    quantity: product.quantity,
+    removalDate,
+  } satisfies TransactionConditions;
+
+  const nextUpdated = {
+    ...updatedConditions,
+    price: Math.max(basePrice - 30000, 0),
+    quantity: product.quantity,
+    removalDate,
+  } satisfies TransactionConditions;
+
+  return { currentConditions: nextCurrent, updatedConditions: nextUpdated };
+};
+
 export const formatCurrency = (value: number) => `¥${value.toLocaleString("ja-JP")}`;
 
-export function useDummyNavi() {
-  return useMemo(
-    () => ({
+export function useDummyNavi(transactionId?: string) {
+  return useMemo(() => {
+    const propertyInfo = buildPropertyInfo(transactionId);
+    const { currentConditions, updatedConditions } = buildConditions(transactionId);
+
+    return {
+      transactionId,
       breadcrumbBase,
       editBreadcrumbItems: [...breadcrumbBase, "編集"],
       confirmBreadcrumbItems: [...breadcrumbBase, "確認"],
@@ -140,9 +193,8 @@ export function useDummyNavi() {
       photoThumbnails,
       messageLogs,
       statusLabel: "承認待ち",
-    }),
-    []
-  );
+    };
+  }, [transactionId]);
 }
 
 export type { ShippingType, DocumentShippingType };
