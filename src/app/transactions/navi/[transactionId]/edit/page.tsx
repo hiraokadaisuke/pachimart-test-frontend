@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
+import { loadNaviDraft } from "@/lib/navi/storage";
+import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
 import {
   formatCurrency,
   useDummyNavi,
@@ -11,28 +13,106 @@ import {
   type TransactionConditions,
 } from "@/lib/useDummyNavi";
 
+const convertShippingType = (type?: TradeConditions["shippingType"]): ShippingType | undefined => {
+  const mapping: Record<NonNullable<TradeConditions["shippingType"]>, ShippingType> = {
+    prepaid: "元払",
+    collect: "着払",
+    pickup: "引取",
+  };
+
+  return type ? mapping[type] : undefined;
+};
+
+const convertDocumentShippingType = (
+  type?: TradeConditions["documentsShippingType"]
+): DocumentShippingType | undefined => {
+  const mapping: Record<NonNullable<TradeConditions["documentsShippingType"]>, DocumentShippingType> = {
+    prepaid: "元払",
+    collect: "着払",
+    included: "同梱",
+    none: "不要",
+  };
+
+  return type ? mapping[type] : undefined;
+};
+
+const mapDraftConditions = (
+  conditions: TradeConditions,
+  fallback: TransactionConditions
+): TransactionConditions => ({
+  price: conditions.price,
+  quantity: conditions.quantity,
+  removalDate: conditions.removalDate ?? fallback.removalDate,
+  machineShipmentDate: conditions.shippingDate ?? fallback.machineShipmentDate,
+  machineShipmentType: convertShippingType(conditions.shippingType) ?? fallback.machineShipmentType,
+  documentShipmentDate: conditions.documentsShippingDate ?? fallback.documentShipmentDate,
+  documentShipmentType: convertDocumentShippingType(conditions.documentsShippingType) ?? fallback.documentShipmentType,
+  paymentDue: conditions.paymentDueDate ?? fallback.paymentDue,
+  freightCost: conditions.freightCost ?? fallback.freightCost,
+  otherFee1:
+    conditions.extraFee1Label || conditions.extraFee1Amount !== undefined
+      ? {
+          label: conditions.extraFee1Label ?? "その他料金1",
+          amount: conditions.extraFee1Amount ?? 0,
+        }
+      : undefined,
+  otherFee2:
+    conditions.extraFee2Label || conditions.extraFee2Amount !== undefined
+      ? {
+          label: conditions.extraFee2Label ?? "その他料金2",
+          amount: conditions.extraFee2Amount ?? 0,
+        }
+      : undefined,
+  notes: conditions.notes ?? fallback.notes,
+  terms: conditions.terms ?? fallback.terms,
+});
+
 export default function TransactionNaviEditPage() {
   const router = useRouter();
   const params = useParams<{ transactionId?: string }>();
   const transactionId = Array.isArray(params?.transactionId)
     ? params?.transactionId[0]
     : params?.transactionId ?? "dummy-1";
+  const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
+  const naviTargetId = draft?.productId ?? transactionId;
   const {
     editBreadcrumbItems,
     buyerInfo,
     propertyInfo,
     currentConditions,
+    updatedConditions,
     documentFiles,
     photoThumbnails: defaultPhotoThumbnails,
     messageLogs,
-  } = useDummyNavi(transactionId);
-  const [editedConditions, setEditedConditions] = useState<TransactionConditions>({
-    ...currentConditions,
-  });
+  } = useDummyNavi(naviTargetId);
+
+  const draftConditions = useMemo(
+    () => (draft ? mapDraftConditions(draft.conditions, currentConditions) : null),
+    [currentConditions, draft]
+  );
+
+  const initialEditedConditions = useMemo(
+    () => draftConditions ?? updatedConditions ?? currentConditions,
+    [currentConditions, draftConditions, updatedConditions]
+  );
+
+  const [editedConditions, setEditedConditions] = useState<TransactionConditions>(initialEditedConditions);
   const [uploadFiles, setUploadFiles] = useState<string[]>(documentFiles);
   const [photoThumbnails, setPhotoThumbnails] = useState<string[]>(defaultPhotoThumbnails);
   const [newMessage, setNewMessage] = useState<string>("");
   const formattedNumber = formatCurrency;
+
+  useEffect(() => {
+    if (!transactionId) return;
+    const storedDraft = loadNaviDraft(transactionId);
+    if (storedDraft) {
+      setDraft(storedDraft);
+    }
+  }, [transactionId]);
+
+  useEffect(() => {
+    setEditedConditions(initialEditedConditions);
+  }, [initialEditedConditions]);
 
   const handleSendToBuyer = () => {
     console.log("Send to buyer", editedConditions);
