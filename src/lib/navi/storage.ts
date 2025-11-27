@@ -2,70 +2,47 @@ import { TradeNaviDraft } from "./types";
 
 const STORAGE_KEY_PREFIX = "navi_draft_";
 
-export function saveNaviDraft(draft: TradeNaviDraft) {
+function clearDraftStorage() {
   if (typeof window === "undefined") return;
-  const key = STORAGE_KEY_PREFIX + draft.id;
-  const now = new Date().toISOString();
-  const payload: TradeNaviDraft = {
-    ...draft,
-    updatedAt: now,
-  };
-  window.sessionStorage.setItem(key, JSON.stringify(payload));
-}
 
-export const saveNavi = saveNaviDraft;
-
-export function loadNaviDraft(id: string): TradeNaviDraft | null {
-  if (typeof window === "undefined") return null;
-  const key = STORAGE_KEY_PREFIX + id;
-  const raw = window.sessionStorage.getItem(key);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as TradeNaviDraft;
-  } catch {
-    return null;
-  }
-}
-
-export const loadNavi = loadNaviDraft;
-
-export function loadAllNavis(): TradeNaviDraft[] {
-  if (typeof window === "undefined") return [];
-
-  const drafts: TradeNaviDraft[] = [];
+  const keysToRemove: string[] = [];
 
   for (let i = 0; i < window.sessionStorage.length; i += 1) {
     const key = window.sessionStorage.key(i);
     if (!key || !key.startsWith(STORAGE_KEY_PREFIX)) continue;
 
-    const raw = window.sessionStorage.getItem(key);
-    if (!raw) continue;
-
-    try {
-      const parsed = JSON.parse(raw) as TradeNaviDraft;
-      if (!parsed?.id) continue;
-      drafts.push(parsed);
-    } catch {
-      // ignore malformed data
-    }
+    keysToRemove.push(key);
   }
 
-  return drafts;
+  keysToRemove.forEach((key) => window.sessionStorage.removeItem(key));
+}
+
+if (typeof window !== "undefined") {
+  clearDraftStorage();
+}
+
+export function saveNaviDraft(_draft: TradeNaviDraft) {
+  clearDraftStorage();
+}
+
+export const saveNavi = saveNaviDraft;
+
+export function loadNaviDraft(id: string): TradeNaviDraft | null {
+  clearDraftStorage();
+  return null;
+}
+
+export const loadNavi = loadNaviDraft;
+
+export function loadAllNavis(): TradeNaviDraft[] {
+  clearDraftStorage();
+  return [];
 }
 
 export function updateNaviStatus(id: string, status: TradeNaviDraft["status"]): TradeNaviDraft | null {
   if (typeof window === "undefined") return null;
-  const existing = loadNaviDraft(id);
-  if (!existing) return null;
-
-  const nextDraft: TradeNaviDraft = {
-    ...existing,
-    status,
-    updatedAt: new Date().toISOString(),
-  };
-
-  saveNaviDraft(nextDraft);
-  return nextDraft;
+  clearDraftStorage();
+  return null;
 }
 
 export function createEmptyNaviDraft(): TradeNaviDraft {
