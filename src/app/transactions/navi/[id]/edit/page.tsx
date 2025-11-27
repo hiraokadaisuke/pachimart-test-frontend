@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
-import { loadNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
+import { loadNaviDraft, saveNavi, saveNaviDraft, updateNaviStatus } from "@/lib/navi/storage";
 import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
 import {
   formatCurrency,
@@ -67,6 +67,59 @@ const dummyBuyers = [
 
 const defaultManualBuyer = { companyName: "", contactName: "", tel: "" };
 
+type ValidationErrors = {
+  buyer?: string;
+  quantity?: string;
+  unitPrice?: string;
+  shippingFee?: string;
+  handlingFee?: string;
+  taxRate?: string;
+};
+
+const buyerErrorMessage = "買手が未設定です。このNaviを送信するには先に買手を設定してください。";
+
+const validateDraft = (draft: TradeNaviDraft | null): ValidationErrors => {
+  const errors: ValidationErrors = {};
+
+  if (!draft) {
+    errors.buyer = "取引情報を読み込めませんでした。";
+    return errors;
+  }
+
+  const { buyerPending, buyerCompanyName, buyerId, buyerTel, conditions } = draft;
+
+  if (buyerPending || !buyerCompanyName || !buyerId || !buyerTel) {
+    errors.buyer = buyerErrorMessage;
+  }
+
+  const quantity = conditions.quantity ?? 0;
+  if (!quantity || quantity <= 0) {
+    errors.quantity = "台数が正しく入力されていません。1以上の数を入力してください。";
+  }
+
+  const unitPrice = conditions.unitPrice ?? 0;
+  if (!unitPrice || unitPrice <= 0) {
+    errors.unitPrice = "単価が正しくありません。";
+  }
+
+  const shippingFee = conditions.shippingFee ?? 0;
+  if (shippingFee < 0) {
+    errors.shippingFee = "送料が正しくありません。";
+  }
+
+  const handlingFee = conditions.handlingFee ?? 0;
+  if (handlingFee < 0) {
+    errors.handlingFee = "出庫手数料が正しくありません。";
+  }
+
+  const taxRate = conditions.taxRate ?? 0;
+  if (taxRate < 0) {
+    errors.taxRate = "税率が正しくありません。";
+  }
+
+  return errors;
+};
+
 export default function TransactionNaviEditPage() {
   const router = useRouter();
   const params = useParams<{ id?: string }>();
@@ -101,6 +154,7 @@ export default function TransactionNaviEditPage() {
   const [uploadFiles, setUploadFiles] = useState<string[]>(documentFiles);
   const [photoThumbnails, setPhotoThumbnails] = useState<string[]>(defaultPhotoThumbnails);
   const [newMessage, setNewMessage] = useState<string>("");
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const formattedNumber = formatCurrency;
 
   useEffect(() => {
@@ -117,6 +171,20 @@ export default function TransactionNaviEditPage() {
   useEffect(() => {
     setEditedConditions(initialEditedConditions);
   }, [initialEditedConditions]);
+
+  useEffect(() => {
+    if (!draft) return;
+    setValidationErrors((prev) => {
+      if (Object.values(prev).every((error) => !error)) return prev;
+
+      const next = validateDraft(draft);
+      const isSame =
+        Object.keys(next).every((key) => next[key as keyof ValidationErrors] === prev[key as keyof ValidationErrors]) &&
+        Object.keys(prev).every((key) => next[key as keyof ValidationErrors] === prev[key as keyof ValidationErrors]);
+
+      return isSame ? prev : next;
+    });
+  }, [draft]);
 
   const persistDraft = (updater: (prev: TradeNaviDraft) => TradeNaviDraft) => {
     setDraft((prev) => {
@@ -221,8 +289,16 @@ export default function TransactionNaviEditPage() {
   }
 
   const handleSendToBuyer = () => {
-    console.log("Send to buyer", editedConditions);
-    router.push(`/transactions/navi/${transactionId}`);
+    const errors = validateDraft(draft);
+    setValidationErrors(errors);
+    const hasErrors = Object.values(errors).some((error) => Boolean(error));
+
+    if (hasErrors || !draft) return;
+
+    const updatedDraft = updateNaviStatus(draft.id, "sent_to_buyer") ?? draft;
+    saveNavi(updatedDraft);
+    alert("取引Naviを買手へ送信しました。");
+    router.push("/trade-navi");
   };
 
   const handleFileAdd = (files: FileList | null) => {
@@ -330,11 +406,21 @@ export default function TransactionNaviEditPage() {
                 下書き
               </span>
             </div>
-            <div>
+            <div className="flex flex-col gap-2 md:items-end">
+              {Object.values(validationErrors).some((error) => Boolean(error)) && (
+                <ul className="list-disc space-y-1 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                  {Object.values(validationErrors)
+                    .filter((error): error is string => Boolean(error))
+                    .map((error, index) => (
+                      <li key={`${error}-${index}`}>{error}</li>
+                    ))}
+                </ul>
+              )}
               <button
                 type="button"
                 onClick={handleSendToBuyer}
-                className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
+                disabled={draft?.buyerPending || !isBuyerSet}
+                className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-400"
               >
                 買手へ送信
               </button>
@@ -348,11 +434,11 @@ export default function TransactionNaviEditPage() {
 
         <section className="grid gap-4 md:grid-cols-2">
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
+              <div className="mb-3 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-slate-900">買手情報</h2>
-                {!isBuyerSet && (
-                  <p className="text-xs text-amber-600">買手が未設定です。設定してから送信してください。</p>
+                {(!isBuyerSet || validationErrors.buyer) && (
+                  <p className="text-xs text-red-600">{validationErrors.buyer ?? buyerErrorMessage}</p>
                 )}
               </div>
               <span className="text-xs font-semibold text-slate-500">取引先</span>
@@ -542,22 +628,32 @@ export default function TransactionNaviEditPage() {
                       <div className="flex items-center gap-2">
                         <span className="text-slate-500">{formattedNumber(referenceConditions.price)}</span>
                       </div>
-                      <input
-                        type="number"
-                        className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
-                        value={editedConditions.price}
-                        onChange={(e) => handleNumberConditionChange("price", Number(e.target.value) || 0)}
-                      />
+                      <div className="flex flex-col items-start gap-1">
+                        <input
+                          type="number"
+                          className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
+                          value={editedConditions.price}
+                          onChange={(e) => handleNumberConditionChange("price", Number(e.target.value) || 0)}
+                        />
+                        {validationErrors.unitPrice && (
+                          <p className="text-xs text-red-600">{validationErrors.unitPrice}</p>
+                        )}
+                      </div>
                     </EditRow>
 
                     <EditRow label="台数" required>
                       <span className="text-slate-500">{referenceConditions.quantity} 台</span>
-                      <input
-                        type="number"
-                        className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
-                        value={editedConditions.quantity}
-                        onChange={(e) => handleNumberConditionChange("quantity", Number(e.target.value) || 0)}
-                      />
+                      <div className="flex flex-col items-start gap-1">
+                        <input
+                          type="number"
+                          className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
+                          value={editedConditions.quantity}
+                          onChange={(e) => handleNumberConditionChange("quantity", Number(e.target.value) || 0)}
+                        />
+                        {validationErrors.quantity && (
+                          <p className="text-xs text-red-600">{validationErrors.quantity}</p>
+                        )}
+                      </div>
                     </EditRow>
 
                     <EditRow label="撤去日" required>
@@ -622,33 +718,48 @@ export default function TransactionNaviEditPage() {
 
                     <EditRow label="送料 / 機械運賃">
                       <span className="text-slate-500">{formattedNumber(referenceConditions.freightCost)}</span>
-                      <input
-                        type="number"
-                        className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
-                        value={editedConditions.freightCost}
-                        onChange={(e) => handleNumberConditionChange("freightCost", Number(e.target.value) || 0)}
-                      />
+                      <div className="flex flex-col items-start gap-1">
+                        <input
+                          type="number"
+                          className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
+                          value={editedConditions.freightCost}
+                          onChange={(e) => handleNumberConditionChange("freightCost", Number(e.target.value) || 0)}
+                        />
+                        {validationErrors.shippingFee && (
+                          <p className="text-xs text-red-600">{validationErrors.shippingFee}</p>
+                        )}
+                      </div>
                     </EditRow>
 
                     <EditRow label="出庫手数料">
                       <span className="text-slate-500">{formattedNumber(referenceConditions.handlingFee)}</span>
-                      <input
-                        type="number"
-                        className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
-                        value={editedConditions.handlingFee}
-                        onChange={(e) => handleNumberConditionChange("handlingFee", Number(e.target.value) || 0)}
-                      />
+                      <div className="flex flex-col items-start gap-1">
+                        <input
+                          type="number"
+                          className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
+                          value={editedConditions.handlingFee}
+                          onChange={(e) => handleNumberConditionChange("handlingFee", Number(e.target.value) || 0)}
+                        />
+                        {validationErrors.handlingFee && (
+                          <p className="text-xs text-red-600">{validationErrors.handlingFee}</p>
+                        )}
+                      </div>
                     </EditRow>
 
                     <EditRow label="税率">
                       <span className="text-slate-500">{referenceConditions.taxRate}</span>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
-                        value={editedConditions.taxRate}
-                        onChange={(e) => handleNumberConditionChange("taxRate", Number(e.target.value) || 0)}
-                      />
+                      <div className="flex flex-col items-start gap-1">
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
+                          value={editedConditions.taxRate}
+                          onChange={(e) => handleNumberConditionChange("taxRate", Number(e.target.value) || 0)}
+                        />
+                        {validationErrors.taxRate && (
+                          <p className="text-xs text-red-600">{validationErrors.taxRate}</p>
+                        )}
+                      </div>
                     </EditRow>
 
                     <EditRow label="その他料金1">
