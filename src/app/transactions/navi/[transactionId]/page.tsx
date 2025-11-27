@@ -1,10 +1,16 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useParams, useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import { formatCurrency, useDummyNavi, type MessageLog } from "@/lib/useDummyNavi";
 
 export default function TransactionNaviConfirmPage() {
+  const router = useRouter();
+  const params = useParams<{ transactionId?: string }>();
+  const transactionId = Array.isArray(params?.transactionId)
+    ? params?.transactionId[0]
+    : params?.transactionId ?? "dummy-1";
   const {
     confirmBreadcrumbItems,
     buyerInfo,
@@ -14,7 +20,7 @@ export default function TransactionNaviConfirmPage() {
     photoThumbnails,
     messageLogs,
     statusLabel,
-  } = useDummyNavi();
+  } = useDummyNavi(transactionId);
   const [newMessage, setNewMessage] = useState("");
 
   const handleDownload = (file: string) => {
@@ -31,11 +37,11 @@ export default function TransactionNaviConfirmPage() {
   };
 
   const handleApprove = () => {
-    console.log("approve transaction");
+    router.push(`/transactions/navi/${transactionId}/completed`);
   };
 
   const handleRequestRevision = () => {
-    console.log("request revision");
+    router.push(`/transactions/navi/${transactionId}/edit`);
   };
 
   return (

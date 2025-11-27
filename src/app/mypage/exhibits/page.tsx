@@ -1,12 +1,16 @@
-import Link from 'next/link';
+"use client";
 
-import { products } from '@/lib/dummyData';
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { products } from "@/lib/dummyData";
 
 export default function MyPageExhibitsPage() {
-  const listedProducts = products.filter((product) => product.status === '出品中');
-  const currencyFormatter = new Intl.NumberFormat('ja-JP', {
-    style: 'currency',
-    currency: 'JPY',
+  const router = useRouter();
+  const listedProducts = products.filter((product) => product.status === "出品中");
+  const currencyFormatter = new Intl.NumberFormat("ja-JP", {
+    style: "currency",
+    currency: "JPY",
     minimumFractionDigits: 0,
   });
 
@@ -58,7 +62,7 @@ export default function MyPageExhibitsPage() {
           </thead>
           <tbody>
             {listedProducts.map((product, idx) => {
-              const zebra = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
+              const zebra = idx % 2 === 0 ? "bg-white" : "bg-gray-50";
 
               return (
                 <tr key={product.id} className={zebra}>
@@ -83,9 +87,15 @@ export default function MyPageExhibitsPage() {
                       出品中
                     </span>
                   </td>
-                  <td className="border-b border-gray-100 px-3 py-2 align-top">{product.note ?? '-'}</td>
+                  <td className="border-b border-gray-100 px-3 py-2 align-top">{product.note ?? "-"}</td>
                   <td className="border-b border-gray-100 px-3 py-2 align-top">
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        className="rounded bg-emerald-600 px-3 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+                        onClick={() => router.push(`/transactions/navi/${product.id}/edit`)}
+                      >
+                        取引Naviを作成
+                      </button>
                       <button className="rounded bg-blue-500 px-3 py-1 text-xs font-semibold text-white">編集</button>
                       <button className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700">取り下げ</button>
                       <button className="rounded bg-red-500 px-3 py-1 text-xs font-semibold text-white">削除</button>

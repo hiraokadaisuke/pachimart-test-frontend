@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
+import { useParams, useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import {
   formatCurrency,
@@ -11,6 +12,11 @@ import {
 } from "@/lib/useDummyNavi";
 
 export default function TransactionNaviEditPage() {
+  const router = useRouter();
+  const params = useParams<{ transactionId?: string }>();
+  const transactionId = Array.isArray(params?.transactionId)
+    ? params?.transactionId[0]
+    : params?.transactionId ?? "dummy-1";
   const {
     editBreadcrumbItems,
     buyerInfo,
@@ -19,7 +25,7 @@ export default function TransactionNaviEditPage() {
     documentFiles,
     photoThumbnails: defaultPhotoThumbnails,
     messageLogs,
-  } = useDummyNavi();
+  } = useDummyNavi(transactionId);
   const [editedConditions, setEditedConditions] = useState<TransactionConditions>({
     ...currentConditions,
   });
@@ -30,6 +36,7 @@ export default function TransactionNaviEditPage() {
 
   const handleSendToBuyer = () => {
     console.log("Send to buyer", editedConditions);
+    router.push(`/transactions/navi/${transactionId}`);
   };
 
   const handleFileAdd = (files: FileList | null) => {
