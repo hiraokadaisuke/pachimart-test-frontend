@@ -5,7 +5,13 @@ import { useParams, useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import { loadNaviDraft } from "@/lib/navi/storage";
 import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
-import { formatCurrency, useDummyNavi, type TransactionConditions } from "@/lib/useDummyNavi";
+import {
+  formatCurrency,
+  useDummyNavi,
+  type TransactionConditions,
+  type ShippingType,
+  type DocumentShippingType,
+} from "@/lib/useDummyNavi";
 
 const mapDraftConditions = (
   conditions: TradeConditions,

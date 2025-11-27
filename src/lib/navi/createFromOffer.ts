@@ -21,7 +21,7 @@ export function createNaviDraftFromOffer(input: OfferInputForNavi): TradeNaviDra
     quantity: input.quantity,
     shippingFee: input.quote.shippingFee,
     handlingFee: input.quote.handlingFee,
-    taxRate: input.quote.taxRate,
+    taxRate: 0.1,
     productName: null,
     makerName: null,
     // 他の項目は後でNavi画面で編集する想定なので空でOK
