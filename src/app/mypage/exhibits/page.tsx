@@ -220,22 +220,22 @@ export default function MyPageExhibitsPage() {
                   </td>
                   <td className="px-3 py-2 align-top text-slate-700">{product.note ?? "-"}</td>
                   <td className="px-3 py-2 align-top">
-                    <div className="flex flex-wrap justify-center gap-1">
-                      <button
-                        className="rounded-md border border-emerald-600 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50"
-                        onClick={() => router.push(`/transactions/navi/${product.id}/edit`)}
-                      >
-                        取引Navi
-                      </button>
-                      <button className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50">
-                        編集
-                      </button>
-                      <button className="rounded-md border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50">
-                        取り下げ
-                      </button>
-                      <button className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700 transition hover:bg-red-100">
-                        削除
-                      </button>
+                    <div className="flex flex-col items-start gap-1 text-xs">
+                      <div className="flex flex-wrap items-center gap-1">
+                        <button
+                          className="rounded border border-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
+                          onClick={() => router.push(`/transactions/navi/${product.id}/edit`)}
+                        >
+                          取引Navi
+                        </button>
+                        <button className="rounded border border-slate-300 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-slate-50">
+                          編集
+                        </button>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-1">
+                        <button className="px-1 py-0.5 text-[11px] text-slate-500 hover:text-slate-700">取り下げ</button>
+                        <button className="px-1 py-0.5 text-[11px] text-rose-600 hover:text-rose-700">削除</button>
+                      </div>
                     </div>
                   </td>
                 </tr>
