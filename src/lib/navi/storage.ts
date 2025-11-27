@@ -13,6 +13,8 @@ export function saveNaviDraft(draft: TradeNaviDraft) {
   window.sessionStorage.setItem(key, JSON.stringify(payload));
 }
 
+export const saveNavi = saveNaviDraft;
+
 export function loadNaviDraft(id: string): TradeNaviDraft | null {
   if (typeof window === "undefined") return null;
   const key = STORAGE_KEY_PREFIX + id;
@@ -24,6 +26,8 @@ export function loadNaviDraft(id: string): TradeNaviDraft | null {
     return null;
   }
 }
+
+export const loadNavi = loadNaviDraft;
 
 export function updateNaviStatus(id: string, status: TradeNaviDraft["status"]): TradeNaviDraft | null {
   if (typeof window === "undefined") return null;

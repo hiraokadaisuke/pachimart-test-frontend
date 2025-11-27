@@ -69,10 +69,8 @@ const defaultManualBuyer = { companyName: "", contactName: "", tel: "" };
 
 export default function TransactionNaviEditPage() {
   const router = useRouter();
-  const params = useParams<{ transactionId?: string }>();
-  const transactionId = Array.isArray(params?.transactionId)
-    ? params?.transactionId[0]
-    : params?.transactionId ?? "dummy-1";
+  const params = useParams<{ id?: string }>();
+  const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
