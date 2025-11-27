@@ -24,6 +24,16 @@ export function createNaviDraftFromOffer(input: OfferInputForNavi): TradeNaviDra
     taxRate: 0.1,
     productName: null,
     makerName: null,
+    removalDate: null,
+    machineShipmentDate: null,
+    machineShipmentType: null,
+    documentShipmentDate: null,
+    documentShipmentType: null,
+    paymentDue: null,
+    otherFee1: null,
+    otherFee2: null,
+    notes: null,
+    terms: null,
     // 他の項目は後でNavi画面で編集する想定なので空でOK
   };
 
