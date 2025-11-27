@@ -8,63 +8,34 @@ import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
 import {
   formatCurrency,
   useDummyNavi,
-  type DocumentShippingType,
-  type ShippingType,
   type TransactionConditions,
+  type ShippingType,
+  type DocumentShippingType,
 } from "@/lib/useDummyNavi";
-
-const convertShippingType = (type?: TradeConditions["shippingType"]): ShippingType | undefined => {
-  const mapping: Record<NonNullable<TradeConditions["shippingType"]>, ShippingType> = {
-    prepaid: "元払",
-    collect: "着払",
-    pickup: "引取",
-  };
-
-  return type ? mapping[type] : undefined;
-};
-
-const convertDocumentShippingType = (
-  type?: TradeConditions["documentsShippingType"]
-): DocumentShippingType | undefined => {
-  const mapping: Record<NonNullable<TradeConditions["documentsShippingType"]>, DocumentShippingType> = {
-    prepaid: "元払",
-    collect: "着払",
-    included: "同梱",
-    none: "不要",
-  };
-
-  return type ? mapping[type] : undefined;
-};
 
 const mapDraftConditions = (
   conditions: TradeConditions,
   fallback: TransactionConditions
 ): TransactionConditions => ({
-  price: conditions.price,
-  quantity: conditions.quantity,
-  removalDate: conditions.removalDate ?? fallback.removalDate,
-  machineShipmentDate: conditions.shippingDate ?? fallback.machineShipmentDate,
-  machineShipmentType: convertShippingType(conditions.shippingType) ?? fallback.machineShipmentType,
-  documentShipmentDate: conditions.documentsShippingDate ?? fallback.documentShipmentDate,
-  documentShipmentType: convertDocumentShippingType(conditions.documentsShippingType) ?? fallback.documentShipmentType,
-  paymentDue: conditions.paymentDueDate ?? fallback.paymentDue,
-  freightCost: conditions.freightCost ?? fallback.freightCost,
-  otherFee1:
-    conditions.extraFee1Label || conditions.extraFee1Amount !== undefined
-      ? {
-          label: conditions.extraFee1Label ?? "その他料金1",
-          amount: conditions.extraFee1Amount ?? 0,
-        }
-      : undefined,
-  otherFee2:
-    conditions.extraFee2Label || conditions.extraFee2Amount !== undefined
-      ? {
-          label: conditions.extraFee2Label ?? "その他料金2",
-          amount: conditions.extraFee2Amount ?? 0,
-        }
-      : undefined,
-  notes: conditions.notes ?? fallback.notes,
-  terms: conditions.terms ?? fallback.terms,
+  price: conditions.unitPrice ?? fallback.price,
+  quantity: conditions.quantity ?? fallback.quantity,
+  removalDate: fallback.removalDate,
+  machineShipmentDate: fallback.machineShipmentDate,
+  machineShipmentType: fallback.machineShipmentType,
+  documentShipmentDate: fallback.documentShipmentDate,
+  documentShipmentType: fallback.documentShipmentType,
+  paymentDue: fallback.paymentDue,
+  freightCost: conditions.shippingFee ?? fallback.freightCost,
+  otherFee1: {
+    label: "出庫手数料",
+    amount: conditions.handlingFee ?? 0,
+  },
+  otherFee2: {
+    label: "税率",
+    amount: conditions.taxRate,
+  },
+  notes: fallback.notes,
+  terms: fallback.terms,
 });
 
 export default function TransactionNaviEditPage() {

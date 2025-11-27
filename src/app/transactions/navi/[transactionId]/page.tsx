@@ -6,31 +6,8 @@ import { useParams, useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import { calculateQuote, type QuoteResult } from "@/lib/quotes/calculateQuote";
 import { loadNaviDraft } from "@/lib/navi/storage";
-import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
+import { type TradeNaviDraft } from "@/lib/navi/types";
 import { formatCurrency, useDummyNavi } from "@/lib/useDummyNavi";
-
-const convertShippingType = (type?: TradeConditions["shippingType"]): string => {
-  const mapping: Record<NonNullable<TradeConditions["shippingType"]>, string> = {
-    prepaid: "元払",
-    collect: "着払",
-    pickup: "引取",
-  };
-
-  return type ? mapping[type] : "未設定";
-};
-
-const convertDocumentShippingType = (
-  type?: TradeConditions["documentsShippingType"]
-): string => {
-  const mapping: Record<NonNullable<TradeConditions["documentsShippingType"]>, string> = {
-    prepaid: "元払",
-    collect: "着払",
-    included: "同梱",
-    none: "不要",
-  };
-
-  return type ? mapping[type] : "未設定";
-};
 
 export default function TransactionNaviConfirmPage() {
   const router = useRouter();
@@ -49,18 +26,17 @@ export default function TransactionNaviConfirmPage() {
   }, [transactionId]);
 
   const naviTargetId = draft?.productId ?? transactionId;
-  const { confirmBreadcrumbItems, buyerInfo, propertyInfo, statusLabel } =
+  const { confirmBreadcrumbItems, buyerInfo, propertyInfo, statusLabel, currentConditions } =
     useDummyNavi(naviTargetId);
 
   const quoteResult = useMemo<QuoteResult | null>(() => {
     if (!draft) return null;
-    const taxRate = 0.1;
     const quoteInput = {
-      unitPrice: draft.conditions.price,
+      unitPrice: draft.conditions.unitPrice,
       quantity: draft.conditions.quantity,
-      shippingFee: draft.conditions.freightCost ?? 0,
-      handlingFee: draft.conditions.extraFee1Amount ?? 0,
-      taxRate,
+      shippingFee: draft.conditions.shippingFee ?? 0,
+      handlingFee: draft.conditions.handlingFee ?? 0,
+      taxRate: draft.conditions.taxRate ?? 0.1,
     } satisfies Parameters<typeof calculateQuote>[0];
 
     return calculateQuote(quoteInput);
@@ -71,25 +47,23 @@ export default function TransactionNaviConfirmPage() {
     const { conditions } = draft;
 
     return {
-      price: conditions.price,
+      price: conditions.unitPrice,
       quantity: conditions.quantity,
-      removalDate: conditions.removalDate ?? "未設定",
-      machineShipmentDate: conditions.shippingDate ?? "未設定",
-      machineShipmentType: convertShippingType(conditions.shippingType),
-      documentShipmentDate: conditions.documentsShippingDate ?? "未設定",
-      documentShipmentType: convertDocumentShippingType(conditions.documentsShippingType),
-      paymentDue: conditions.paymentDueDate ?? "未設定",
-      freightCost: conditions.freightCost ?? 0,
-      otherFee1Label: conditions.extraFee1Label ?? "出庫手数料",
-      otherFee1Amount: conditions.extraFee1Amount ?? 0,
-      otherFee2Label: conditions.extraFee2Label ?? "その他料金2",
-      otherFee2Amount: conditions.extraFee2Amount ?? 0,
-      notes: conditions.notes ?? "未設定",
-      terms:
-        conditions.terms ??
-        "取引条件がまだ設定されていません。内容をご確認のうえご相談ください。",
+      removalDate: currentConditions.removalDate,
+      machineShipmentDate: currentConditions.machineShipmentDate,
+      machineShipmentType: currentConditions.machineShipmentType,
+      documentShipmentDate: currentConditions.documentShipmentDate,
+      documentShipmentType: currentConditions.documentShipmentType,
+      paymentDue: currentConditions.paymentDue,
+      freightCost: conditions.shippingFee ?? currentConditions.freightCost,
+      otherFee1Label: "出庫手数料",
+      otherFee1Amount: conditions.handlingFee ?? 0,
+      otherFee2Label: "税率",
+      otherFee2Amount: conditions.taxRate,
+      notes: currentConditions.notes,
+      terms: currentConditions.terms,
     };
-  }, [draft]);
+  }, [currentConditions, draft]);
 
   const handleApprove = () => {
     alert("この条件で取引を承認しました（ダミー）");

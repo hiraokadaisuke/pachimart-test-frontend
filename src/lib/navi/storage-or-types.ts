@@ -6,14 +6,19 @@ const STORAGE_KEY = "trade_navis";
 
 export interface TradeNavi {
   id: string;
-  buyerId?: string;
+  buyerId?: string | null;
   sellerId?: string;
   status: NaviStatus;
   conditions: TradeConditions;
   createdAt: string;
   updatedAt: string;
-  productName?: string;
-  makerName?: string;
+  productId?: string | null;
+  buyerCompanyName?: string | null;
+  buyerContactName?: string | null;
+  buyerTel?: string | null;
+  buyerEmail?: string | null;
+  buyerNote?: string | null;
+  buyerPending?: boolean;
 }
 
 export function loadAllNavis(): TradeNavi[] {

@@ -11,19 +11,19 @@ export interface OfferInputForNavi {
   quote: QuoteResult;
 }
 
-const SHIPPING_FEE_LABEL = "出庫手数料";
-
 const getRandomDraftId = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `draft-${Date.now()}`);
 
 export function createNaviDraftFromOffer(input: OfferInputForNavi): TradeNaviDraft {
   const id = getRandomDraftId();
 
   const conditions: TradeConditions = {
-    price: input.unitPrice,
+    unitPrice: input.unitPrice,
     quantity: input.quantity,
-    freightCost: input.quote.shippingFee,
-    extraFee1Label: SHIPPING_FEE_LABEL,
-    extraFee1Amount: input.quote.handlingFee,
+    shippingFee: input.quote.shippingFee,
+    handlingFee: input.quote.handlingFee,
+    taxRate: 0.1,
+    productName: null,
+    makerName: null,
     // 他の項目は後でNavi画面で編集する想定なので空でOK
   };
 
@@ -33,6 +33,7 @@ export function createNaviDraftFromOffer(input: OfferInputForNavi): TradeNaviDra
     id,
     productId: input.productId,
     status: "draft",
+    buyerPending: true,
     conditions,
     createdAt: now,
     updatedAt: now,

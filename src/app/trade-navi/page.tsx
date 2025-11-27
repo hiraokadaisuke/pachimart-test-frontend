@@ -206,11 +206,11 @@ const taxRate = 0.1;
 function buildQuoteFromNavi(navi: TradeNavi): QuoteResult {
   const c = navi.conditions;
   const input: QuoteInput = {
-    unitPrice: c.price,
+    unitPrice: c.unitPrice,
     quantity: c.quantity,
-    shippingFee: c.freightCost ?? 0,
-    handlingFee: c.extraFee1Amount ?? 0,
-    taxRate,
+    shippingFee: c.shippingFee ?? 0,
+    handlingFee: c.handlingFee ?? 0,
+    taxRate: c.taxRate ?? taxRate,
   };
 
   return calculateQuote(input);
@@ -250,8 +250,8 @@ function NaviStatusTable() {
   const rows = useMemo(() => {
     return navis.map((navi) => {
       const quote = buildQuoteFromNavi(navi);
-      const productName = navi.productName ?? "機種名ダミー";
-      const makerName = navi.makerName ?? "メーカー名ダミー";
+      const productName = navi.conditions.productName ?? "機種名ダミー";
+      const makerName = navi.conditions.makerName ?? "メーカー名ダミー";
       const partnerName = "売手（ダミー）";
       return {
         id: navi.id,
