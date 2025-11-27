@@ -63,7 +63,7 @@ export default function MyPageExhibitsPage() {
   const handleCreateNaviFromListing = (product: Product) => {
     const draft = createEmptyNaviDraft();
 
-    draft.productId = product.id;
+    draft.productId = product.id.toString();
     draft.conditions.unitPrice = product.price;
     draft.conditions.quantity = 1;
     draft.conditions.productName = product.name;
