@@ -144,27 +144,35 @@ export default function MyPageExhibitsPage() {
       </div>
 
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full table-auto border-collapse text-[12px]">
+        <table className="min-w-full table-auto border-collapse text-sm text-slate-800">
           <colgroup>
-            <col className="w-[80px]" />
-            <col className="w-[80px]" />
-            <col className="w-[280px]" />
-            <col className="w-[80px]" />
-            <col className="w-[110px]" />
-            <col className="w-[140px]" />
-            <col />
+            <col className="w-[90px]" />
+            <col className="w-[90px]" />
+            <col className="w-[200px]" />
+            <col className="w-[120px]" />
+            <col className="w-[220px]" />
+            <col className="w-[90px]" />
+            <col className="w-[90px]" />
+            <col className="w-[90px]" />
+            <col className="w-[120px]" />
+            <col className="w-[120px]" />
+            <col className="w-[180px]" />
             <col className="w-[210px]" />
           </colgroup>
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-slate-700">
-              <th className="px-3 py-2 text-left">更新日</th>
-              <th className="px-3 py-2 text-left">状況</th>
-              <th className="px-3 py-2 text-left">機種名 / メーカー</th>
-              <th className="px-3 py-2 text-left">タイプ</th>
-              <th className="px-3 py-2 text-right">台数</th>
-              <th className="px-3 py-2 text-right">商品単価</th>
-              <th className="px-3 py-2 text-left">撤去 / 倉庫</th>
-              <th className="px-3 py-2 text-center">操作</th>
+            <tr className="border-b border-slate-200 bg-slate-50">
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">更新日</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">状況</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">前設置</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">メーカー</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">機種名</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">台数</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">売却数</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">残数</th>
+              <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">商品単価</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">撤去日</th>
+              <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">備考</th>
+              <th className="px-3 py-2 text-center text-xs font-semibold text-slate-500">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -174,9 +182,9 @@ export default function MyPageExhibitsPage() {
               const remainingCount = product.quantity - soldCount;
 
               return (
-                <tr key={product.id} className={`${zebra} border-b border-slate-100 text-[12px]`}>
-                  <td className="whitespace-nowrap px-3 py-1.5 align-top text-slate-800">{product.updatedAt}</td>
-                  <td className="px-3 py-1.5 align-top">
+                <tr key={product.id} className={`${zebra} border-b border-slate-100 text-sm`}>
+                  <td className="whitespace-nowrap px-3 py-2 align-top">{product.updatedAt}</td>
+                  <td className="px-3 py-2 align-top">
                     <span
                       className={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${
                         statusBadgeStyles[product.status] ?? "bg-slate-100 text-slate-700 border border-slate-200"
@@ -185,37 +193,33 @@ export default function MyPageExhibitsPage() {
                       {product.status}
                     </span>
                   </td>
-                  <td className="px-3 py-1.5 align-top">
+                  <td className="px-3 py-2 align-top">
+                    <div className="font-semibold text-slate-800">{product.prefecture}</div>
+                    <div className="text-xs text-slate-500">{product.sellerName}</div>
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-2 align-top">{product.maker}</td>
+                  <td className="px-3 py-2 align-top">
                     <Link
                       href={`/products/${product.id}`}
-                      className="block max-w-full text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
+                      className="block max-w-full text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
                     >
                       {product.name}
                     </Link>
-                    <div className="mt-1 flex flex-wrap gap-2 text-[11px] text-slate-500">
-                      <span>{product.maker}</span>
-                      <span className="text-slate-400">{product.prefecture}</span>
-                    </div>
-                    <div className="mt-1 text-[11px] leading-tight text-slate-500">
-                      備考: {product.note ?? "-"}
-                    </div>
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5 align-top text-slate-700">{product.type}</td>
-                  <td className="whitespace-nowrap px-3 py-1.5 align-top text-right text-slate-800">
-                    <div className="flex flex-col items-end leading-tight">
-                      <span className="font-semibold text-slate-900">{product.quantity} 台</span>
-                      <span className="text-[11px] text-slate-500">販売 {soldCount} / 残 {remainingCount}</span>
-                    </div>
+                  <td className="whitespace-nowrap px-3 py-2 align-top text-right font-semibold tabular-nums">
+                    {product.quantity}
                   </td>
-                  <td className="whitespace-nowrap px-3 py-1.5 align-top text-right font-semibold tabular-nums text-slate-900">
+                  <td className="whitespace-nowrap px-3 py-2 align-top text-right tabular-nums">{soldCount}</td>
+                  <td className="whitespace-nowrap px-3 py-2 align-top text-right tabular-nums">{remainingCount}</td>
+                  <td className="whitespace-nowrap px-3 py-2 align-top text-right font-semibold tabular-nums">
                     {currencyFormatter.format(product.price)}
                   </td>
-                  <td className="px-3 py-1.5 align-top text-[11px] leading-tight text-slate-700">
+                  <td className="whitespace-nowrap px-3 py-2 align-top">
                     <div className="font-semibold text-slate-800">{product.removalDate}</div>
-                    <div className="mt-0.5 text-slate-500">{product.removalStatus ?? "撤去状況未設定"}</div>
-                    <div className="mt-1 text-slate-500">{product.warehouseName}</div>
+                    <div className="text-xs text-slate-500">{product.removalStatus ?? "撤去状況未設定"}</div>
                   </td>
-                  <td className="px-3 py-1.5 align-top">
+                  <td className="px-3 py-2 align-top text-slate-700">{product.note ?? "-"}</td>
+                  <td className="px-3 py-2 align-top">
                     <div className="flex flex-wrap justify-center gap-1">
                       <button
                         className="rounded-md border border-emerald-600 px-2 py-1 text-[11px] font-semibold text-emerald-700 transition hover:bg-emerald-50"
