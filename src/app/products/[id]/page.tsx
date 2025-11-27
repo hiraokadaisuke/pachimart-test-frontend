@@ -88,75 +88,57 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
   return (
     <MainContainer>
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="space-y-2 border-b border-slate-200 pb-4">
-            <p className="text-sm font-semibold text-slate-500">{product.maker}</p>
-            <h1 className="text-2xl font-bold text-slate-900">{product.name}</h1>
-            <p className="text-sm font-semibold text-emerald-700">在庫{product.quantity}台（バラ売り可）</p>
-            <p className="text-3xl font-bold text-slate-900">{formatPrice(product.price)}</p>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 text-[13px] shadow-sm">
+          <div className="space-y-1.5 border-b border-slate-200 pb-3">
+            <p className="text-xs font-semibold text-slate-500">{product.maker}</p>
+            <h1 className="text-xl font-bold text-slate-900">{product.name}</h1>
+            <p className="text-xs font-semibold text-emerald-700">在庫{product.quantity}台（バラ売り可）</p>
+            <p className="text-2xl font-bold text-slate-900">{formatPrice(product.price)}</p>
           </div>
 
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-slate-800">詳細情報</h2>
-            <div className="grid grid-cols-1 gap-3 text-sm text-slate-700 md:grid-cols-2">
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-slate-800">詳細情報</h2>
+            <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
               <DetailRow label="種別" value={product.type} />
               <DetailRow label="枠色" value="レッド" />
+              <DetailRow label="前設置（都道府県）" value={product.prefecture} />
+              <DetailRow label="撤去日" value={product.removalDate} />
+              <DetailRow label="配送までの指定日" value={product.shippingSpecifyDate} />
               <DetailRow label="送料" value={`${product.shippingUnit}個口（1台につき1個口分）`} />
               <DetailRow label="出庫手数料" value={`${product.handlingUnit}個口`} />
               <DetailRow label="釘シート" value={product.hasNailSheet ? 'あり' : 'なし'} />
               <DetailRow label="取扱説明書" value={product.hasManual ? 'あり' : 'なし'} />
               <DetailRow label="引き取り" value={product.allowPickup ? '可' : '不可'} />
-              <DetailRow label="撤去日" value={product.removalDate} />
-              <DetailRow label="配送までの指定日" value={product.shippingSpecifyDate} />
-              <DetailRow label="前設置（都道府県）" value={product.prefecture} />
             </div>
           </div>
 
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold text-slate-800">不備</h2>
-            <div className="grid gap-3 rounded-md border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700 md:grid-cols-2">
+          <div className="space-y-2">
+            <h2 className="text-sm font-semibold text-slate-800">不備</h2>
+            <div className="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-[13px] text-slate-700 md:grid-cols-2">
               <DetailRow label="目視項目" value="特になし" />
               <DetailRow label="動作項目" value="特になし" />
             </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-500">遊技機販売業者等</h3>
-            <p className="text-lg font-bold text-slate-900">{product.sellerName}</p>
-            <p className="text-sm text-slate-600">
-              担当者名：田中 太郎 / 代表番号：03-1234-5678
-            </p>
+        <div className="space-y-3 text-[13px]">
+          <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">遊技機販売業者等</h3>
+            <p className="text-sm font-bold text-slate-900">{product.sellerName}</p>
+            <p className="text-[12px] text-slate-600">担当者名：田中 太郎 / 代表番号：03-1234-5678</p>
           </div>
 
-          <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <button
-              type="button"
-              className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700"
-              onClick={() => setShowPhoneNumbers((prev) => !prev)}
-            >
-              電話で相談する
-            </button>
-            <p className="text-xs leading-relaxed text-slate-600">
-              電話で条件がまとまった後は、売手様から取引Naviが送られてきます。パチマート上で内容を確認し、承認するだけでお取引が成立します。
-            </p>
-            {showPhoneNumbers && (
-              <div className="rounded-md border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-slate-800">
-                <p className="font-semibold">担当者電話番号：090-1234-5678</p>
-                <p className="font-semibold">会社電話番号：03-1234-5678</p>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">購入条件の入力</h3>
-            <div className="space-y-3 text-sm text-slate-700">
+          <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="space-y-1">
+              <h3 className="text-sm font-semibold text-slate-900">金額試算</h3>
+              <p className="text-[12px] text-slate-500">希望台数や配送条件を入力してください。</p>
+            </div>
+            <div className="space-y-2 text-[13px] text-slate-700">
               <div className="space-y-1">
-                <label className="font-semibold">ご希望の台数（在庫数{product.quantity}）</label>
+                <label className="text-[12px] font-semibold">ご希望の台数（在庫数{product.quantity}）</label>
                 <select
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-[13px] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   value={quantity}
                   onChange={(event) => setQuantity(Number(event.target.value))}
                 >
@@ -168,9 +150,9 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 </select>
               </div>
 
-              <div className="space-y-2">
-                <p className="font-semibold">自社引き取りを希望しますか？</p>
-                <div className="flex flex-col gap-2">
+              <div className="space-y-1.5">
+                <p className="text-[12px] font-semibold">自社引き取りを希望しますか？</p>
+                <div className="flex flex-col gap-1.5">
                   <label className="flex items-center gap-2">
                     <input
                       type="radio"
@@ -191,15 +173,15 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                       disabled={!product.allowPickup}
                     />
                     <span className={!product.allowPickup ? 'text-slate-400 line-through' : ''}>希望する</span>
-                    {!product.allowPickup && <span className="text-xs text-slate-400">（出品者設定で不可）</span>}
+                    {!product.allowPickup && <span className="text-[11px] text-slate-400">（出品者設定で不可）</span>}
                   </label>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold">お届け先（倉庫）</label>
+                <label className="text-[12px] font-semibold">お届け先（倉庫）</label>
                 <select
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  className="w-full rounded-md border border-slate-300 px-3 py-1.5 text-[13px] shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                   value={deliveryWarehouseId}
                   onChange={(event) => setDeliveryWarehouseId(event.target.value)}
                 >
@@ -212,45 +194,67 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
               </div>
             </div>
 
-            <button
-              type="button"
-              className="mt-2 w-full rounded-md bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700"
-              onClick={handleCalculateQuote}
-            >
-              金額を試算する
-            </button>
+            <div className="space-y-2">
+              <button
+                type="button"
+                className="w-full rounded-md bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white shadow hover:bg-emerald-700"
+                onClick={handleCalculateQuote}
+              >
+                金額を試算する
+              </button>
+
+              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-[12px] font-semibold text-slate-700">金額サマリー（概算）</h4>
+                  <p className="text-[11px] text-slate-500">税込表示</p>
+                </div>
+
+                {quoteResult ? (
+                  <div className="mt-2 space-y-2 text-[13px] text-slate-700">
+                    <SummaryRow label="商品代金" value={formatCurrency(quoteResult.productSubtotal)} />
+                    <SummaryRow label="送料" value={formatCurrency(quoteResult.shippingFee)} />
+                    <SummaryRow label="出庫手数料" value={formatCurrency(quoteResult.handlingFee)} />
+                    <SummaryRow label="小計" value={formatCurrency(quoteResult.subtotal)} />
+                    <SummaryRow label="消費税" value={formatCurrency(quoteResult.tax)} />
+                    <div className="flex items-center justify-between rounded-md bg-white px-3 py-2">
+                      <span className="text-sm font-semibold text-slate-900">合計</span>
+                      <span className="text-lg font-bold text-emerald-700">{formatCurrency(quoteResult.total)}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-[12px] text-slate-500">条件入力後に概算が表示されます。</p>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-slate-900">金額サマリー</h3>
-              <p className="text-xs text-slate-500">税込表示</p>
-            </div>
-
-            {quoteResult ? (
-              <div className="space-y-3 text-sm text-slate-700">
-                <SummaryRow label="商品代金" value={formatCurrency(quoteResult.productSubtotal)} />
-                <SummaryRow label="送料" value={formatCurrency(quoteResult.shippingFee)} />
-                <SummaryRow label="出庫手数料" value={formatCurrency(quoteResult.handlingFee)} />
-                <SummaryRow label="小計" value={formatCurrency(quoteResult.subtotal)} />
-                <SummaryRow label="消費税" value={formatCurrency(quoteResult.tax)} />
-                <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
-                  <span className="text-base font-semibold text-slate-900">合計</span>
-                  <span className="text-xl font-bold text-emerald-700">{formatCurrency(quoteResult.total)}</span>
-                </div>
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <button
+              type="button"
+              className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700"
+              onClick={() => setShowPhoneNumbers((prev) => !prev)}
+            >
+              電話で問い合わせ
+            </button>
+            <p className="text-[12px] text-slate-600">電話で内容を確認後、売手側から取引Naviが作成されます。</p>
+            {showPhoneNumbers && (
+              <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-[13px] text-slate-800">
+                <p className="font-semibold">担当者電話番号：090-1234-5678</p>
+                <p className="font-semibold">会社電話番号：03-1234-5678</p>
               </div>
-            ) : (
-              <p className="text-sm text-slate-500">金額を試算すると、ここに概算が表示されます。</p>
             )}
           </div>
 
-          <button
-            type="button"
-            className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700"
-            onClick={handleOfferClick}
-          >
-            オンラインでオファーする
-          </button>
+          <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+            <button
+              type="button"
+              className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700"
+              onClick={handleOfferClick}
+            >
+              オンラインでオファーする
+            </button>
+            <p className="text-[12px] text-slate-600">入力した条件でオンラインオファーを送信します。</p>
+          </div>
         </div>
       </div>
     </MainContainer>
@@ -259,9 +263,9 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
 function DetailRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
-      <span className="w-28 shrink-0 text-xs font-semibold text-slate-500">{label}</span>
-      <span className="text-sm font-semibold text-slate-900">{value}</span>
+    <div className="flex gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5">
+      <span className="w-28 shrink-0 text-[12px] font-semibold text-slate-500">{label}</span>
+      <span className="text-[13px] font-semibold text-slate-900">{value}</span>
     </div>
   );
 }
