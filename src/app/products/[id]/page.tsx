@@ -1,15 +1,50 @@
+"use client";
+
 import MainContainer from '@/components/layout/MainContainer';
 import { products } from '@/lib/dummyData';
+import { calculateQuote, type QuoteResult } from '@/lib/quotes/calculateQuote';
+import { useMemo, useState } from 'react';
 
 interface ProductDetailPageProps {
   params: { id: string };
 }
 
 const formatPrice = (price: number) => `¥${price.toLocaleString()} 税抜`;
+const formatCurrency = (value: number) => `¥${value.toLocaleString()}`;
 
 export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   const productId = Number(params.id);
   const product = products.find((item) => item.id === productId);
+
+  const [quantity, setQuantity] = useState(1);
+  const [selfPickup, setSelfPickup] = useState(false);
+  const [deliveryWarehouseId, setDeliveryWarehouseId] = useState('wh-01');
+  const [quoteResult, setQuoteResult] = useState<QuoteResult | null>(null);
+  const [showPhoneNumbers, setShowPhoneNumbers] = useState(false);
+
+  const fallbackWarehouse = product?.warehouseName ?? '未設定の倉庫';
+  const unitPrice = product?.price ?? 0;
+
+  const warehouses = useMemo(
+    () => [
+      { id: 'wh-01', name: fallbackWarehouse },
+      { id: 'wh-02', name: '東京第2倉庫' },
+      { id: 'wh-03', name: '名古屋ハブ倉庫' },
+      { id: 'wh-04', name: '九州ロジスティクス' },
+    ],
+    [fallbackWarehouse],
+  );
+
+  const quoteInput = useMemo(
+    () => ({
+      unitPrice,
+      quantity,
+      shippingFee: selfPickup ? 0 : 7500 * quantity,
+      handlingFee: 5000 * quantity,
+      taxRate: 0.1,
+    }),
+    [quantity, selfPickup, unitPrice],
+  );
 
   if (!product) {
     return (
@@ -20,6 +55,26 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
       </MainContainer>
     );
   }
+
+  const handleCalculateQuote = () => {
+    const result = calculateQuote(quoteInput);
+    setQuoteResult(result);
+  };
+
+  const handleOfferClick = () => {
+    const result = calculateQuote(quoteInput);
+    setQuoteResult(result);
+
+    const offerPayload = {
+      productId: product.id,
+      quantity,
+      selfPickup,
+      deliveryWarehouseId,
+      quote: result,
+    };
+
+    console.log('Offer payload for TradeNavi draft:', offerPayload);
+  };
 
   return (
     <MainContainer>
@@ -58,82 +113,134 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
         </div>
 
         <div className="space-y-4">
-          <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
             <h3 className="text-sm font-semibold text-slate-500">遊技機販売業者等</h3>
             <p className="text-lg font-bold text-slate-900">{product.sellerName}</p>
-            <div className="space-y-1 text-sm text-slate-700">
-              <p>担当者名：田中 太郎</p>
-              <p>担当者電話番号：090-1234-5678</p>
-              <p>代表番号：03-1234-5678</p>
-              <p>評価：★★★☆☆</p>
-            </div>
+            <p className="text-sm text-slate-600">
+              担当者名：田中 太郎 / 代表番号：03-1234-5678
+            </p>
           </div>
 
-          <button
-            type="button"
-            className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700"
-          >
-            出品者さんに質問
-          </button>
+          <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <button
+              type="button"
+              className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700"
+              onClick={() => setShowPhoneNumbers((prev) => !prev)}
+            >
+              電話で相談する
+            </button>
+            <p className="text-xs leading-relaxed text-slate-600">
+              電話で条件がまとまった後は、売手様から取引Naviが送られてきます。パチマート上で内容を確認し、承認するだけでお取引が成立します。
+            </p>
+            {showPhoneNumbers && (
+              <div className="rounded-md border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-slate-800">
+                <p className="font-semibold">担当者電話番号：090-1234-5678</p>
+                <p className="font-semibold">会社電話番号：03-1234-5678</p>
+              </div>
+            )}
+          </div>
 
           <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-            <h3 className="text-lg font-semibold text-slate-900">購入手続き</h3>
+            <h3 className="text-lg font-semibold text-slate-900">購入条件の入力</h3>
             <div className="space-y-3 text-sm text-slate-700">
               <div className="space-y-1">
                 <label className="font-semibold">ご希望の台数（在庫数{product.quantity}）</label>
-                <select className="w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
+                <select
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  value={quantity}
+                  onChange={(event) => setQuantity(Number(event.target.value))}
+                >
                   {Array.from({ length: product.quantity }, (_, idx) => idx + 1).map((num) => (
-                    <option key={num}>{num} 台</option>
+                    <option key={num} value={num}>
+                      {num} 台
+                    </option>
                   ))}
                 </select>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <p className="font-semibold">自社引き取りを希望しますか？</p>
                 <div className="flex flex-col gap-2">
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="pickup" defaultChecked />
+                    <input
+                      type="radio"
+                      name="pickup"
+                      value="no"
+                      checked={!selfPickup}
+                      onChange={() => setSelfPickup(false)}
+                    />
                     希望しない
                   </label>
                   <label className="flex items-center gap-2">
-                    <input type="radio" name="pickup" />
-                    希望する
+                    <input
+                      type="radio"
+                      name="pickup"
+                      value="yes"
+                      checked={selfPickup}
+                      onChange={() => setSelfPickup(true)}
+                      disabled={!product.allowPickup}
+                    />
+                    <span className={!product.allowPickup ? 'text-slate-400 line-through' : ''}>希望する</span>
+                    {!product.allowPickup && <span className="text-xs text-slate-400">（出品者設定で不可）</span>}
                   </label>
                 </div>
               </div>
 
               <div className="space-y-1">
-                <label className="font-semibold">お届け先</label>
-                <select className="w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500">
-                  <option>北海道</option>
-                  <option>東京都</option>
-                  <option>大阪府</option>
-                  <option>福岡県</option>
+                <label className="font-semibold">お届け先（倉庫）</label>
+                <select
+                  className="w-full rounded-md border border-slate-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  value={deliveryWarehouseId}
+                  onChange={(event) => setDeliveryWarehouseId(event.target.value)}
+                >
+                  {warehouses.map((warehouse) => (
+                    <option key={warehouse.id} value={warehouse.id}>
+                      {warehouse.name}
+                    </option>
+                  ))}
                 </select>
-              </div>
-
-              <div className="space-y-1">
-                <p className="font-semibold">売買実績公開</p>
-                <div className="flex flex-col gap-2">
-                  <label className="flex items-center gap-2">
-                    <input type="radio" name="publicity" defaultChecked />
-                    公開
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input type="radio" name="publicity" />
-                    非公開
-                  </label>
-                </div>
               </div>
             </div>
 
             <button
               type="button"
-              className="mt-4 w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700"
+              className="mt-2 w-full rounded-md bg-emerald-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-emerald-700"
+              onClick={handleCalculateQuote}
             >
-              支払い金額を見る
+              金額を試算する
             </button>
           </div>
+
+          <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-slate-900">金額サマリー</h3>
+              <p className="text-xs text-slate-500">税込表示</p>
+            </div>
+
+            {quoteResult ? (
+              <div className="space-y-3 text-sm text-slate-700">
+                <SummaryRow label="商品代金" value={formatCurrency(quoteResult.productSubtotal)} />
+                <SummaryRow label="送料" value={formatCurrency(quoteResult.shippingFee)} />
+                <SummaryRow label="出庫手数料" value={formatCurrency(quoteResult.handlingFee)} />
+                <SummaryRow label="小計" value={formatCurrency(quoteResult.subtotal)} />
+                <SummaryRow label="消費税" value={formatCurrency(quoteResult.tax)} />
+                <div className="flex items-center justify-between rounded-md bg-slate-50 px-3 py-2">
+                  <span className="text-base font-semibold text-slate-900">合計</span>
+                  <span className="text-xl font-bold text-emerald-700">{formatCurrency(quoteResult.total)}</span>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-slate-500">金額を試算すると、ここに概算が表示されます。</p>
+            )}
+          </div>
+
+          <button
+            type="button"
+            className="w-full rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow hover:bg-blue-700"
+            onClick={handleOfferClick}
+          >
+            オンラインでオファーする
+          </button>
         </div>
       </div>
     </MainContainer>
@@ -145,6 +252,15 @@ function DetailRow({ label, value }: { label: string; value: string | number }) 
     <div className="flex gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-2">
       <span className="w-28 shrink-0 text-xs font-semibold text-slate-500">{label}</span>
       <span className="text-sm font-semibold text-slate-900">{value}</span>
+    </div>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between rounded-md border border-slate-100 px-3 py-2">
+      <span className="text-sm font-semibold text-slate-800">{label}</span>
+      <span className="text-sm font-bold text-slate-900">{value}</span>
     </div>
   );
 }
