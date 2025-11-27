@@ -1,4 +1,10 @@
+"use client";
+
+import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
+import { calculateQuote, type QuoteInput, type QuoteResult } from "@/lib/quotes/calculateQuote";
+import { loadAllNavis, type NaviStatus, type TradeNavi } from "@/lib/navi/storage-or-types";
 
 type TradeStatus = "入金待ち" | "確認中";
 type TradeKind = "buy" | "sell";
@@ -195,6 +201,125 @@ function TradeNaviTable({ title, rows, actionType }: TradeNaviTableProps) {
   );
 }
 
+const taxRate = 0.1;
+
+function buildQuoteFromNavi(navi: TradeNavi): QuoteResult {
+  const c = navi.conditions;
+  const input: QuoteInput = {
+    unitPrice: c.price,
+    quantity: c.quantity,
+    shippingFee: c.freightCost ?? 0,
+    handlingFee: c.extraFee1Amount ?? 0,
+    taxRate,
+  };
+
+  return calculateQuote(input);
+}
+
+function getNaviStatusLabel(status: NaviStatus): string {
+  switch (status) {
+    case "draft":
+    case "sent_to_buyer":
+      return "承認待ち";
+    case "buyer_approved":
+      return "承認済み";
+    case "buyer_rejected":
+      return "差戻し中";
+    default:
+      return "不明";
+  }
+}
+
+function getNaviStatusClass(status: NaviStatus): string {
+  switch (status) {
+    case "buyer_approved":
+      return "text-emerald-600";
+    case "buyer_rejected":
+      return "text-red-600";
+    default:
+      return "text-orange-600";
+  }
+}
+
+function NaviStatusTable() {
+  const router = useRouter();
+  const navis = useMemo(() => {
+    return typeof window !== "undefined" ? loadAllNavis() : [];
+  }, []);
+
+  const rows = useMemo(() => {
+    return navis.map((navi) => {
+      const quote = buildQuoteFromNavi(navi);
+      const productName = navi.productName ?? "機種名ダミー";
+      const makerName = navi.makerName ?? "メーカー名ダミー";
+      const partnerName = "売手（ダミー）";
+      return {
+        id: navi.id,
+        status: getNaviStatusLabel(navi.status),
+        statusClass: getNaviStatusClass(navi.status),
+        updatedAt: navi.updatedAt,
+        partnerName,
+        makerName,
+        itemName: productName,
+        totalAmount: quote.total,
+      };
+    });
+  }, [navis]);
+
+  const formatter = useMemo(() => new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }), []);
+
+  return (
+    <div className="rounded border border-slate-200 bg-white">
+      <div className="border-b border-slate-200 bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700">
+        取引条件の承認状況（Navi）
+      </div>
+      <div className="overflow-hidden">
+        <table className="w-full table-fixed">
+          <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
+            <tr>
+              <th className="w-24 px-3 py-2 text-left">状況</th>
+              <th className="w-32 px-3 py-2 text-left">更新日時</th>
+              <th className="w-40 px-3 py-2 text-left">取引先</th>
+              <th className="w-32 px-3 py-2 text-left">メーカー</th>
+              <th className="px-3 py-2 text-left">物件名（機種名）</th>
+              <th className="w-32 px-3 py-2 text-left">合計金額（税込）</th>
+              <th className="w-28 px-3 py-2 text-left">操作</th>
+            </tr>
+          </thead>
+          <tbody className="text-xs text-slate-700">
+            {rows.length === 0 && (
+              <tr>
+                <td className="px-3 py-3 text-center text-slate-500" colSpan={7}>
+                  取引条件の承認状況に該当する案件はありません。
+                </td>
+              </tr>
+            )}
+            {rows.map((row) => (
+              <tr key={row.id} className="border-t border-slate-200 hover:bg-slate-50">
+                <td className={`px-3 py-2 align-top font-semibold ${row.statusClass}`}>{row.status}</td>
+                <td className="px-3 py-2 align-top text-slate-600">{row.updatedAt}</td>
+                <td className="px-3 py-2 align-top">{row.partnerName}</td>
+                <td className="px-3 py-2 align-top">{row.makerName}</td>
+                <td className="px-3 py-2 align-top">{row.itemName}</td>
+                <td className="px-3 py-2 align-top font-semibold">{formatter.format(row.totalAmount)}</td>
+                <td className="px-3 py-2 align-top">
+                  <button
+                    type="button"
+                    className="inline-flex items-center rounded border border-blue-600 bg-blue-600 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-blue-700"
+                    onClick={() => router.push(`/transactions/navi/${row.id}`)}
+                  >
+                    Navi確認
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 export default function TradeNaviPage() {
   const buyWaiting = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "入金待ち");
   const buyChecking = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "確認中");
@@ -240,6 +365,8 @@ export default function TradeNaviPage() {
           <p className="text-xs font-semibold text-red-500">
             入金待ちの案件は、発注予定日までに必ずご確認ください。
           </p>
+
+          <NaviStatusTable />
 
           <TradeNaviTable title="入金待ち" rows={buyWaiting} actionType="pay" />
 

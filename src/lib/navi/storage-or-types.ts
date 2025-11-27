@@ -1,0 +1,33 @@
+import { TradeConditions, NaviStatus } from "./types";
+
+const STORAGE_KEY = "trade_navis";
+
+export interface TradeNavi {
+  id: string;
+  buyerId?: string;
+  sellerId?: string;
+  status: NaviStatus;
+  conditions: TradeConditions;
+  createdAt: string;
+  updatedAt: string;
+  productName?: string;
+  makerName?: string;
+}
+
+export function loadAllNavis(): TradeNavi[] {
+  if (typeof window === "undefined") return [];
+  const raw = window.localStorage.getItem(STORAGE_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((item): item is TradeNavi => Boolean(item?.id && item?.status && item?.conditions));
+  } catch {
+    return [];
+  }
+}
+
+export function saveAllNavis(navis: TradeNavi[]) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(navis));
+}
