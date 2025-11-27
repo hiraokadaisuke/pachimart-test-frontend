@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import { calculateQuote, type QuoteInput, type QuoteResult } from "@/lib/quotes/calculateQuote";
+import { createEmptyNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
 import { loadAllNavis, type NaviStatus, type TradeNavi } from "@/lib/navi/storage-or-types";
 
 type TradeStatus = "入金待ち" | "確認中";
@@ -28,6 +29,11 @@ const tabs = [
   { key: "sell-history", label: "売却履歴" },
   { key: "buy-history", label: "購入履歴" },
 ];
+
+const getDefaultTab = (value: string | null): (typeof tabs)[number]["key"] => {
+  const candidate = tabs.find((tab) => tab.key === value)?.key;
+  return candidate ?? "in-progress";
+};
 
 const dummyTrades: TradeNaviRow[] = [
   {
@@ -321,11 +327,46 @@ function NaviStatusTable() {
 }
 
 export default function TradeNaviPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const buyWaiting = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "入金待ち");
   const buyChecking = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "確認中");
   const sellWaiting = dummyTrades.filter((trade) => trade.kind === "sell" && trade.status === "入金待ち");
   const sellChecking = dummyTrades.filter((trade) => trade.kind === "sell" && trade.status === "確認中");
-  const activeTab: (typeof tabs)[number]["key"] = "in-progress";
+
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]["key"]>(() =>
+    getDefaultTab(searchParams?.get("tab"))
+  );
+  const [hasRedirected, setHasRedirected] = useState(false);
+
+  useEffect(() => {
+    const tabParam = searchParams?.get("tab");
+    const nextTab = getDefaultTab(tabParam);
+    setActiveTab((current) => {
+      if (current !== nextTab) {
+        setHasRedirected(false);
+        return nextTab;
+      }
+      return current;
+    });
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (activeTab === "request" && !hasRedirected) {
+      setHasRedirected(true);
+      const draft = createEmptyNaviDraft();
+      saveNaviDraft(draft);
+      router.replace(`/transactions/navi/${draft.id}/edit`);
+    }
+  }, [activeTab, hasRedirected, router]);
+
+  const handleTabClick = (tabKey: (typeof tabs)[number]["key"]) => {
+    const params = new URLSearchParams(searchParams?.toString());
+    params.set("tab", tabKey);
+    setActiveTab(tabKey);
+    setHasRedirected(false);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
 
   return (
     <MainContainer variant="wide">
@@ -346,6 +387,7 @@ export default function TradeNaviPage() {
                         ? "border-slate-200 border-b-white bg-white font-semibold text-slate-900"
                         : "border-transparent bg-slate-100 text-slate-500 hover:bg-slate-200",
                     ].join(" ")}
+                    onClick={() => handleTabClick(tab.key)}
                   >
                     {tab.label}
                   </button>
@@ -359,35 +401,45 @@ export default function TradeNaviPage() {
         </header>
 
         <section className="space-y-4">
-          <div className="mb-2 rounded-t-sm bg-sky-600 px-4 py-2 text-sm font-semibold text-white">
-            買いたい物件 – 入金・確認状況
-          </div>
-          <p className="text-xs font-semibold text-red-500">
-            入金待ちの案件は、発注予定日までに必ずご確認ください。
-          </p>
+          {activeTab === "request" ? (
+            <div className="rounded border border-slate-200 bg-white p-8 text-center text-sm text-slate-700">
+              新しい取引Naviを作成しています…
+            </div>
+          ) : (
+            <>
+              <div className="mb-2 rounded-t-sm bg-sky-600 px-4 py-2 text-sm font-semibold text-white">
+                買いたい物件 – 入金・確認状況
+              </div>
+              <p className="text-xs font-semibold text-red-500">
+                入金待ちの案件は、発注予定日までに必ずご確認ください。
+              </p>
 
-          <NaviStatusTable />
+              <NaviStatusTable />
 
-          <TradeNaviTable title="入金待ち" rows={buyWaiting} actionType="pay" />
+              <TradeNaviTable title="入金待ち" rows={buyWaiting} actionType="pay" />
 
-          <p className="text-xs font-semibold text-red-500">
-            ※ 入金確認後は、必ず「振込」ボタンを押してください。ボタンが押されないと売主様に入金が伝わりません。
-          </p>
+              <p className="text-xs font-semibold text-red-500">
+                ※ 入金確認後は、必ず「振込」ボタンを押してください。ボタンが押されないと売主様に入金が伝わりません。
+              </p>
 
-          <TradeNaviTable title="確認中" rows={buyChecking} actionType="confirm" />
+              <TradeNaviTable title="確認中" rows={buyChecking} actionType="confirm" />
+            </>
+          )}
         </section>
 
-        <section className="space-y-4">
-          <div className="mb-2 rounded-t-sm bg-orange-500 px-4 py-2 text-sm font-semibold text-white">
-            売りたい物件 – 入金・確認状況
-          </div>
-          <p className="text-xs font-semibold text-red-500">
-            売りたい物件の入金・動作確認状況を確認できます。入金手続き中の案件は、買い手様の手続き完了までお待ちください。
-          </p>
+        {activeTab !== "request" && (
+          <section className="space-y-4">
+            <div className="mb-2 rounded-t-sm bg-orange-500 px-4 py-2 text-sm font-semibold text-white">
+              売りたい物件 – 入金・確認状況
+            </div>
+            <p className="text-xs font-semibold text-red-500">
+              売りたい物件の入金・動作確認状況を確認できます。入金手続き中の案件は、買い手様の手続き完了までお待ちください。
+            </p>
 
-          <TradeNaviTable title="入金待ち" rows={sellWaiting} actionType="pay" />
-          <TradeNaviTable title="確認中" rows={sellChecking} actionType="confirm" />
-        </section>
+            <TradeNaviTable title="入金待ち" rows={sellWaiting} actionType="pay" />
+            <TradeNaviTable title="確認中" rows={sellChecking} actionType="confirm" />
+          </section>
+        )}
       </div>
     </MainContainer>
   );
