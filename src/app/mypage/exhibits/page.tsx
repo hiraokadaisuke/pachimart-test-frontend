@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { products } from "@/lib/dummyData";
+import { createEmptyNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
+import type { Product } from "@/types/product";
 
 export default function MyPageExhibitsPage() {
   const router = useRouter();
@@ -56,6 +58,20 @@ export default function MyPageExhibitsPage() {
 
   const handleReload = () => {
     router.refresh();
+  };
+
+  const handleCreateNaviFromListing = (product: Product) => {
+    const draft = createEmptyNaviDraft();
+
+    draft.productId = product.id.toString();
+    draft.conditions.unitPrice = product.price;
+    draft.conditions.quantity = 1;
+    draft.conditions.productName = product.name;
+    draft.conditions.makerName = product.maker;
+    draft.conditions.location = product.prefecture;
+
+    saveNaviDraft(draft);
+    router.push(`/transactions/navi/${draft.id}/edit`);
   };
 
   return (
@@ -224,7 +240,7 @@ export default function MyPageExhibitsPage() {
                       <div className="flex flex-wrap items-center gap-1">
                         <button
                           className="rounded border border-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
-                          onClick={() => router.push(`/transactions/navi/${product.id}/edit`)}
+                          onClick={() => handleCreateNaviFromListing(product)}
                         >
                           取引Navi
                         </button>
