@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 
 export type SubTab = {
   label: string;
@@ -38,7 +39,7 @@ const isActiveLink = (
   return false;
 };
 
-export function SubTabs({ tabs, className }: SubTabsProps) {
+function SubTabsContent({ tabs, className }: SubTabsProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
@@ -67,6 +68,14 @@ export function SubTabs({ tabs, className }: SubTabsProps) {
         })}
       </ul>
     </nav>
+  );
+}
+
+export function SubTabs(props: SubTabsProps) {
+  return (
+    <Suspense fallback={<div className="h-10" aria-hidden />}>
+      <SubTabsContent {...props} />
+    </Suspense>
   );
 }
 
