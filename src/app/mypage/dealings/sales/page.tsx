@@ -1,5 +1,16 @@
-import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { NaviTable } from "@/components/transactions/NaviTable";
+import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
 import { standardNaviColumns } from "@/components/transactions/standardColumns";
+import {
+  COMPLETED_STATUS_KEYS,
+  IN_PROGRESS_STATUS_KEYS,
+  type TradeStatusKey,
+} from "@/components/transactions/status";
 
 const SALES_ROWS = [
   {
@@ -8,7 +19,7 @@ const SALES_ROWS = [
     quantity: 12,
     partnerName: "株式会社アミューズ流通",
     totalAmount: 1320000,
-    status: "入金待ち",
+    status: "waiting_payment" as TradeStatusKey,
     updatedAt: "2025/11/13 08:45",
   },
   {
@@ -17,7 +28,7 @@ const SALES_ROWS = [
     quantity: 7,
     partnerName: "有限会社スマイル",
     totalAmount: 1520000,
-    status: "発送待ち",
+    status: "shipped" as TradeStatusKey,
     updatedAt: "2025/11/06 16:15",
   },
   {
@@ -26,26 +37,28 @@ const SALES_ROWS = [
     quantity: 5,
     partnerName: "株式会社パチテック",
     totalAmount: 980000,
-    status: "完了",
+    status: "completed" as TradeStatusKey,
     updatedAt: "2025/10/29 09:30",
   },
 ];
 
 export default function SalesPage() {
-  const statusColumns: NaviTableColumn[] = standardNaviColumns.map((column) => {
-    if (column.key !== "status") return column;
+  const router = useRouter();
+  const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
+  const [keyword, setKeyword] = useState("");
 
-    return {
-      ...column,
-      render: (row: (typeof SALES_ROWS)[number]) => {
-        let tone = "bg-amber-50 text-amber-700";
-        if (row.status === "完了") tone = "bg-slate-100 text-slate-700";
-        if (row.status === "発送待ち") tone = "bg-blue-50 text-blue-700";
+  const filteredRows = useMemo(() => {
+    const keywordLower = keyword.toLowerCase();
 
-        return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`}>{row.status}</span>;
-      },
-    };
-  });
+    return SALES_ROWS.filter((row) => {
+      if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(row.status);
+      if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(row.status);
+      return true;
+    }).filter((row) => {
+      if (!keywordLower) return true;
+      return row.itemName.toLowerCase().includes(keywordLower) || row.partnerName.toLowerCase().includes(keywordLower);
+    });
+  }, [keyword, statusFilter]);
 
   return (
     <main className="space-y-6">
@@ -59,7 +72,19 @@ export default function SalesPage() {
           物件名 / 台数 / 相手先 / 税込合計 / ステータス / 更新日時 の順で並べ、他タブと世界観を合わせています。
         </div>
 
-        <NaviTable columns={statusColumns} rows={SALES_ROWS} emptyMessage="売却取引がありません。" />
+        <TransactionFilterBar
+          statusFilter={statusFilter}
+          keyword={keyword}
+          onStatusChange={setStatusFilter}
+          onKeywordChange={setKeyword}
+        />
+
+        <NaviTable
+          columns={standardNaviColumns}
+          rows={filteredRows}
+          emptyMessage="売却済みの取引はまだありません。"
+          onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
+        />
       </section>
     </main>
   );

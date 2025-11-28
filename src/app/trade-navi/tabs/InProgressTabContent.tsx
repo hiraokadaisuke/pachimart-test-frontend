@@ -7,13 +7,32 @@ import { calculateQuote } from "@/lib/quotes/calculateQuote";
 import { loadAllNavis } from "@/lib/navi/storage";
 import { NaviStatus, TradeNaviDraft } from "@/lib/navi/types";
 import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
+import { StatusBadge } from "@/components/transactions/StatusBadge";
+import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
 import { standardNaviColumns } from "@/components/transactions/standardColumns";
+import {
+  COMPLETED_STATUS_KEYS,
+  IN_PROGRESS_STATUS_KEYS,
+  type TradeStatusKey,
+} from "@/components/transactions/status";
 
-const dummyTrades = [
+const dummyTrades: Array<{
+  id: string;
+  kind: "buy" | "sell";
+  status: TradeStatusKey;
+  updatedAt: string;
+  partnerName: string;
+  makerName: string;
+  itemName: string;
+  quantity: number;
+  totalAmount: number;
+  scheduledShipDate: string;
+  pdfUrl: string;
+}> = [
   {
     id: "T-2025111901",
     kind: "buy" as const,
-    status: "入金待ち" as const,
+    status: "waiting_payment",
     updatedAt: "2025/11/19 14:55",
     partnerName: "株式会社パチテック",
     makerName: "三京商会",
@@ -26,7 +45,7 @@ const dummyTrades = [
   {
     id: "T-2025111902",
     kind: "buy" as const,
-    status: "確認中" as const,
+    status: "navi_in_progress",
     updatedAt: "2025/11/19 13:10",
     partnerName: "有限会社スマイル",
     makerName: "平和",
@@ -39,7 +58,7 @@ const dummyTrades = [
   {
     id: "T-2025111801",
     kind: "sell" as const,
-    status: "入金待ち" as const,
+    status: "waiting_payment",
     updatedAt: "2025/11/18 17:40",
     partnerName: "株式会社アミューズ流通",
     makerName: "SANKYO",
@@ -52,7 +71,7 @@ const dummyTrades = [
   {
     id: "T-2025111802",
     kind: "sell" as const,
-    status: "確認中" as const,
+    status: "navi_in_progress",
     updatedAt: "2025/11/18 15:05",
     partnerName: "パチンコランド神奈川",
     makerName: "サミー",
@@ -65,7 +84,7 @@ const dummyTrades = [
   {
     id: "T-2025111701",
     kind: "buy" as const,
-    status: "入金待ち" as const,
+    status: "waiting_payment",
     updatedAt: "2025/11/17 11:20",
     partnerName: "株式会社ミドルウェーブ",
     makerName: "京楽",
@@ -78,7 +97,7 @@ const dummyTrades = [
   {
     id: "T-2025111702",
     kind: "sell" as const,
-    status: "確認中" as const,
+    status: "navi_in_progress",
     updatedAt: "2025/11/17 09:05",
     partnerName: "エムズホールディングス",
     makerName: "大都技研",
@@ -91,7 +110,7 @@ const dummyTrades = [
   {
     id: "T-2025111601",
     kind: "buy" as const,
-    status: "確認中" as const,
+    status: "navi_in_progress",
     updatedAt: "2025/11/16 18:30",
     partnerName: "株式会社ネクストレード",
     makerName: "ニューギン",
@@ -104,7 +123,7 @@ const dummyTrades = [
   {
     id: "T-2025111602",
     kind: "sell" as const,
-    status: "入金待ち" as const,
+    status: "waiting_payment",
     updatedAt: "2025/11/16 10:12",
     partnerName: "株式会社東海レジャー",
     makerName: "藤商事",
@@ -161,11 +180,32 @@ function formatCurrency(amount: number) {
 export function InProgressTabContent() {
   const [navis, setNavis] = useState<TradeNaviDraft[]>([]);
   const router = useRouter();
+  const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
+  const [keyword, setKeyword] = useState("");
 
-  const buyWaiting = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "入金待ち");
-  const buyChecking = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "確認中");
-  const sellWaiting = dummyTrades.filter((trade) => trade.kind === "sell" && trade.status === "入金待ち");
-  const sellChecking = dummyTrades.filter((trade) => trade.kind === "sell" && trade.status === "確認中");
+  const filteredTrades = useMemo(() => {
+    const keywordLower = keyword.toLowerCase();
+
+    return dummyTrades
+      .filter((trade) => {
+        if (statusFilter === "all") return true;
+        if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(trade.status);
+        if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(trade.status);
+        return true;
+      })
+      .filter((trade) => {
+        if (!keywordLower) return true;
+        return (
+          trade.itemName.toLowerCase().includes(keywordLower) ||
+          trade.partnerName.toLowerCase().includes(keywordLower)
+        );
+      });
+  }, [statusFilter, keyword]);
+
+  const buyWaiting = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "waiting_payment");
+  const buyChecking = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "navi_in_progress");
+  const sellWaiting = filteredTrades.filter((trade) => trade.kind === "sell" && trade.status === "waiting_payment");
+  const sellChecking = filteredTrades.filter((trade) => trade.kind === "sell" && trade.status === "navi_in_progress");
 
   useEffect(() => {
     setNavis(loadAllNavis());
@@ -189,8 +229,7 @@ export function InProgressTabContent() {
         return {
           ...column,
           render: (row: (typeof dummyTrades)[number]) => {
-            const tone = row.status === "入金待ち" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700";
-            return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`}>{row.status}</span>;
+            return <StatusBadge statusKey={row.status} />;
           },
         };
       }
@@ -214,16 +253,16 @@ export function InProgressTabContent() {
       key: "action",
       label: "操作",
       width: "110px",
-      render: (row: (typeof dummyTrades)[number]) => (
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-100"
-        >
-          {row.status === "入金待ち" ? "振込" : "OK"}
-        </button>
-      ),
-    },
-  ];
+          render: (row: (typeof dummyTrades)[number]) => (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-100"
+            >
+              {row.status === "waiting_payment" ? "振込" : "OK"}
+            </button>
+          ),
+        },
+      ];
 
   const draftColumns: NaviTableColumn[] = [
     {
@@ -290,6 +329,13 @@ export function InProgressTabContent() {
 
   return (
     <div className="space-y-8">
+      <TransactionFilterBar
+        statusFilter={statusFilter}
+        keyword={keyword}
+        onStatusChange={setStatusFilter}
+        onKeywordChange={setKeyword}
+      />
+
       <section className="space-y-4">
         <div className="mb-2 rounded-t-sm bg-sky-600 px-4 py-2 text-sm font-semibold text-white">買いたい物件 – 入金・確認状況</div>
         <p className="text-xs font-semibold text-red-500">入金待ちの案件は、発注予定日までに必ずご確認ください。</p>
@@ -300,12 +346,18 @@ export function InProgressTabContent() {
             columns={draftColumns}
             rows={sortedNavis}
             emptyMessage="現在進行中の取引Naviはありません。"
+            onRowClick={(draft) => draft.id && router.push(`/transactions/navi/${draft.id}`)}
           />
         </div>
 
         <div className="space-y-2">
           <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">入金待ち</div>
-          <NaviTable columns={tradeColumns} rows={buyWaiting} />
+          <NaviTable
+            columns={tradeColumns}
+            rows={buyWaiting}
+            emptyMessage="現在進行中の取引はありません。"
+            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
+          />
         </div>
 
         <p className="text-xs font-semibold text-red-500">
@@ -314,7 +366,12 @@ export function InProgressTabContent() {
 
         <div className="space-y-2">
           <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">確認中</div>
-          <NaviTable columns={tradeColumns} rows={buyChecking} />
+          <NaviTable
+            columns={tradeColumns}
+            rows={buyChecking}
+            emptyMessage="現在進行中の取引はありません。"
+            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
+          />
         </div>
       </section>
 
@@ -330,16 +387,27 @@ export function InProgressTabContent() {
             columns={draftColumns}
             rows={sortedNavis}
             emptyMessage="現在進行中の取引Naviはありません。"
+            onRowClick={(draft) => draft.id && router.push(`/transactions/navi/${draft.id}`)}
           />
         </div>
 
         <div className="space-y-2">
           <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">入金待ち</div>
-          <NaviTable columns={tradeColumns} rows={sellWaiting} />
+          <NaviTable
+            columns={tradeColumns}
+            rows={sellWaiting}
+            emptyMessage="現在進行中の取引はありません。"
+            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
+          />
         </div>
         <div className="space-y-2">
           <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">確認中</div>
-          <NaviTable columns={tradeColumns} rows={sellChecking} />
+          <NaviTable
+            columns={tradeColumns}
+            rows={sellChecking}
+            emptyMessage="現在進行中の取引はありません。"
+            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
+          />
         </div>
       </section>
     </div>
