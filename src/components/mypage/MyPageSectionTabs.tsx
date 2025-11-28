@@ -176,6 +176,9 @@ export function MyPageSectionTabs({
 }) {
   if (!sectionKey) return null;
 
+  // 残高カテゴリはページ内タブで切り替えるため、グローバルなセクションタブは非表示
+  if (sectionKey === "balance") return null;
+
   const subTabs = MY_PAGE_SUB_TABS[sectionKey];
   if (!subTabs || subTabs.length === 0) return null;
 

@@ -1,10 +1,5 @@
-export type BalanceSummary = {
-  plannedPurchase: number;
-  plannedSales: number;
-  available: number;
-};
-
-const formatCurrency = (value: number) => `¥${value.toLocaleString("ja-JP")}`;
+import type { BalanceSummary } from "@/types/balance";
+import { formatCurrency } from "@/lib/currency";
 
 export default function BalanceSummaryBar({ summary }: { summary: BalanceSummary }) {
   const items = [
