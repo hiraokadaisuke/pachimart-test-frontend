@@ -6,6 +6,8 @@ import { products } from "@/lib/dummyData";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
 import { loadAllNavis } from "@/lib/navi/storage";
 import { NaviStatus, TradeNaviDraft } from "@/lib/navi/types";
+import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
+import { standardNaviColumns } from "@/components/transactions/standardColumns";
 
 const dummyTrades = [
   {
@@ -16,6 +18,7 @@ const dummyTrades = [
     partnerName: "株式会社パチテック",
     makerName: "三京商会",
     itemName: "P スーパー海物語 JAPAN2 L1",
+    quantity: 10,
     totalAmount: 1280000,
     scheduledShipDate: "2025/11/25",
     pdfUrl: "#",
@@ -28,6 +31,7 @@ const dummyTrades = [
     partnerName: "有限会社スマイル",
     makerName: "平和",
     itemName: "P ルパン三世 2000カラットの涙",
+    quantity: 6,
     totalAmount: 860000,
     scheduledShipDate: "2025/11/26",
     pdfUrl: "#",
@@ -40,6 +44,7 @@ const dummyTrades = [
     partnerName: "株式会社アミューズ流通",
     makerName: "SANKYO",
     itemName: "P フィーバー機動戦士ガンダムSEED",
+    quantity: 8,
     totalAmount: 1520000,
     scheduledShipDate: "2025/11/27",
     pdfUrl: "#",
@@ -52,6 +57,7 @@ const dummyTrades = [
     partnerName: "パチンコランド神奈川",
     makerName: "サミー",
     itemName: "P 北斗の拳9 闘神",
+    quantity: 5,
     totalAmount: 990000,
     scheduledShipDate: "2025/11/28",
     pdfUrl: "#",
@@ -64,6 +70,7 @@ const dummyTrades = [
     partnerName: "株式会社ミドルウェーブ",
     makerName: "京楽",
     itemName: "P AKB48 バラの儀式",
+    quantity: 4,
     totalAmount: 540000,
     scheduledShipDate: "2025/11/24",
     pdfUrl: "#",
@@ -76,6 +83,7 @@ const dummyTrades = [
     partnerName: "エムズホールディングス",
     makerName: "大都技研",
     itemName: "S 押忍！番長ZERO",
+    quantity: 12,
     totalAmount: 1320000,
     scheduledShipDate: "2025/11/29",
     pdfUrl: "#",
@@ -88,6 +96,7 @@ const dummyTrades = [
     partnerName: "株式会社ネクストレード",
     makerName: "ニューギン",
     itemName: "P 真・花の慶次3 黄金一閃",
+    quantity: 7,
     totalAmount: 1180000,
     scheduledShipDate: "2025/11/27",
     pdfUrl: "#",
@@ -100,6 +109,7 @@ const dummyTrades = [
     partnerName: "株式会社東海レジャー",
     makerName: "藤商事",
     itemName: "P とある魔術の禁書目録",
+    quantity: 9,
     totalAmount: 760000,
     scheduledShipDate: "2025/11/23",
     pdfUrl: "#",
@@ -148,150 +158,9 @@ function formatCurrency(amount: number) {
   return formatter.format(amount);
 }
 
-type TradeNaviRow = (typeof dummyTrades)[number];
-
-type TradeNaviTableProps = {
-  title: string;
-  rows: TradeNaviRow[];
-  actionType: "pay" | "confirm";
-};
-
-function TradeNaviTable({ title, rows, actionType }: TradeNaviTableProps) {
-  const actionLabel = actionType === "pay" ? "振込" : "OK";
-
-  return (
-    <div className="rounded border border-slate-200 bg-white">
-      <div className="border-b border-slate-200 bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-700">{title}</div>
-      <div className="overflow-hidden">
-        <table className="w-full table-fixed">
-          <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
-            <tr>
-              <th className="w-20 px-3 py-2 text-left">状況</th>
-              <th className="w-32 px-3 py-2 text-left">更新日時</th>
-              <th className="w-40 px-3 py-2 text-left">取引先</th>
-              <th className="w-32 px-3 py-2 text-left">メーカー</th>
-              <th className="px-3 py-2 text-left">物件名</th>
-              <th className="w-32 px-3 py-2 text-left">合計金額（税込）</th>
-              <th className="w-28 px-3 py-2 text-left">発送予定日</th>
-              <th className="w-28 px-3 py-2 text-left">確認書</th>
-              <th className="w-24 px-3 py-2 text-left">操作</th>
-            </tr>
-          </thead>
-          <tbody className="text-xs text-slate-700">
-            {rows.length === 0 && (
-              <tr>
-                <td className="px-3 py-3 text-center text-slate-500" colSpan={9}>
-                  該当する取引はありません。
-                </td>
-              </tr>
-            )}
-            {rows.map((row) => (
-              <tr key={row.id} className="border-t border-slate-200 hover:bg-slate-50">
-                <td className="px-3 py-2 align-top font-semibold text-orange-600">{row.status}</td>
-                <td className="px-3 py-2 align-top text-slate-600">{row.updatedAt}</td>
-                <td className="px-3 py-2 align-top">{row.partnerName}</td>
-                <td className="px-3 py-2 align-top">{row.makerName}</td>
-                <td className="px-3 py-2 align-top">{row.itemName}</td>
-                <td className="px-3 py-2 align-top font-semibold">
-                  ¥{row.totalAmount.toLocaleString("ja-JP")}
-                </td>
-                <td className="px-3 py-2 align-top">{row.scheduledShipDate}</td>
-                <td className="px-3 py-2 align-top">
-                  <a
-                    href={row.pdfUrl}
-                    className="inline-flex items-center rounded border border-blue-600 bg-blue-600 px-2 py-1 text-xs font-semibold text-white"
-                  >
-                    PDF
-                  </a>
-                </td>
-                <td className="px-3 py-2 align-top">
-                  <button
-                    type="button"
-                    className="inline-flex items-center rounded border border-slate-300 bg-white px-3 py-1 text-xs hover:bg-slate-100"
-                  >
-                    {row.status === "入金待ち" ? "振込" : actionLabel}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-type TradeNaviDraftTableProps = {
-  title: string;
-  navis: TradeNaviDraft[];
-};
-
-function TradeNaviDraftTable({ title, navis }: TradeNaviDraftTableProps) {
-  const router = useRouter();
-
-  const sortedNavis = useMemo(
-    () => [...navis].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
-    [navis]
-  );
-
-  return (
-    <section className="space-y-4">
-      <h3 className="text-base font-semibold">{title}</h3>
-
-      {sortedNavis.length === 0 ? (
-        <p className="text-sm text-slate-500">現在進行中の取引Naviはありません。</p>
-      ) : (
-        <div className="overflow-hidden rounded border border-slate-200 bg-white">
-          <table className="min-w-full text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold text-slate-600">
-              <tr>
-                <th className="px-3 py-2 text-left">状況</th>
-                <th className="px-3 py-2 text-left">更新日時</th>
-                <th className="px-3 py-2 text-left">取引先</th>
-                <th className="px-3 py-2 text-left">物件名</th>
-                <th className="px-3 py-2 text-right">金額（税込）</th>
-                <th className="px-3 py-2 text-right">操作</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 text-slate-700">
-              {sortedNavis.map((draft) => {
-                const statusInfo = getStatusLabel(draft.status);
-                const quote = calculateQuote(draft.conditions);
-                const totalLabel = quote.total && quote.total > 0 ? formatCurrency(quote.total) : "-";
-
-                return (
-                  <tr key={draft.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-2 align-top">
-                      <span className={`inline-block rounded-full px-2 py-1 text-xs font-medium ${statusInfo.className}`}>
-                        {statusInfo.text}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 align-top">{formatDateTime(draft.updatedAt)}</td>
-                    <td className="px-3 py-2 align-top">{getBuyerLabel(draft)}</td>
-                    <td className="px-3 py-2 align-top">{getProductLabel(draft)}</td>
-                    <td className="px-3 py-2 align-top text-right font-semibold">{totalLabel}</td>
-                    <td className="px-3 py-2 align-top text-right">
-                      <button
-                        type="button"
-                        className="pm-secondary-button"
-                        onClick={() => router.push(`/transactions/navi/${draft.id}/edit`)}
-                      >
-                        Navi確認
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
-  );
-}
-
 export function InProgressTabContent() {
   const [navis, setNavis] = useState<TradeNaviDraft[]>([]);
+  const router = useRouter();
 
   const buyWaiting = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "入金待ち");
   const buyChecking = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "確認中");
@@ -302,21 +171,151 @@ export function InProgressTabContent() {
     setNavis(loadAllNavis());
   }, []);
 
+  const sortedNavis = useMemo(
+    () => [...navis].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
+    [navis]
+  );
+
+  const tradeColumns: NaviTableColumn[] = [
+    ...standardNaviColumns.map((column) => {
+      if (column.key === "totalAmount") {
+        return {
+          ...column,
+          render: (row: (typeof dummyTrades)[number]) => formatCurrency(row.totalAmount),
+        };
+      }
+
+      if (column.key === "status") {
+        return {
+          ...column,
+          render: (row: (typeof dummyTrades)[number]) => {
+            const tone = row.status === "入金待ち" ? "bg-amber-50 text-amber-700" : "bg-blue-50 text-blue-700";
+            return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`}>{row.status}</span>;
+          },
+        };
+      }
+
+      return column;
+    }),
+    {
+      key: "document",
+      label: "確認書",
+      width: "110px",
+      render: (row: (typeof dummyTrades)[number]) => (
+        <a
+          href={row.pdfUrl}
+          className="inline-flex items-center rounded border border-blue-600 bg-blue-600 px-2 py-1 text-xs font-semibold text-white"
+        >
+          PDF
+        </a>
+      ),
+    },
+    {
+      key: "action",
+      label: "操作",
+      width: "110px",
+      render: (row: (typeof dummyTrades)[number]) => (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-100"
+        >
+          {row.status === "入金待ち" ? "振込" : "OK"}
+        </button>
+      ),
+    },
+  ];
+
+  const draftColumns: NaviTableColumn[] = [
+    {
+      key: "itemName",
+      label: "物件名（機種名）",
+      render: (draft: TradeNaviDraft) => getProductLabel(draft),
+      width: "22%",
+    },
+    {
+      key: "quantity",
+      label: "台数",
+      render: (draft: TradeNaviDraft) => draft.conditions.quantity,
+      width: "72px",
+    },
+    {
+      key: "partner",
+      label: "相手先",
+      render: (draft: TradeNaviDraft) => getBuyerLabel(draft),
+      width: "18%",
+    },
+    {
+      key: "totalAmount",
+      label: "税込合計",
+      render: (draft: TradeNaviDraft) => {
+        const quote = calculateQuote(draft.conditions);
+        return quote.total ? formatCurrency(quote.total) : "-";
+      },
+      width: "140px",
+    },
+    {
+      key: "status",
+      label: "状況",
+      render: (draft: TradeNaviDraft) => {
+        const statusInfo = getStatusLabel(draft.status);
+        return (
+          <span className={`inline-block rounded-full px-2 py-1 text-xs font-semibold ${statusInfo.className}`}>{
+            statusInfo.text
+          }</span>
+        );
+      },
+      width: "140px",
+    },
+    {
+      key: "updatedAt",
+      label: "更新日時",
+      render: (draft: TradeNaviDraft) => formatDateTime(draft.updatedAt),
+      width: "160px",
+    },
+    {
+      key: "actions",
+      label: "操作",
+      render: (draft: TradeNaviDraft) => (
+        <button
+          type="button"
+          className="pm-secondary-button px-3 py-1 text-xs"
+          onClick={() => router.push(`/transactions/navi/${draft.id}/edit`)}
+        >
+          Navi確認
+        </button>
+      ),
+      width: "110px",
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <section className="space-y-4">
         <div className="mb-2 rounded-t-sm bg-sky-600 px-4 py-2 text-sm font-semibold text-white">買いたい物件 – 入金・確認状況</div>
         <p className="text-xs font-semibold text-red-500">入金待ちの案件は、発注予定日までに必ずご確認ください。</p>
 
-        <TradeNaviDraftTable title="取引条件の承認状況（Navi）" navis={navis} />
+        <div className="space-y-3">
+          <h3 className="text-base font-semibold">取引条件の承認状況（Navi）</h3>
+          <NaviTable
+            columns={draftColumns}
+            rows={sortedNavis}
+            emptyMessage="現在進行中の取引Naviはありません。"
+          />
+        </div>
 
-        <TradeNaviTable title="入金待ち" rows={buyWaiting} actionType="pay" />
+        <div className="space-y-2">
+          <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">入金待ち</div>
+          <NaviTable columns={tradeColumns} rows={buyWaiting} />
+        </div>
 
         <p className="text-xs font-semibold text-red-500">
           ※ 入金確認後は、必ず「振込」ボタンを押してください。ボタンが押されないと売主様に入金が伝わりません。
         </p>
 
-        <TradeNaviTable title="確認中" rows={buyChecking} actionType="confirm" />
+        <div className="space-y-2">
+          <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">確認中</div>
+          <NaviTable columns={tradeColumns} rows={buyChecking} />
+        </div>
       </section>
 
       <section className="space-y-4">
@@ -325,10 +324,23 @@ export function InProgressTabContent() {
           売りたい物件の入金・動作確認状況を確認できます。入金手続き中の案件は、買い手様の手続き完了までお待ちください。
         </p>
 
-        <TradeNaviDraftTable title="取引条件の承認状況（Navi）" navis={navis} />
+        <div className="space-y-3">
+          <h3 className="text-base font-semibold">取引条件の承認状況（Navi）</h3>
+          <NaviTable
+            columns={draftColumns}
+            rows={sortedNavis}
+            emptyMessage="現在進行中の取引Naviはありません。"
+          />
+        </div>
 
-        <TradeNaviTable title="入金待ち" rows={sellWaiting} actionType="pay" />
-        <TradeNaviTable title="確認中" rows={sellChecking} actionType="confirm" />
+        <div className="space-y-2">
+          <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">入金待ち</div>
+          <NaviTable columns={tradeColumns} rows={sellWaiting} />
+        </div>
+        <div className="space-y-2">
+          <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">確認中</div>
+          <NaviTable columns={tradeColumns} rows={sellChecking} />
+        </div>
       </section>
     </div>
   );
