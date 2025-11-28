@@ -1,10 +1,14 @@
+import SettingsSubTabs from "@/components/mypage/SettingsSubTabs";
 import MyPageStubPage from "@/components/mypage/MyPageStubPage";
 
 export default function PachiNotificationSettingsPage() {
   return (
-    <MyPageStubPage
-      title="通知設定"
-      description="パチ通知の受信設定に相当するスタブです。通知の配信方法やON/OFFを管理する想定です。"
-    />
+    <div className="space-y-6">
+      <SettingsSubTabs />
+      <MyPageStubPage
+        title="通知設定"
+        description="通知設定を管理するスタブです。メール・プッシュなどの受信条件をここで切り替えられる想定です。"
+      />
+    </div>
   );
 }

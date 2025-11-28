@@ -1,10 +1,14 @@
+import SettingsSubTabs from "@/components/mypage/SettingsSubTabs";
 import MyPageStubPage from "@/components/mypage/MyPageStubPage";
 
 export default function ApplyNotificationPage() {
   return (
-    <MyPageStubPage
-      title="取引情報通知先設定"
-      description="本番パチマートの「取引情報通知先設定」に相当する画面です。取引関連の通知送付先を管理します。"
-    />
+    <div className="space-y-6">
+      <SettingsSubTabs />
+      <MyPageStubPage
+        title="取引情報通知先"
+        description="取引情報の通知先を設定するスタブです。メールやSlackなどの連携先をここで管理します。"
+      />
+    </div>
   );
 }
