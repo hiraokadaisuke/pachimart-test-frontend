@@ -21,7 +21,7 @@ function MyPageSubTabs() {
 
   if (!subTabs || subTabs.length === 0) return null;
 
-  return <SubTabs tabs={subTabs} className="-mb-2" />;
+  return <SubTabs tabs={subTabs} />;
 }
 
 export default function MyPageRootLayout({ children }: { children: ReactNode }) {
