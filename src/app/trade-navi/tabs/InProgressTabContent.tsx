@@ -160,6 +160,7 @@ function formatCurrency(amount: number) {
 
 export function InProgressTabContent() {
   const [navis, setNavis] = useState<TradeNaviDraft[]>([]);
+  const router = useRouter();
 
   const buyWaiting = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "入金待ち");
   const buyChecking = dummyTrades.filter((trade) => trade.kind === "buy" && trade.status === "確認中");
