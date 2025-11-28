@@ -17,6 +17,72 @@ const isMatchingPrefix = (pathname: string, prefix: string) =>
   pathname === prefix || pathname.startsWith(`${prefix}/`);
 
 export const MY_PAGE_SUB_TABS: MyPageSubTabsConfig = {
+  products: [
+    {
+      key: "exhibits",
+      label: "出品中",
+      href: "/mypage/exhibits",
+      matchPatterns: ["/mypage/exhibits"],
+    },
+    {
+      key: "drafts",
+      label: "下書き",
+      href: "/mypage/drafts",
+      matchPatterns: ["/mypage/drafts"],
+    },
+    {
+      key: "newExhibit",
+      label: "新規出品",
+      href: "/mypage/exhibits/new",
+      matchPatterns: ["/mypage/exhibits/new"],
+    },
+    {
+      key: "inquiryMessages",
+      label: "コメント",
+      href: "/mypage/inquiry-messages",
+      matchPatterns: ["/mypage/inquiry-messages"],
+    },
+  ],
+  trade: [
+    {
+      key: "tradeNavi",
+      label: "取引Navi",
+      href: "/trade-navi",
+      matchPatterns: ["/trade-navi"],
+    },
+    {
+      key: "purchases",
+      label: "購入一覧",
+      href: "/mypage/dealings/purchases",
+      matchPatterns: ["/mypage/dealings/purchases"],
+    },
+    {
+      key: "sales",
+      label: "売却一覧",
+      href: "/mypage/dealings/sales",
+      matchPatterns: ["/mypage/dealings/sales"],
+    },
+    {
+      key: "todo",
+      label: "やる事リスト",
+      href: "/mypage/todo-list",
+      matchPatterns: ["/mypage/todo-list"],
+    },
+  ],
+  notifications: [
+    {
+      key: "notices",
+      label: "お知らせ",
+      href: "/mypage/notices",
+      matchPatterns: ["/mypage/notices"],
+    },
+    {
+      key: "pachiNotice",
+      label: "パチ通知",
+      href: "/mypage/pachi-notice",
+      matchPatterns: ["/mypage/pachi-notice"],
+    },
+  ],
   balance: [
     {
       key: "balance",
