@@ -1,5 +1,16 @@
-import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
+"use client";
+
+import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+import { NaviTable } from "@/components/transactions/NaviTable";
+import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
 import { standardNaviColumns } from "@/components/transactions/standardColumns";
+import {
+  COMPLETED_STATUS_KEYS,
+  IN_PROGRESS_STATUS_KEYS,
+  type TradeStatusKey,
+} from "@/components/transactions/status";
 
 const PURCHASE_ROWS = [
   {
@@ -8,7 +19,7 @@ const PURCHASE_ROWS = [
     quantity: 8,
     partnerName: "株式会社パチテック", // 相手先
     totalAmount: 1180000,
-    status: "入金確認中", // 状況
+    status: "payment_confirmed" as TradeStatusKey, // 状況
     updatedAt: "2025/11/15 09:20", // 更新日時
   },
   {
@@ -17,7 +28,7 @@ const PURCHASE_ROWS = [
     quantity: 4,
     partnerName: "有限会社スマイル",
     totalAmount: 760000,
-    status: "発送手配中",
+    status: "shipped" as TradeStatusKey,
     updatedAt: "2025/11/09 17:05",
   },
   {
@@ -26,25 +37,28 @@ const PURCHASE_ROWS = [
     quantity: 6,
     partnerName: "株式会社ミドルウェーブ",
     totalAmount: 840000,
-    status: "完了",
+    status: "completed" as TradeStatusKey,
     updatedAt: "2025/10/31 10:45",
   },
 ];
 
 export default function PurchasesPage() {
-  const statusColumns: NaviTableColumn[] = standardNaviColumns.map((column) => {
-    if (column.key !== "status") return column;
+  const router = useRouter();
+  const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
+  const [keyword, setKeyword] = useState("");
 
-    return {
-      ...column,
-      render: (row: (typeof PURCHASE_ROWS)[number]) => {
-        const tone =
-          row.status === "完了" ? "bg-slate-100 text-slate-700" : "bg-amber-50 text-amber-700";
+  const filteredRows = useMemo(() => {
+    const keywordLower = keyword.toLowerCase();
 
-        return <span className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${tone}`}>{row.status}</span>;
-      },
-    };
-  });
+    return PURCHASE_ROWS.filter((row) => {
+      if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(row.status);
+      if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(row.status);
+      return true;
+    }).filter((row) => {
+      if (!keywordLower) return true;
+      return row.itemName.toLowerCase().includes(keywordLower) || row.partnerName.toLowerCase().includes(keywordLower);
+    });
+  }, [keyword, statusFilter]);
 
   return (
     <main className="space-y-6">
@@ -58,7 +72,19 @@ export default function PurchasesPage() {
           物件名・台数・相手先・税込合計・ステータス・更新日時を共通レイアウトで表示しています。
         </div>
 
-        <NaviTable columns={statusColumns} rows={PURCHASE_ROWS} emptyMessage="購入取引がありません。" />
+        <TransactionFilterBar
+          statusFilter={statusFilter}
+          keyword={keyword}
+          onStatusChange={setStatusFilter}
+          onKeywordChange={setKeyword}
+        />
+
+        <NaviTable
+          columns={standardNaviColumns}
+          rows={filteredRows}
+          emptyMessage="購入済みの取引はまだありません。"
+          onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
+        />
       </section>
     </main>
   );

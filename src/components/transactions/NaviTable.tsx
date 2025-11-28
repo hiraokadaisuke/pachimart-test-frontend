@@ -12,9 +12,10 @@ type Props = {
   rows: any[];
   emptyMessage?: string;
   getRowKey?: (row: any, index: number) => string | number;
+  onRowClick?: (row: any) => void;
 };
 
-export function NaviTable({ columns, rows, emptyMessage, getRowKey }: Props) {
+export function NaviTable({ columns, rows, emptyMessage, getRowKey, onRowClick }: Props) {
   const colSpan = columns.length;
 
   return (
@@ -37,13 +38,19 @@ export function NaviTable({ columns, rows, emptyMessage, getRowKey }: Props) {
           <tbody className="divide-y divide-slate-200 text-slate-800">
             {rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-4 text-center text-sm text-slate-500" colSpan={colSpan}>
-                  {emptyMessage ?? "該当する取引はありません。"}
+                <td colSpan={colSpan}>
+                  <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
+                    {emptyMessage ?? "該当する取引はありません。条件を変えて再度お試しください。"}
+                  </div>
                 </td>
               </tr>
             ) : (
               rows.map((row, index) => (
-                <tr key={getRowKey?.(row, index) ?? row.id ?? index} className="hover:bg-slate-50">
+                <tr
+                  key={getRowKey?.(row, index) ?? row.id ?? index}
+                  className={`transition hover:bg-slate-50 ${onRowClick ? "cursor-pointer" : ""}`}
+                  onClick={() => onRowClick?.(row)}
+                >
                   {columns.map((column) => (
                     <td key={column.key} className="px-3 py-2 align-top text-slate-700">
                       {column.render ? column.render(row) : (row as Record<string, React.ReactNode>)[column.key]}

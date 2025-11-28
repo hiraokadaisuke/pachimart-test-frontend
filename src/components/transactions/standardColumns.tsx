@@ -1,10 +1,10 @@
 import React from "react";
 
 import { NaviTableColumn } from "./NaviTable";
+import { StatusBadge } from "./StatusBadge";
+import { type TradeStatusKey } from "./status";
 
 const currencyFormatter = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" });
-
-const statusBadgeClass = "inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-700";
 
 export const standardNaviColumns: NaviTableColumn[] = [
   {
@@ -36,7 +36,9 @@ export const standardNaviColumns: NaviTableColumn[] = [
     label: "状況",
     render: (row) => {
       const value: string | undefined = row.status ?? row.state ?? row.progress;
-      return value ? <span className={statusBadgeClass}>{value}</span> : "-";
+      if (!value) return "-";
+
+      return <StatusBadge statusKey={value as TradeStatusKey} />;
     },
     width: "120px",
   },
