@@ -21,7 +21,11 @@ export const MY_PAGE_SECTIONS: MyPageSection[] = [
     key: "products",
     label: "商品",
     href: "/mypage/exhibits",
-    matchPatterns: ["/mypage/exhibits", "/mypage/drafts"],
+    matchPatterns: [
+      "/mypage/exhibits",
+      "/mypage/drafts",
+      "/mypage/inquiry-messages",
+    ],
   },
   {
     key: "trade",

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import MainContainer from "@/components/layout/MainContainer";
 import { PurchaseHistoryTabContent } from "./tabs/PurchaseHistoryTabContent";
 import { RequestTabContent } from "./tabs/RequestTabContent";
 import { SalesHistoryTabContent } from "./tabs/SalesHistoryTabContent";
@@ -12,24 +11,22 @@ export default function TradeNaviPage() {
   const [activeTab, setActiveTab] = useState<TradeNaviTabKey>("inProgress");
 
   return (
-    <MainContainer variant="wide">
-      <main className="space-y-8">
-        <header className="space-y-2">
-          <h1 className="text-2xl font-bold text-slate-900">取引Navi</h1>
-          <p className="text-sm text-slate-700">
-            電話などで合意した取引内容を、パチマート上で確認・管理するための画面です。
-          </p>
-        </header>
+    <main className="space-y-8">
+      <header className="space-y-2">
+        <h1 className="text-2xl font-bold text-slate-900">取引Navi</h1>
+        <p className="text-sm text-slate-700">
+          電話などで合意した取引内容を、パチマート上で確認・管理するための画面です。
+        </p>
+      </header>
 
-        <TradeNaviTabs activeTab={activeTab} onTabChange={setActiveTab} />
+      <TradeNaviTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
-        <section className="space-y-6">
-          {activeTab === "request" && <RequestTabContent />}
-          {activeTab === "inProgress" && <InProgressTabContent />}
-          {activeTab === "salesHistory" && <SalesHistoryTabContent />}
-          {activeTab === "purchaseHistory" && <PurchaseHistoryTabContent />}
-        </section>
-      </main>
-    </MainContainer>
+      <section className="space-y-6">
+        {activeTab === "request" && <RequestTabContent />}
+        {activeTab === "inProgress" && <InProgressTabContent />}
+        {activeTab === "salesHistory" && <SalesHistoryTabContent />}
+        {activeTab === "purchaseHistory" && <PurchaseHistoryTabContent />}
+      </section>
+    </main>
   );
 }

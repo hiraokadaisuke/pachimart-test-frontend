@@ -29,20 +29,19 @@ export default function MyPageLayout({ children }: { children: ReactNode }) {
 
       <div className="border-b border-slate-200 bg-sky-50">
         <MainContainer variant="wide">
-          <BalanceSummaryBar summary={defaultBalanceSummary} />
+          <div className="space-y-3 py-3">
+            <BalanceSummaryBar summary={defaultBalanceSummary} />
+            <MyPageSectionTabs
+              sectionKey={activeSection?.key ?? null}
+              pathname={pathname ?? ""}
+            />
+          </div>
         </MainContainer>
       </div>
 
-      <div className="border-b border-slate-200 bg-white">
-        <MainContainer variant="wide">
-          <MyPageSectionTabs
-            sectionKey={activeSection?.key ?? null}
-            pathname={pathname ?? ""}
-          />
-        </MainContainer>
-      </div>
-
-      <div>{children}</div>
+      <MainContainer variant="wide">
+        <div className="pt-6 pb-8">{children}</div>
+      </MainContainer>
     </div>
   );
 }

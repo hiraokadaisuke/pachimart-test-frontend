@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import MainContainer from "@/components/layout/MainContainer";
 import { products } from "@/lib/dummyData";
 import { createEmptyNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
 import type { Product } from "@/types/product";
@@ -76,8 +75,7 @@ export default function MyPageExhibitsPage() {
   };
 
   return (
-    <MainContainer variant="wide">
-      <section className="space-y-4 text-xs sm:text-sm">
+    <section className="space-y-4 text-xs sm:text-sm">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="text-lg font-semibold text-slate-800">出品中の商品</h1>
@@ -262,7 +260,6 @@ export default function MyPageExhibitsPage() {
           </tbody>
         </table>
       </div>
-      </section>
-    </MainContainer>
+    </section>
   );
 }
