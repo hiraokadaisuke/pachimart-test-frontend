@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { Suspense, useMemo } from "react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -16,6 +16,14 @@ const EXHIBIT_TABS = [
 type ExhibitTabKey = (typeof EXHIBIT_TABS)[number]["key"];
 
 export default function ExhibitHubPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-slate-700">読み込み中…</div>}>
+      <ExhibitHubContent />
+    </Suspense>
+  );
+}
+
+function ExhibitHubContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
