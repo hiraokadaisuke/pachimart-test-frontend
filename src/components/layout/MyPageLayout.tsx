@@ -17,19 +17,19 @@ const isMatchingPrefix = (pathname: string, prefix: string) =>
   pathname === prefix || pathname.startsWith(`${prefix}/`);
 
 const findActiveSection = (pathname: string): MyPageSectionKey | null => {
-  let matched: { key: MyPageSectionKey; length: number } | null = null;
+  let matchedKey: MyPageSectionKey | null = null;
+  let longest = -1;
 
-  MY_PAGE_SECTIONS.forEach((section) => {
-    section.matchers.forEach((prefix) => {
-      if (isMatchingPrefix(pathname, prefix)) {
-        if (!matched || prefix.length > matched.length) {
-          matched = { key: section.key, length: prefix.length };
-        }
+  for (const section of MY_PAGE_SECTIONS) {
+    for (const prefix of section.matchers) {
+      if (isMatchingPrefix(pathname, prefix) && prefix.length > longest) {
+        matchedKey = section.key;
+        longest = prefix.length;
       }
-    });
-  });
+    }
+  }
 
-  return matched?.key ?? null;
+  return matchedKey;
 };
 
 export default function MyPageLayout({ children }: { children: React.ReactNode }) {
