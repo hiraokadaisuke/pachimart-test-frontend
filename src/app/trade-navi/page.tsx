@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
+import MyPageLayout from "@/components/layout/MyPageLayout";
 import { products } from "@/lib/dummyData";
 import { loadAllNavis, createEmptyNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
 import { NaviStatus, TradeNaviDraft } from "@/lib/navi/types";
@@ -462,16 +463,18 @@ function TradeNaviPageContent() {
 
 export default function TradeNaviPage() {
   return (
-    <Suspense
-      fallback={
-        <MainContainer variant="wide">
-          <div className="rounded border border-slate-200 bg-white p-8 text-center text-sm text-slate-700">
-            取引Naviを読み込んでいます…
-          </div>
-        </MainContainer>
-      }
-    >
-      <TradeNaviPageContent />
-    </Suspense>
+    <MyPageLayout>
+      <Suspense
+        fallback={
+          <MainContainer variant="wide">
+            <div className="rounded border border-slate-200 bg-white p-8 text-center text-sm text-slate-700">
+              取引Naviを読み込んでいます…
+            </div>
+          </MainContainer>
+        }
+      >
+        <TradeNaviPageContent />
+      </Suspense>
+    </MyPageLayout>
   );
 }
