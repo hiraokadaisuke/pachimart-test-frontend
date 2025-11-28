@@ -9,7 +9,11 @@ import type { BalanceSummary } from "@/types/balance";
 
 const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
   { label: "商品を探す", href: "/products" },
-  { label: "出品", href: "/sell" },
+  {
+    label: "出品",
+    href: "/mypage/exhibits",
+    matchPrefixes: ["/mypage/exhibits", "/sell"],
+  },
   { label: "取引Navi", href: "/trade-navi" },
   { label: "通知", href: "/mypage/notices", matchPrefixes: ["/mypage/notices", "/mypage/pachi-notice"] },
   { label: "残高", href: "/mypage/pachipay/balance", matchPrefixes: ["/mypage/pachipay"] },
