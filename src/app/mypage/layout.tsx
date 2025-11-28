@@ -19,10 +19,13 @@ export default function MyPageRootLayout({ children }: { children: ReactNode }) 
     return MY_PAGE_SUB_TABS[section.key] ?? null;
   }, [pathname]);
 
-  const hasSubTabs = Boolean(subTabs && subTabs.length > 0);
+  const subTabItems = subTabs?.length ? subTabs : null;
+  const hasSubTabs = Boolean(subTabItems);
+  const layoutSubTabs =
+    subTabItems && subTabItems.length > 0 ? <SubTabs tabs={subTabItems} /> : undefined;
 
   return (
-    <MyPageLayout subTabs={hasSubTabs ? <SubTabs tabs={subTabs} /> : undefined} compact={hasSubTabs}>
+    <MyPageLayout subTabs={layoutSubTabs} compact={hasSubTabs}>
       {children}
     </MyPageLayout>
   );
