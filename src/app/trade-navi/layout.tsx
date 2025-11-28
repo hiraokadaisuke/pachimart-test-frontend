@@ -7,6 +7,8 @@ import { TRADE_NAVI_TABS } from "./tabsConfig";
 
 export default function TradeNaviLayout({ children }: { children: ReactNode }) {
   return (
-    <MyPageLayout subTabs={<SubTabs tabs={TRADE_NAVI_TABS} />}>{children}</MyPageLayout>
+    <MyPageLayout subTabs={<SubTabs tabs={TRADE_NAVI_TABS} />} compact>
+      {children}
+    </MyPageLayout>
   );
 }

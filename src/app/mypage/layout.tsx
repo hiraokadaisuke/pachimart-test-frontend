@@ -9,7 +9,7 @@ import { detectMyPageSection } from "@/components/mypage/MyPagePrimaryTabs";
 import { MY_PAGE_SUB_TABS } from "@/components/mypage/MyPageSectionTabs";
 import SubTabs from "@/components/ui/SubTabs";
 
-function MyPageSubTabs() {
+export default function MyPageRootLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   const subTabs = useMemo(() => {
@@ -19,11 +19,11 @@ function MyPageSubTabs() {
     return MY_PAGE_SUB_TABS[section.key] ?? null;
   }, [pathname]);
 
-  if (!subTabs || subTabs.length === 0) return null;
+  const hasSubTabs = Boolean(subTabs && subTabs.length > 0);
 
-  return <SubTabs tabs={subTabs} />;
-}
-
-export default function MyPageRootLayout({ children }: { children: ReactNode }) {
-  return <MyPageLayout subTabs={<MyPageSubTabs />}>{children}</MyPageLayout>;
+  return (
+    <MyPageLayout subTabs={hasSubTabs ? <SubTabs tabs={subTabs} /> : undefined} compact={hasSubTabs}>
+      {children}
+    </MyPageLayout>
+  );
 }

@@ -28,8 +28,8 @@ function TradeNaviContent() {
   const activeTab = useMemo(() => resolveActiveTab(searchParams ?? new URLSearchParams()), [searchParams]);
 
   return (
-    <main className="space-y-6">
-      <section className="space-y-6">
+    <main>
+      <section>
         {activeTab === "request" && <RequestTabContent />}
         {activeTab === "inProgress" && <InProgressTabContent />}
         {activeTab === "salesHistory" && <SalesHistoryTabContent />}

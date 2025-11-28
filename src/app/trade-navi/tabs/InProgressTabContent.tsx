@@ -9,6 +9,7 @@ import { NaviStatus, TradeNaviDraft } from "@/lib/navi/types";
 import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
+import { SectionHeader } from "@/components/ui/SectionHeader";
 import { standardNaviColumns } from "@/components/transactions/standardColumns";
 import {
   COMPLETED_STATUS_KEYS,
@@ -337,7 +338,7 @@ export function InProgressTabContent() {
       />
 
       <section className="space-y-4">
-        <div className="mb-2 rounded-t-sm bg-sky-600 px-4 py-2 text-sm font-semibold text-white">買いたい物件 – 入金・確認状況</div>
+        <SectionHeader className="mb-2">買いたい物件 – 入金・確認状況</SectionHeader>
         <p className="text-xs font-semibold text-red-500">入金待ちの案件は、発注予定日までに必ずご確認ください。</p>
 
         <div className="space-y-3">
@@ -351,7 +352,7 @@ export function InProgressTabContent() {
         </div>
 
         <div className="space-y-2">
-          <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">入金待ち</div>
+          <SectionHeader className="px-3 py-2 text-xs">入金待ち</SectionHeader>
           <NaviTable
             columns={tradeColumns}
             rows={buyWaiting}
@@ -365,7 +366,7 @@ export function InProgressTabContent() {
         </p>
 
         <div className="space-y-2">
-          <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">確認中</div>
+          <SectionHeader className="px-3 py-2 text-xs">確認中</SectionHeader>
           <NaviTable
             columns={tradeColumns}
             rows={buyChecking}
@@ -376,7 +377,7 @@ export function InProgressTabContent() {
       </section>
 
       <section className="space-y-4">
-        <div className="mb-2 rounded-t-sm bg-orange-500 px-4 py-2 text-sm font-semibold text-white">売りたい物件 – 入金・確認状況</div>
+        <SectionHeader className="mb-2">売りたい物件 – 入金・確認状況</SectionHeader>
         <p className="text-xs font-semibold text-red-500">
           売りたい物件の入金・動作確認状況を確認できます。入金手続き中の案件は、買い手様の手続き完了までお待ちください。
         </p>
@@ -392,7 +393,7 @@ export function InProgressTabContent() {
         </div>
 
         <div className="space-y-2">
-          <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">入金待ち</div>
+          <SectionHeader className="px-3 py-2 text-xs">入金待ち</SectionHeader>
           <NaviTable
             columns={tradeColumns}
             rows={sellWaiting}
@@ -401,7 +402,7 @@ export function InProgressTabContent() {
           />
         </div>
         <div className="space-y-2">
-          <div className="rounded-t-sm bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700">確認中</div>
+          <SectionHeader className="px-3 py-2 text-xs">確認中</SectionHeader>
           <NaviTable
             columns={tradeColumns}
             rows={sellChecking}
