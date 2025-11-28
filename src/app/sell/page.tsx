@@ -4,7 +4,7 @@ import { SellForm } from "@/components/exhibits/SellForm";
 
 export default function SellPage() {
   return (
-    <MyPageLayout subTabs={<ExhibitSubTabs activeTab="new" />}>
+    <MyPageLayout subTabs={<ExhibitSubTabs activeTab="new" />} compact>
       <SellForm />
     </MyPageLayout>
   );
