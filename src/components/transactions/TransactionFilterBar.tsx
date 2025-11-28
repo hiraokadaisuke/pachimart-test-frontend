@@ -14,7 +14,7 @@ export function TransactionFilterBar({
   onKeywordChange,
 }: TransactionFilterBarProps) {
   return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div className="mt-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div className="flex gap-2">
         <select
           className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"

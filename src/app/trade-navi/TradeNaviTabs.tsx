@@ -20,8 +20,8 @@ export type TradeNaviTabsProps = {
 
 export function TradeNaviTabs({ activeTab, onTabChange }: TradeNaviTabsProps) {
   return (
-    <nav className="border-b border-slate-200">
-      <ul className="-mb-px flex gap-2">
+    <nav className="mt-6 border-b border-slate-200">
+      <ul className="-mb-px flex gap-6">
         {TRADE_NAVI_TABS.map((tab) => {
           const isActive = activeTab === tab.key;
           return (
@@ -29,19 +29,13 @@ export function TradeNaviTabs({ activeTab, onTabChange }: TradeNaviTabsProps) {
               <button
                 type="button"
                 onClick={() => onTabChange(tab.key)}
-                className={`relative rounded-t-md px-4 py-2 text-sm font-medium transition-colors ${
+                className={`h-10 border-b-2 px-1 text-sm font-medium transition-colors ${
                   isActive
-                    ? "bg-white text-slate-900 shadow-inner"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                    ? "border-blue-600 text-blue-600"
+                    : "border-transparent text-slate-500 hover:text-slate-700"
                 }`}
               >
                 {tab.label}
-                <span
-                  className={`absolute inset-x-0 -bottom-px block h-0.5 ${
-                    isActive ? "bg-blue-600" : "bg-transparent"
-                  }`}
-                  aria-hidden
-                />
               </button>
             </li>
           );
