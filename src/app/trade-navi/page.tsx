@@ -12,24 +12,13 @@ export default function TradeNaviPage() {
   const [activeTab, setActiveTab] = useState<TradeNaviTabKey>("inProgress");
 
   return (
-    <main className="space-y-8">
-      <header className="flex flex-wrap items-center justify-between gap-3">
-        <div className="space-y-2">
-          <h1 className="text-xl font-bold text-slate-900">取引Navi</h1>
-          <p className="text-sm text-slate-700">
-            電話などで合意した取引内容を、パチマート上で確認・管理するための画面です。
-          </p>
-        </div>
-        <div>
-          <button
-            type="button"
-            className="rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
-            onClick={() => setActiveTab("request")}
-          >
-            依頼入力
-          </button>
-        </div>
-      </header>
+    <main className="space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-xl font-bold text-slate-900">取引Navi</h1>
+        <p className="text-sm text-slate-700">
+          電話などで合意した取引内容を、パチマート上で確認・管理するための画面です。
+        </p>
+      </div>
 
       <TradeNaviTabs activeTab={activeTab} onTabChange={setActiveTab} />
 
