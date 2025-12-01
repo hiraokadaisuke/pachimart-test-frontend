@@ -6,7 +6,12 @@ import { supabase } from "@/lib/supabaseClient";
 import type { InventoryCategory, InventoryItem, InventoryStatus } from "@/types/inventory";
 import { InventoryColumnSelectorModal } from "./InventoryColumnSelectorModal";
 import { InventoryTable } from "./InventoryTable";
-import { ALL_INVENTORY_COLUMN_OPTIONS, type InventorySortKey } from "./columnOptions";
+import {
+  DEFAULT_INVENTORY_COLUMNS,
+  type InventoryColumnId,
+  type InventoryColumnSetting,
+  type InventorySortKey,
+} from "./columnSettings";
 
 const PAGE_SIZE = 20;
 
@@ -504,10 +509,7 @@ export function InventoryDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
-  const [visibleColumnIds, setVisibleColumnIds] = useState(() =>
-    ALL_INVENTORY_COLUMN_OPTIONS.filter((option) => option.defaultVisible).map((option) => option.id),
-  );
-  const [columnSelectionDraft, setColumnSelectionDraft] = useState(visibleColumnIds);
+  const [columns, setColumns] = useState<InventoryColumnSetting[]>(DEFAULT_INVENTORY_COLUMNS);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -583,11 +585,11 @@ export function InventoryDashboard() {
             return item.modelName;
           case "frameColorPanel":
             return item.colorPanel;
-          case "gameBoardNumber":
+          case "inspectionNumber":
             return item.inspectionNumber;
           case "frameSerial":
             return item.frameSerial;
-          case "mainBoardSerial":
+          case "boardSerial":
             return item.boardSerial;
           case "removalDate":
             return item.removalDate ?? "";
@@ -595,9 +597,9 @@ export function InventoryDashboard() {
             return item.warehouse;
           case "salePrice":
             return item.pachimartSalePrice ?? item.salePrice ?? item.salePriceIncTax ?? item.salePriceExTax ?? 0;
-          case "saleDate":
+          case "soldAt":
             return item.saleDate ?? "";
-          case "saleDestination":
+          case "buyer":
             return item.saleDestination ?? item.buyer ?? "";
           default:
             return "";
@@ -640,6 +642,8 @@ export function InventoryDashboard() {
     [sortedInventory, currentPage],
   );
 
+  const visibleColumns = useMemo(() => columns.filter((column) => column.visible), [columns]);
+
   const goToPage = (page: number) => {
     if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
@@ -657,8 +661,17 @@ export function InventoryDashboard() {
     }
   };
 
+  const handleHeaderReorder = (newOrder: InventoryColumnId[]) => {
+    setColumns((prev) => {
+      const map = new Map(prev.map((column) => [column.id, column] as const));
+      return newOrder
+        .map((id) => map.get(id))
+        .filter((column): column is InventoryColumnSetting => Boolean(column))
+        .concat(prev.filter((column) => !newOrder.includes(column.id)));
+    });
+  };
+
   const handleColumnToggle = () => {
-    setColumnSelectionDraft(visibleColumnIds);
     setIsColumnSelectorOpen(true);
   };
 
@@ -666,9 +679,8 @@ export function InventoryDashboard() {
     setIsColumnSelectorOpen(false);
   };
 
-  const handleColumnSelectionSave = (selectedIds: typeof visibleColumnIds) => {
-    setVisibleColumnIds(selectedIds);
-    setIsColumnSelectorOpen(false);
+  const handleChangeColumns = (next: InventoryColumnSetting[]) => {
+    setColumns(next);
   };
 
   const handleImportClick = () => {
@@ -893,7 +905,8 @@ export function InventoryDashboard() {
 
         <InventoryTable
           items={paginatedItems}
-          visibleColumnIds={visibleColumnIds}
+          columns={visibleColumns}
+          onHeaderReorder={handleHeaderReorder}
           onSortChange={handleSortChange}
           sortKey={sortKey}
           sortOrder={sortOrder}
@@ -1011,9 +1024,9 @@ export function InventoryDashboard() {
 
         <InventoryColumnSelectorModal
           isOpen={isColumnSelectorOpen}
-          selectedColumnIds={columnSelectionDraft}
           onClose={handleCloseColumnSelector}
-          onSave={handleColumnSelectionSave}
+          columns={columns}
+          onChangeColumns={handleChangeColumns}
         />
       </div>
     </div>

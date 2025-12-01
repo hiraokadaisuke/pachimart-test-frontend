@@ -1,50 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import type { InventoryColumnSetting } from "./columnSettings";
 
-import {
-  ALL_INVENTORY_COLUMN_OPTIONS,
-  type InventoryColumnId,
-  type InventoryColumnOption,
-} from "./columnOptions";
-
-interface InventoryColumnSelectorModalProps {
+type ColumnVisibilityModalProps = {
   isOpen: boolean;
-  selectedColumnIds: InventoryColumnId[];
   onClose: () => void;
-  onSave: (columnIds: InventoryColumnId[]) => void;
-}
+  columns: InventoryColumnSetting[];
+  onChangeColumns: (next: InventoryColumnSetting[]) => void;
+};
 
 export function InventoryColumnSelectorModal({
   isOpen,
-  selectedColumnIds,
   onClose,
-  onSave,
-}: InventoryColumnSelectorModalProps) {
-  const [localSelection, setLocalSelection] = useState<InventoryColumnId[]>(selectedColumnIds);
-
-  useEffect(() => {
-    if (isOpen) {
-      setLocalSelection(selectedColumnIds);
-    }
-  }, [isOpen, selectedColumnIds]);
-
-  const selectionSet = useMemo(() => new Set(localSelection), [localSelection]);
-
-  const handleToggle = (option: InventoryColumnOption) => {
-    setLocalSelection((prev) => {
-      const exists = prev.includes(option.id);
-      if (exists) {
-        return prev.filter((id) => id !== option.id);
-      }
-      return [...prev, option.id];
-    });
-  };
-
-  const handleSave = () => {
-    onSave(localSelection);
-  };
-
+  columns,
+  onChangeColumns,
+}: ColumnVisibilityModalProps) {
   if (!isOpen) {
     return null;
   }
@@ -54,10 +24,8 @@ export function InventoryColumnSelectorModal({
       <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
         <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">表示する項目を選択（ドラッグで並び替え可）</h2>
-            <p className="mt-1 text-sm text-slate-500">
-              将来的にドラッグ＆ドロップで順序を変更できるようにする予定です。
-            </p>
+            <h2 className="text-lg font-semibold text-slate-900">表示する項目を選択</h2>
+            <p className="mt-1 text-sm text-slate-500">列の順序はテーブル上のヘッダーをドラッグ＆ドロップで変更できます。</p>
           </div>
           <button
             type="button"
@@ -77,18 +45,27 @@ export function InventoryColumnSelectorModal({
 
         <div className="px-5 py-4">
           <div className="grid max-h-[440px] grid-cols-1 gap-3 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
-            {ALL_INVENTORY_COLUMN_OPTIONS.map((option) => (
+            {columns.map((column, index) => (
               <label
-                key={option.id}
-                className="flex items-start gap-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm shadow-sm transition hover:border-blue-200 hover:bg-blue-50"
+                key={column.id}
+                className="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs shadow-sm"
               >
-                <input
-                  type="checkbox"
-                  checked={selectionSet.has(option.id)}
-                  onChange={() => handleToggle(option)}
-                  className="mt-0.5 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-slate-800">{option.label}</span>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={column.visible}
+                    onChange={(event) =>
+                      onChangeColumns(
+                        columns.map((c) =>
+                          c.id === column.id ? { ...c, visible: event.target.checked } : c,
+                        ),
+                      )
+                    }
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-slate-800">{column.label}</span>
+                </div>
+                <span className="ml-2 rounded-full bg-slate-100 px-2 py-[2px] text-[10px] text-slate-500">{index + 1}</span>
               </label>
             ))}
           </div>
@@ -100,14 +77,7 @@ export function InventoryColumnSelectorModal({
             onClick={onClose}
             className="rounded border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
           >
-            キャンセル
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-blue-700"
-          >
-            適用する
+            閉じる
           </button>
         </div>
       </div>
