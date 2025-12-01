@@ -52,6 +52,19 @@ const calculateTaxIncluded = (value?: number | null) => {
   return Math.round(value * 1.1);
 };
 
+const renderTruncatedCell = (
+  value: string | null | undefined,
+  widthClass = "max-w-[160px]",
+  placeholder = "-",
+) => {
+  const displayValue = value ?? placeholder;
+  return (
+    <span className={`block truncate ${widthClass}`} title={value ?? displayValue}>
+      {displayValue}
+    </span>
+  );
+};
+
 const addYears = (dateString?: string | null, years: number = 3) => {
   if (!dateString) return "-";
   const date = new Date(dateString);
@@ -117,15 +130,15 @@ const columnDefinitions: InventoryColumnDefinition[] = [
       </span>
     ),
   },
-  { id: "maker", render: (item) => item.manufacturer },
+  { id: "maker", render: (item) => renderTruncatedCell(item.manufacturer, "max-w-[160px]") },
   { id: "model", render: (item) => <span className="font-semibold text-slate-900">{item.modelName}</span> },
-  { id: "frameColorPanel", render: (item) => item.colorPanel },
+  { id: "frameColorPanel", render: (item) => renderTruncatedCell(item.colorPanel, "max-w-[160px]") },
   { id: "inspectionNumber", render: (item) => item.inspectionNumber ?? "-" },
   { id: "frameSerial", render: (item) => item.frameSerial ?? "-" },
   { id: "boardSerial", render: (item) => item.boardSerial ?? "-" },
   { id: "removalDate", render: (item) => item.removalDate ?? "-" },
   { id: "usageType", render: (item) => item.usageType ?? "-" },
-  { id: "warehouse", render: (item) => item.warehouse ?? "-" },
+  { id: "warehouse", render: (item) => renderTruncatedCell(item.warehouse, "max-w-[150px]") },
   { id: "note", render: (item) => item.note ?? "-" },
   { id: "installDate", render: (item) => item.installDate ?? "-" },
   { id: "installPeriod", render: (item) => formatInstallPeriod(item) },
@@ -133,21 +146,28 @@ const columnDefinitions: InventoryColumnDefinition[] = [
   { id: "inspectionExpiry", render: (item) => addYears(item.inspectionDate) },
   { id: "approvalDate", render: (item) => item.approvalDate ?? "-" },
   { id: "approvalExpiry", render: (item) => addYears(item.approvalDate) },
-  { id: "purchaseSource", render: (item) => item.purchaseSource ?? "-" },
+  { id: "purchaseSource", render: (item) => renderTruncatedCell(item.purchaseSource, "max-w-[180px]") },
   { id: "purchasePriceExTax", render: (item) => formatCurrency(item.purchasePriceExTax) },
   { id: "purchasePriceIncTax", render: (item) => formatCurrency(calculateTaxIncluded(item.purchasePriceExTax)) },
   { id: "saleDate", render: (item) => item.saleDate ?? "-" },
-  { id: "saleDestination", render: (item) => item.saleDestination ?? "-" },
+  { id: "saleDestination", render: (item) => renderTruncatedCell(item.saleDestination || null, "max-w-[180px]") },
   { id: "salePriceExTax", render: (item) => formatCurrency(item.salePriceExTax) },
   { id: "salePriceIncTax", render: (item) => formatCurrency(calculateTaxIncluded(item.salePriceExTax)) },
-  { id: "externalCompany", render: (item) => item.externalCompany ?? "-" },
-  { id: "externalStore", render: (item) => item.externalStore ?? "-" },
+  { id: "externalCompany", render: (item) => renderTruncatedCell(item.externalCompany, "max-w-[170px]") },
+  { id: "externalStore", render: (item) => renderTruncatedCell(item.externalStore, "max-w-[170px]") },
   { id: "stockInDate", render: (item) => item.stockInDate ?? "-" },
   { id: "stockOutDate", render: (item) => item.stockOutDate ?? "-" },
   { id: "stockOutDestination", render: (item) => item.stockOutDestination ?? "-" },
-  { id: "serialNumber", render: (item) => item.serialNumber ?? "-" },
+  { id: "serialNumber", render: (item) => renderTruncatedCell(item.serialNumber, "max-w-[170px]") },
   { id: "inspectionInfo", render: (item) => item.inspectionInfo ?? "-" },
-  { id: "listingId", render: (item) => (item.listingId && item.listingId.length > 0 ? item.listingId : "-") },
+  {
+    id: "listingId",
+    render: (item) =>
+      renderTruncatedCell(
+        item.listingId && item.listingId.length > 0 ? item.listingId : null,
+        "max-w-[150px]",
+      ),
+  },
 ];
 
 const columnSortKeyMap: Partial<Record<InventoryColumnId, InventorySortKey>> = {
@@ -314,8 +334,10 @@ export function InventoryTable({
   ];
 
   const categoryOptions = [
-    { value: "パチンコ", label: "パチンコ" },
-    { value: "パチスロ", label: "パチスロ" },
+    { value: "P本体", label: "P本体" },
+    { value: "S本体", label: "S本体" },
+    { value: "P枠", label: "P枠" },
+    { value: "Pセル", label: "Pセル" },
   ];
 
   const renderCell = (column: InventoryColumnDefinition, item: InventoryItem, isEditing: boolean) => {
@@ -606,7 +628,7 @@ export function InventoryTable({
         <table className="min-w-[1600px] w-full table-fixed border-collapse text-[11px] text-slate-800">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={headerOrder}>
-            <thead className="sticky top-0 z-10 bg-slate-100 text-left font-semibold text-slate-900">
+            <thead className="sticky top-0 z-10 bg-slate-100 text-center font-semibold text-slate-900">
               <tr>
                 {visibleColumns.map((column) => {
                   const sortableKey = columnSortKeyMap[column.id];
@@ -616,12 +638,12 @@ export function InventoryTable({
 
                   return (
                     <SortableHeaderCell key={column.id} column={column}>
-                      <div style={widthStyle} className="flex items-center gap-1">
+                      <div style={widthStyle} className="flex w-full items-center justify-center gap-1">
                         {isSortable ? (
                           <button
                             type="button"
                             onClick={() => sortableKey && onSortChange?.(sortableKey)}
-                            className="inline-flex items-center gap-1 text-left text-slate-800"
+                            className="inline-flex w-full items-center justify-center gap-1 text-slate-800"
                           >
                             <span>{column.label}</span>
                             {isActive && (
@@ -629,13 +651,13 @@ export function InventoryTable({
                             )}
                           </button>
                         ) : (
-                          <span>{column.label}</span>
+                          <span className="inline-flex w-full justify-center">{column.label}</span>
                         )}
                       </div>
                     </SortableHeaderCell>
                   );
                 })}
-                <th className="w-[140px] whitespace-nowrap px-3 py-1.5 text-right text-[11px] font-semibold text-slate-600">操作</th>
+                <th className="w-[140px] whitespace-nowrap px-3 py-1.5 text-center text-[11px] font-semibold text-slate-600">操作</th>
               </tr>
             </thead>
           </SortableContext>
@@ -685,7 +707,7 @@ export function InventoryTable({
                     <>
                       <button
                         type="button"
-                        className="rounded border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                        className="rounded bg-[#1E3A8A] px-3 py-1 text-xs font-medium text-white hover:bg-[#1E40AF]"
                         onClick={() => toggleMenu(item.id)}
                       >
                         操作
@@ -787,7 +809,7 @@ function SortableHeaderCell({
     <th
       ref={setNodeRef}
       style={style}
-      className="px-2 py-1.5 text-[11px] font-semibold text-slate-600 whitespace-nowrap bg-slate-100"
+      className="px-2 py-1.5 text-center text-[11px] font-semibold text-slate-600 whitespace-nowrap bg-slate-100"
       {...attributes}
       {...listeners}
     >
