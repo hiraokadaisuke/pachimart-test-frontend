@@ -20,7 +20,7 @@ function ExhibitHubContent() {
   const searchParams = useSearchParams();
 
   const activeTab = useMemo<ExhibitTabKey>(() => {
-    const tab = searchParams.get("tab");
+    const tab = searchParams?.get("tab");
     if (tab === "draft") return tab;
     return "active";
   }, [searchParams]);
