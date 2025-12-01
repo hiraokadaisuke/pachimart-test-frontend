@@ -3,8 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabaseClient";
-import type { InventoryCategory, InventoryItem, InventoryStatus } from "@/types/inventory";
+import type {
+  InventoryCategory,
+  InventoryDocumentKind,
+  InventoryDocumentMeta,
+  InventoryItem,
+  InventoryStatus,
+} from "@/types/inventory";
 import { InventoryColumnSelectorModal } from "./InventoryColumnSelectorModal";
+import { InventoryDocumentsModal } from "./InventoryDocumentsModal";
 import { InventoryTable } from "./InventoryTable";
 import {
   DEFAULT_INVENTORY_COLUMNS,
@@ -90,6 +97,7 @@ const fallbackInventory: InventoryItem[] = [
     boardSerial: "BRD-98765",
     removalDate: "2024-07-15",
     warehouse: "東京第1倉庫",
+    hasDocuments: true,
   },
   {
     id: 2,
@@ -104,6 +112,7 @@ const fallbackInventory: InventoryItem[] = [
     removalDate: null,
     warehouse: "埼玉倉庫",
     salePrice: 320000,
+    hasDocuments: true,
   },
   {
     id: 3,
@@ -510,6 +519,8 @@ export function InventoryDashboard() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
   const [columns, setColumns] = useState<InventoryColumnSetting[]>(DEFAULT_INVENTORY_COLUMNS);
+  const [documentsByItem, setDocumentsByItem] = useState<Record<number, InventoryDocumentMeta[]>>({});
+  const [documentsModalItemId, setDocumentsModalItemId] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -644,6 +655,13 @@ export function InventoryDashboard() {
 
   const visibleColumns = useMemo(() => columns.filter((column) => column.visible), [columns]);
 
+  const allItems = sortedInventory;
+
+  const activeItem =
+    documentsModalItemId != null
+      ? allItems.find((item) => item.id === documentsModalItemId)
+      : undefined;
+
   const goToPage = (page: number) => {
     if (page < 1 || page > totalPages) return;
     setCurrentPage(page);
@@ -693,6 +711,40 @@ export function InventoryDashboard() {
       // TODO: CSVインポート処理を実装
       console.log("CSV import stub", file.name);
     }
+  };
+
+  const upsertInventoryDocument = (
+    itemId: number,
+    kind: InventoryDocumentKind,
+    file: File,
+  ) => {
+    setDocumentsByItem((prev) => {
+      const current = prev[itemId] ?? [];
+
+      const existed = current.find((document) => document.kind === kind);
+      if (existed) {
+        URL.revokeObjectURL(existed.objectUrl);
+      }
+
+      const nextDoc: InventoryDocumentMeta = {
+        kind,
+        fileName: file.name,
+        size: file.size,
+        uploadedAt: new Date().toISOString(),
+        objectUrl: URL.createObjectURL(file),
+      };
+
+      const nextList = [...current.filter((document) => document.kind !== kind), nextDoc];
+
+      return {
+        ...prev,
+        [itemId]: nextList,
+      };
+    });
+  };
+
+  const getInventoryDocuments = (itemId: number): InventoryDocumentMeta[] => {
+    return documentsByItem[itemId] ?? [];
   };
 
   const handleExportCsv = () => {
@@ -748,6 +800,22 @@ export function InventoryDashboard() {
     link.download = "inventory.csv";
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const openDocumentsModal = (itemId: number) => {
+    setDocumentsModalItemId(itemId);
+  };
+
+  const closeDocumentsModal = () => {
+    setDocumentsModalItemId(null);
+  };
+
+  const handleUploadDocument = (
+    itemId: number,
+    kind: InventoryDocumentKind,
+    file: File,
+  ) => {
+    upsertInventoryDocument(itemId, kind, file);
   };
 
   const toggleStatusFilter = (status: InventoryStatus) => {
@@ -908,6 +976,7 @@ export function InventoryDashboard() {
           columns={visibleColumns}
           onHeaderReorder={handleHeaderReorder}
           onSortChange={handleSortChange}
+          onOpenDocuments={openDocumentsModal}
           sortKey={sortKey}
           sortOrder={sortOrder}
         />
@@ -923,6 +992,24 @@ export function InventoryDashboard() {
             onPageClick={goToPage}
           />
         </div>
+
+        <InventoryDocumentsModal
+          isOpen={documentsModalItemId != null}
+          onClose={closeDocumentsModal}
+          itemId={documentsModalItemId}
+          itemTitle={
+            activeItem ? `${activeItem.manufacturer} ${activeItem.modelName}` : undefined
+          }
+          documents={
+            documentsModalItemId != null
+              ? getInventoryDocuments(documentsModalItemId)
+              : []
+          }
+          onUpload={(kind, file) =>
+            documentsModalItemId != null &&
+            handleUploadDocument(documentsModalItemId, kind, file)
+          }
+        />
 
         {isFilterOpen && (
           <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4 py-6 backdrop-blur-sm">
