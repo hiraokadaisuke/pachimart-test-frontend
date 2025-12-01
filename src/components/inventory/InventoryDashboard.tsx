@@ -4,7 +4,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabaseClient";
 import type { InventoryItem } from "@/types/inventory";
+import { InventoryColumnSelectorModal } from "./InventoryColumnSelectorModal";
 import { InventoryTable } from "./InventoryTable";
+import { ALL_INVENTORY_COLUMN_OPTIONS } from "./columnOptions";
 
 const fallbackInventory: InventoryItem[] = [
   {
@@ -61,6 +63,10 @@ export function InventoryDashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
+  const [visibleColumnIds, setVisibleColumnIds] = useState(() =>
+    ALL_INVENTORY_COLUMN_OPTIONS.filter((option) => option.defaultVisible).map((option) => option.id),
+  );
+  const [columnSelectionDraft, setColumnSelectionDraft] = useState(visibleColumnIds);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -97,7 +103,17 @@ export function InventoryDashboard() {
   }, [inventory, searchQuery]);
 
   const handleColumnToggle = () => {
-    setIsColumnSelectorOpen((prev) => !prev);
+    setColumnSelectionDraft(visibleColumnIds);
+    setIsColumnSelectorOpen(true);
+  };
+
+  const handleCloseColumnSelector = () => {
+    setIsColumnSelectorOpen(false);
+  };
+
+  const handleColumnSelectionSave = (selectedIds: typeof visibleColumnIds) => {
+    setVisibleColumnIds(selectedIds);
+    setIsColumnSelectorOpen(false);
   };
 
   const handleImportClick = () => {
@@ -279,13 +295,14 @@ export function InventoryDashboard() {
           </button>
         </div>
 
-        {isColumnSelectorOpen && (
-          <div className="mb-4 rounded-lg border border-dashed border-slate-300 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
-            カラム選択機能をここに表示します（準備中）。
-          </div>
-        )}
+        <InventoryTable items={filteredInventory} visibleColumnIds={visibleColumnIds} />
 
-        <InventoryTable items={filteredInventory} />
+        <InventoryColumnSelectorModal
+          isOpen={isColumnSelectorOpen}
+          selectedColumnIds={columnSelectionDraft}
+          onClose={handleCloseColumnSelector}
+          onSave={handleColumnSelectionSave}
+        />
       </div>
     </div>
   );
