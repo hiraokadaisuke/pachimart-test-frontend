@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { supabase } from "@/lib/supabaseClient";
 import type {
   InventoryCategory,
   InventoryDocumentKind,
@@ -86,7 +85,35 @@ function InventoryPagination({
   );
 }
 
-const fallbackInventory: InventoryItem[] = [
+type RawInventoryItem = {
+  id: number;
+  status: InventoryStatus | "在庫中" | "成功済み";
+  category: InventoryCategory;
+  manufacturer: string;
+  modelName: string;
+  colorPanel: string;
+  inspectionNumber: string;
+  frameSerial: string;
+  boardSerial: string;
+  removalDate: string | null;
+  warehouse: string;
+  salePrice?: number;
+  saleDate?: string | null;
+  buyer?: string;
+  hasDocuments?: boolean;
+};
+
+const statusMap: Record<RawInventoryItem["status"], InventoryStatus> = {
+  在庫中: "倉庫",
+  出品中: "出品中",
+  成功済み: "売却済",
+  倉庫: "倉庫",
+  設置中: "設置中",
+  売却済: "売却済",
+  廃棄: "廃棄",
+};
+
+const rawInventory: RawInventoryItem[] = [
   {
     id: 1,
     status: "在庫中",
@@ -509,8 +536,41 @@ const fallbackInventory: InventoryItem[] = [
   },
 ];
 
+const fallbackInventory: InventoryItem[] = rawInventory.map((item, index) => ({
+  id: item.id,
+  status: statusMap[item.status],
+  category: item.category,
+  manufacturer: item.manufacturer,
+  modelName: item.modelName,
+  colorPanel: item.colorPanel,
+  inspectionNumber: item.inspectionNumber,
+  frameSerial: item.frameSerial,
+  boardSerial: item.boardSerial,
+  removalDate: item.removalDate,
+  warehouse: item.warehouse,
+  usageType: index % 2 === 0 ? "一次" : "二次",
+  note: "",
+  installDate: null,
+  inspectionDate: null,
+  approvalDate: null,
+  purchaseSource: "サンプル購入元",
+  purchasePriceExTax: 100000 + index * 5000,
+  saleDestination: item.buyer ?? "",
+  salePriceExTax: item.salePrice,
+  saleDate: item.saleDate ?? null,
+  externalCompany: "サンプル法人",
+  externalStore: "サンプル店舗",
+  stockInDate: item.removalDate ?? null,
+  stockOutDate: null,
+  stockOutDestination: "",
+  serialNumber: `SN-${String(item.id).padStart(5, "0")}`,
+  inspectionInfo: "",
+  listingId: statusMap[item.status] === "出品中" ? `LIST-${1000 + item.id}` : "",
+  hasDocuments: item.hasDocuments,
+}));
+
 export function InventoryDashboard() {
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [inventory] = useState<InventoryItem[]>(fallbackInventory);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortKey, setSortKey] = useState<InventorySortKey | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
@@ -526,28 +586,6 @@ export function InventoryDashboard() {
   const [isCsvMenuOpen, setIsCsvMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const showUserMenu = false;
-
-  useEffect(() => {
-    const fetchData = async () => {
-      if (!supabase) {
-        console.warn("Supabase credentials are not set. Falling back to placeholder data.");
-        setInventory(fallbackInventory);
-        return;
-      }
-
-      const { data, error } = await supabase.from<InventoryItem>("inventories").select("*");
-
-      if (error || !data) {
-        console.error("Failed to fetch inventory from Supabase", error);
-        setInventory(fallbackInventory);
-        return;
-      }
-
-      setInventory(data);
-    };
-
-    fetchData();
-  }, []);
 
   const allWarehouses = useMemo(
     () => Array.from(new Set(inventory.map((item) => item.warehouse).filter(Boolean))),
@@ -610,12 +648,18 @@ export function InventoryDashboard() {
             return item.removalDate ?? "";
           case "warehouse":
             return item.warehouse;
-          case "salePrice":
-            return item.pachimartSalePrice ?? item.salePrice ?? item.salePriceIncTax ?? item.salePriceExTax ?? 0;
-          case "soldAt":
+          case "installDate":
+            return item.installDate ?? "";
+          case "inspectionDate":
+            return item.inspectionDate ?? "";
+          case "approvalDate":
+            return item.approvalDate ?? "";
+          case "purchasePriceExTax":
+            return item.purchasePriceExTax ?? 0;
+          case "saleDate":
             return item.saleDate ?? "";
-          case "buyer":
-            return item.saleDestination ?? item.buyer ?? "";
+          case "salePriceExTax":
+            return item.salePriceExTax ?? 0;
           default:
             return "";
         }
@@ -773,10 +817,13 @@ export function InventoryDashboard() {
       "frameSerial",
       "boardSerial",
       "removalDate",
+      "installDate",
       "warehouse",
-      "salePrice",
+      "purchasePriceExTax",
+      "salePriceExTax",
       "saleDate",
-      "buyer",
+      "saleDestination",
+      "listingId",
     ];
 
     const escapeCsv = (value: string | number | null | undefined) => {
@@ -797,10 +844,13 @@ export function InventoryDashboard() {
         item.frameSerial,
         item.boardSerial,
         item.removalDate,
+        item.installDate,
         item.warehouse,
-        item.salePrice,
+        item.purchasePriceExTax,
+        item.salePriceExTax,
         item.saleDate,
-        item.buyer,
+        item.saleDestination,
+        item.listingId,
       ]
         .map(escapeCsv)
         .join(","),
@@ -1067,7 +1117,7 @@ export function InventoryDashboard() {
                 <div>
                   <h3 className="text-sm font-semibold text-slate-800">ステータス</h3>
                   <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-inner">
-                    {(["在庫中", "出品中", "成功済み"] as InventoryStatus[]).map((status) => (
+                    {(["設置中", "倉庫", "出品中", "売却済", "廃棄"] as InventoryStatus[]).map((status) => (
                       <label key={status} className="flex items-center gap-3 text-sm text-slate-700">
                         <input
                           type="checkbox"
