@@ -16,4 +16,28 @@ export interface InventoryItem {
   salePrice?: number;
   saleDate?: string;
   buyer?: string;
+  usageCount?: number;
+  note?: string;
+  installDate?: string;
+  installPeriod?: string;
+  inspectionDate?: string;
+  inspectionExpiry?: string;
+  approvalDate?: string;
+  approvalExpiry?: string;
+  purchaseSource?: string;
+  purchasePriceExTax?: number;
+  purchasePriceIncTax?: number;
+  saleDestination?: string;
+  salePriceExTax?: number;
+  salePriceIncTax?: number;
+  externalCompany?: string;
+  externalStore?: string;
+  stockInDate?: string;
+  scanDate?: string;
+  scanStaff?: string;
+  storageFeeCalc?: string;
+  glassCylinder?: string;
+  pachimartSalePrice?: number;
+  nailSheet?: string;
+  pachimartStatus?: string;
 }
