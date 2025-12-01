@@ -37,6 +37,7 @@ interface InventoryTableProps {
   onSortChange?: (key: InventorySortKey) => void;
   sortKey?: InventorySortKey | null;
   sortOrder?: "asc" | "desc";
+  onOpenDocuments?: (itemId: number) => void;
 }
 
 const formatNumber = (value?: number | null) => {
@@ -86,7 +87,15 @@ const columnSortKeyMap: Partial<Record<InventoryColumnId, InventorySortKey>> = {
   salePrice: "salePrice",
 };
 
-export function InventoryTable({ items, columns, onHeaderReorder, onSortChange, sortKey, sortOrder }: InventoryTableProps) {
+export function InventoryTable({
+  items,
+  columns,
+  onHeaderReorder,
+  onSortChange,
+  sortKey,
+  sortOrder,
+  onOpenDocuments,
+}: InventoryTableProps) {
   const sensors = useSensors(useSensor(PointerSensor));
   const [headerOrder, setHeaderOrder] = useState<InventoryColumnId[]>(columns.map((column) => column.id));
 
@@ -155,7 +164,7 @@ export function InventoryTable({ items, columns, onHeaderReorder, onSortChange, 
                     </SortableHeaderCell>
                   );
                 })}
-                <th className="w-[140px] whitespace-nowrap px-2 py-1.5 text-center text-[11px] font-semibold text-slate-600">操作</th>
+                <th className="w-[180px] whitespace-nowrap px-2 py-1.5 text-center text-[11px] font-semibold text-slate-600">操作</th>
               </tr>
             </thead>
           </SortableContext>
@@ -177,7 +186,7 @@ export function InventoryTable({ items, columns, onHeaderReorder, onSortChange, 
                   </td>
                 );
               })}
-              <td className="w-[140px] whitespace-nowrap px-2 py-1 text-[11px]">
+              <td className="w-[180px] whitespace-nowrap px-2 py-1 text-[11px]">
                 <div className="flex items-center justify-center gap-2">
                   <button
                     type="button"
@@ -205,6 +214,13 @@ export function InventoryTable({ items, columns, onHeaderReorder, onSortChange, 
                     className="rounded border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
                   >
                     詳細
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded border border-slate-300 px-2 py-1 text-[11px] transition hover:bg-slate-100"
+                    onClick={() => onOpenDocuments?.(item.id)}
+                  >
+                    書類
                   </button>
                 </div>
               </td>
