@@ -3,10 +3,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { supabase } from "@/lib/supabaseClient";
-import type { InventoryItem } from "@/types/inventory";
+import type { InventoryCategory, InventoryItem, InventoryStatus } from "@/types/inventory";
 import { InventoryColumnSelectorModal } from "./InventoryColumnSelectorModal";
 import { InventoryTable } from "./InventoryTable";
-import { ALL_INVENTORY_COLUMN_OPTIONS } from "./columnOptions";
+import { ALL_INVENTORY_COLUMN_OPTIONS, type InventorySortKey } from "./columnOptions";
 
 const fallbackInventory: InventoryItem[] = [
   {
@@ -62,6 +62,12 @@ const fallbackInventory: InventoryItem[] = [
 export function InventoryDashboard() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortKey, setSortKey] = useState<InventorySortKey | null>(null);
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [statusFilter, setStatusFilter] = useState<InventoryStatus[] | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<InventoryCategory[] | null>(null);
+  const [warehouseFilter, setWarehouseFilter] = useState<string | null>(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [isColumnSelectorOpen, setIsColumnSelectorOpen] = useState(false);
   const [visibleColumnIds, setVisibleColumnIds] = useState(() =>
     ALL_INVENTORY_COLUMN_OPTIONS.filter((option) => option.defaultVisible).map((option) => option.id),
@@ -91,16 +97,102 @@ export function InventoryDashboard() {
     fetchData();
   }, []);
 
+  const allWarehouses = useMemo(
+    () => Array.from(new Set(inventory.map((item) => item.warehouse).filter(Boolean))),
+    [inventory],
+  );
+
   const filteredInventory = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return inventory;
 
-    return inventory.filter((item) =>
-      [item.manufacturer, item.modelName, item.inspectionNumber].some((field) =>
-        field.toLowerCase().includes(query),
-      ),
-    );
-  }, [inventory, searchQuery]);
+    return inventory.filter((item) => {
+      if (query) {
+        const hit = [item.manufacturer, item.modelName, item.inspectionNumber]
+          .filter(Boolean)
+          .some((field) => field.toLowerCase().includes(query));
+        if (!hit) return false;
+      }
+
+      if (statusFilter && statusFilter.length > 0 && !statusFilter.includes(item.status)) {
+        return false;
+      }
+
+      if (categoryFilter && categoryFilter.length > 0 && !categoryFilter.includes(item.category)) {
+        return false;
+      }
+
+      if (warehouseFilter && warehouseFilter !== "all" && item.warehouse !== warehouseFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [categoryFilter, inventory, searchQuery, statusFilter, warehouseFilter]);
+
+  const sortedInventory = useMemo(() => {
+    const items = [...filteredInventory];
+    if (!sortKey) return items;
+
+    items.sort((a, b) => {
+      const order = sortOrder === "asc" ? 1 : -1;
+
+      const getValue = (item: InventoryItem) => {
+        switch (sortKey) {
+          case "status":
+            return item.status;
+          case "category":
+            return item.category;
+          case "maker":
+            return item.manufacturer;
+          case "model":
+            return item.modelName;
+          case "frameColorPanel":
+            return item.colorPanel;
+          case "gameBoardNumber":
+            return item.inspectionNumber;
+          case "frameSerial":
+            return item.frameSerial;
+          case "mainBoardSerial":
+            return item.boardSerial;
+          case "removalDate":
+            return item.removalDate ?? "";
+          case "warehouse":
+            return item.warehouse;
+          case "salePrice":
+            return item.pachimartSalePrice ?? item.salePrice ?? item.salePriceIncTax ?? item.salePriceExTax ?? 0;
+          case "saleDate":
+            return item.saleDate ?? "";
+          case "saleDestination":
+            return item.saleDestination ?? item.buyer ?? "";
+          default:
+            return "";
+        }
+      };
+
+      const va = getValue(a);
+      const vb = getValue(b);
+
+      if (typeof va === "number" && typeof vb === "number") {
+        return va === vb ? 0 : va > vb ? order : -order;
+      }
+
+      const sa = String(va);
+      const sb = String(vb);
+
+      return sa === sb ? 0 : sa > sb ? order : -order;
+    });
+
+    return items;
+  }, [filteredInventory, sortKey, sortOrder]);
+
+  const handleSortChange = (key: InventorySortKey) => {
+    if (sortKey === key) {
+      setSortOrder((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortOrder("asc");
+    }
+  };
 
   const handleColumnToggle = () => {
     setColumnSelectionDraft(visibleColumnIds);
@@ -152,7 +244,7 @@ export function InventoryDashboard() {
       return `"${stringified.replace(/"/g, '""')}"`;
     };
 
-    const rows = filteredInventory.map((item) =>
+    const rows = sortedInventory.map((item) =>
       [
         item.id,
         item.status,
@@ -183,9 +275,38 @@ export function InventoryDashboard() {
     URL.revokeObjectURL(url);
   };
 
-  const handleFilter = () => {
-    // TODO: フィルターモーダルを表示
-    console.log("絞り込みの操作を開く準備");
+  const toggleStatusFilter = (status: InventoryStatus) => {
+    setStatusFilter((prev) => {
+      const next = new Set(prev ?? []);
+      if (next.has(status)) {
+        next.delete(status);
+      } else {
+        next.add(status);
+      }
+      return next.size > 0 ? Array.from(next) : null;
+    });
+  };
+
+  const toggleCategoryFilter = (category: InventoryCategory) => {
+    setCategoryFilter((prev) => {
+      const next = new Set(prev ?? []);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next.size > 0 ? Array.from(next) : null;
+    });
+  };
+
+  const handleWarehouseChange = (value: string) => {
+    setWarehouseFilter(value === "all" ? null : value);
+  };
+
+  const clearFilters = () => {
+    setStatusFilter(null);
+    setCategoryFilter(null);
+    setWarehouseFilter(null);
   };
 
   const handleShowStats = () => {
@@ -280,7 +401,7 @@ export function InventoryDashboard() {
 
           <button
             type="button"
-            onClick={handleFilter}
+            onClick={() => setIsFilterOpen(true)}
             className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
           >
             絞り込み
@@ -295,7 +416,111 @@ export function InventoryDashboard() {
           </button>
         </div>
 
-        <InventoryTable items={filteredInventory} visibleColumnIds={visibleColumnIds} />
+        <InventoryTable
+          items={sortedInventory}
+          visibleColumnIds={visibleColumnIds}
+          onSortChange={handleSortChange}
+          sortKey={sortKey}
+          sortOrder={sortOrder}
+        />
+
+        {isFilterOpen && (
+          <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/40 px-4 py-6 backdrop-blur-sm">
+            <div className="w-full max-w-xl overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+              <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">絞り込み条件</h2>
+                  <p className="mt-1 text-sm text-slate-500">ステータス・カテゴリー・倉庫で条件を指定できます。</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterOpen(false)}
+                  aria-label="閉じる"
+                  className="rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                    <path
+                      fillRule="evenodd"
+                      d="M4.22 4.22a.75.75 0 011.06 0L10 8.94l4.72-4.72a.75.75 0 111.06 1.06L11.06 10l4.72 4.72a.75.75 0 11-1.06 1.06L10 11.06l-4.72 4.72a.75.75 0 11-1.06-1.06L8.94 10 4.22 5.28a.75.75 0 010-1.06z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="grid gap-6 px-5 py-5 sm:grid-cols-2">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">ステータス</h3>
+                  <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-inner">
+                    {(["在庫中", "出品中", "成功済み"] as InventoryStatus[]).map((status) => (
+                      <label key={status} className="flex items-center gap-3 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={statusFilter?.includes(status) ?? false}
+                          onChange={() => toggleStatusFilter(status)}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>{status}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-800">カテゴリー</h3>
+                  <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-inner">
+                    {(["パチンコ", "パチスロ"] as InventoryCategory[]).map((category) => (
+                      <label key={category} className="flex items-center gap-3 text-sm text-slate-700">
+                        <input
+                          type="checkbox"
+                          checked={categoryFilter?.includes(category) ?? false}
+                          onChange={() => toggleCategoryFilter(category)}
+                          className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span>{category}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="sm:col-span-2">
+                  <h3 className="text-sm font-semibold text-slate-800">倉庫</h3>
+                  <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-inner">
+                    <select
+                      value={warehouseFilter ?? "all"}
+                      onChange={(event) => handleWarehouseChange(event.target.value)}
+                      className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/30"
+                    >
+                      <option value="all">すべての倉庫</option>
+                      {allWarehouses.map((warehouse) => (
+                        <option key={warehouse} value={warehouse}>
+                          {warehouse}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 border-t border-slate-200 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="rounded border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                >
+                  クリア
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsFilterOpen(false)}
+                  className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-blue-700"
+                >
+                  適用
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <InventoryColumnSelectorModal
           isOpen={isColumnSelectorOpen}

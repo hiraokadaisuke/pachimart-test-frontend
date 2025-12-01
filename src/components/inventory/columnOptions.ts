@@ -41,6 +41,21 @@ export interface InventoryColumnOption {
   defaultVisible: boolean;
 }
 
+export type InventorySortKey =
+  | "status"
+  | "category"
+  | "maker"
+  | "model"
+  | "frameColorPanel"
+  | "gameBoardNumber"
+  | "frameSerial"
+  | "mainBoardSerial"
+  | "removalDate"
+  | "warehouse"
+  | "salePrice"
+  | "saleDate"
+  | "saleDestination";
+
 export const ALL_INVENTORY_COLUMN_OPTIONS: InventoryColumnOption[] = [
   { id: "status", label: "状況（設置・倉庫・売却）", defaultVisible: true },
   { id: "category", label: "種別", defaultVisible: true },
