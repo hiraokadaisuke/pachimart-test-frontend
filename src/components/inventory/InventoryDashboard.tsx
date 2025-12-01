@@ -9,6 +9,7 @@ import type {
   InventoryItem,
   InventoryStatus,
 } from "@/types/inventory";
+import MainContainer from "@/components/layout/MainContainer";
 import { InventoryColumnSelectorModal } from "./InventoryColumnSelectorModal";
 import { InventoryDocumentsModal } from "./InventoryDocumentsModal";
 import { InventoryTable } from "./InventoryTable";
@@ -923,8 +924,8 @@ export function InventoryDashboard() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <div className="mx-auto max-w-[1400px] px-6 py-8">
-        <div className="mb-6 flex items-center justify-between">
+      <MainContainer fullWidth>
+        <div className="mb-6 flex w-full items-center justify-between gap-3">
           <h1 className="text-xl font-semibold text-slate-900">在庫管理ダッシュボード</h1>
           {showUserMenu && (
             <div className="flex items-center gap-3">
@@ -962,82 +963,86 @@ export function InventoryDashboard() {
           )}
         </div>
 
-        <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <button
-            type="button"
-            onClick={handleColumnToggle}
-            className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            項目を表示/非表示する
-          </button>
-
-          <div className="relative">
+        <div className="mb-4 flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
-              onClick={() => setIsCsvMenuOpen((prev) => !prev)}
-              className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              onClick={handleColumnToggle}
+              className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
             >
-              CSV
+              項目を表示/非表示する
             </button>
-            {isCsvMenuOpen && (
-              <div className="absolute left-0 z-20 mt-2 w-40 rounded-md border border-slate-200 bg-white shadow-lg">
-                <button
-                  type="button"
-                  className="block w-full px-4 py-2 text-left text-sm hover:bg-slate-50"
-                  onClick={handleCsvImport}
-                >
-                  CSVインポート
-                </button>
-                <button
-                  type="button"
-                  className="block w-full px-4 py-2 text-left text-sm hover:bg-slate-50"
-                  onClick={handleCsvExport}
-                >
-                  CSVエクスポート
-                </button>
-              </div>
-            )}
-          </div>
-          <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
 
-          <div className="relative ml-auto flex w-full max-w-xl items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 shadow-inner md:w-auto md:flex-1 md:max-w-[520px]">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              className="h-5 w-5 text-slate-400"
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsCsvMenuOpen((prev) => !prev)}
+                className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+              >
+                CSV
+              </button>
+              {isCsvMenuOpen && (
+                <div className="absolute left-0 z-20 mt-2 w-40 rounded-md border border-slate-200 bg-white shadow-lg">
+                  <button
+                    type="button"
+                    className="block w-full px-4 py-2 text-left text-sm hover:bg-slate-50"
+                    onClick={handleCsvImport}
+                  >
+                    CSVインポート
+                  </button>
+                  <button
+                    type="button"
+                    className="block w-full px-4 py-2 text-left text-sm hover:bg-slate-50"
+                    onClick={handleCsvExport}
+                  >
+                    CSVエクスポート
+                  </button>
+                </div>
+              )}
+            </div>
+            <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
+          </div>
+
+          <div className="flex w-full flex-1 flex-wrap items-center justify-end gap-3">
+            <div className="relative flex min-w-[260px] flex-1 items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 shadow-inner">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                className="h-5 w-5 text-slate-400"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 105.64 5.64a7.5 7.5 0 0010.01 10.01z" />
+              </svg>
+              <input
+                type="search"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="メーカー・機種名・検定番号で検索"
+                className="ml-2 w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
+              />
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen(true)}
+              className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35m0 0A7.5 7.5 0 105.64 5.64a7.5 7.5 0 0010.01 10.01z" />
-            </svg>
-            <input
-              type="search"
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="メーカー・機種名・検定番号で検索"
-              className="ml-2 w-full bg-transparent text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none"
-            />
+              絞り込み
+            </button>
+
+            <button
+              type="button"
+              onClick={handleShowStats}
+              className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            >
+              統計
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setIsFilterOpen(true)}
-            className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            絞り込み
-          </button>
-
-          <button
-            type="button"
-            onClick={handleShowStats}
-            className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            統計
-          </button>
         </div>
 
-        <div className="mb-3">
+        <div className="mb-3 w-full">
           <InventoryPagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -1059,7 +1064,7 @@ export function InventoryDashboard() {
           sortOrder={sortOrder}
         />
 
-        <div className="mt-3">
+        <div className="mt-3 w-full">
           <InventoryPagination
             currentPage={currentPage}
             totalPages={totalPages}
@@ -1193,7 +1198,7 @@ export function InventoryDashboard() {
           columns={columns}
           onChangeColumns={handleChangeColumns}
         />
-      </div>
+      </MainContainer>
     </div>
   );
 }

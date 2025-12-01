@@ -601,8 +601,9 @@ export function InventoryTable({
   };
 
   return (
-    <div className="relative max-h-[70vh] overflow-auto rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
-      <table className="min-w-[1600px] w-full border-collapse text-[11px] text-slate-800">
+    <div className="w-full overflow-x-auto">
+      <div className="relative max-h-[70vh] overflow-y-auto rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
+        <table className="min-w-[1600px] w-full table-fixed border-collapse text-[11px] text-slate-800">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={headerOrder}>
             <thead className="sticky top-0 z-10 bg-slate-100 text-left font-semibold text-slate-900">
@@ -761,6 +762,7 @@ export function InventoryTable({
       {rows.length === 0 && (
         <div className="border-t border-slate-200 px-4 py-8 text-center text-sm text-slate-500">在庫データがありません。</div>
       )}
+    </div>
     </div>
   );
 }
