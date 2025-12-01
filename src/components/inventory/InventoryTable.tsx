@@ -97,11 +97,15 @@ export function InventoryTable({
   onOpenDocuments,
 }: InventoryTableProps) {
   const sensors = useSensors(useSensor(PointerSensor));
+  const [rows, setRows] = useState<InventoryItem[]>(items);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editValues, setEditValues] = useState<InventoryItem | null>(null);
   const [headerOrder, setHeaderOrder] = useState<InventoryColumnId[]>(columns.map((column) => column.id));
 
   useEffect(() => {
+    setRows(items);
     setHeaderOrder(columns.map((column) => column.id));
-  }, [columns]);
+  }, [columns, items]);
 
   const visibleColumns = useMemo(
     () =>
@@ -128,6 +132,106 @@ export function InventoryTable({
     const newOrder = arrayMove(headerOrder, oldIndex, newIndex);
     setHeaderOrder(newOrder);
     onHeaderReorder?.(newOrder);
+  };
+
+  const handleStartEdit = (row: InventoryItem) => {
+    setEditingId(row.id);
+    setEditValues(row);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditValues(null);
+  };
+
+  const handleChange = <K extends keyof InventoryItem>(key: K, value: InventoryItem[K]) => {
+    if (!editValues) return;
+    const nextValue =
+      key === "salePrice" && typeof value === "number"
+        ? Math.max(0, value)
+        : value;
+    setEditValues({ ...editValues, [key]: nextValue });
+  };
+
+  const handleSaveEdit = () => {
+    if (!editValues) return;
+    setRows((prev) => prev.map((row) => (row.id === editValues.id ? editValues : row)));
+    setEditingId(null);
+    setEditValues(null);
+  };
+
+  const warehouseOptions = useMemo(
+    () => Array.from(new Set(rows.map((item) => item.warehouse))).map((name, index) => ({ id: index, name })),
+    [rows],
+  );
+
+  const statusOptions: { value: InventoryStatus; label: string }[] = [
+    { value: "在庫中", label: "在庫中" },
+    { value: "出品中", label: "出品中" },
+    { value: "成功済み", label: "成功済み" },
+  ];
+
+  const renderCell = (column: InventoryColumnDefinition, item: InventoryItem, isEditing: boolean) => {
+    if (!isEditing || !editValues) return column.render(item);
+
+    switch (column.id) {
+      case "status":
+        return (
+          <select
+            className="w-full rounded border border-slate-300 px-1 py-[3px] text-[11px]"
+            value={editValues.status}
+            onChange={(e) => handleChange("status", e.target.value as InventoryStatus)}
+          >
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        );
+      case "maker":
+        return (
+          <input
+            className="w-full rounded border border-slate-300 px-1 py-[3px] text-[11px]"
+            value={editValues.manufacturer}
+            onChange={(e) => handleChange("manufacturer", e.target.value)}
+          />
+        );
+      case "model":
+        return (
+          <input
+            className="w-full rounded border border-slate-300 px-1 py-[3px] text-[11px]"
+            value={editValues.modelName}
+            onChange={(e) => handleChange("modelName", e.target.value)}
+          />
+        );
+      case "warehouse":
+        return (
+          <select
+            className="w-full rounded border border-slate-300 px-1 py-[3px] text-[11px]"
+            value={editValues.warehouse}
+            onChange={(e) => handleChange("warehouse", e.target.value)}
+          >
+            {warehouseOptions.map((option) => (
+              <option key={`${option.id}-${option.name}`} value={option.name}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        );
+      case "salePrice":
+        return (
+          <input
+            type="number"
+            className="w-full rounded border border-slate-300 px-1 py-[3px] text-[11px] text-right"
+            value={editValues.salePrice ?? ""}
+            onChange={(e) => handleChange("salePrice", Number(e.target.value) || 0)}
+            min={0}
+          />
+        );
+      default:
+        return column.render(editValues);
+    }
   };
 
   return (
@@ -170,65 +274,95 @@ export function InventoryTable({
           </SortableContext>
         </DndContext>
         <tbody>
-          {items.map((item) => (
-            <tr key={item.id} className="odd:bg-white even:bg-slate-50 border-t border-slate-200 hover:bg-blue-50/30">
-              {orderedRenderers.map((column) => {
-                const columnSetting = visibleColumns.find((c) => c.id === column.id);
-                const widthStyle: React.CSSProperties = columnSetting?.width ? { width: columnSetting.width } : {};
+          {rows.map((item) => {
+            const isEditing = item.id === editingId;
 
-                return (
-                  <td
-                    key={`${item.id}-${column.id}`}
-                    style={widthStyle}
-                    className="whitespace-nowrap px-2 py-1 text-[11px] text-slate-800"
-                  >
-                    {column.render(item)}
-                  </td>
-                );
-              })}
-              <td className="w-[180px] whitespace-nowrap px-2 py-1 text-[11px]">
-                <div className="flex items-center justify-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      /* TODO: 出品処理を実装 */
-                    }}
-                    className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100"
-                  >
-                    出品
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      /* TODO: 取り下げ処理を実装 */
-                    }}
-                    className="rounded border border-orange-200 bg-orange-50 px-2 py-1 text-[11px] font-semibold text-orange-700 transition hover:bg-orange-100"
-                  >
-                    取り下げ
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      /* TODO: 詳細表示処理を実装 */
-                    }}
-                    className="rounded border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
-                  >
-                    詳細
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded border border-slate-300 px-2 py-1 text-[11px] transition hover:bg-slate-100"
-                    onClick={() => onOpenDocuments?.(item.id)}
-                  >
-                    書類
-                  </button>
-                </div>
-              </td>
-            </tr>
-          ))}
+            return (
+              <tr key={item.id} className="odd:bg-white even:bg-slate-50 border-t border-slate-200 hover:bg-blue-50/30">
+                {orderedRenderers.map((column) => {
+                  const columnSetting = visibleColumns.find((c) => c.id === column.id);
+                  const widthStyle: React.CSSProperties = columnSetting?.width ? { width: columnSetting.width } : {};
+
+                  return (
+                    <td
+                      key={`${item.id}-${column.id}`}
+                      style={widthStyle}
+                      className="whitespace-nowrap px-2 py-1 text-[11px] text-slate-800"
+                    >
+                      {renderCell(column, item, isEditing)}
+                    </td>
+                  );
+                })}
+                <td className="w-[180px] whitespace-nowrap px-2 py-1 text-[11px]">
+                  {isEditing ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        className="rounded bg-blue-600 px-2 py-1 text-[11px] font-semibold text-white transition hover:bg-blue-700"
+                        onClick={handleSaveEdit}
+                      >
+                        保存
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                        onClick={handleCancelEdit}
+                      >
+                        キャンセル
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          /* TODO: 出品処理を実装 */
+                        }}
+                        className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100"
+                      >
+                        出品
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          /* TODO: 取り下げ処理を実装 */
+                        }}
+                        className="rounded border border-orange-200 bg-orange-50 px-2 py-1 text-[11px] font-semibold text-orange-700 transition hover:bg-orange-100"
+                      >
+                        取り下げ
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          /* TODO: 詳細表示処理を実装 */
+                        }}
+                        className="rounded border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                      >
+                        詳細
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-slate-300 px-2 py-1 text-[11px] transition hover:bg-slate-100"
+                        onClick={() => onOpenDocuments?.(item.id)}
+                      >
+                        書類
+                      </button>
+                      <button
+                        type="button"
+                        className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                        onClick={() => handleStartEdit(item)}
+                      >
+                        編集
+                      </button>
+                    </div>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
-      {items.length === 0 && (
+      {rows.length === 0 && (
         <div className="border-t border-slate-200 px-4 py-8 text-center text-sm text-slate-500">在庫データがありません。</div>
       )}
     </div>
