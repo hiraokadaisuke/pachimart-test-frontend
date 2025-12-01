@@ -15,7 +15,7 @@ const SETTINGS_TABS: SubTab[] = [
 ];
 
 export function SettingsSubTabs() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
 
   const tabs = SETTINGS_TABS.map((tab) => ({
     ...tab,
