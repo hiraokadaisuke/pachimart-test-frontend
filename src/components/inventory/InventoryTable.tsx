@@ -1,6 +1,6 @@
 import type { InventoryItem, InventoryStatus } from "@/types/inventory";
 
-import { ALL_INVENTORY_COLUMN_OPTIONS, type InventoryColumnId } from "./columnOptions";
+import { ALL_INVENTORY_COLUMN_OPTIONS, type InventoryColumnId, type InventorySortKey } from "./columnOptions";
 
 const statusStyles: Record<InventoryStatus, string> = {
   在庫中: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
@@ -16,6 +16,9 @@ interface InventoryColumnDefinition {
 interface InventoryTableProps {
   items: InventoryItem[];
   visibleColumnIds: InventoryColumnId[];
+  onSortChange?: (key: InventorySortKey) => void;
+  sortKey?: InventorySortKey | null;
+  sortOrder?: "asc" | "desc";
 }
 
 const columnLabels = ALL_INVENTORY_COLUMN_OPTIONS.reduce<Record<InventoryColumnId, string>>((acc, option) => {
@@ -76,7 +79,23 @@ const columnDefinitions: InventoryColumnDefinition[] = [
   { id: "pachimartStatus", render: (item) => item.pachimartStatus ?? "-" },
 ];
 
-export function InventoryTable({ items, visibleColumnIds }: InventoryTableProps) {
+const columnSortKeyMap: Partial<Record<InventoryColumnId, InventorySortKey>> = {
+  status: "status",
+  category: "category",
+  maker: "maker",
+  model: "model",
+  frameColorPanel: "frameColorPanel",
+  gameBoardNumber: "gameBoardNumber",
+  frameSerial: "frameSerial",
+  mainBoardSerial: "mainBoardSerial",
+  removalDate: "removalDate",
+  warehouse: "warehouse",
+  saleDate: "saleDate",
+  saleDestination: "saleDestination",
+  pachimartSalePrice: "salePrice",
+};
+
+export function InventoryTable({ items, visibleColumnIds, onSortChange, sortKey, sortOrder }: InventoryTableProps) {
   const orderedVisibleColumns = visibleColumnIds
     .map((id) => columnDefinitions.find((column) => column.id === id))
     .filter((column): column is InventoryColumnDefinition => Boolean(column));
@@ -86,23 +105,42 @@ export function InventoryTable({ items, visibleColumnIds }: InventoryTableProps)
       <table className="min-w-[1200px] w-full border-collapse text-xs text-slate-800">
         <thead className="bg-slate-100 text-left font-semibold text-slate-900">
           <tr>
-            {orderedVisibleColumns.map((column) => (
-              <th key={column.id} className="whitespace-nowrap px-4 py-3 text-xs font-semibold">
-                {columnLabels[column.id]}
-              </th>
-            ))}
-            <th className="whitespace-nowrap px-4 py-3 text-center text-xs font-semibold">操作</th>
+            {orderedVisibleColumns.map((column) => {
+              const sortableKey = columnSortKeyMap[column.id];
+              const isActive = sortableKey && sortKey === sortableKey;
+              const isSortable = Boolean(sortableKey && onSortChange);
+
+              return (
+                <th key={column.id} className="whitespace-nowrap px-3 py-2 text-[11px] font-semibold">
+                  {isSortable ? (
+                    <button
+                      type="button"
+                      onClick={() => sortableKey && onSortChange?.(sortableKey)}
+                      className="inline-flex items-center gap-1 text-left text-slate-800"
+                    >
+                      <span>{columnLabels[column.id]}</span>
+                      {isActive && (
+                        <span className="text-[10px] text-slate-500">{sortOrder === "asc" ? "▲" : "▼"}</span>
+                      )}
+                    </button>
+                  ) : (
+                    columnLabels[column.id]
+                  )}
+                </th>
+              );
+            })}
+            <th className="whitespace-nowrap px-3 py-2 text-center text-[11px] font-semibold">操作</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
             <tr key={item.id} className="border-t border-slate-200 hover:bg-slate-50">
               {orderedVisibleColumns.map((column) => (
-                <td key={`${item.id}-${column.id}`} className="whitespace-nowrap px-4 py-3 text-xs">
+                <td key={`${item.id}-${column.id}`} className="whitespace-nowrap px-3 py-2 text-xs">
                   {column.render(item)}
                 </td>
               ))}
-              <td className="whitespace-nowrap px-4 py-3 text-xs">
+              <td className="whitespace-nowrap px-3 py-2 text-xs">
                 <div className="flex items-center justify-center gap-2">
                   <button
                     type="button"
