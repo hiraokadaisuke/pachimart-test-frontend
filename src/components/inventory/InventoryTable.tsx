@@ -26,6 +26,23 @@ const columnLabels = ALL_INVENTORY_COLUMN_OPTIONS.reduce<Record<InventoryColumnI
   return acc;
 }, {} as Record<InventoryColumnId, string>);
 
+const columnWidthClasses: Partial<Record<InventoryColumnId, string>> = {
+  status: "w-[90px]",
+  category: "w-[80px]",
+  maker: "w-[100px]",
+  model: "w-[200px]",
+  frameColorPanel: "w-[120px]",
+  gameBoardNumber: "w-[120px]",
+  frameSerial: "w-[120px]",
+  mainBoardSerial: "w-[120px]",
+  removalDate: "w-[110px]",
+  warehouse: "w-[140px]",
+  pachimartSalePrice: "w-[110px]",
+  saleDate: "w-[110px]",
+  saleDestination: "w-[140px]",
+  note: "w-[160px]",
+};
+
 const formatNumber = (value?: number | null) => {
   if (value === undefined || value === null) return "-";
   return `${value.toLocaleString()} 円`;
@@ -101,17 +118,21 @@ export function InventoryTable({ items, visibleColumnIds, onSortChange, sortKey,
     .filter((column): column is InventoryColumnDefinition => Boolean(column));
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
-      <table className="min-w-[1200px] w-full border-collapse text-xs text-slate-800">
-        <thead className="bg-slate-100 text-left font-semibold text-slate-900">
+    <div className="relative max-h-[70vh] overflow-auto rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
+      <table className="min-w-[1200px] w-full border-collapse text-[11px] text-slate-800">
+        <thead className="sticky top-0 z-10 bg-slate-100 text-left font-semibold text-slate-900">
           <tr>
             {orderedVisibleColumns.map((column) => {
               const sortableKey = columnSortKeyMap[column.id];
               const isActive = sortableKey && sortKey === sortableKey;
               const isSortable = Boolean(sortableKey && onSortChange);
+              const widthClass = columnWidthClasses[column.id] ?? "";
 
               return (
-                <th key={column.id} className="whitespace-nowrap px-3 py-2 text-[11px] font-semibold">
+                <th
+                  key={column.id}
+                  className={`${widthClass} whitespace-nowrap px-2 py-1.5 text-[11px] font-semibold text-slate-600`}
+                >
                   {isSortable ? (
                     <button
                       type="button"
@@ -129,25 +150,28 @@ export function InventoryTable({ items, visibleColumnIds, onSortChange, sortKey,
                 </th>
               );
             })}
-            <th className="whitespace-nowrap px-3 py-2 text-center text-[11px] font-semibold">操作</th>
+            <th className="w-[140px] whitespace-nowrap px-2 py-1.5 text-center text-[11px] font-semibold text-slate-600">操作</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={item.id} className="border-t border-slate-200 hover:bg-slate-50">
+            <tr key={item.id} className="odd:bg-white even:bg-slate-50 border-t border-slate-200 hover:bg-blue-50/30">
               {orderedVisibleColumns.map((column) => (
-                <td key={`${item.id}-${column.id}`} className="whitespace-nowrap px-3 py-2 text-xs">
+                <td
+                  key={`${item.id}-${column.id}`}
+                  className={`${columnWidthClasses[column.id] ?? ""} whitespace-nowrap px-2 py-1 text-[11px] text-slate-800`}
+                >
                   {column.render(item)}
                 </td>
               ))}
-              <td className="whitespace-nowrap px-3 py-2 text-xs">
+              <td className="w-[140px] whitespace-nowrap px-2 py-1 text-[11px]">
                 <div className="flex items-center justify-center gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       /* TODO: 出品処理を実装 */
                     }}
-                    className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                    className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100"
                   >
                     出品
                   </button>
@@ -156,7 +180,7 @@ export function InventoryTable({ items, visibleColumnIds, onSortChange, sortKey,
                     onClick={() => {
                       /* TODO: 取り下げ処理を実装 */
                     }}
-                    className="rounded border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700 transition hover:bg-orange-100"
+                    className="rounded border border-orange-200 bg-orange-50 px-2 py-1 text-[11px] font-semibold text-orange-700 transition hover:bg-orange-100"
                   >
                     取り下げ
                   </button>
@@ -165,7 +189,7 @@ export function InventoryTable({ items, visibleColumnIds, onSortChange, sortKey,
                     onClick={() => {
                       /* TODO: 詳細表示処理を実装 */
                     }}
-                    className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                    className="rounded border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
                   >
                     詳細
                   </button>
