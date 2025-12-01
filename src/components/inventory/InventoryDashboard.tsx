@@ -21,6 +21,11 @@ import {
 } from "./columnSettings";
 
 const PAGE_SIZE = 20;
+const COLUMN_PREFS_KEY = "inventory_column_prefs_v1";
+
+type ColumnPrefs = {
+  visibleColumns: InventoryColumnId[];
+};
 
 type PaginationProps = {
   currentPage: number;
@@ -588,6 +593,27 @@ export function InventoryDashboard() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const showUserMenu = false;
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(COLUMN_PREFS_KEY);
+    if (!raw) return;
+
+    try {
+      const parsed = JSON.parse(raw) as ColumnPrefs;
+      if (parsed.visibleColumns && parsed.visibleColumns.length > 0) {
+        setColumns((prev) => {
+          const visibleSet = new Set<InventoryColumnId>(parsed.visibleColumns);
+          return prev.map((column) => ({
+            ...column,
+            visible: visibleSet.has(column.id),
+          }));
+        });
+      }
+    } catch {
+      // ignore invalid preferences and keep defaults
+    }
+  }, []);
+
   const allWarehouses = useMemo(
     () => Array.from(new Set(inventory.map((item) => item.warehouse).filter(Boolean))),
     [inventory],
@@ -746,8 +772,23 @@ export function InventoryDashboard() {
     setIsColumnSelectorOpen(false);
   };
 
+  const saveColumnPrefs = (nextVisibleColumns: InventoryColumnId[]) => {
+    if (typeof window === "undefined") return;
+    const prefs: ColumnPrefs = { visibleColumns: nextVisibleColumns };
+    window.localStorage.setItem(COLUMN_PREFS_KEY, JSON.stringify(prefs));
+  };
+
   const handleChangeColumns = (next: InventoryColumnSetting[]) => {
     setColumns(next);
+  };
+
+  const handleSaveColumnPrefs = () => {
+    const nextVisibleColumns = columns
+      .filter((column) => column.visible)
+      .map((column) => column.id);
+
+    saveColumnPrefs(nextVisibleColumns);
+    handleCloseColumnSelector();
   };
 
   const handleImportClick = () => {
@@ -965,14 +1006,6 @@ export function InventoryDashboard() {
 
         <div className="mb-4 flex w-full flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={handleColumnToggle}
-              className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-            >
-              項目を表示/非表示する
-            </button>
-
             <div className="relative">
               <button
                 type="button"
@@ -1052,6 +1085,17 @@ export function InventoryDashboard() {
             onNext={goToNextPage}
             onPageClick={goToPage}
           />
+        </div>
+
+        <div className="mb-1 flex justify-end">
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+            onClick={handleColumnToggle}
+          >
+            <span className="material-icons-outlined text-sm">view_column</span>
+            <span>表示項目</span>
+          </button>
         </div>
 
         <InventoryTable
@@ -1197,6 +1241,7 @@ export function InventoryDashboard() {
           onClose={handleCloseColumnSelector}
           columns={columns}
           onChangeColumns={handleChangeColumns}
+          onSave={handleSaveColumnPrefs}
         />
       </MainContainer>
     </div>
