@@ -183,6 +183,7 @@ export function InventoryTable({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValues, setEditValues] = useState<InventoryItem | null>(null);
   const [headerOrder, setHeaderOrder] = useState<InventoryColumnId[]>(columns.map((column) => column.id));
+  const [openMenuRowId, setOpenMenuRowId] = useState<number | null>(null);
 
   useEffect(() => {
     setRows(items);
@@ -217,6 +218,7 @@ export function InventoryTable({
   };
 
   const handleStartEdit = (row: InventoryItem) => {
+    setOpenMenuRowId(null);
     setEditingId(row.id);
     setEditValues(row);
   };
@@ -241,6 +243,42 @@ export function InventoryTable({
     setEditingId(null);
     setEditValues(null);
   };
+
+  const handleExhibit = (row: InventoryItem) => {
+    // TODO: 出品処理を実装
+  };
+
+  const handleWithdraw = (row: InventoryItem) => {
+    // TODO: 取り下げ処理を実装
+  };
+
+  const handleShowDetail = (row: InventoryItem) => {
+    // TODO: 詳細表示処理を実装
+  };
+
+  const handleOpenDocuments = (row: InventoryItem) => {
+    onOpenDocuments?.(row.id);
+  };
+
+  const toggleMenu = (rowId: number) => {
+    setOpenMenuRowId((prev) => (prev === rowId ? null : rowId));
+  };
+
+  const closeMenu = () => setOpenMenuRowId(null);
+
+  useEffect(() => {
+    if (openMenuRowId === null) return undefined;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (!target.closest("[data-inventory-action-menu]")) {
+        closeMenu();
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, [openMenuRowId]);
 
   const warehouseOptions = useMemo(
     () => Array.from(new Set(rows.map((item) => item.warehouse))).map((name, index) => ({ id: index, name })),
@@ -596,7 +634,7 @@ export function InventoryTable({
                     </SortableHeaderCell>
                   );
                 })}
-                <th className="w-[200px] whitespace-nowrap px-2 py-1.5 text-center text-[11px] font-semibold text-slate-600">操作</th>
+                <th className="w-[140px] whitespace-nowrap px-3 py-1.5 text-right text-[11px] font-semibold text-slate-600">操作</th>
               </tr>
             </thead>
           </SortableContext>
@@ -621,7 +659,10 @@ export function InventoryTable({
                     </td>
                   );
                 })}
-                <td className="w-[200px] whitespace-nowrap px-2 py-1 text-[11px] align-top">
+                <td
+                  className="relative w-[140px] whitespace-nowrap px-3 py-2 text-[11px] align-top text-right"
+                  data-inventory-action-menu
+                >
                   {isEditing ? (
                     <div className="flex items-center justify-center gap-2">
                       <button
@@ -640,49 +681,76 @@ export function InventoryTable({
                       </button>
                     </div>
                   ) : (
-                    <div className="flex flex-wrap items-center justify-center gap-2">
+                    <>
                       <button
                         type="button"
-                        onClick={() => {
-                          /* TODO: 出品処理を実装 */
-                        }}
-                        className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 transition hover:bg-blue-100"
+                        className="rounded border border-slate-300 bg-white px-3 py-1 text-xs text-slate-700 hover:bg-slate-50"
+                        onClick={() => toggleMenu(item.id)}
                       >
-                        出品
+                        操作
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          /* TODO: 取り下げ処理を実装 */
-                        }}
-                        className="rounded border border-orange-200 bg-orange-50 px-2 py-1 text-[11px] font-semibold text-orange-700 transition hover:bg-orange-100"
-                      >
-                        取り下げ
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          /* TODO: 詳細表示処理を実装 */
-                        }}
-                        className="rounded border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
-                      >
-                        詳細
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded border border-slate-300 px-2 py-1 text-[11px] transition hover:bg-slate-100"
-                        onClick={() => onOpenDocuments?.(item.id)}
-                      >
-                        書類
-                      </button>
-                      <button
-                        type="button"
-                        className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
-                        onClick={() => handleStartEdit(item)}
-                      >
-                        編集
-                      </button>
-                    </div>
+
+                      {openMenuRowId === item.id && (
+                        <div className="absolute right-0 z-20 mt-1 w-32 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg">
+                          {item.status === "出品中" ? (
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                              onClick={() => {
+                                closeMenu();
+                                handleWithdraw(item);
+                              }}
+                            >
+                              取り下げ
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                              onClick={() => {
+                                closeMenu();
+                                handleExhibit(item);
+                              }}
+                            >
+                              出品
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                            onClick={() => {
+                              closeMenu();
+                              handleShowDetail(item);
+                            }}
+                          >
+                            詳細を見る
+                          </button>
+
+                          <button
+                            type="button"
+                            className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                            onClick={() => {
+                              closeMenu();
+                              handleOpenDocuments(item);
+                            }}
+                          >
+                            書類を開く
+                          </button>
+
+                          <button
+                            type="button"
+                            className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                            onClick={() => {
+                              closeMenu();
+                              handleStartEdit(item);
+                            }}
+                          >
+                            編集する
+                          </button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </td>
               </tr>
