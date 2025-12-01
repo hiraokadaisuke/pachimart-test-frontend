@@ -87,12 +87,8 @@ export default function Header() {
             >
               お問い合わせ
             </Link>
-            <Link
-              href="/mypage/exhibits"
-              className="flex h-9 items-center gap-1 rounded bg-blue-700 px-4 text-sm font-semibold text-white"
-            >
-              <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-blue-700">👤</span>
-              <span>マイページ</span>
+            <Link href="/inventory" className="text-sm font-semibold text-slate-600 transition hover:text-blue-700">
+              在庫管理 →
             </Link>
           </div>
         </div>
