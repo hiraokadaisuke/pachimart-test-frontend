@@ -32,7 +32,7 @@ const columnDefinitions: InventoryColumnDefinition[] = [
   {
     id: "status",
     render: (item) => (
-      <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusStyles[item.status]}`}>
+      <span className={`inline-flex items-center rounded-full px-2 py-[2px] text-[11px] font-semibold ${statusStyles[item.status]}`}>
         {item.status}
       </span>
     ),
@@ -82,34 +82,34 @@ export function InventoryTable({ items, visibleColumnIds }: InventoryTableProps)
     .filter((column): column is InventoryColumnDefinition => Boolean(column));
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-[1200px] w-full border-collapse text-sm text-slate-800">
+    <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
+      <table className="min-w-[1200px] w-full border-collapse text-xs text-slate-800">
         <thead className="bg-slate-100 text-left font-semibold text-slate-900">
           <tr>
             {orderedVisibleColumns.map((column) => (
-              <th key={column.id} className="px-4 py-3">
+              <th key={column.id} className="whitespace-nowrap px-4 py-3 text-xs font-semibold">
                 {columnLabels[column.id]}
               </th>
             ))}
-            <th className="px-4 py-3 text-center">操作</th>
+            <th className="whitespace-nowrap px-4 py-3 text-center text-xs font-semibold">操作</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
             <tr key={item.id} className="border-t border-slate-200 hover:bg-slate-50">
               {orderedVisibleColumns.map((column) => (
-                <td key={`${item.id}-${column.id}`} className="px-4 py-3">
+                <td key={`${item.id}-${column.id}`} className="whitespace-nowrap px-4 py-3 text-xs">
                   {column.render(item)}
                 </td>
               ))}
-              <td className="px-4 py-3">
+              <td className="whitespace-nowrap px-4 py-3 text-xs">
                 <div className="flex items-center justify-center gap-2">
                   <button
                     type="button"
                     onClick={() => {
                       /* TODO: 出品処理を実装 */
                     }}
-                    className="rounded border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
+                    className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
                   >
                     出品
                   </button>
@@ -118,7 +118,7 @@ export function InventoryTable({ items, visibleColumnIds }: InventoryTableProps)
                     onClick={() => {
                       /* TODO: 取り下げ処理を実装 */
                     }}
-                    className="rounded border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-semibold text-orange-700 transition hover:bg-orange-100"
+                    className="rounded border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-semibold text-orange-700 transition hover:bg-orange-100"
                   >
                     取り下げ
                   </button>
@@ -127,7 +127,7 @@ export function InventoryTable({ items, visibleColumnIds }: InventoryTableProps)
                     onClick={() => {
                       /* TODO: 詳細表示処理を実装 */
                     }}
-                    className="rounded border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                    className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                   >
                     詳細
                   </button>
