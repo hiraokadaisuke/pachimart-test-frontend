@@ -623,12 +623,12 @@ export function InventoryTable({
   };
 
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full overflow-x-auto relative">
       <div className="relative max-h-[70vh] overflow-y-auto rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
         <table className="min-w-[1600px] w-full table-fixed border-collapse text-[11px] text-slate-800">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={headerOrder}>
-            <thead className="sticky top-0 z-10 bg-slate-100 text-center font-semibold text-slate-900">
+            <thead className="sticky top-0 z-10 bg-slate-100 text-left font-semibold text-slate-900">
               <tr>
                 {visibleColumns.map((column) => {
                   const sortableKey = columnSortKeyMap[column.id];
@@ -638,12 +638,12 @@ export function InventoryTable({
 
                   return (
                     <SortableHeaderCell key={column.id} column={column}>
-                      <div style={widthStyle} className="flex w-full items-center justify-center gap-1">
+                      <div style={widthStyle} className="flex w-full items-center justify-start gap-1">
                         {isSortable ? (
                           <button
                             type="button"
                             onClick={() => sortableKey && onSortChange?.(sortableKey)}
-                            className="inline-flex w-full items-center justify-center gap-1 text-slate-800"
+                            className="inline-flex w-full items-center justify-start gap-1 text-slate-800"
                           >
                             <span>{column.label}</span>
                             {isActive && (
@@ -651,13 +651,17 @@ export function InventoryTable({
                             )}
                           </button>
                         ) : (
-                          <span className="inline-flex w-full justify-center">{column.label}</span>
+                          <span className="inline-flex w-full justify-start">{column.label}</span>
                         )}
                       </div>
                     </SortableHeaderCell>
                   );
                 })}
-                <th className="w-[140px] whitespace-nowrap px-3 py-1.5 text-center text-[11px] font-semibold text-slate-600">操作</th>
+                <th
+                  className="sticky right-0 z-20 w-[140px] whitespace-nowrap bg-white px-3 py-1.5 text-left text-[11px] font-semibold text-slate-600 shadow-inner"
+                >
+                  操作
+                </th>
               </tr>
             </thead>
           </SortableContext>
@@ -683,7 +687,7 @@ export function InventoryTable({
                   );
                 })}
                 <td
-                  className="relative w-[140px] whitespace-nowrap px-3 py-2 text-[11px] align-top text-right"
+                  className="sticky right-0 z-10 w-[140px] whitespace-nowrap bg-white px-3 py-2 text-[11px] align-top text-right shadow-inner relative"
                   data-inventory-action-menu
                 >
                   {isEditing ? (
@@ -809,7 +813,7 @@ function SortableHeaderCell({
     <th
       ref={setNodeRef}
       style={style}
-      className="px-2 py-1.5 text-center text-[11px] font-semibold text-slate-600 whitespace-nowrap bg-slate-100"
+      className="px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap bg-slate-100"
       {...attributes}
       {...listeners}
     >
