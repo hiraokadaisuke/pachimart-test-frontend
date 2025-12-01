@@ -50,8 +50,10 @@ function InventoryPagination({
   }
 
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-700 shadow-sm">
-      <div>{totalCount > 0 ? `${start} - ${end} / ${totalCount}件` : "0 件"}</div>
+    <div className="inline-flex items-center justify-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-700 shadow-sm">
+      <div className="text-xs text-slate-600">
+        {totalCount > 0 ? `${start} - ${end} / ${totalCount}件` : "0 件"}
+      </div>
       <div className="flex items-center gap-1">
         <button
           type="button"
@@ -521,7 +523,9 @@ export function InventoryDashboard() {
   const [columns, setColumns] = useState<InventoryColumnSetting[]>(DEFAULT_INVENTORY_COLUMNS);
   const [documentsByItem, setDocumentsByItem] = useState<Record<number, InventoryDocumentMeta[]>>({});
   const [documentsModalItemId, setDocumentsModalItemId] = useState<number | null>(null);
+  const [isCsvMenuOpen, setIsCsvMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const showUserMenu = false;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -705,6 +709,16 @@ export function InventoryDashboard() {
     fileInputRef.current?.click();
   };
 
+  const handleCsvImport = () => {
+    setIsCsvMenuOpen(false);
+    handleImportClick();
+  };
+
+  const handleCsvExport = () => {
+    setIsCsvMenuOpen(false);
+    handleExportCsv();
+  };
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -862,38 +876,40 @@ export function InventoryDashboard() {
       <div className="mx-auto max-w-[1400px] px-6 py-8">
         <div className="mb-6 flex items-center justify-between">
           <h1 className="text-xl font-semibold text-slate-900">在庫管理ダッシュボード</h1>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100"
-              aria-label="通知"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                className="h-5 w-5"
+          {showUserMenu && (
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100"
+                aria-label="通知"
               >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M14.25 18.75a2.25 2.25 0 01-4.5 0m9-1.5H5.25a.75.75 0 01-.75-.75v-5.25a7.5 7.5 0 0115 0v5.25a.75.75 0 01-.75.75z"
-                />
-              </svg>
-            </button>
-            <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm">
-              <span>管理者</span>
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-slate-500">
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.25 4.25a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="h-5 w-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M14.25 18.75a2.25 2.25 0 01-4.5 0m9-1.5H5.25a.75.75 0 01-.75-.75v-5.25a7.5 7.5 0 0115 0v5.25a.75.75 0 01-.75.75z"
+                  />
+                </svg>
+              </button>
+              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm">
+                <span>管理者</span>
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-slate-500">
+                  <path
+                    fillRule="evenodd"
+                    d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.25 4.25a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
@@ -905,22 +921,34 @@ export function InventoryDashboard() {
             項目を表示/非表示する
           </button>
 
-          <button
-            type="button"
-            onClick={handleImportClick}
-            className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            CSVインポート
-          </button>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsCsvMenuOpen((prev) => !prev)}
+              className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              CSV
+            </button>
+            {isCsvMenuOpen && (
+              <div className="absolute left-0 z-20 mt-2 w-40 rounded-md border border-slate-200 bg-white shadow-lg">
+                <button
+                  type="button"
+                  className="block w-full px-4 py-2 text-left text-sm hover:bg-slate-50"
+                  onClick={handleCsvImport}
+                >
+                  CSVインポート
+                </button>
+                <button
+                  type="button"
+                  className="block w-full px-4 py-2 text-left text-sm hover:bg-slate-50"
+                  onClick={handleCsvExport}
+                >
+                  CSVエクスポート
+                </button>
+              </div>
+            )}
+          </div>
           <input ref={fileInputRef} type="file" accept=".csv" className="hidden" onChange={handleFileChange} />
-
-          <button
-            type="button"
-            onClick={handleExportCsv}
-            className="rounded border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
-          >
-            CSVエクスポート
-          </button>
 
           <div className="relative ml-auto flex w-full max-w-xl items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 shadow-inner md:w-auto md:flex-1 md:max-w-[520px]">
             <svg
