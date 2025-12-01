@@ -1,5 +1,5 @@
 export type InventoryStatus = "設置中" | "倉庫" | "出品中" | "売却済" | "廃棄";
-export type InventoryCategory = "パチンコ" | "パチスロ";
+export type InventoryCategory = "P本体" | "S本体" | "P枠" | "Pセル";
 
 export interface InventoryItem {
   id: number;

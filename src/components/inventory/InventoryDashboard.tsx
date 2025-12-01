@@ -118,7 +118,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 1,
     status: "在庫中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "三洋",
     modelName: "大海物語5",
     colorPanel: "ブルーパネル",
@@ -132,7 +132,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 2,
     status: "出品中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "ユニバーサル",
     modelName: "バジリスク絆3",
     colorPanel: "レッドパネル",
@@ -147,7 +147,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 3,
     status: "成功済み",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "京楽",
     modelName: "冬のソナタ FOREVER",
     colorPanel: "ホワイトパネル",
@@ -163,7 +163,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 4,
     status: "在庫中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "山佐",
     modelName: "スマスロ モンキーターンV",
     colorPanel: "ブラックパネル",
@@ -176,7 +176,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 5,
     status: "出品中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "SANKYO",
     modelName: "フィーバー 機動戦士ガンダムSEED",
     colorPanel: "ブラック×ネイビー",
@@ -189,7 +189,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 6,
     status: "成功済み",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "サミー",
     modelName: "スマスロ 北斗の拳",
     colorPanel: "ブルーブラック",
@@ -205,7 +205,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 7,
     status: "在庫中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "平和",
     modelName: "ルパン三世 THE FIRST",
     colorPanel: "ゴールドパネル",
@@ -218,7 +218,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 8,
     status: "出品中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "北電子",
     modelName: "ジャグラーEX",
     colorPanel: "クラシック",
@@ -231,7 +231,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 9,
     status: "在庫中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "藤商事",
     modelName: "リング 呪いの7日間2",
     colorPanel: "ブラックレッド",
@@ -244,7 +244,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 10,
     status: "成功済み",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "メーシー",
     modelName: "バイオハザードRE:2",
     colorPanel: "グレーパネル",
@@ -260,7 +260,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 11,
     status: "出品中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "ビスティ",
     modelName: "新世紀エヴァンゲリオン 未来への咆哮",
     colorPanel: "エメラルドパネル",
@@ -273,7 +273,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 12,
     status: "在庫中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "ディライト",
     modelName: "L主役は銭形4",
     colorPanel: "レッド",
@@ -286,7 +286,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 13,
     status: "成功済み",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "ニューギン",
     modelName: "P真・牙狼2",
     colorPanel: "ゴールドブラック",
@@ -302,7 +302,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 14,
     status: "出品中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "大都技研",
     modelName: "L吉宗RISING",
     colorPanel: "ブラック×金",
@@ -315,7 +315,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 15,
     status: "在庫中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "西陣",
     modelName: "CR花満開天ノ舞",
     colorPanel: "ピンクパネル",
@@ -328,7 +328,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 16,
     status: "在庫中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "オリンピア",
     modelName: "マイジャグラーV",
     colorPanel: "ホワイト",
@@ -341,7 +341,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 17,
     status: "成功済み",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "高尾",
     modelName: "P弾球黙示録カイジ沼4",
     colorPanel: "ダークグリーン",
@@ -357,7 +357,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 18,
     status: "出品中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "サンスリー",
     modelName: "S海物語IN JAPAN",
     colorPanel: "ブルーパール",
@@ -370,7 +370,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 19,
     status: "在庫中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "京楽",
     modelName: "ぱちんこ AKB48 桜LIGHT",
     colorPanel: "ピンクブラック",
@@ -383,7 +383,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 20,
     status: "成功済み",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "KPE",
     modelName: "マジカルハロウィン8",
     colorPanel: "オレンジブラック",
@@ -399,7 +399,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 21,
     status: "出品中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "SANKYO",
     modelName: "PF炎炎ノ消防隊",
     colorPanel: "ネイビーパネル",
@@ -412,7 +412,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 22,
     status: "在庫中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "SANYO",
     modelName: "Lラブ嬢3",
     colorPanel: "レッドゴールド",
@@ -425,7 +425,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 23,
     status: "成功済み",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "OK!!",
     modelName: "ぱちんこ GANTZ覚醒",
     colorPanel: "ブラックメタリック",
@@ -441,7 +441,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 24,
     status: "出品中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "オーイズミ",
     modelName: "ひぐらしのなく頃に 祭2",
     colorPanel: "ホワイトブルー",
@@ -454,7 +454,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 25,
     status: "在庫中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "サンセイ",
     modelName: "Pゴッドイーター究極一閃",
     colorPanel: "ブラックゴールド",
@@ -467,7 +467,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 26,
     status: "成功済み",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "NET",
     modelName: "スナイパイ71",
     colorPanel: "ホワイトグリーン",
@@ -483,7 +483,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 27,
     status: "出品中",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "マルホン",
     modelName: "P天龍∞",
     colorPanel: "グリーンパネル",
@@ -496,7 +496,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 28,
     status: "在庫中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "パイオニア",
     modelName: "沖ドキ!GOLD",
     colorPanel: "ゴールド",
@@ -509,7 +509,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 29,
     status: "成功済み",
-    category: "パチンコ",
+    category: "P本体",
     manufacturer: "豊丸",
     modelName: "P弾球黙示録カイジ沼5",
     colorPanel: "ネイビーシルバー",
@@ -525,7 +525,7 @@ const rawInventory: RawInventoryItem[] = [
   {
     id: 30,
     status: "出品中",
-    category: "パチスロ",
+    category: "S本体",
     manufacturer: "サミー",
     modelName: "この素晴らしい世界に祝福を!",
     colorPanel: "ブルーホワイト",
@@ -1139,7 +1139,7 @@ export function InventoryDashboard() {
                 <div>
                   <h3 className="text-sm font-semibold text-slate-800">カテゴリー</h3>
                   <div className="mt-3 space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-3 shadow-inner">
-                    {(["パチンコ", "パチスロ"] as InventoryCategory[]).map((category) => (
+                    {(["P本体", "S本体", "P枠", "Pセル"] as InventoryCategory[]).map((category) => (
                       <label key={category} className="flex items-center gap-3 text-sm text-slate-700">
                         <input
                           type="checkbox"
