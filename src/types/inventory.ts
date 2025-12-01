@@ -1,4 +1,4 @@
-export type InventoryStatus = "在庫中" | "出品中" | "成功済み";
+export type InventoryStatus = "設置中" | "倉庫" | "出品中" | "売却済" | "廃棄";
 export type InventoryCategory = "パチンコ" | "パチスロ";
 
 export interface InventoryItem {
@@ -13,33 +13,28 @@ export interface InventoryItem {
   boardSerial: string;
   removalDate: string | null;
   warehouse: string;
-  salePrice?: number;
-  saleDate?: string;
-  buyer?: string;
-  usageCount?: number;
+  usageType?: "一次" | "二次";
   note?: string;
-  installDate?: string;
-  installPeriod?: string;
-  inspectionDate?: string;
-  inspectionExpiry?: string;
-  approvalDate?: string;
-  approvalExpiry?: string;
+  installDate?: string | null;
+  inspectionDate?: string | null;
+  approvalDate?: string | null;
   purchaseSource?: string;
   purchasePriceExTax?: number;
   purchasePriceIncTax?: number;
   saleDestination?: string;
   salePriceExTax?: number;
   salePriceIncTax?: number;
+  saleDate?: string | null;
+  salePrice?: number;
+  buyer?: string;
   externalCompany?: string;
   externalStore?: string;
-  stockInDate?: string;
-  scanDate?: string;
-  scanStaff?: string;
-  storageFeeCalc?: string;
-  glassCylinder?: string;
-  pachimartSalePrice?: number;
-  nailSheet?: string;
-  pachimartStatus?: string;
+  stockInDate?: string | null;
+  stockOutDate?: string | null;
+  stockOutDestination?: string;
+  serialNumber?: string;
+  inspectionInfo?: string;
+  listingId?: string;
   hasDocuments?: boolean;
 }
 
