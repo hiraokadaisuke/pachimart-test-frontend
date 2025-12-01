@@ -7,6 +7,7 @@ type ColumnVisibilityModalProps = {
   onClose: () => void;
   columns: InventoryColumnSetting[];
   onChangeColumns: (next: InventoryColumnSetting[]) => void;
+  onSave: () => void;
 };
 
 export function InventoryColumnSelectorModal({
@@ -14,6 +15,7 @@ export function InventoryColumnSelectorModal({
   onClose,
   columns,
   onChangeColumns,
+  onSave,
 }: ColumnVisibilityModalProps) {
   if (!isOpen) {
     return null;
@@ -78,6 +80,13 @@ export function InventoryColumnSelectorModal({
             className="rounded border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
           >
             閉じる
+          </button>
+          <button
+            type="button"
+            onClick={onSave}
+            className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-blue-700"
+          >
+            保存
           </button>
         </div>
       </div>
