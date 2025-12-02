@@ -595,6 +595,7 @@ export function InventoryDashboard() {
   const [documentsModalItemId, setDocumentsModalItemId] = useState<number | null>(null);
   const [isCsvMenuOpen, setIsCsvMenuOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const csvMenuRef = useRef<HTMLDivElement | null>(null);
   const [headerActionsContainer, setHeaderActionsContainer] = useState<Element | null>(null);
   const showUserMenu = false;
 
@@ -628,6 +629,30 @@ export function InventoryDashboard() {
       setHeaderActionsContainer(null);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isCsvMenuOpen) return undefined;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (csvMenuRef.current && !csvMenuRef.current.contains(event.target as Node)) {
+        setIsCsvMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setIsCsvMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isCsvMenuOpen]);
 
   const allWarehouses = useMemo(
     () => Array.from(new Set(inventory.map((item) => item.warehouse).filter(Boolean))),
@@ -1062,12 +1087,12 @@ export function InventoryDashboard() {
           />
 
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <div className="relative">
+            <div className="relative" ref={csvMenuRef}>
               <button
                 type="button"
                 onClick={() => setIsCsvMenuOpen((prev) => !prev)}
                 className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
+                >
                 CSV
               </button>
               {isCsvMenuOpen && (
@@ -1102,9 +1127,10 @@ export function InventoryDashboard() {
               type="button"
               className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
               onClick={handleColumnToggle}
+              aria-label="表示項目の設定"
             >
               <span className="material-icons-outlined text-sm">view_column</span>
-              <span>表示項目</span>
+              <span>表示項目の設定</span>
             </button>
           </div>
         </div>

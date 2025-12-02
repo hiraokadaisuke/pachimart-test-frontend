@@ -170,6 +170,42 @@ const columnDefinitions: InventoryColumnDefinition[] = [
   },
 ];
 
+const columnWidthClasses: Partial<Record<InventoryColumnId, string>> = {
+  category: "min-w-[64px] whitespace-nowrap",
+  status: "min-w-[88px] whitespace-nowrap",
+  maker: "min-w-[120px]",
+  model: "min-w-[240px]",
+  frameColorPanel: "min-w-[140px]",
+  inspectionNumber: "min-w-[130px] whitespace-nowrap",
+  frameSerial: "min-w-[110px] whitespace-nowrap",
+  boardSerial: "min-w-[140px] whitespace-nowrap",
+  removalDate: "min-w-[110px] whitespace-nowrap",
+  usageType: "min-w-[72px] whitespace-nowrap",
+  warehouse: "min-w-[140px]",
+  note: "min-w-[160px]",
+  installDate: "min-w-[110px] whitespace-nowrap",
+  installPeriod: "min-w-[110px] whitespace-nowrap",
+  inspectionDate: "min-w-[110px] whitespace-nowrap",
+  inspectionExpiry: "min-w-[110px] whitespace-nowrap",
+  approvalDate: "min-w-[110px] whitespace-nowrap",
+  approvalExpiry: "min-w-[110px] whitespace-nowrap",
+  purchaseSource: "min-w-[140px]",
+  purchasePriceExTax: "min-w-[150px] whitespace-nowrap text-right",
+  purchasePriceIncTax: "min-w-[150px] whitespace-nowrap text-right",
+  saleDate: "min-w-[110px] whitespace-nowrap",
+  saleDestination: "min-w-[150px]",
+  salePriceExTax: "min-w-[150px] whitespace-nowrap text-right",
+  salePriceIncTax: "min-w-[150px] whitespace-nowrap text-right",
+  externalCompany: "min-w-[140px]",
+  externalStore: "min-w-[140px]",
+  stockInDate: "min-w-[110px] whitespace-nowrap",
+  stockOutDate: "min-w-[110px] whitespace-nowrap",
+  stockOutDestination: "min-w-[140px]",
+  serialNumber: "min-w-[150px]",
+  inspectionInfo: "min-w-[150px]",
+  listingId: "min-w-[140px] whitespace-nowrap",
+};
+
 const columnSortKeyMap: Partial<Record<InventoryColumnId, InventorySortKey>> = {
   status: "status",
   category: "category",
@@ -625,69 +661,66 @@ export function InventoryTable({
   return (
     <div className="w-full overflow-x-auto relative">
       <div className="relative max-h-[70vh] overflow-y-auto rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
-        <table className="w-full table-auto border-collapse text-[11px] text-slate-800">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={headerOrder}>
-            <thead className="sticky top-0 z-10 bg-slate-100 text-left font-semibold text-slate-900">
-              <tr>
-                {visibleColumns.map((column) => {
-                  const sortableKey = columnSortKeyMap[column.id];
-                  const isActive = sortableKey && sortKey === sortableKey;
-                  const isSortable = Boolean(sortableKey && onSortChange);
-                  const widthStyle: React.CSSProperties = column.width ? { width: column.width } : {};
+          <table className="w-full table-auto border-collapse border border-slate-200 text-[11px] text-slate-800">
+            <SortableContext items={headerOrder}>
+              <thead className="sticky top-0 z-10 bg-slate-100 text-left font-semibold text-slate-900">
+                <tr>
+                  {visibleColumns.map((column) => {
+                    const sortableKey = columnSortKeyMap[column.id];
+                    const isActive = sortableKey && sortKey === sortableKey;
+                    const isSortable = Boolean(sortableKey && onSortChange);
+                    const columnClassName = columnWidthClasses[column.id];
 
-                  return (
-                    <SortableHeaderCell key={column.id} column={column}>
-                      <div style={widthStyle} className="flex w-full items-center justify-start gap-1">
-                        {isSortable ? (
-                          <button
-                            type="button"
-                            onClick={() => sortableKey && onSortChange?.(sortableKey)}
-                            className="inline-flex w-full items-center justify-start gap-1 text-slate-800"
-                          >
-                            <span>{column.label}</span>
-                            {isActive && (
-                              <span className="text-[10px] text-slate-500">{sortOrder === "asc" ? "▲" : "▼"}</span>
-                            )}
-                          </button>
-                        ) : (
-                          <span className="inline-flex w-full justify-start">{column.label}</span>
-                        )}
-                      </div>
-                    </SortableHeaderCell>
-                  );
-                })}
-                <th
-                  className="sticky right-0 z-20 w-[140px] whitespace-nowrap bg-white px-3 py-1.5 text-left text-[11px] font-semibold text-slate-600 shadow-inner"
-                >
-                  操作
-                </th>
-              </tr>
-            </thead>
-          </SortableContext>
-        </DndContext>
-        <tbody>
-          {rows.map((item) => {
+                    return (
+                      <SortableHeaderCell key={column.id} column={column} className={columnClassName}>
+                        <div className="flex w-full items-center justify-start gap-1">
+                          {isSortable ? (
+                            <button
+                              type="button"
+                              onClick={() => sortableKey && onSortChange?.(sortableKey)}
+                              className="inline-flex w-full items-center justify-start gap-1 text-slate-800"
+                            >
+                              <span>{column.label}</span>
+                              {isActive && (
+                                <span className="text-[10px] text-slate-500">{sortOrder === "asc" ? "▲" : "▼"}</span>
+                              )}
+                            </button>
+                          ) : (
+                            <span className="inline-flex w-full justify-start">{column.label}</span>
+                          )}
+                        </div>
+                      </SortableHeaderCell>
+                    );
+                  })}
+                  <th
+                    className="sticky right-0 z-20 w-[140px] whitespace-nowrap border border-slate-200 bg-white px-3 py-1.5 text-left text-[11px] font-semibold text-slate-600 shadow-inner"
+                  >
+                    操作
+                  </th>
+                </tr>
+              </thead>
+            </SortableContext>
+            <tbody>
+              {rows.map((item) => {
             const isEditing = item.id === editingId;
 
             return (
-              <tr key={item.id} className="odd:bg-white even:bg-slate-50 border-t border-slate-200 hover:bg-blue-50/30">
+              <tr key={item.id} className="odd:bg-white even:bg-slate-50 hover:bg-blue-50/30">
                 {orderedRenderers.map((column) => {
-                  const columnSetting = visibleColumns.find((c) => c.id === column.id);
-                  const widthStyle: React.CSSProperties = columnSetting?.width ? { width: columnSetting.width } : {};
+                  const columnClassName = columnWidthClasses[column.id];
 
                   return (
                     <td
                       key={`${item.id}-${column.id}`}
-                      style={widthStyle}
-                      className="px-2 py-1 text-[11px] text-slate-800 align-top"
+                      className={`border border-slate-200 px-2 py-1.5 text-[11px] text-slate-800 align-top ${columnClassName ?? ""}`}
                     >
                       {renderCell(column, item, isEditing)}
                     </td>
                   );
                 })}
                 <td
-                  className="sticky right-0 z-10 w-[140px] whitespace-nowrap bg-white px-3 py-2 text-[11px] align-top text-right shadow-inner relative"
+                  className="sticky right-0 z-10 w-[140px] whitespace-nowrap border border-slate-200 bg-white px-3 py-2 text-[11px] align-top text-right shadow-inner relative"
                   data-inventory-action-menu
                 >
                   {isEditing ? (
@@ -782,13 +815,14 @@ export function InventoryTable({
                 </td>
               </tr>
             );
-          })}
-        </tbody>
-      </table>
-      {rows.length === 0 && (
-        <div className="border-t border-slate-200 px-4 py-8 text-center text-sm text-slate-500">在庫データがありません。</div>
-      )}
-    </div>
+              })}
+            </tbody>
+          </table>
+        </DndContext>
+        {rows.length === 0 && (
+          <div className="border-t border-slate-200 px-4 py-8 text-center text-sm text-slate-500">在庫データがありません。</div>
+        )}
+      </div>
     </div>
   );
 }
@@ -796,9 +830,11 @@ export function InventoryTable({
 function SortableHeaderCell({
   column,
   children,
+  className,
 }: {
   column: InventoryColumnSetting;
   children: React.ReactNode;
+  className?: string;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: column.id });
 
@@ -813,7 +849,7 @@ function SortableHeaderCell({
     <th
       ref={setNodeRef}
       style={style}
-      className="px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap bg-slate-100"
+      className={`border border-slate-200 px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap bg-slate-100 ${className ?? ""}`}
       {...attributes}
       {...listeners}
     >
