@@ -1130,9 +1130,6 @@ export function InventoryDashboard() {
               aria-label="表示項目の設定"
               title="表示項目の設定"
             >
-              <span className="material-icons-outlined text-base" aria-hidden="true">
-                view_column
-              </span>
               <span>表示項目の設定</span>
             </button>
           </div>
