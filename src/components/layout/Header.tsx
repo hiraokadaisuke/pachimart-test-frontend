@@ -41,6 +41,7 @@ const isActiveLink = (pathname: string | null, href: string, matchPrefixes?: str
 export default function Header() {
   const pathname = usePathname();
   const isProductsPage = pathname === "/products" || pathname?.startsWith("/products/");
+  const isInventoryPage = pathname?.startsWith("/inventory");
   const [activeTab, setActiveTab] = useState<string>("パチンコ");
 
   return (
@@ -74,22 +75,31 @@ export default function Header() {
           </ul>
         </nav>
 
-        <div className="ml-auto flex items-center gap-3 whitespace-nowrap">
-          <div className="text-right text-[11px] leading-tight text-slate-700">
-            <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(defaultBalanceSummary.plannedPurchase)}</div>
-            <div className="font-semibold text-slate-900">売却予定残高 {formatCurrency(defaultBalanceSummary.plannedSales)}</div>
-            <div className="font-semibold text-slate-900">利用可能残高 {formatCurrency(defaultBalanceSummary.available)}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href="/mypage/inquiry-messages"
-              className="flex h-9 items-center rounded border border-blue-600 bg-white px-3 text-sm text-blue-600 transition hover:bg-blue-50"
-            >
-              お問い合わせ
-            </Link>
-            <Link href="/inventory" className="text-sm font-semibold text-slate-600 transition hover:text-blue-700">
-              在庫管理 →
-            </Link>
+        <div className="ml-auto flex w-full flex-1 flex-wrap items-center justify-end gap-4 whitespace-nowrap md:flex-nowrap">
+          {isInventoryPage && (
+            <div
+              id="inventory-header-actions"
+              className="flex w-full flex-1 items-center justify-end gap-3 md:flex-none"
+            />
+          )}
+
+          <div className="flex items-center gap-3 whitespace-nowrap">
+            <div className="text-right text-[11px] leading-tight text-slate-700">
+              <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(defaultBalanceSummary.plannedPurchase)}</div>
+              <div className="font-semibold text-slate-900">売却予定残高 {formatCurrency(defaultBalanceSummary.plannedSales)}</div>
+              <div className="font-semibold text-slate-900">利用可能残高 {formatCurrency(defaultBalanceSummary.available)}</div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/mypage/inquiry-messages"
+                className="flex h-9 items-center rounded border border-blue-600 bg-white px-3 text-sm text-blue-600 transition hover:bg-blue-50"
+              >
+                お問い合わせ
+              </Link>
+              <Link href="/inventory" className="text-sm font-semibold text-slate-600 transition hover:text-blue-700">
+                在庫管理 →
+              </Link>
+            </div>
           </div>
         </div>
       </div>
