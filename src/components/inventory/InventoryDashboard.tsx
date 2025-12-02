@@ -1003,7 +1003,7 @@ export function InventoryDashboard() {
       <MainContainer fullWidth>
         {headerActionsContainer &&
           createPortal(
-            <div className="flex w-full flex-wrap items-center justify-end gap-3 md:flex-nowrap">
+            <div className="flex w-full flex-1 flex-wrap items-center justify-end gap-3 md:flex-none md:flex-nowrap">
               <div className="relative flex w-full min-w-[240px] max-w-[480px] flex-1 items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 shadow-inner">
                 <svg
                   xmlns="http://www.w3.org/2000/svg"
@@ -1128,8 +1128,11 @@ export function InventoryDashboard() {
               className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
               onClick={handleColumnToggle}
               aria-label="表示項目の設定"
+              title="表示項目の設定"
             >
-              <span className="material-icons-outlined text-sm">view_column</span>
+              <span className="material-icons-outlined text-base" aria-hidden="true">
+                view_column
+              </span>
               <span>表示項目の設定</span>
             </button>
           </div>
