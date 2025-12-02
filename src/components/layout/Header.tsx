@@ -80,7 +80,7 @@ export default function Header() {
             <div
               id="inventory-header-actions"
               className="flex w-full flex-1 items-center justify-end gap-3 md:flex-none"
-            />
+            ></div>
           )}
 
           <div className="flex items-center gap-3 whitespace-nowrap">
