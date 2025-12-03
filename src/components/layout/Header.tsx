@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
+import { InventorySearchBar } from "../inventory/InventorySearchBar";
 
 const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
   { label: "商品を探す", href: "/products" },
@@ -53,7 +54,13 @@ export default function Header() {
           </Link>
         </div>
 
-        <nav className="order-3 w-full md:order-none md:w-auto md:flex-1">
+        {isInventoryPage && (
+          <div className="order-3 w-full md:order-none md:flex-1">
+            <InventorySearchBar />
+          </div>
+        )}
+
+        <nav className="order-4 w-full md:order-none md:w-auto md:flex-1">
           <ul className="flex w-full gap-2 overflow-x-auto whitespace-nowrap text-sm font-semibold text-slate-700">
             {navLinks.map((link) => {
               const active = isActiveLink(pathname, link.href, link.matchPrefixes);
@@ -75,14 +82,7 @@ export default function Header() {
           </ul>
         </nav>
 
-        <div className="ml-auto flex w-full flex-1 flex-wrap items-center justify-end gap-4 whitespace-nowrap md:flex-nowrap">
-          {isInventoryPage && (
-            <div
-              id="inventory-header-actions"
-              className="flex w-full flex-1 items-center justify-end gap-3 md:flex-none"
-            ></div>
-          )}
-
+        <div className="order-5 ml-auto flex w-full flex-1 flex-wrap items-center justify-end gap-4 whitespace-nowrap md:order-none md:flex-nowrap">
           <div className="flex items-center gap-3 whitespace-nowrap">
             <div className="text-right text-[11px] leading-tight text-slate-700">
               <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(defaultBalanceSummary.plannedPurchase)}</div>
