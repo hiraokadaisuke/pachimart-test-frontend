@@ -37,7 +37,7 @@ const filterSchema = z.object({
 
 const makerOptions = ["SANKYO", "三洋", "京楽", "山佐", "ユニバーサル"];
 const stateOptions = ["倉庫", "出品中", "売却済", "設置中", "廃棄"];
-const typeOptions = ["P", "S"];
+const typeOptions: ("P" | "S")[] = ["P", "S"];
 const warehouseOptions = ["東京第1倉庫", "東京第2倉庫", "埼玉倉庫", "大阪倉庫"];
 const panelColorOptions = ["ブルー", "ブラック", "ホワイト", "レッド", "ネイビー"];
 
