@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -12,6 +12,7 @@ import type {
   InventoryStatus,
 } from "@/types/inventory";
 import MainContainer from "@/components/layout/MainContainer";
+import { InventorySearchBar } from "./InventorySearchBar";
 import { InventoryColumnSelectorModal } from "./InventoryColumnSelectorModal";
 import { InventoryDocumentsModal } from "./InventoryDocumentsModal";
 import { InventoryTable } from "./InventoryTable";
@@ -1021,10 +1022,21 @@ export function InventoryDashboard() {
   return (
     <div className="min-h-screen bg-slate-50">
       <MainContainer fullWidth>
-        <div className="mb-6 flex w-full items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold text-slate-900">在庫管理ダッシュボード</h1>
+        {/* タイトル＋在庫検索ヘッダー */}
+        <div className="mb-4 flex w-full flex-wrap items-center gap-3 md:gap-4">
+          <h1 className="text-xl font-semibold text-slate-900 whitespace-nowrap">
+            在庫管理ダッシュボード
+          </h1>
+
+          {/* 在庫検索フォーム（タイトルと同じ高さ） */}
+          <div className="order-3 w-full md:order-none md:flex-1">
+            <Suspense fallback={<div className="h-10" aria-hidden />}>
+              <InventorySearchBar />
+            </Suspense>
+          </div>
+
           {showUserMenu && (
-            <div className="flex items-center gap-3">
+            <div className="ml-auto flex items-center gap-3">
               <button
                 type="button"
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100"
