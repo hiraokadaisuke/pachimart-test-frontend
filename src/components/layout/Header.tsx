@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
@@ -56,7 +56,9 @@ export default function Header() {
 
         {isInventoryPage && (
           <div className="order-3 w-full md:order-none md:flex-1">
-            <InventorySearchBar />
+            <Suspense fallback={<div className="h-12" aria-hidden />}>
+              <InventorySearchBar />
+            </Suspense>
           </div>
         )}
 
