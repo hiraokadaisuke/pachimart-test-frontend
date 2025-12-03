@@ -54,15 +54,7 @@ export default function Header() {
           </Link>
         </div>
 
-        {isInventoryPage && (
-          <div className="order-3 w-full md:order-none md:flex-1">
-            <Suspense fallback={<div className="h-12" aria-hidden />}>
-              <InventorySearchBar />
-            </Suspense>
-          </div>
-        )}
-
-        <nav className="order-4 w-full md:order-none md:w-auto md:flex-1">
+        <nav className="flex w-full flex-1 items-center md:w-auto">
           <ul className="flex w-full gap-2 overflow-x-auto whitespace-nowrap text-sm font-semibold text-slate-700">
             {navLinks.map((link) => {
               const active = isActiveLink(pathname, link.href, link.matchPrefixes);
@@ -84,7 +76,15 @@ export default function Header() {
           </ul>
         </nav>
 
-        <div className="order-5 ml-auto flex w-full flex-1 flex-wrap items-center justify-end gap-4 whitespace-nowrap md:order-none md:flex-nowrap">
+        {isInventoryPage && (
+          <div className="mx-auto flex w-full max-w-[640px] flex-1 items-center px-4">
+            <Suspense fallback={null}>
+              <InventorySearchBar />
+            </Suspense>
+          </div>
+        )}
+
+        <div className="ml-auto flex w-full flex-1 flex-wrap items-center justify-end gap-4 whitespace-nowrap md:w-auto md:flex-none">
           <div className="flex items-center gap-3 whitespace-nowrap">
             <div className="text-right text-[11px] leading-tight text-slate-700">
               <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(defaultBalanceSummary.plannedPurchase)}</div>
