@@ -1,4 +1,5 @@
 export type InventoryColumnId =
+  | "listingStatus"
   | "status"
   | "category"
   | "maker"
@@ -59,6 +60,7 @@ export type InventorySortKey =
   | "salePriceExTax";
 
 export const DEFAULT_INVENTORY_COLUMNS: InventoryColumnSetting[] = [
+  { id: "listingStatus", label: "出品", visible: true, width: 80 },
   { id: "category", label: "種別", visible: true, width: 90 },
   { id: "status", label: "状況", visible: true, width: 110 },
   { id: "maker", label: "メーカー", visible: true, width: 120 },

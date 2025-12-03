@@ -10,6 +10,7 @@ import type {
   InventoryDocumentMeta,
   InventoryItem,
   InventoryStatus,
+  ListingStatus,
 } from "@/types/inventory";
 import MainContainer from "@/components/layout/MainContainer";
 import { InventorySearchBar } from "./InventorySearchBar";
@@ -110,6 +111,7 @@ type RawInventoryItem = {
   saleDate?: string | null;
   buyer?: string;
   hasDocuments?: boolean;
+  listingStatus?: ListingStatus;
 };
 
 const statusMap: Record<RawInventoryItem["status"], InventoryStatus> = {
@@ -136,6 +138,7 @@ const rawInventory: RawInventoryItem[] = [
     removalDate: "2024-07-15",
     warehouse: "東京第1倉庫",
     hasDocuments: true,
+    listingStatus: "LISTED",
   },
   {
     id: 2,
@@ -151,6 +154,7 @@ const rawInventory: RawInventoryItem[] = [
     warehouse: "埼玉倉庫",
     salePrice: 320000,
     hasDocuments: true,
+    listingStatus: "LISTED",
   },
   {
     id: 3,
@@ -277,6 +281,7 @@ const rawInventory: RawInventoryItem[] = [
     boardSerial: "BRD-22211",
     removalDate: "2024-08-20",
     warehouse: "東京第1倉庫",
+    listingStatus: "LISTED",
   },
   {
     id: 12,
@@ -545,43 +550,66 @@ const rawInventory: RawInventoryItem[] = [
   },
 ];
 
-const fallbackInventory: InventoryItem[] = rawInventory.map((item, index) => ({
-  id: item.id,
-  status: statusMap[item.status],
-  category: item.category,
-  manufacturer: item.manufacturer,
-  modelName: item.modelName,
-  colorPanel: item.colorPanel,
-  inspectionNumber: item.inspectionNumber,
-  frameSerial: item.frameSerial,
-  boardSerial: item.boardSerial,
-  removalDate: item.removalDate,
-  warehouse: item.warehouse,
-  usageType: index % 2 === 0 ? "一次" : "二次",
-  note: "",
-  installDate: null,
-  inspectionDate: null,
-  approvalDate: null,
-  purchaseSource: "サンプル購入元",
-  purchasePriceExTax: 100000 + index * 5000,
-  saleDestination: item.buyer ?? "",
-  salePriceExTax: item.salePrice,
-  saleDate: item.saleDate ?? null,
-  externalCompany: "サンプル法人",
-  externalStore: "サンプル店舗",
-  stockInDate: item.removalDate ?? null,
-  stockOutDate: null,
-  stockOutDestination: "",
-  serialNumber: `SN-${String(item.id).padStart(5, "0")}`,
-  inspectionInfo: "",
-  listingId: statusMap[item.status] === "出品中" ? `LIST-${1000 + item.id}` : "",
-  hasDocuments: item.hasDocuments,
-}));
-
 export function InventoryDashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [inventory] = useState<InventoryItem[]>(fallbackInventory);
+  const [listingStatusById, setListingStatusById] = useState<Record<number, ListingStatus>>(() => {
+    const initial: Record<number, ListingStatus> = {};
+    rawInventory.forEach((item) => {
+      initial[item.id] = item.listingStatus ?? "UNLISTED";
+    });
+    return initial;
+  });
+  const inventory: InventoryItem[] = useMemo(() => {
+    return rawInventory.map((item, index) => {
+      const status = statusMap[item.status] ?? item.status;
+      const listingStatus = listingStatusById[item.id] ?? item.listingStatus ?? "UNLISTED";
+
+      return {
+        id: item.id,
+        status,
+        listingStatus,
+        category: item.category,
+        manufacturer: item.manufacturer,
+        modelName: item.modelName,
+        colorPanel: item.colorPanel,
+        inspectionNumber: item.inspectionNumber,
+        frameSerial: item.frameSerial,
+        boardSerial: item.boardSerial,
+        removalDate: item.removalDate,
+        warehouse: item.warehouse,
+        usageType: index % 2 === 0 ? "一次" : "二次",
+        note: "",
+        installDate: null,
+        inspectionDate: null,
+        approvalDate: null,
+        purchaseSource: "サンプル購入元",
+        purchasePriceExTax: 100000 + index * 5000,
+        saleDestination: item.buyer ?? "",
+        salePriceExTax: item.salePrice,
+        saleDate: item.saleDate ?? null,
+        externalCompany: "サンプル法人",
+        externalStore: "サンプル店舗",
+        stockInDate: item.removalDate ?? null,
+        stockOutDate: null,
+        stockOutDestination: "",
+        serialNumber: `SN-${String(item.id).padStart(5, "0")}`,
+        inspectionInfo: "",
+        listingId: listingStatus === "LISTED" ? `LIST-${1000 + item.id}` : "",
+        hasDocuments: item.hasDocuments,
+      };
+    });
+  }, [listingStatusById]);
+
+  const toggleListingStatus = (id: number) => {
+    setListingStatusById((prev) => {
+      const current = prev[id] ?? "UNLISTED";
+      return {
+        ...prev,
+        [id]: current === "LISTED" ? "UNLISTED" : "LISTED",
+      };
+    });
+  };
   const [sortKey, setSortKey] = useState<InventorySortKey | null>(null);
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [currentPage, setCurrentPage] = useState(1);
@@ -839,6 +867,10 @@ export function InventoryDashboard() {
 
   const goToPrevPage = () => goToPage(currentPage - 1);
   const goToNextPage = () => goToPage(currentPage + 1);
+
+  const handleToggleListingStatus = (item: InventoryItem) => {
+    toggleListingStatus(item.id);
+  };
 
   const handleSortChange = (key: InventorySortKey) => {
     if (sortKey === key) {
@@ -1139,6 +1171,7 @@ export function InventoryDashboard() {
           onHeaderReorder={handleHeaderReorder}
           onSortChange={handleSortChange}
           onOpenDocuments={openDocumentsModal}
+          onToggleListingStatus={handleToggleListingStatus}
           sortKey={sortKey}
           sortOrder={sortOrder}
         />
