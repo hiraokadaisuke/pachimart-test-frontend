@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import {
   DndContext,
@@ -114,6 +115,9 @@ const formatInstallPeriod = (item: InventoryItem) => {
   const diffDays = Math.max(1, Math.round(diffMs / (1000 * 60 * 60 * 24)));
   return `${diffDays}日`;
 };
+
+const MENU_WIDTH = 128;
+const MENU_ESTIMATED_HEIGHT = 200;
 
 const columnDefinitions: InventoryColumnDefinition[] = [
   {
@@ -240,6 +244,9 @@ export function InventoryTable({
   const [editValues, setEditValues] = useState<InventoryItem | null>(null);
   const [headerOrder, setHeaderOrder] = useState<InventoryColumnId[]>(columns.map((column) => column.id));
   const [openMenuRowId, setOpenMenuRowId] = useState<number | null>(null);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; left: number } | null>(null);
+  const menuAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     setRows(items);
@@ -316,14 +323,53 @@ export function InventoryTable({
     onOpenDocuments?.(row.id);
   };
 
-  const toggleMenu = (rowId: number) => {
-    setOpenMenuRowId((prev) => (prev === rowId ? null : rowId));
-  };
+  const calculateMenuPosition = useCallback((button: HTMLButtonElement) => {
+    const rect = button.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const openAbove = spaceBelow < MENU_ESTIMATED_HEIGHT;
+    const top = openAbove
+      ? Math.max(8, rect.top - MENU_ESTIMATED_HEIGHT - 8)
+      : Math.min(window.innerHeight - 8, rect.bottom + 8);
+    const left = Math.max(8, Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8));
 
-  const closeMenu = () => setOpenMenuRowId(null);
+    setMenuPosition({ top, left });
+  }, []);
+
+  const closeMenu = useCallback(() => {
+    setOpenMenuRowId(null);
+    setMenuPosition(null);
+    menuAnchorRef.current = null;
+  }, []);
+
+  const handleActionButtonClick = useCallback(
+    (rowId: number, event: React.MouseEvent<HTMLButtonElement>) => {
+      if (openMenuRowId === rowId) {
+        closeMenu();
+        return;
+      }
+
+      const button = event.currentTarget;
+      menuAnchorRef.current = button;
+      setOpenMenuRowId(rowId);
+      calculateMenuPosition(button);
+    },
+    [calculateMenuPosition, closeMenu, openMenuRowId],
+  );
 
   useEffect(() => {
-    if (openMenuRowId === null) return undefined;
+    if (openMenuRowId === null) {
+      setMenuPosition(null);
+      return undefined;
+    }
+
+    const updateMenuPosition = () => {
+      if (!menuAnchorRef.current || !menuAnchorRef.current.isConnected) {
+        closeMenu();
+        return;
+      }
+
+      calculateMenuPosition(menuAnchorRef.current);
+    };
 
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as HTMLElement;
@@ -332,9 +378,21 @@ export function InventoryTable({
       }
     };
 
+    updateMenuPosition();
+
+    const scrollContainer = scrollContainerRef.current;
     document.addEventListener("click", handleClickOutside);
-    return () => document.removeEventListener("click", handleClickOutside);
-  }, [openMenuRowId]);
+    window.addEventListener("resize", updateMenuPosition);
+    window.addEventListener("scroll", updateMenuPosition, true);
+    scrollContainer?.addEventListener("scroll", updateMenuPosition);
+
+    return () => {
+      document.removeEventListener("click", handleClickOutside);
+      window.removeEventListener("resize", updateMenuPosition);
+      window.removeEventListener("scroll", updateMenuPosition, true);
+      scrollContainer?.removeEventListener("scroll", updateMenuPosition);
+    };
+  }, [calculateMenuPosition, closeMenu, openMenuRowId]);
 
   const warehouseOptions = useMemo(
     () => Array.from(new Set(rows.map((item) => item.warehouse))).map((name, index) => ({ id: index, name })),
@@ -660,7 +718,10 @@ export function InventoryTable({
 
   return (
     <div className="w-full overflow-x-auto relative">
-      <div className="relative max-h-[70vh] overflow-y-auto rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
+      <div
+        ref={scrollContainerRef}
+        className="relative max-h-[70vh] overflow-y-auto rounded-lg border border-slate-200 bg-white text-xs shadow-sm"
+      >
         <table className="w-full table-auto border-collapse border border-slate-200 text-[11px] text-slate-800">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={headerOrder}>
@@ -746,71 +807,79 @@ export function InventoryTable({
                       <button
                         type="button"
                         className="rounded bg-[#1E3A8A] px-3 py-1 text-xs font-medium text-white hover:bg-[#1E40AF]"
-                        onClick={() => toggleMenu(item.id)}
+                        onClick={(event) => handleActionButtonClick(item.id, event)}
                       >
                         操作
                       </button>
 
-                      {openMenuRowId === item.id && (
-                        <div className="absolute right-0 z-20 mt-1 w-32 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg">
-                          {item.status === "出品中" ? (
+                      {openMenuRowId === item.id &&
+                        menuPosition &&
+                        typeof document !== "undefined" &&
+                        createPortal(
+                          <div
+                            data-inventory-action-menu
+                            className="fixed z-50 w-32 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg"
+                            style={{ top: menuPosition.top, left: menuPosition.left }}
+                          >
+                            {item.status === "出品中" ? (
+                              <button
+                                type="button"
+                                className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                                onClick={() => {
+                                  closeMenu();
+                                  handleWithdraw(item);
+                                }}
+                              >
+                                取り下げ
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                                onClick={() => {
+                                  closeMenu();
+                                  handleExhibit(item);
+                                }}
+                              >
+                                出品
+                              </button>
+                            )}
+
                             <button
                               type="button"
                               className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
                               onClick={() => {
                                 closeMenu();
-                                handleWithdraw(item);
+                                handleShowDetail(item);
                               }}
                             >
-                              取り下げ
+                              詳細を見る
                             </button>
-                          ) : (
+
                             <button
                               type="button"
                               className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
                               onClick={() => {
                                 closeMenu();
-                                handleExhibit(item);
+                                handleOpenDocuments(item);
                               }}
                             >
-                              出品
+                              書類を開く
                             </button>
-                          )}
 
-                          <button
-                            type="button"
-                            className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
-                            onClick={() => {
-                              closeMenu();
-                              handleShowDetail(item);
-                            }}
-                          >
-                            詳細を見る
-                          </button>
-
-                          <button
-                            type="button"
-                            className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
-                            onClick={() => {
-                              closeMenu();
-                              handleOpenDocuments(item);
-                            }}
-                          >
-                            書類を開く
-                          </button>
-
-                          <button
-                            type="button"
-                            className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
-                            onClick={() => {
-                              closeMenu();
-                              handleStartEdit(item);
-                            }}
-                          >
-                            編集する
-                          </button>
-                        </div>
-                      )}
+                            <button
+                              type="button"
+                              className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
+                              onClick={() => {
+                                closeMenu();
+                                handleStartEdit(item);
+                              }}
+                            >
+                              編集する
+                            </button>
+                          </div>,
+                          document.body,
+                        )}
                     </>
                   )}
                 </td>
