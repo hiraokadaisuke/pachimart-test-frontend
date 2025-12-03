@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Controller, useForm } from "react-hook-form";
@@ -124,20 +124,24 @@ export function InventorySearchBar() {
     reset(defaults);
   }, [defaults, reset]);
 
+  const syncFilters = useCallback(
+    (values: FilterFormValues) => {
+      const params = buildSearchParams(values);
+      const queryString = params.toString();
+      const resolvedPath = pathname ?? "/";
+      const nextUrl = queryString ? `${resolvedPath}?${queryString}` : resolvedPath;
+      router.replace(nextUrl, { scroll: false });
+    },
+    [pathname, router],
+  );
+
   useEffect(() => {
     const timer = setTimeout(() => {
       syncFilters({ ...getValues(), keyword: keywordValue || "" });
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [getValues, keywordValue]);
-
-  const syncFilters = (values: FilterFormValues) => {
-    const params = buildSearchParams(values);
-    const queryString = params.toString();
-    const nextUrl = queryString ? `${pathname}?${queryString}` : pathname;
-    router.replace(nextUrl, { scroll: false });
-  };
+  }, [getValues, keywordValue, syncFilters]);
 
   const onSubmit = (values: FilterFormValues) => {
     syncFilters(values);

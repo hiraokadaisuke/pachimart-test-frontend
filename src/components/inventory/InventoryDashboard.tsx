@@ -639,11 +639,20 @@ export function InventoryDashboard() {
   }, [isCsvMenuOpen]);
 
   const keywordQuery = searchParams?.get("keyword")?.trim().toLowerCase() ?? "";
-  const makerFilters = searchParams?.getAll("maker") ?? [];
-  const statusFilter = searchParams?.getAll("state") as InventoryStatus[];
-  const typeFilters = searchParams?.getAll("type") ?? [];
-  const warehouseFilter = searchParams?.getAll("warehouse") ?? [];
-  const panelColorFilter = searchParams?.get("panelColor")?.trim().toLowerCase() ?? "";
+  const makerFilters = useMemo(() => searchParams?.getAll("maker") ?? [], [searchParams]);
+  const statusFilter = useMemo(
+    () => (searchParams?.getAll("state") as InventoryStatus[]) ?? [],
+    [searchParams],
+  );
+  const typeFilters = useMemo(() => searchParams?.getAll("type") ?? [], [searchParams]);
+  const warehouseFilter = useMemo(
+    () => searchParams?.getAll("warehouse") ?? [],
+    [searchParams],
+  );
+  const panelColorFilter = useMemo(
+    () => searchParams?.get("panelColor")?.trim().toLowerCase() ?? "",
+    [searchParams],
+  );
   const priceMin = searchParams?.get("priceMin");
   const priceMax = searchParams?.get("priceMax");
   const priceMinValue = priceMin ? Number(priceMin) : null;
