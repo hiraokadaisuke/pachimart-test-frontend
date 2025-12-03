@@ -41,6 +41,7 @@ interface InventoryTableProps {
   sortKey?: InventorySortKey | null;
   sortOrder?: "asc" | "desc";
   onOpenDocuments?: (itemId: number) => void;
+  onToggleListingStatus?: (item: InventoryItem) => void;
 }
 
 const formatCurrency = (value?: number | null) => {
@@ -134,6 +135,25 @@ const columnDefinitions: InventoryColumnDefinition[] = [
       </span>
     ),
   },
+  {
+    id: "listingStatus",
+    render: (item) => {
+      const status = item.listingStatus ?? "UNLISTED";
+      const isListed = status === "LISTED";
+
+      return (
+        <span
+          className={
+            isListed
+              ? "inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700"
+              : "inline-flex items-center rounded-full border border-slate-300 px-2 py-0.5 text-[11px] text-slate-500"
+          }
+        >
+          {isListed ? "出品中" : "非出品"}
+        </span>
+      );
+    },
+  },
   { id: "maker", render: (item) => renderTruncatedCell(item.manufacturer, "max-w-[160px]") },
   { id: "model", render: (item) => <span className="font-semibold text-slate-900">{item.modelName}</span> },
   { id: "frameColorPanel", render: (item) => renderTruncatedCell(item.colorPanel, "max-w-[160px]") },
@@ -177,6 +197,7 @@ const columnDefinitions: InventoryColumnDefinition[] = [
 const columnWidthClasses: Partial<Record<InventoryColumnId, string>> = {
   category: "min-w-[60px] whitespace-nowrap",
   status: "min-w-[72px] whitespace-nowrap",
+  listingStatus: "min-w-[72px] whitespace-nowrap text-center",
   maker: "min-w-[110px] whitespace-nowrap",
   model: "min-w-[280px] whitespace-nowrap",
   frameColorPanel: "min-w-[140px] whitespace-nowrap",
@@ -237,6 +258,7 @@ export function InventoryTable({
   sortKey,
   sortOrder,
   onOpenDocuments,
+  onToggleListingStatus,
 }: InventoryTableProps) {
   const sensors = useSensors(useSensor(PointerSensor));
   const [rows, setRows] = useState<InventoryItem[]>(items);
@@ -308,11 +330,11 @@ export function InventoryTable({
   };
 
   const handleExhibit = (row: InventoryItem) => {
-    // TODO: 出品処理を実装
+    onToggleListingStatus?.(row);
   };
 
   const handleWithdraw = (row: InventoryItem) => {
-    // TODO: 取り下げ処理を実装
+    onToggleListingStatus?.(row);
   };
 
   const handleShowDetail = (row: InventoryItem) => {
@@ -766,9 +788,17 @@ export function InventoryTable({
         <tbody>
           {rows.map((item) => {
             const isEditing = item.id === editingId;
+            const isListed = item.listingStatus === "LISTED";
 
             return (
-              <tr key={item.id} className="odd:bg-white even:bg-slate-50 hover:bg-blue-50/30">
+              <tr
+                key={item.id}
+                className={`border-b text-sm ${
+                  isListed
+                    ? "bg-blue-50/40 hover:bg-blue-50"
+                    : "odd:bg-white even:bg-slate-50 hover:bg-blue-50/30"
+                }`}
+              >
                 {orderedRenderers.map((column) => {
                   const columnClassName = columnWidthClasses[column.id];
 
@@ -821,7 +851,7 @@ export function InventoryTable({
                             className="fixed z-50 w-32 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg"
                             style={{ top: menuPosition.top, left: menuPosition.left }}
                           >
-                            {item.status === "出品中" ? (
+                            {isListed ? (
                               <button
                                 type="button"
                                 className="block w-full px-3 py-1.5 text-left text-xs hover:bg-slate-50"
@@ -830,7 +860,7 @@ export function InventoryTable({
                                   handleWithdraw(item);
                                 }}
                               >
-                                取り下げ
+                                出品停止
                               </button>
                             ) : (
                               <button

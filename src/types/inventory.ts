@@ -1,9 +1,11 @@
 export type InventoryStatus = "設置中" | "倉庫" | "出品中" | "売却済" | "廃棄";
 export type InventoryCategory = "P本体" | "S本体" | "P枠" | "Pセル";
+export type ListingStatus = "LISTED" | "UNLISTED";
 
 export interface InventoryItem {
   id: number;
   status: InventoryStatus;
+  listingStatus?: ListingStatus;
   category: InventoryCategory;
   manufacturer: string;
   modelName: string;
