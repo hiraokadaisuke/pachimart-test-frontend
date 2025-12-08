@@ -121,6 +121,7 @@ export default function TransactionNaviEditPage() {
   const router = useRouter();
   const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
+  const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -170,25 +171,28 @@ export default function TransactionNaviEditPage() {
 
     const initialDraft = createEmptyNaviDraft({
       id: transactionId,
-      productId: searchParams.get("productId") ?? transactionId,
-      buyerId: searchParams.get("buyerId"),
-      buyerCompanyName: searchParams.get("buyerCompanyName"),
-      buyerContactName: searchParams.get("buyerContactName"),
-      buyerTel: searchParams.get("buyerTel"),
-      buyerEmail: searchParams.get("buyerEmail"),
-      buyerNote: searchParams.get("buyerNote"),
-      buyerPending: searchParams.has("buyerId") ? false : undefined,
+      productId: safeSearchParams.get("productId") ?? transactionId,
+      buyerId: safeSearchParams.get("buyerId"),
+      buyerCompanyName: safeSearchParams.get("buyerCompanyName"),
+      buyerContactName: safeSearchParams.get("buyerContactName"),
+      buyerTel: safeSearchParams.get("buyerTel"),
+      buyerEmail: safeSearchParams.get("buyerEmail"),
+      buyerNote: safeSearchParams.get("buyerNote"),
+      buyerPending: safeSearchParams.has("buyerId") ? false : undefined,
       conditions: {
-        quantity: parseNumberParam(searchParams.get("quantity")),
-        unitPrice: parseNumberParam(searchParams.get("unitPrice")),
-        productName: searchParams.get("productName"),
-        makerName: searchParams.get("makerName"),
-        location: searchParams.get("location"),
+        quantity: parseNumberParam(safeSearchParams.get("quantity")) ?? 1,
+        unitPrice: parseNumberParam(safeSearchParams.get("unitPrice")) ?? 0,
+        shippingFee: 0,
+        handlingFee: 0,
+        taxRate: 0.1,
+        productName: safeSearchParams.get("productName"),
+        makerName: safeSearchParams.get("makerName"),
+        location: safeSearchParams.get("location"),
       },
     });
 
     setDraft(initialDraft);
-  }, [searchParams, transactionId]);
+  }, [safeSearchParams, transactionId]);
 
   useEffect(() => {
     setEditedConditions(initialEditedConditions);
