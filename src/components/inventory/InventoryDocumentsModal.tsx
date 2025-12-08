@@ -59,13 +59,13 @@ export function InventoryDocumentsModal({
           <div>
             <h2 className="text-sm font-semibold">書類の管理</h2>
             {itemTitle && (
-              <p className="mt-1 text-xs text-slate-500">対象台：{itemTitle}</p>
+              <p className="mt-1 text-xs text-neutral-700">対象台：{itemTitle}</p>
             )}
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-slate-500 hover:text-slate-800"
+            className="text-sm text-neutral-700 hover:text-slate-800"
           >
             ✕
           </button>
@@ -84,7 +84,7 @@ export function InventoryDocumentsModal({
                     {INVENTORY_DOCUMENT_LABELS[kind]}
                   </div>
                   {doc ? (
-                    <div className="mt-1 text-[11px] text-slate-600">
+                    <div className="mt-1 text-[11px] text-neutral-800">
                       <div>ファイル名：{doc.fileName}</div>
                       <div>
                         サイズ：{Math.round(doc.size / 1024)} KB ／
@@ -92,7 +92,7 @@ export function InventoryDocumentsModal({
                       </div>
                     </div>
                   ) : (
-                    <div className="mt-1 text-[11px] text-slate-500">
+                    <div className="mt-1 text-[11px] text-neutral-700">
                       まだアップロードされていません。
                     </div>
                   )}

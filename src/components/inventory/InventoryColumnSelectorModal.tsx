@@ -27,13 +27,13 @@ export function InventoryColumnSelectorModal({
         <div className="flex items-start justify-between border-b border-slate-200 px-5 py-4">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">表示する項目を選択</h2>
-            <p className="mt-1 text-sm text-slate-500">列の順序はテーブル上のヘッダーをドラッグ＆ドロップで変更できます。</p>
+            <p className="mt-1 text-sm text-neutral-700">列の順序はテーブル上のヘッダーをドラッグ＆ドロップで変更できます。</p>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="閉じる"
-            className="rounded-full p-1 text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-full p-1 text-neutral-700 transition hover:bg-slate-100 hover:text-neutral-900"
           >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
               <path
@@ -67,7 +67,7 @@ export function InventoryColumnSelectorModal({
                   />
                   <span className="text-slate-800">{column.label}</span>
                 </div>
-                <span className="ml-2 rounded-full bg-slate-100 px-2 py-[2px] text-[10px] text-slate-500">{index + 1}</span>
+                <span className="ml-2 rounded-full bg-slate-100 px-2 py-[2px] text-[10px] text-neutral-700">{index + 1}</span>
               </label>
             ))}
           </div>
@@ -77,7 +77,7 @@ export function InventoryColumnSelectorModal({
           <button
             type="button"
             onClick={onClose}
-            className="rounded border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+            className="rounded border border-slate-200 px-4 py-2 text-sm font-semibold text-neutral-900 transition hover:bg-slate-100"
           >
             閉じる
           </button>

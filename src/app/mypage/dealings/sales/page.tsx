@@ -65,7 +65,7 @@ export default function SalesPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-xl font-bold text-slate-900">売却一覧</h1>
-          <p className="text-sm text-slate-600">取引Naviのテーブルと同一コンポーネントで、売却取引の進捗と履歴を確認できます。</p>
+          <p className="text-sm text-neutral-800">取引Naviのテーブルと同一コンポーネントで、売却取引の進捗と履歴を確認できます。</p>
         </div>
       </header>
 
@@ -77,7 +77,7 @@ export default function SalesPage() {
           onKeywordChange={setKeyword}
         />
 
-        <div className="rounded bg-slate-50 px-4 py-2 text-xs text-slate-600">
+        <div className="rounded border border-slate-200 bg-white px-4 py-2 text-xs text-neutral-800">
           物件名 / 台数 / 相手先 / 税込合計 / ステータス / 更新日時 の順で並べ、他タブと世界観を合わせています。
         </div>
 

@@ -10,7 +10,7 @@ type ExhibitTabKey = "active" | "draft";
 
 export default function ExhibitHubPage() {
   return (
-    <Suspense fallback={<div className="text-sm text-slate-700">読み込み中…</div>}>
+    <Suspense fallback={<div className="text-sm text-neutral-900">読み込み中…</div>}>
       <ExhibitHubContent />
     </Suspense>
   );
@@ -31,7 +31,7 @@ function ExhibitHubContent() {
 
       <div className="space-y-2">
         <h1 className="text-xl font-bold text-slate-900">出品</h1>
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-neutral-900">
           出品中の管理や下書きの確認をこのハブから行えます。新規出品はタブから遷移してください。
         </p>
       </div>

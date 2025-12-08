@@ -94,9 +94,9 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-800">{heading}</h2>
-          <div className="mt-1 flex flex-wrap gap-3 text-[12px] text-slate-500">
+          <div className="mt-1 flex flex-wrap gap-3 text-[12px] text-neutral-700">
             <span>全件数：{listedProducts.length}件</span>
-            <span className="text-slate-400">絞り込み・更新もこの画面から操作できます</span>
+            <span className="text-neutral-600">絞り込み・更新もこの画面から操作できます</span>
           </div>
         </div>
         {status === "出品中" && (
@@ -112,7 +112,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md bg-slate-50 px-4 py-3">
         <div className="flex flex-col">{/* メーカー */}
-          <label className="mb-1 block text-xs font-semibold text-slate-600">メーカー</label>
+          <label className="mb-1 block text-xs font-semibold text-neutral-800">メーカー</label>
           <select
             value={draftFilters.maker}
             onChange={(event) => setDraftFilters({ ...draftFilters, maker: event.target.value })}
@@ -127,7 +127,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
           </select>
         </div>
         <div className="flex flex-col">{/* 機種名 */}
-          <label className="mb-1 block text-xs font-semibold text-slate-600">機種名</label>
+          <label className="mb-1 block text-xs font-semibold text-neutral-800">機種名</label>
           <input
             type="search"
             value={draftFilters.model}
@@ -137,7 +137,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
           />
         </div>
         <div className="flex flex-col sm:min-w-[220px]">{/* 備考キーワード */}
-          <label className="mb-1 block text-xs font-semibold text-slate-600">備考</label>
+          <label className="mb-1 block text-xs font-semibold text-neutral-800">備考</label>
           <input
             type="search"
             value={draftFilters.noteKeyword}
@@ -157,14 +157,14 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
           <button
             type="button"
             onClick={handleResetFilters}
-            className="h-9 rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+            className="h-9 rounded-md border border-slate-300 px-3 text-xs font-semibold text-neutral-900 transition hover:bg-slate-100"
           >
             クリア
           </button>
           <button
             type="button"
             onClick={handleReload}
-            className="h-9 rounded-md border border-slate-300 px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+            className="h-9 rounded-md border border-slate-300 px-3 text-xs font-semibold text-neutral-900 transition hover:bg-slate-100"
           >
             一覧を更新
           </button>
@@ -181,7 +181,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
       </div>
 
       {listedProducts.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-slate-600">
+        <div className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-neutral-800">
           {status === "下書き" ? "下書きはまだありません。" : "該当する出品がありません。"}
         </div>
       ) : (
@@ -203,18 +203,18 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
             </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">更新日</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">状況</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">前設置</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">メーカー</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">機種名</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">台数</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">売却数</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">残数</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-slate-500">商品価</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">撤去日</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-slate-500">備考</th>
-                <th className="px-3 py-2 text-center text-xs font-semibold text-slate-500">操作</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">更新日</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">状況</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">前設置</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">メーカー</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">機種名</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-neutral-700">台数</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-neutral-700">売却数</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-neutral-700">残数</th>
+                <th className="px-3 py-2 text-right text-xs font-semibold text-neutral-700">商品価</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">撤去日</th>
+                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">備考</th>
+                <th className="px-3 py-2 text-center text-xs font-semibold text-neutral-700">操作</th>
               </tr>
             </thead>
             <tbody>
@@ -229,7 +229,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                     <td className="px-3 py-2 align-top">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${
-                          statusBadgeStyles[product.status] ?? "bg-slate-100 text-slate-700 border border-slate-200"
+                          statusBadgeStyles[product.status] ?? "bg-slate-100 text-neutral-900 border border-slate-200"
                         }`}
                       >
                         {product.status}
@@ -237,7 +237,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                     </td>
                     <td className="px-3 py-2 align-top">
                       <div className="font-semibold text-slate-800">{product.prefecture}</div>
-                      <div className="text-xs text-slate-500">{product.sellerName}</div>
+                      <div className="text-xs text-neutral-700">{product.sellerName}</div>
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 align-top">{product.maker}</td>
                     <td className="px-3 py-2 align-top">
@@ -258,9 +258,9 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 align-top">
                       <div className="font-semibold text-slate-800">{product.removalDate}</div>
-                      <div className="text-xs text-slate-500">{product.removalStatus ?? "撤去状況未設定"}</div>
+                      <div className="text-xs text-neutral-700">{product.removalStatus ?? "撤去状況未設定"}</div>
                     </td>
-                    <td className="px-3 py-2 align-top text-slate-700">{product.note ?? "-"}</td>
+                    <td className="px-3 py-2 align-top text-neutral-900">{product.note ?? "-"}</td>
                     <td className="px-3 py-2 align-top">
                       <div className="flex flex-col items-start gap-1 text-xs">
                         <div className="flex flex-wrap items-center gap-1">
@@ -270,12 +270,12 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                           >
                             取引Navi
                           </button>
-                          <button className="rounded border border-slate-300 px-2 py-0.5 text-[11px] text-slate-700 hover:bg-slate-50">
+                          <button className="rounded border border-slate-300 px-2 py-0.5 text-[11px] text-neutral-900 hover:bg-slate-50">
                             編集
                           </button>
                         </div>
                         <div className="flex flex-wrap items-center gap-1">
-                          <button className="px-1 py-0.5 text-[11px] text-slate-500 hover:text-slate-700">取り下げ</button>
+                          <button className="px-1 py-0.5 text-[11px] text-neutral-700 hover:text-neutral-900">取り下げ</button>
                           <button className="px-1 py-0.5 text-[11px] text-rose-600 hover:text-rose-700">削除</button>
                         </div>
                       </div>

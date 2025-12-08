@@ -22,7 +22,7 @@ import type {
 
 const statusStyles: Record<InventoryStatus, string> = {
   設置中: "bg-blue-50 text-blue-700 ring-1 ring-blue-200",
-  倉庫: "bg-slate-50 text-slate-700 ring-1 ring-slate-200",
+  倉庫: "bg-slate-50 text-neutral-900 ring-1 ring-slate-200",
   出品中: "bg-green-50 text-green-700 ring-1 ring-green-200",
   売却済: "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200",
   廃棄: "bg-rose-50 text-rose-700 ring-1 ring-rose-200",
@@ -146,7 +146,7 @@ const columnDefinitions: InventoryColumnDefinition[] = [
           className={
             isListed
               ? "inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-semibold text-blue-700"
-              : "inline-flex items-center rounded-full border border-slate-300 px-2 py-0.5 text-[11px] text-slate-500"
+              : "inline-flex items-center rounded-full border border-slate-300 px-2 py-0.5 text-[11px] text-neutral-700"
           }
         >
           {isListed ? "出品中" : "非出品"}
@@ -766,7 +766,7 @@ export function InventoryTable({
                           >
                             <span>{column.label}</span>
                             {isActive && (
-                              <span className="text-[10px] text-slate-500">{sortOrder === "asc" ? "▲" : "▼"}</span>
+                              <span className="text-[10px] text-neutral-700">{sortOrder === "asc" ? "▲" : "▼"}</span>
                             )}
                           </button>
                         ) : (
@@ -777,7 +777,7 @@ export function InventoryTable({
                   );
                 })}
                 <th
-                  className="sticky right-0 z-20 w-[140px] whitespace-nowrap border border-slate-200 bg-white px-3 py-1.5 text-left text-[11px] font-semibold text-slate-600 shadow-inner"
+                  className="sticky right-0 z-20 w-[140px] whitespace-nowrap border border-slate-200 bg-white px-3 py-1.5 text-left text-[11px] font-semibold text-neutral-800 shadow-inner"
                 >
                   操作
                 </th>
@@ -826,7 +826,7 @@ export function InventoryTable({
                       </button>
                       <button
                         type="button"
-                        className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-100"
+                        className="rounded border border-slate-300 px-2 py-1 text-[11px] font-semibold text-neutral-900 transition hover:bg-slate-100"
                         onClick={handleCancelEdit}
                       >
                         キャンセル
@@ -919,7 +919,7 @@ export function InventoryTable({
         </tbody>
       </table>
       {rows.length === 0 && (
-        <div className="border-t border-slate-200 px-4 py-8 text-center text-sm text-slate-500">在庫データがありません。</div>
+        <div className="border-t border-slate-200 px-4 py-8 text-center text-sm text-neutral-700">在庫データがありません。</div>
       )}
     </div>
     </div>
@@ -948,7 +948,7 @@ function SortableHeaderCell({
     <th
       ref={setNodeRef}
       style={style}
-      className={`border border-slate-200 px-2 py-1.5 text-left text-[11px] font-semibold text-slate-600 whitespace-nowrap bg-slate-100 ${className ?? ""}`}
+      className={`border border-slate-200 px-2 py-1.5 text-left text-[11px] font-semibold text-neutral-800 whitespace-nowrap bg-slate-100 ${className ?? ""}`}
       {...attributes}
       {...listeners}
     >

@@ -139,7 +139,7 @@ const dummyTrades: Array<{
 function getStatusLabel(status: NaviStatus) {
   switch (status) {
     case "draft":
-      return { text: "下書き", className: "bg-slate-200 text-slate-700" };
+      return { text: "下書き", className: "bg-slate-200 text-neutral-900" };
     case "sent_to_buyer":
       return { text: "承認待ち", className: "bg-amber-100 text-amber-700" };
     case "buyer_approved":
@@ -257,7 +257,7 @@ export function InProgressTabContent() {
           render: (row: (typeof dummyTrades)[number]) => (
             <button
               type="button"
-              className="inline-flex items-center justify-center rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-100"
+              className="inline-flex items-center justify-center rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-100"
             >
               {row.status === "waiting_payment" ? "振込" : "OK"}
             </button>

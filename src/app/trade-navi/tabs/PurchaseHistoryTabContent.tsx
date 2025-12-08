@@ -219,7 +219,7 @@ export function PurchaseHistoryTabContent() {
                 e.stopPropagation();
                 alert(`${doc} を確認しました`);
               }}
-              className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 hover:bg-slate-50"
+              className="rounded border border-slate-200 px-2 py-1 text-xs text-neutral-900 hover:bg-slate-50"
             >
               {doc}
             </button>
@@ -233,7 +233,7 @@ export function PurchaseHistoryTabContent() {
       width: "200px",
       render: (row) => (
         <div className="space-y-1">
-          <div className="text-sm text-slate-700">{row.paymentMethod}</div>
+          <div className="text-sm text-neutral-900">{row.paymentMethod}</div>
           <button
             type="button"
             onClick={(e) => {
@@ -305,7 +305,7 @@ export function PurchaseHistoryTabContent() {
                 { key: "slot", label: "スロット" },
                 { key: "others", label: "その他物品" },
               ] as const).map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-2 text-xs text-slate-700">
+                <label key={key} className="flex items-center gap-2 text-xs text-neutral-900">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-slate-300 text-blue-600"
@@ -351,7 +351,7 @@ export function PurchaseHistoryTabContent() {
 
           <FilterGroup title="日付フィルター">
             <div className="space-y-1.5">
-              <div className="flex flex-wrap gap-2 text-xs text-slate-700">
+              <div className="flex flex-wrap gap-2 text-xs text-neutral-900">
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
@@ -393,7 +393,7 @@ export function PurchaseHistoryTabContent() {
                   onChange={(e) => setFilters((prev) => ({ ...prev, dateFrom: e.target.value }))}
                   className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
                 />
-                <span className="text-slate-500">〜</span>
+                <span className="text-neutral-700">〜</span>
                 <input
                   type="date"
                   value={filters.dateTo}
@@ -425,7 +425,7 @@ export function PurchaseHistoryTabContent() {
           <button
             type="button"
             onClick={handleCsvDownload}
-            className="rounded border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded border border-slate-300 px-3 py-1.5 text-xs font-semibold text-neutral-900 hover:bg-slate-50"
           >
             CSV出力
           </button>
@@ -445,7 +445,7 @@ export function PurchaseHistoryTabContent() {
 function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <div className="text-xs font-semibold text-slate-500">{title}</div>
+      <div className="text-xs font-semibold text-neutral-700">{title}</div>
       {children}
     </div>
   );

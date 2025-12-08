@@ -59,8 +59,8 @@ function InventoryPagination({
   }
 
   return (
-    <div className="inline-flex items-center justify-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-700 shadow-sm">
-      <div className="text-xs text-slate-600">
+    <div className="inline-flex items-center justify-start gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[11px] text-neutral-900 shadow-sm">
+      <div className="text-xs text-neutral-800">
         {totalCount > 0 ? `${start} - ${end} / ${totalCount}件` : "0 件"}
       </div>
       <div className="flex items-center gap-1">
@@ -1052,7 +1052,7 @@ export function InventoryDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen bg-white">
       <MainContainer fullWidth>
         {/* タイトル＋在庫検索ヘッダー */}
         <div className="mb-4 flex w-full flex-wrap items-center gap-3 md:gap-4">
@@ -1071,7 +1071,7 @@ export function InventoryDashboard() {
             <div className="ml-auto flex items-center gap-3">
               <button
                 type="button"
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 shadow-sm transition hover:bg-slate-100"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-neutral-800 shadow-sm transition hover:bg-slate-100"
                 aria-label="通知"
               >
                 <svg
@@ -1089,9 +1089,9 @@ export function InventoryDashboard() {
                   />
                 </svg>
               </button>
-              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm">
+              <div className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-900 shadow-sm">
                 <span>管理者</span>
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-slate-500">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 text-neutral-700">
                   <path
                     fillRule="evenodd"
                     d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.08 1.04l-4.25 4.25a.75.75 0 01-1.08 0L5.21 8.27a.75.75 0 01.02-1.06z"
@@ -1121,7 +1121,7 @@ export function InventoryDashboard() {
               <button
                 type="button"
                 onClick={() => setIsCsvMenuOpen((prev) => !prev)}
-                className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-900 transition hover:bg-slate-50"
                 >
                 CSV
               </button>
@@ -1148,14 +1148,14 @@ export function InventoryDashboard() {
             <button
               type="button"
               onClick={() => router.push("/inventory/new")}
-              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-900 transition hover:bg-slate-50"
             >
               個別登録
             </button>
 
             <button
               type="button"
-              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+              className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-900 transition hover:bg-slate-50"
               onClick={handleColumnToggle}
               aria-label="表示項目の設定"
               title="表示項目の設定"

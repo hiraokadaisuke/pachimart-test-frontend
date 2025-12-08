@@ -40,7 +40,7 @@ export default function ProductListPage() {
                 type="button"
                 onClick={() => setActiveSort(option)}
                 className={`transition-colors ${
-                  isActive ? 'font-semibold text-blue-600 underline' : 'text-gray-500 hover:underline'
+                  isActive ? 'font-semibold text-blue-600 underline' : 'text-neutral-700 hover:underline'
                 }`}
               >
                 {option}

@@ -55,7 +55,7 @@ export default function Header() {
         </div>
 
         <nav className="flex w-full flex-1 items-center md:w-auto">
-          <ul className="flex w-full gap-2 overflow-x-auto whitespace-nowrap text-sm font-semibold text-slate-700">
+          <ul className="flex w-full gap-2 overflow-x-auto whitespace-nowrap text-sm font-semibold text-neutral-900">
             {navLinks.map((link) => {
               const active = isActiveLink(pathname, link.href, link.matchPrefixes);
               return (
@@ -86,7 +86,7 @@ export default function Header() {
 
         <div className="ml-auto flex w-full flex-1 flex-wrap items-center justify-end gap-4 whitespace-nowrap md:w-auto md:flex-none">
           <div className="flex items-center gap-3 whitespace-nowrap">
-            <div className="text-right text-[11px] leading-tight text-slate-700">
+            <div className="text-right text-[11px] leading-tight text-neutral-900">
               <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(defaultBalanceSummary.plannedPurchase)}</div>
               <div className="font-semibold text-slate-900">売却予定残高 {formatCurrency(defaultBalanceSummary.plannedSales)}</div>
               <div className="font-semibold text-slate-900">利用可能残高 {formatCurrency(defaultBalanceSummary.available)}</div>
@@ -98,7 +98,7 @@ export default function Header() {
               >
                 お問い合わせ
               </Link>
-              <Link href="/inventory" className="text-sm font-semibold text-slate-600 transition hover:text-blue-700">
+              <Link href="/inventory" className="text-sm font-semibold text-neutral-800 transition hover:text-blue-700">
                 在庫管理 →
               </Link>
             </div>
