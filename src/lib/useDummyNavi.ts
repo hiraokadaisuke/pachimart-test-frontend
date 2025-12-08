@@ -194,7 +194,7 @@ export function useDummyNavi(transactionId?: string) {
       documentFiles,
       photoThumbnails,
       messageLogs,
-      statusLabel: "承認待ち",
+      statusLabel: "依頼中",
     };
   }, [transactionId]);
 }

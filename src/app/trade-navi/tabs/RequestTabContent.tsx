@@ -2,8 +2,6 @@
 
 import { useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { createEmptyNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
-
 export function RequestTabContent() {
   const router = useRouter();
   const initializedRef = useRef(false);
@@ -12,11 +10,7 @@ export function RequestTabContent() {
     if (initializedRef.current) return;
     initializedRef.current = true;
 
-    const draft = createEmptyNaviDraft();
-
-    saveNaviDraft(draft);
-
-    router.replace(`/transactions/navi/${draft.id}/edit`);
+    router.replace(`/transactions/navi/new/edit`);
   }, [router]);
 
   return (

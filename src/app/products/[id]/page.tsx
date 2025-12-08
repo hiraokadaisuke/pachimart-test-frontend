@@ -2,7 +2,6 @@
 
 import MainContainer from '@/components/layout/MainContainer';
 import { products } from '@/lib/dummyData';
-import { createEmptyNaviDraft, saveNaviDraft } from '@/lib/navi/storage';
 import { calculateQuote, type QuoteResult } from '@/lib/quotes/calculateQuote';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
@@ -68,30 +67,22 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
     const quote = calculateQuote(quoteInput);
     setQuoteResult(quote);
 
-    const draft = createEmptyNaviDraft();
-
-    draft.productId = String(product.id);
-    draft.buyerId = 'dummy-buyer-id';
-    draft.buyerCompanyName = 'テストホール株式会社';
-    draft.buyerContactName = '担当者 名';
-    draft.buyerTel = '03-0000-0000';
-    draft.buyerPending = false;
-
-    draft.conditions = {
-      ...draft.conditions,
-      unitPrice: quoteInput.unitPrice,
-      quantity,
-      shippingFee: quote.shippingFee,
-      handlingFee: quote.handlingFee,
-      taxRate: quoteInput.taxRate,
+    const params = new URLSearchParams({
+      productId: String(product.id),
+      buyerId: 'dummy-buyer-id',
+      buyerCompanyName: 'テストホール株式会社',
+      buyerContactName: '担当者 名',
+      buyerTel: '03-0000-0000',
+      quantity: String(quantity),
+      unitPrice: String(quoteInput.unitPrice),
       productName: product.name,
       makerName: product.maker,
-      location: warehouses.find((warehouse) => warehouse.id === deliveryWarehouseId)?.name ?? null,
-    };
+    });
 
-    saveNaviDraft(draft);
+    const location = warehouses.find((warehouse) => warehouse.id === deliveryWarehouseId)?.name;
+    if (location) params.set('location', location);
 
-    router.push(`/transactions/navi/${draft.id}/edit`);
+    router.push(`/transactions/navi/${product.id}/edit?${params.toString()}`);
   };
 
   return (
