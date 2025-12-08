@@ -101,9 +101,9 @@ export default function Header() {
           )}
           <div className="flex items-center gap-3 whitespace-nowrap">
             <div className="text-right text-[11px] leading-tight text-neutral-900">
-              <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(defaultBalanceSummary.plannedPurchase)}</div>
-              <div className="font-semibold text-slate-900">売却予定残高 {formatCurrency(defaultBalanceSummary.plannedSales)}</div>
-              <div className="font-semibold text-slate-900">利用可能残高 {formatCurrency(defaultBalanceSummary.available)}</div>
+              <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(balanceSummary.plannedPurchase)}</div>
+              <div className="font-semibold text-slate-900">売却予定残高 {formatCurrency(balanceSummary.plannedSales)}</div>
+              <div className="font-semibold text-slate-900">利用可能残高 {formatCurrency(balanceSummary.available)}</div>
             </div>
             <div className="flex items-center gap-2">
               <Link
