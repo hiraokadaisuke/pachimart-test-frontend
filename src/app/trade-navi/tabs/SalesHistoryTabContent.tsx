@@ -292,17 +292,20 @@ export function SalesHistoryTabContent() {
   };
 
   return (
-    <section className="space-y-4">
-      <form onSubmit={handleSubmit} className="space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <section className="-mx-4 space-y-3 lg:-mx-8">
+      <form
+        onSubmit={handleSubmit}
+        className="space-y-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm"
+      >
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 lg:grid-cols-3">
           <FilterGroup title="カテゴリ">
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-2">
               {([
                 { key: "pachinko", label: "パチンコ" },
                 { key: "slot", label: "スロット" },
                 { key: "others", label: "その他物品" },
               ] as const).map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-2 text-sm text-slate-700">
+                <label key={key} className="flex items-center gap-2 text-xs text-slate-700">
                   <input
                     type="checkbox"
                     className="h-4 w-4 rounded border-slate-300 text-blue-600"
@@ -324,7 +327,7 @@ export function SalesHistoryTabContent() {
             <select
               value={filters.status}
               onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value as FilterState["status"] }))}
-              className="block w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+              className="block w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
             >
               <option value="all">全て</option>
               <option value="inProgress">進行中</option>
@@ -336,7 +339,7 @@ export function SalesHistoryTabContent() {
             <select
               value={filters.handler}
               onChange={(e) => setFilters((prev) => ({ ...prev, handler: e.target.value }))}
-              className="block w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800"
+              className="block w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-800"
             >
               {handlerOptions.map((handler) => (
                 <option key={handler} value={handler}>
@@ -347,8 +350,8 @@ export function SalesHistoryTabContent() {
           </FilterGroup>
 
           <FilterGroup title="日付フィルター">
-            <div className="space-y-2">
-              <div className="flex flex-wrap gap-3 text-sm text-slate-700">
+            <div className="space-y-1.5">
+              <div className="flex flex-wrap gap-2 text-xs text-slate-700">
                 <label className="flex items-center gap-2">
                   <input
                     type="radio"
@@ -383,19 +386,19 @@ export function SalesHistoryTabContent() {
                   書類発送日
                 </label>
               </div>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-xs">
                 <input
                   type="date"
                   value={filters.dateFrom}
                   onChange={(e) => setFilters((prev) => ({ ...prev, dateFrom: e.target.value }))}
-                  className="w-full rounded border border-slate-300 px-2 py-1"
+                  className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
                 />
                 <span className="text-slate-500">〜</span>
                 <input
                   type="date"
                   value={filters.dateTo}
                   onChange={(e) => setFilters((prev) => ({ ...prev, dateTo: e.target.value }))}
-                  className="w-full rounded border border-slate-300 px-2 py-1"
+                  className="w-full rounded border border-slate-300 px-2 py-1 text-xs"
                 />
               </div>
             </div>
@@ -407,22 +410,22 @@ export function SalesHistoryTabContent() {
               value={filters.keyword}
               onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value }))}
               placeholder="相手先名や機種名で検索"
-              className="block w-full rounded border border-slate-300 px-3 py-2 text-sm text-slate-800"
+              className="block w-full rounded border border-slate-300 px-2 py-1 text-xs text-slate-800"
             />
           </FilterGroup>
         </div>
 
-        <div className="flex flex-wrap gap-3 border-t border-slate-200 pt-3">
+        <div className="flex flex-wrap gap-2 border-t border-slate-200 pt-2">
           <button
             type="submit"
-            className="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
+            className="rounded bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-blue-700"
           >
             照会
           </button>
           <button
             type="button"
             onClick={handleCsvDownload}
-            className="rounded border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded border border-slate-300 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
           >
             CSV出力
           </button>
@@ -441,7 +444,7 @@ export function SalesHistoryTabContent() {
 
 function FilterGroup({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       <div className="text-xs font-semibold text-slate-500">{title}</div>
       {children}
     </div>
