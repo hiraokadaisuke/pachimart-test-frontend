@@ -211,7 +211,7 @@ export function SalesHistoryTabContent() {
       width: "180px",
       render: (row) => (
         <div className="flex flex-wrap gap-2">
-          {row.documents.map((doc) => (
+          {row.documents.map((doc: string) => (
             <button
               type="button"
               key={doc}
