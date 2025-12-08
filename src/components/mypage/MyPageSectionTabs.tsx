@@ -199,7 +199,7 @@ export function MyPageSectionTabs({
               "inline-flex items-center whitespace-nowrap rounded-lg border px-3 py-2 font-semibold transition",
               isActive
                 ? "border-blue-200 bg-blue-50 text-blue-700 shadow-sm"
-                : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50",
+                : "border-slate-200 bg-white text-neutral-900 hover:bg-slate-50",
             ].join(" ")}
           >
             {tab.label}

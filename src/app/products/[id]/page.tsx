@@ -52,7 +52,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   if (!product) {
     return (
       <MainContainer>
-        <div className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center text-slate-700 shadow-sm">
+        <div className="rounded-lg border border-slate-200 bg-white px-6 py-12 text-center text-neutral-900 shadow-sm">
           商品が見つかりません
         </div>
       </MainContainer>
@@ -99,7 +99,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 text-[13px] shadow-sm">
           <div className="space-y-1.5 border-b border-slate-200 pb-3">
-            <p className="text-xs font-semibold text-slate-500">{product.maker}</p>
+            <p className="text-xs font-semibold text-neutral-700">{product.maker}</p>
             <h1 className="text-xl font-bold text-slate-900">{product.name}</h1>
             <p className="text-xs font-semibold text-emerald-700">在庫{product.quantity}台（バラ売り可）</p>
             <p className="text-2xl font-bold text-slate-900">{formatPrice(product.price)}</p>
@@ -123,7 +123,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
           <div className="space-y-2">
             <h2 className="text-sm font-semibold text-slate-800">不備</h2>
-            <div className="grid gap-2 rounded-md border border-slate-200 bg-slate-50 p-3 text-[13px] text-slate-700 md:grid-cols-2">
+            <div className="grid gap-2 rounded-md border border-slate-200 bg-white p-3 text-[13px] text-neutral-900 md:grid-cols-2">
               <DetailRow label="目視項目" value="特になし" />
               <DetailRow label="動作項目" value="特になし" />
             </div>
@@ -132,17 +132,17 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
         <div className="space-y-3 text-[13px]">
           <div className="space-y-1.5 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-            <h3 className="text-[14px] font-semibold uppercase tracking-wide text-slate-500">遊技機販売業者等</h3>
+            <h3 className="text-[14px] font-semibold uppercase tracking-wide text-neutral-700">遊技機販売業者等</h3>
             <p className="text-[14px] font-semibold text-slate-900">{product.sellerName}</p>
-            <p className="text-[12px] leading-[16px] text-slate-600">担当者名：田中 太郎 / 代表番号：03-1234-5678</p>
+            <p className="text-[12px] leading-[16px] text-neutral-800">担当者名：田中 太郎 / 代表番号：03-1234-5678</p>
           </div>
 
           <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
             <div className="space-y-1">
               <h3 className="text-[14px] font-semibold text-slate-900">金額試算</h3>
-              <p className="text-[12px] leading-[16px] text-slate-500">希望台数や配送条件を入力してください。</p>
+              <p className="text-[12px] leading-[16px] text-neutral-700">希望台数や配送条件を入力してください。</p>
             </div>
-            <div className="space-y-2 text-[13px] text-slate-700">
+            <div className="space-y-2 text-[13px] text-neutral-900">
               <div className="space-y-1">
                 <label className="text-[12px] font-semibold">ご希望の台数（在庫数{product.quantity}）</label>
                 <select
@@ -180,8 +180,8 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                       onChange={() => setSelfPickup(true)}
                       disabled={!product.allowPickup}
                     />
-                    <span className={!product.allowPickup ? 'text-slate-400 line-through' : ''}>希望する</span>
-                    {!product.allowPickup && <span className="text-[11px] text-slate-400">（出品者設定で不可）</span>}
+                    <span className={!product.allowPickup ? 'text-neutral-600 line-through' : ''}>希望する</span>
+                    {!product.allowPickup && <span className="text-[11px] text-neutral-600">（出品者設定で不可）</span>}
                   </label>
                 </div>
               </div>
@@ -211,14 +211,14 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                 金額を試算する
               </button>
 
-              <div className="rounded-md border border-slate-100 bg-slate-50 p-3">
+              <div className="rounded-md border border-slate-100 bg-white p-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-[14px] font-semibold text-slate-700">金額サマリー（概算）</h4>
-                  <p className="text-[11px] text-slate-500">税込表示</p>
+                  <h4 className="text-[14px] font-semibold text-neutral-900">金額サマリー（概算）</h4>
+                  <p className="text-[11px] text-neutral-700">税込表示</p>
                 </div>
 
                 {quoteResult ? (
-                  <div className="mt-2 space-y-1.5 text-[12px] leading-[16px] text-slate-700">
+                  <div className="mt-2 space-y-1.5 text-[12px] leading-[16px] text-neutral-900">
                     <SummaryRow label="商品代金" value={formatCurrency(quoteResult.productSubtotal)} />
                     <SummaryRow label="送料" value={formatCurrency(quoteResult.shippingFee)} />
                     <SummaryRow label="出庫手数料" value={formatCurrency(quoteResult.handlingFee)} />
@@ -230,7 +230,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
                     </div>
                   </div>
                 ) : (
-                  <p className="mt-2 text-[12px] leading-[16px] text-slate-500">条件入力後に概算が表示されます。</p>
+                  <p className="mt-2 text-[12px] leading-[16px] text-neutral-700">条件入力後に概算が表示されます。</p>
                 )}
               </div>
             </div>
@@ -244,7 +244,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             >
               電話で問い合わせ
             </button>
-            <p className="max-w-[240px] text-[12px] leading-[16px] text-slate-600">電話で内容を確認後、売手側から取引Naviが作成されます。</p>
+            <p className="max-w-[240px] text-[12px] leading-[16px] text-neutral-800">電話で内容を確認後、売手側から取引Naviが作成されます。</p>
             {showPhoneNumbers && (
               <div className="rounded-md border border-blue-100 bg-blue-50 px-3 py-2 text-[12px] leading-[16px] text-slate-800">
                 <p className="font-semibold">担当者電話番号：090-1234-5678</p>
@@ -261,7 +261,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
             >
               オンラインでオファーする
             </button>
-            <p className="max-w-[240px] text-[12px] leading-[16px] text-slate-500">
+            <p className="max-w-[240px] text-[12px] leading-[16px] text-neutral-700">
               オンラインでオファーすると、売手側で取引Naviが作成され、内容が調整されたうえで送られてきます。
             </p>
           </div>
@@ -273,8 +273,8 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
 
 function DetailRow({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="flex gap-3 rounded-md border border-slate-200 bg-slate-50 px-3 py-1.5">
-      <span className="w-28 shrink-0 text-[12px] font-semibold text-slate-500">{label}</span>
+    <div className="flex gap-3 rounded-md border border-slate-200 bg-white px-3 py-1.5">
+      <span className="w-28 shrink-0 text-[12px] font-semibold text-neutral-700">{label}</span>
       <span className="text-[13px] font-semibold text-slate-900">{value}</span>
     </div>
   );

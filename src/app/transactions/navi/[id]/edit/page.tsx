@@ -274,7 +274,7 @@ export default function TransactionNaviEditPage() {
       <MainContainer>
         <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
           <h1 className="text-xl font-semibold text-slate-900">取引Naviが見つかりません</h1>
-          <p className="text-sm text-slate-600">
+          <p className="text-sm text-neutral-800">
             セッションの有効期限切れか、存在しないIDです。再度一覧からやり直してください。
           </p>
           <Link
@@ -320,7 +320,7 @@ export default function TransactionNaviEditPage() {
     onChange: (next: T) => void
   ) => {
     return (
-      <div className="flex flex-wrap gap-3 text-sm text-slate-700">
+      <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
         {options.map((option) => (
           <label key={option} className="inline-flex items-center gap-2">
             <input
@@ -388,12 +388,12 @@ export default function TransactionNaviEditPage() {
     <MainContainer variant="wide">
       <div className="flex flex-col gap-8 pb-8">
         <section className="flex flex-col gap-4 border-b border-slate-200 pb-6">
-          <nav className="text-xs text-slate-500">
+          <nav className="text-xs text-neutral-700">
             <ol className="flex flex-wrap items-center gap-2">
               {editBreadcrumbItems.map((item, index) => (
                 <li key={item} className="flex items-center gap-2">
                   <span>{item}</span>
-                  {index < editBreadcrumbItems.length - 1 && <span className="text-slate-400">›</span>}
+                  {index < editBreadcrumbItems.length - 1 && <span className="text-neutral-600">›</span>}
                 </li>
               ))}
             </ol>
@@ -427,7 +427,7 @@ export default function TransactionNaviEditPage() {
             </div>
           </div>
 
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-neutral-900">
             電話で合意した条件を入力し、買手に送信するための編集画面です。内容を確認してから送信してください。
           </p>
         </section>
@@ -441,13 +441,13 @@ export default function TransactionNaviEditPage() {
                   <p className="text-xs text-red-600">{validationErrors.buyer ?? buyerErrorMessage}</p>
                 )}
               </div>
-              <span className="text-xs font-semibold text-slate-500">取引先</span>
+              <span className="text-xs font-semibold text-neutral-700">取引先</span>
             </div>
 
             {isBuyerSet ? (
-              <div className="space-y-2 text-sm text-slate-700">
+              <div className="space-y-2 text-sm text-neutral-900">
                 <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-slate-600">設定済み</span>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
                   <button
                     type="button"
                     className="text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
@@ -463,11 +463,11 @@ export default function TransactionNaviEditPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-sm text-slate-700">
+                <p className="text-sm text-neutral-900">
                   買手が未設定です。パチマート会員を検索するか、会員外として登録してください。
                 </p>
-                <div className="space-y-2 rounded border border-slate-200 bg-slate-50 p-3">
-                  <label className="text-xs font-semibold text-slate-600">会員検索</label>
+                <div className="space-y-2 rounded border border-slate-200 bg-white p-3">
+                  <label className="text-xs font-semibold text-neutral-800">会員検索</label>
                   <div className="flex flex-col gap-2 md:flex-row md:items-center">
                     <input
                       type="text"
@@ -491,7 +491,7 @@ export default function TransactionNaviEditPage() {
                       >
                         <div>
                           <p className="font-semibold text-slate-900">{buyer.companyName}</p>
-                          <p className="text-xs text-slate-600">
+                          <p className="text-xs text-neutral-800">
                             {buyer.contactName}｜{buyer.tel}
                           </p>
                         </div>
@@ -505,13 +505,13 @@ export default function TransactionNaviEditPage() {
                       </div>
                     ))}
                     {buyerSearchResults.length === 0 && (
-                      <p className="text-xs text-slate-500">該当する買手が見つかりませんでした。</p>
+                      <p className="text-xs text-neutral-700">該当する買手が見つかりませんでした。</p>
                     )}
                   </div>
                 </div>
 
                 <div className="space-y-2 rounded border border-dashed border-slate-300 p-3">
-                  <p className="text-xs font-semibold text-slate-700">パチマート会員ではない取引先の場合はこちら</p>
+                  <p className="text-xs font-semibold text-neutral-900">パチマート会員ではない取引先の場合はこちら</p>
                   <div className="space-y-2 text-sm">
                     <input
                       type="text"
@@ -553,10 +553,10 @@ export default function TransactionNaviEditPage() {
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900">物件情報</h2>
-              <span className="text-xs font-semibold text-slate-500">対象機器</span>
+              <span className="text-xs font-semibold text-neutral-700">対象機器</span>
             </div>
             {isProductLinked ? (
-              <div className="space-y-2 text-sm text-slate-700">
+              <div className="space-y-2 text-sm text-neutral-900">
                 <InfoRow label="機種名" value={propertyInfo.modelName} emphasis />
                 <InfoRow label="メーカー" value={propertyInfo.maker} />
                 <InfoRow label="台数" value={`${propertyInfo.quantity} 台`} />
@@ -564,10 +564,10 @@ export default function TransactionNaviEditPage() {
                 <InfoRow label="保管場所" value={propertyInfo.storageLocation} />
               </div>
             ) : (
-              <div className="space-y-3 text-sm text-slate-700">
-                <p className="text-xs text-slate-500">商品が紐付いていないため、ここで情報を入力してください。</p>
+              <div className="space-y-3 text-sm text-neutral-900">
+                <p className="text-xs text-neutral-700">商品が紐付いていないため、ここで情報を入力してください。</p>
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-600">機種名</label>
+                  <label className="block text-xs font-semibold text-neutral-800">機種名</label>
                   <input
                     type="text"
                     className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
@@ -576,7 +576,7 @@ export default function TransactionNaviEditPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-600">メーカー</label>
+                  <label className="block text-xs font-semibold text-neutral-800">メーカー</label>
                   <input
                     type="text"
                     className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
@@ -585,7 +585,7 @@ export default function TransactionNaviEditPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-600">台数</label>
+                  <label className="block text-xs font-semibold text-neutral-800">台数</label>
                   <input
                     type="number"
                     className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
@@ -594,7 +594,7 @@ export default function TransactionNaviEditPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-slate-600">保管場所</label>
+                  <label className="block text-xs font-semibold text-neutral-800">保管場所</label>
                   <input
                     type="text"
                     className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
@@ -610,14 +610,14 @@ export default function TransactionNaviEditPage() {
         <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">取引条件</h2>
-            <span className="text-xs font-semibold text-slate-500">参考値｜編集</span>
+            <span className="text-xs font-semibold text-neutral-700">参考値｜編集</span>
           </div>
           <div className="grid gap-6 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <div className="overflow-x-auto">
                 <table className="min-w-full border border-slate-200 text-sm">
                   <thead>
-                    <tr className="bg-slate-50 text-left text-xs text-slate-600">
+                    <tr className="bg-slate-50 text-left text-xs text-neutral-800">
                       <th className="w-40 px-3 py-2">項目</th>
                       <th className="w-56 px-3 py-2">参考値</th>
                       <th className="px-3 py-2">編集</th>
@@ -626,7 +626,7 @@ export default function TransactionNaviEditPage() {
                   <tbody className="divide-y divide-slate-200 text-slate-800">
                     <EditRow label="単価 (税抜)" required>
                       <div className="flex items-center gap-2">
-                        <span className="text-slate-500">{formattedNumber(referenceConditions.price)}</span>
+                        <span className="text-neutral-700">{formattedNumber(referenceConditions.price)}</span>
                       </div>
                       <div className="flex flex-col items-start gap-1">
                         <input
@@ -642,7 +642,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="台数" required>
-                      <span className="text-slate-500">{referenceConditions.quantity} 台</span>
+                      <span className="text-neutral-700">{referenceConditions.quantity} 台</span>
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
@@ -657,7 +657,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="撤去日" required>
-                      <span className="text-slate-500">{referenceConditions.removalDate}</span>
+                      <span className="text-neutral-700">{referenceConditions.removalDate}</span>
                       <input
                         type="date"
                         className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
@@ -667,7 +667,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="機械発送予定日" required>
-                      <span className="text-slate-500">
+                      <span className="text-neutral-700">
                         {referenceConditions.machineShipmentDate}（{referenceConditions.machineShipmentType}）
                       </span>
                       <div className="space-y-2">
@@ -687,7 +687,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="書類発送予定日" required>
-                      <span className="text-slate-500">
+                      <span className="text-neutral-700">
                         {referenceConditions.documentShipmentDate}（{referenceConditions.documentShipmentType}）
                       </span>
                       <div className="space-y-2">
@@ -707,7 +707,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="支払期日" required>
-                      <span className="text-slate-500">{referenceConditions.paymentDue}</span>
+                      <span className="text-neutral-700">{referenceConditions.paymentDue}</span>
                       <input
                         type="date"
                         className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
@@ -717,7 +717,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="送料 / 機械運賃">
-                      <span className="text-slate-500">{formattedNumber(referenceConditions.freightCost)}</span>
+                      <span className="text-neutral-700">{formattedNumber(referenceConditions.freightCost)}</span>
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
@@ -732,7 +732,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="出庫手数料">
-                      <span className="text-slate-500">{formattedNumber(referenceConditions.handlingFee)}</span>
+                      <span className="text-neutral-700">{formattedNumber(referenceConditions.handlingFee)}</span>
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
@@ -747,7 +747,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="税率">
-                      <span className="text-slate-500">{referenceConditions.taxRate}</span>
+                      <span className="text-neutral-700">{referenceConditions.taxRate}</span>
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
@@ -763,7 +763,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="その他料金1">
-                      <span className="text-slate-500">
+                      <span className="text-neutral-700">
                         {referenceConditions.otherFee1
                           ? `${referenceConditions.otherFee1.label}: ${formattedNumber(referenceConditions.otherFee1.amount)}`
                           : "-"}
@@ -787,7 +787,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="その他料金2">
-                      <span className="text-slate-500">
+                      <span className="text-neutral-700">
                         {referenceConditions.otherFee2
                           ? `${referenceConditions.otherFee2.label}: ${formattedNumber(referenceConditions.otherFee2.amount)}`
                           : "-"}
@@ -811,7 +811,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="特記事項">
-                      <span className="whitespace-pre-wrap text-slate-500">{referenceConditions.notes}</span>
+                      <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.notes}</span>
                       <textarea
                         className="w-64 rounded border border-slate-300 px-3 py-2 text-sm"
                         rows={3}
@@ -821,7 +821,7 @@ export default function TransactionNaviEditPage() {
                     </EditRow>
 
                     <EditRow label="取引条件">
-                      <span className="whitespace-pre-wrap text-slate-500">{referenceConditions.terms}</span>
+                      <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.terms}</span>
                       <textarea
                         className="w-72 rounded border border-slate-300 px-3 py-2 text-sm"
                         rows={5}
@@ -834,10 +834,10 @@ export default function TransactionNaviEditPage() {
               </div>
             </div>
 
-            <div className="space-y-3 rounded border border-slate-200 bg-slate-50 p-4 shadow-sm">
+            <div className="space-y-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-slate-900">お支払いサマリー</h3>
-                <span className="text-[11px] font-semibold text-slate-500">自動再計算</span>
+                <span className="text-[11px] font-semibold text-neutral-700">自動再計算</span>
               </div>
               {quoteResult ? (
                 <div className="space-y-2 text-sm text-slate-800">
@@ -850,7 +850,7 @@ export default function TransactionNaviEditPage() {
                   <SummaryRow label="合計" value={formattedNumber(quoteResult.total)} emphasis />
                 </div>
               ) : (
-                <p className="text-xs text-slate-500">金額を入力すると自動計算されます。</p>
+                <p className="text-xs text-neutral-700">金額を入力すると自動計算されます。</p>
               )}
             </div>
           </div>
@@ -859,23 +859,23 @@ export default function TransactionNaviEditPage() {
         <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">書類アップロード</h2>
-            <span className="text-xs font-semibold text-slate-500">PDF/Excelなど</span>
+            <span className="text-xs font-semibold text-neutral-700">PDF/Excelなど</span>
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div className="space-y-2 text-sm text-slate-700">
-              <p className="text-slate-600">見積書や注文書などの書類を追加してください。</p>
+            <div className="space-y-2 text-sm text-neutral-900">
+              <p className="text-neutral-800">見積書や注文書などの書類を追加してください。</p>
               <div className="flex flex-wrap gap-2">
                 {uploadFiles.map((file) => (
                   <span
                     key={file}
-                    className="inline-flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-1 text-xs text-slate-700"
+                    className="inline-flex items-center gap-2 rounded border border-slate-200 bg-white px-3 py-1 text-xs text-neutral-900"
                   >
                     📄 {file}
                   </span>
                 ))}
               </div>
             </div>
-            <label className="flex cursor-pointer items-center gap-3 rounded border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-700 hover:border-sky-400 hover:bg-slate-50">
+            <label className="flex cursor-pointer items-center gap-3 rounded border border-dashed border-slate-300 px-4 py-3 text-sm text-neutral-900 hover:border-sky-400 hover:bg-slate-50">
               <input type="file" className="hidden" multiple onChange={(e) => handleFileAdd(e.target.files)} />
               <span className="text-sky-700">ファイルを選択</span>
             </label>
@@ -885,20 +885,20 @@ export default function TransactionNaviEditPage() {
         <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">写真アップロード</h2>
-            <span className="text-xs font-semibold text-slate-500">参考画像</span>
+            <span className="text-xs font-semibold text-neutral-700">参考画像</span>
           </div>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="flex flex-wrap gap-3">
               {photoThumbnails.map((thumb) => (
                 <div
                   key={thumb}
-                  className="flex h-24 w-32 items-center justify-center rounded border border-slate-200 bg-slate-50 text-xs text-slate-600"
+                  className="flex h-24 w-32 items-center justify-center rounded border border-slate-200 bg-white text-xs text-neutral-800"
                 >
                   {thumb}
                 </div>
               ))}
             </div>
-            <label className="flex cursor-pointer items-center gap-3 rounded border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-700 hover:border-sky-400 hover:bg-slate-50">
+            <label className="flex cursor-pointer items-center gap-3 rounded border border-dashed border-slate-300 px-4 py-3 text-sm text-neutral-900 hover:border-sky-400 hover:bg-slate-50">
               <input type="file" className="hidden" multiple onChange={(e) => handlePhotoAdd(e.target.files)} />
               <span className="text-sky-700">写真を追加</span>
             </label>
@@ -908,7 +908,7 @@ export default function TransactionNaviEditPage() {
         <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-slate-900">取引メッセージ</h2>
-            <span className="text-xs font-semibold text-slate-500">買手への連絡</span>
+            <span className="text-xs font-semibold text-neutral-700">買手への連絡</span>
           </div>
           <div className="space-y-3">
             <div className="space-y-2">
@@ -919,7 +919,7 @@ export default function TransactionNaviEditPage() {
                     log.sender === "seller" ? "border-sky-100 bg-sky-50" : ""
                   }`}
                 >
-                  <div className="flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center justify-between text-xs text-neutral-700">
                     <span>{log.sender === "seller" ? "あなた" : "買手"}</span>
                     <span>{log.timestamp}</span>
                   </div>
@@ -966,9 +966,9 @@ function ConditionRow({
   fullWidth?: boolean;
 }) {
   return (
-    <div className={`flex flex-col gap-1 rounded border border-slate-100 bg-slate-50 p-3 ${fullWidth ? "md:col-span-2" : ""}`}>
-      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
-      <dd className="text-sm text-slate-800 whitespace-pre-wrap">{value}</dd>
+    <div className={`flex flex-col gap-1 rounded border border-slate-200 bg-white p-3 ${fullWidth ? "md:col-span-2" : ""}`}>
+      <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-700">{label}</dt>
+      <dd className="text-sm text-neutral-900 whitespace-pre-wrap">{value}</dd>
     </div>
   );
 }
@@ -988,13 +988,13 @@ function EditRow({
 
   return (
     <tr>
-      <th className="bg-slate-50 px-3 py-3 text-left text-xs font-semibold text-slate-700">
+      <th className="bg-slate-50 px-3 py-3 text-left text-xs font-semibold text-neutral-900">
         <div className="flex items-center gap-2">
           <span>{label}</span>
           {required && <span className="rounded bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">必須</span>}
         </div>
       </th>
-      <td className="bg-slate-50 px-3 py-3 text-slate-600">{beforeContent}</td>
+      <td className="bg-slate-50 px-3 py-3 text-neutral-800">{beforeContent}</td>
       <td className="px-3 py-3">{afterContent}</td>
     </tr>
   );
@@ -1012,9 +1012,9 @@ function InfoRow({
   muted?: boolean;
 }) {
   return (
-    <div className="flex gap-2 text-sm text-slate-700">
-      <span className="w-24 text-slate-500">{label}</span>
-      <span className={`${emphasis ? "font-semibold" : ""} ${muted ? "text-slate-500" : ""}`}>
+    <div className="flex gap-2 text-sm text-neutral-900">
+      <span className="w-24 text-neutral-700">{label}</span>
+      <span className={`${emphasis ? "font-semibold" : ""} ${muted ? "text-neutral-700" : ""}`}>
         {value}
       </span>
     </div>
@@ -1024,7 +1024,7 @@ function InfoRow({
 function SummaryRow({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
   return (
     <div className="flex items-center justify-between text-sm">
-      <span className="text-slate-600">{label}</span>
+      <span className="text-neutral-800">{label}</span>
       <span className={`font-semibold ${emphasis ? "text-sky-700" : "text-slate-900"}`}>{value}</span>
     </div>
   );

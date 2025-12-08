@@ -18,13 +18,13 @@ export default function TransactionNaviCompletedPage() {
     <MainContainer variant="wide">
       <div className="flex flex-col gap-8 py-10">
         <section className="flex flex-col gap-4 border-b border-slate-200 pb-6">
-          <nav className="text-xs text-slate-500">
+          <nav className="text-xs text-neutral-700">
             <ol className="flex flex-wrap items-center gap-2">
               {completedBreadcrumbItems.map((item, index) => (
                 <li key={item} className="flex items-center gap-2">
                   <span>{item}</span>
                   {index < completedBreadcrumbItems.length - 1 && (
-                    <span className="text-slate-400">›</span>
+                    <span className="text-neutral-600">›</span>
                   )}
                 </li>
               ))}
@@ -38,7 +38,7 @@ export default function TransactionNaviCompletedPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-slate-900">取引が成立しました</h1>
-                <p className="text-sm text-slate-600">取引ID: {transactionId}</p>
+                <p className="text-sm text-neutral-800">取引ID: {transactionId}</p>
               </div>
             </div>
             <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
@@ -46,15 +46,15 @@ export default function TransactionNaviCompletedPage() {
             </span>
           </div>
 
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-neutral-900">
             {propertyInfo.modelName}（{propertyInfo.maker}）の取引が承認されました。引き続き発送や精算などの
             オペレーションを進めてください。
           </p>
         </section>
 
         <section className="rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
-          <p className="text-sm font-medium text-slate-700">買手への送信が完了し、承認されました。</p>
-          <p className="mt-2 text-sm text-slate-600">取引Navi上の条件を控え、必要な対応を進めましょう。</p>
+          <p className="text-sm font-medium text-neutral-900">買手への送信が完了し、承認されました。</p>
+          <p className="mt-2 text-sm text-neutral-800">取引Navi上の条件を控え、必要な対応を進めましょう。</p>
 
           <div className="mt-6 flex flex-wrap justify-center gap-3">
             <Link

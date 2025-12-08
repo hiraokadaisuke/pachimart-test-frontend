@@ -13,7 +13,7 @@ export function StatusBadge({ statusKey }: StatusBadgeProps) {
 
   const baseClass = "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-semibold";
   const colorClass = {
-    gray: "bg-slate-100 text-slate-700",
+    gray: "bg-slate-100 text-neutral-900",
     blue: "bg-blue-50 text-blue-700",
     yellow: "bg-yellow-50 text-yellow-700",
     green: "bg-emerald-50 text-emerald-700",

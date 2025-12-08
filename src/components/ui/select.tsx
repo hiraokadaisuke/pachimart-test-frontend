@@ -9,7 +9,7 @@ type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
 export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
   ({ className, label, children, ...props }, ref) => (
     <label className="flex w-full flex-col gap-1 text-sm font-semibold text-slate-800">
-      {label && <span className="text-slate-700">{label}</span>}
+      {label && <span className="text-neutral-900">{label}</span>}
       <select
         ref={ref}
         className={cn(

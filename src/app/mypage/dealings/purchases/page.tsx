@@ -65,7 +65,7 @@ export default function PurchasesPage() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div className="space-y-1">
           <h1 className="text-xl font-bold text-slate-900">購入一覧</h1>
-          <p className="text-sm text-slate-600">取引Naviの履歴と同じフォーマットで、購入取引の状況を確認できます。</p>
+          <p className="text-sm text-neutral-800">取引Naviの履歴と同じフォーマットで、購入取引の状況を確認できます。</p>
         </div>
       </header>
 
@@ -77,7 +77,7 @@ export default function PurchasesPage() {
           onKeywordChange={setKeyword}
         />
 
-        <div className="rounded bg-slate-50 px-4 py-2 text-xs text-slate-600">
+        <div className="rounded border border-slate-200 bg-white px-4 py-2 text-xs text-neutral-800">
           物件名・台数・相手先・税込合計・ステータス・更新日時を共通レイアウトで表示しています。
         </div>
 

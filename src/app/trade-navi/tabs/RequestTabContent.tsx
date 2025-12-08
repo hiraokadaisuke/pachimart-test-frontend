@@ -5,15 +5,15 @@ export function RequestTabContent() {
     <section className="space-y-4 rounded border border-dashed border-slate-300 bg-white p-6">
       <div className="space-y-1">
         <h2 className="text-lg font-semibold text-slate-900">依頼入力</h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-neutral-800">
           取引依頼を作成するフォームをここに配置予定です。現状はダミーの入力欄です。
         </p>
       </div>
 
-      <form className="space-y-3 text-sm text-slate-700">
+      <form className="space-y-3 text-sm text-neutral-900">
         <div className="grid gap-2 sm:grid-cols-2">
           <label className="space-y-1">
-            <span className="block text-xs font-semibold text-slate-600">取引先</span>
+            <span className="block text-xs font-semibold text-neutral-800">取引先</span>
             <input
               type="text"
               className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
@@ -21,7 +21,7 @@ export function RequestTabContent() {
             />
           </label>
           <label className="space-y-1">
-            <span className="block text-xs font-semibold text-slate-600">物件名</span>
+            <span className="block text-xs font-semibold text-neutral-800">物件名</span>
             <input
               type="text"
               className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
@@ -30,7 +30,7 @@ export function RequestTabContent() {
           </label>
         </div>
         <label className="space-y-1">
-          <span className="block text-xs font-semibold text-slate-600">メモ</span>
+          <span className="block text-xs font-semibold text-neutral-800">メモ</span>
           <textarea
             rows={3}
             className="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
@@ -40,7 +40,7 @@ export function RequestTabContent() {
         <div className="flex flex-wrap gap-3">
           <button
             type="button"
-            className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-900 hover:bg-slate-50"
           >
             下書きを保存
           </button>

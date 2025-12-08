@@ -59,7 +59,7 @@ export function DialogTitle({ children, className }: DialogTitleProps) {
 
 type DialogDescriptionProps = { children: React.ReactNode; className?: string };
 export function DialogDescription({ children, className }: DialogDescriptionProps) {
-  return <p className={cn("text-sm text-slate-600", className)}>{children}</p>;
+  return <p className={cn("text-sm text-neutral-800", className)}>{children}</p>;
 }
 
 type DialogFooterProps = { children: React.ReactNode; className?: string };

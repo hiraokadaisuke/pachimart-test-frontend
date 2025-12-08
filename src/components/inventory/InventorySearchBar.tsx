@@ -179,7 +179,7 @@ export function InventorySearchBar() {
           className="flex w-full items-center gap-3"
         >
           <div className="relative flex-1">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-neutral-600">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -309,7 +309,7 @@ export function InventorySearchBar() {
                                 "flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold",
                                 checked
                                   ? "border-blue-200 bg-blue-50 text-blue-700"
-                                  : "border-slate-200 bg-slate-50 text-slate-700",
+                                  : "border-slate-200 bg-slate-50 text-neutral-900",
                               )}
                             >
                               <Checkbox
@@ -351,7 +351,7 @@ export function InventorySearchBar() {
                                 "flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold",
                                 checked
                                   ? "border-blue-200 bg-blue-50 text-blue-700"
-                                  : "border-slate-200 bg-slate-50 text-slate-700",
+                                  : "border-slate-200 bg-slate-50 text-neutral-900",
                               )}
                             >
                               <Checkbox
@@ -394,7 +394,7 @@ export function InventorySearchBar() {
                               "flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold",
                               checked
                                 ? "border-blue-200 bg-blue-50 text-blue-700"
-                                : "border-slate-200 bg-slate-50 text-slate-700",
+                                : "border-slate-200 bg-slate-50 text-neutral-900",
                             )}
                           >
                             <Checkbox
@@ -434,7 +434,7 @@ export function InventorySearchBar() {
                               "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold",
                               checked
                                 ? "border-blue-200 bg-blue-50 text-blue-700"
-                                : "border-slate-200 bg-slate-50 text-slate-700",
+                                : "border-slate-200 bg-slate-50 text-neutral-900",
                             )}
                           >
                             <Checkbox
@@ -541,7 +541,7 @@ export function InventorySearchBar() {
                                 "flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold",
                                 checked
                                   ? "border-blue-200 bg-blue-50 text-blue-700"
-                                  : "border-slate-200 bg-slate-50 text-slate-700",
+                                  : "border-slate-200 bg-slate-50 text-neutral-900",
                               )}
                             >
                               <Checkbox
@@ -581,7 +581,7 @@ export function InventorySearchBar() {
                                 "flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold",
                                 checked
                                   ? "border-blue-200 bg-blue-50 text-blue-700"
-                                  : "border-slate-200 bg-slate-50 text-slate-700",
+                                  : "border-slate-200 bg-slate-50 text-neutral-900",
                               )}
                             >
                               <Checkbox
@@ -622,7 +622,7 @@ export function InventorySearchBar() {
                               "flex items-center gap-2 rounded-full border px-3 py-2 text-xs font-semibold",
                               checked
                                 ? "border-blue-200 bg-blue-50 text-blue-700"
-                                : "border-slate-200 bg-slate-50 text-slate-700",
+                                : "border-slate-200 bg-slate-50 text-neutral-900",
                             )}
                           >
                             <Checkbox
@@ -662,7 +662,7 @@ export function InventorySearchBar() {
                               "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold",
                               checked
                                 ? "border-blue-200 bg-blue-50 text-blue-700"
-                                : "border-slate-200 bg-slate-50 text-slate-700",
+                                : "border-slate-200 bg-slate-50 text-neutral-900",
                             )}
                           >
                             <Checkbox

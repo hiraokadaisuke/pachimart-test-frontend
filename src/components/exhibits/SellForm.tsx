@@ -10,7 +10,7 @@ type SellFormProps = {
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
   <section className="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
     <h2 className="mb-6 border-b border-slate-100 pb-3 text-lg font-semibold text-slate-800">{title}</h2>
-    <div className="space-y-6 text-sm text-slate-700">{children}</div>
+    <div className="space-y-6 text-sm text-neutral-900">{children}</div>
   </section>
 );
 
@@ -57,11 +57,11 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   };
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 text-slate-700">
+    <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 text-neutral-900">
       {showHeader && (
         <div>
           <h1 className="text-xl font-bold text-slate-900">新規出品</h1>
-          <p className="mt-2 text-sm text-slate-700">
+          <p className="mt-2 text-sm text-neutral-900">
             ダミーの入力フォームです。実際の出品処理には接続していませんが、UI やバリデーションは本番を模しています。
           </p>
         </div>
@@ -249,7 +249,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
                   {[1, 2, 3, 4, 5, 6].map((slot) => (
                     <label
                       key={slot}
-                      className="flex aspect-[4/3] cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-slate-500 hover:border-blue-400 hover:text-blue-500"
+                      className="flex aspect-[4/3] cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-neutral-700 hover:border-blue-400 hover:text-blue-500"
                     >
                       <span>+ 画像追加</span>
                       <input type="file" className="hidden" />
@@ -259,7 +259,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
               </FieldRow>
 
               <FieldRow label="動画">
-                <label className="flex h-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-slate-500 hover:border-blue-400 hover:text-blue-500">
+                <label className="flex h-24 cursor-pointer items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-neutral-700 hover:border-blue-400 hover:text-blue-500">
                   <span>+ 動画を追加</span>
                   <input type="file" className="hidden" />
                 </label>
@@ -267,7 +267,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
             </Section>
 
             <Section title="注意事項">
-              <div className="space-y-3 text-sm leading-relaxed text-slate-700">
+              <div className="space-y-3 text-sm leading-relaxed text-neutral-900">
                 <p>
                   出品内容は確認後に保存されます。実際の取引はモックデータで処理されるため、金銭のやり取りは発生しません。
                 </p>
@@ -278,9 +278,9 @@ export function SellForm({ showHeader = true }: SellFormProps) {
             <div className="flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="text-xs font-semibold text-slate-500">合計 {totals.quantity} 台</p>
+                  <p className="text-xs font-semibold text-neutral-700">合計 {totals.quantity} 台</p>
                   <p className="text-xl font-bold text-slate-900">{totals.total.toLocaleString()} 円</p>
-                  <p className="text-xs text-slate-500">税抜小計 {totals.subtotal.toLocaleString()} 円</p>
+                  <p className="text-xs text-neutral-700">税抜小計 {totals.subtotal.toLocaleString()} 円</p>
                 </div>
                 <button
                   type="submit"
@@ -296,7 +296,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
         <aside className="w-full max-w-sm space-y-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
           <div className="space-y-2 border-b border-slate-100 pb-3">
             <h3 className="text-base font-semibold text-slate-900">取引の流れ</h3>
-            <ol className="list-decimal space-y-1 pl-4 text-sm text-slate-700">
+            <ol className="list-decimal space-y-1 pl-4 text-sm text-neutral-900">
               <li>出品内容を入力し、掲載を開始</li>
               <li>購入希望者とマッチングし条件調整</li>
               <li>合意後に取引確定し出荷手配</li>
@@ -305,7 +305,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
 
           <div className="space-y-2">
             <h3 className="text-base font-semibold text-slate-900">ヒント</h3>
-            <ul className="list-disc space-y-1 pl-5 text-sm text-slate-700">
+            <ul className="list-disc space-y-1 pl-5 text-sm text-neutral-900">
               <li>写真は複数枚登録すると購入者に安心感を与えます。</li>
               <li>搬出場所や日程の備考を詳しく記載するとスムーズです。</li>
               <li>入力した内容はこの画面のみで保持され、ページ遷移でリセットされます。</li>

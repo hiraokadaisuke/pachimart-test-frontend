@@ -40,7 +40,7 @@ export default function BalancePage() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <p className="text-sm text-slate-700 md:max-w-xl">
+        <p className="text-sm text-neutral-900 md:max-w-xl">
           残高カテゴリの操作をタブで切り替えられるよう整理しました。各タブはモックの内容を表示しています。
         </p>
         <BalanceSummaryCard summary={balanceSummary} />

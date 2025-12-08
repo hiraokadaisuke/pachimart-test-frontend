@@ -17,7 +17,7 @@ const resolveActiveTab = (searchParams: URLSearchParams): TradeTabKey => {
 
 export default function TradeNaviPage() {
   return (
-    <Suspense fallback={<div className="text-sm text-slate-700">読み込み中…</div>}>
+    <Suspense fallback={<div className="text-sm text-neutral-900">読み込み中…</div>}>
       <TradeNaviContent />
     </Suspense>
   );

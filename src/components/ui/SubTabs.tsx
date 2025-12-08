@@ -58,7 +58,7 @@ function SubTabsContent({ tabs, className }: SubTabsProps) {
                 className={`inline-flex h-10 items-center border-b-2 px-1 text-sm font-medium transition-colors ${
                   active
                     ? "border-blue-600 text-blue-700"
-                    : "border-transparent text-slate-500 hover:text-slate-700"
+                    : "border-transparent text-neutral-700 hover:text-neutral-900"
                 }`}
               >
                 {tab.label}

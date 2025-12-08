@@ -23,7 +23,7 @@ export function NaviTable({ columns, rows, emptyMessage, getRowKey, onRowClick }
   return (
     <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
       <table className="min-w-full table-fixed divide-y divide-slate-200 border border-slate-200 text-xs">
-        <thead className="bg-slate-50 text-[11px] font-semibold text-slate-500">
+        <thead className="bg-slate-50 text-[11px] font-semibold text-neutral-700">
           <tr className="divide-x divide-slate-200">
             {columns.map((column) => (
               <th
@@ -55,7 +55,7 @@ export function NaviTable({ columns, rows, emptyMessage, getRowKey, onRowClick }
                 {columns.map((column) => (
                   <td
                     key={column.key}
-                    className="max-w-[180px] px-2 py-1.5 align-top text-slate-700 whitespace-nowrap truncate"
+                    className="max-w-[180px] px-2 py-1.5 align-top text-neutral-900 whitespace-nowrap truncate"
                     style={column.width ? { width: column.width } : undefined}
                   >
                     {column.render ? column.render(row) : (row as Record<string, React.ReactNode>)[column.key]}

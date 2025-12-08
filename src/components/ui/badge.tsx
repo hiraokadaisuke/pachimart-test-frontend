@@ -9,7 +9,7 @@ type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
 export function Badge({ className, variant = "default", ...props }: BadgeProps) {
   const styles = {
     default: "bg-blue-50 text-blue-700 border border-blue-100",
-    outline: "border border-slate-200 text-slate-700",
+    outline: "border border-slate-200 text-neutral-900",
   } as const;
 
   return (
