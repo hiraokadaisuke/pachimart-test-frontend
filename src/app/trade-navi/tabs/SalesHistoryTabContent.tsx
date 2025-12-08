@@ -292,7 +292,7 @@ export function SalesHistoryTabContent() {
   };
 
   return (
-    <section className="-mx-4 space-y-3 lg:-mx-8">
+    <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-3 px-4 md:px-6 xl:px-8">
       <form
         onSubmit={handleSubmit}
         className="space-y-2 rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm"
