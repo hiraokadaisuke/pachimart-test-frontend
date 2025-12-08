@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ChangeEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
@@ -65,8 +65,6 @@ const dummyBuyers = [
   { id: "store-3", companyName: "合同会社デモリンク", contactName: "営業部 山本正樹", tel: "052-123-9876" },
 ];
 
-const defaultManualBuyer = { companyName: "", contactName: "", tel: "" };
-
 type ValidationErrors = {
   buyer?: string;
   quantity?: string;
@@ -127,7 +125,6 @@ export default function TransactionNaviEditPage() {
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [manualBuyer, setManualBuyer] = useState(defaultManualBuyer);
   const naviTargetId = draft?.productId ?? transactionId;
   const {
     editBreadcrumbItems,
@@ -215,19 +212,6 @@ export default function TransactionNaviEditPage() {
       buyerTel: buyer.tel,
       buyerPending: false,
     }));
-  };
-
-  const handleManualBuyerSave = () => {
-    if (!manualBuyer.companyName.trim()) return;
-    persistDraft((prev) => ({
-      ...prev,
-      buyerId: null,
-      buyerCompanyName: manualBuyer.companyName,
-      buyerContactName: manualBuyer.contactName || null,
-      buyerTel: manualBuyer.tel || null,
-      buyerPending: false,
-    }));
-    setManualBuyer(defaultManualBuyer);
   };
 
   const buyerSearchResults = useMemo(() => {
@@ -377,13 +361,6 @@ export default function TransactionNaviEditPage() {
     }));
   };
 
-  const handleManualBuyerInput = (
-    field: keyof typeof manualBuyer,
-    event: ChangeEvent<HTMLInputElement>
-  ) => {
-    setManualBuyer((prev) => ({ ...prev, [field]: event.target.value }));
-  };
-
   return (
     <MainContainer variant="wide">
       <div className="flex flex-col gap-8 pb-8">
@@ -464,7 +441,7 @@ export default function TransactionNaviEditPage() {
             ) : (
               <div className="space-y-4">
                 <p className="text-sm text-neutral-900">
-                  買手が未設定です。パチマート会員を検索するか、会員外として登録してください。
+                  買手が未設定です。パチマート会員を検索して設定してください。
                 </p>
                 <div className="space-y-2 rounded border border-slate-200 bg-white p-3">
                   <label className="text-xs font-semibold text-neutral-800">会員検索</label>
@@ -507,43 +484,6 @@ export default function TransactionNaviEditPage() {
                     {buyerSearchResults.length === 0 && (
                       <p className="text-xs text-neutral-700">該当する買手が見つかりませんでした。</p>
                     )}
-                  </div>
-                </div>
-
-                <div className="space-y-2 rounded border border-dashed border-slate-300 p-3">
-                  <p className="text-xs font-semibold text-neutral-900">パチマート会員ではない取引先の場合はこちら</p>
-                  <div className="space-y-2 text-sm">
-                    <input
-                      type="text"
-                      required
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="会社名（必須）"
-                      value={manualBuyer.companyName}
-                      onChange={(e) => handleManualBuyerInput("companyName", e)}
-                    />
-                    <input
-                      type="text"
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="担当者名（任意）"
-                      value={manualBuyer.contactName}
-                      onChange={(e) => handleManualBuyerInput("contactName", e)}
-                    />
-                    <input
-                      type="tel"
-                      className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="電話番号（任意）"
-                      value={manualBuyer.tel}
-                      onChange={(e) => handleManualBuyerInput("tel", e)}
-                    />
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={handleManualBuyerSave}
-                        className="rounded bg-emerald-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-emerald-700"
-                      >
-                        この内容で買手として設定
-                      </button>
-                    </div>
                   </div>
                 </div>
               </div>
