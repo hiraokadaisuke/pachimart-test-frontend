@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { products } from "@/lib/dummyData";
-import { createEmptyNaviDraft, saveNaviDraft } from "@/lib/navi/storage";
 import type { Product } from "@/types/product";
 
 const statusBadgeStyles: Record<string, string> = {
@@ -74,17 +73,19 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
   };
 
   const handleCreateNaviFromListing = (product: Product) => {
-    const draft = createEmptyNaviDraft();
+    const params = new URLSearchParams({
+      productId: product.id.toString(),
+      quantity: "1",
+      unitPrice: product.price.toString(),
+      productName: product.name,
+      makerName: product.maker,
+    });
 
-    draft.productId = product.id.toString();
-    draft.conditions.unitPrice = product.price;
-    draft.conditions.quantity = 1;
-    draft.conditions.productName = product.name;
-    draft.conditions.makerName = product.maker;
-    draft.conditions.location = product.prefecture;
+    if (product.prefecture) {
+      params.set("location", product.prefecture);
+    }
 
-    saveNaviDraft(draft);
-    router.push(`/transactions/navi/${draft.id}/edit`);
+    router.push(`/transactions/navi/${product.id}/edit?${params.toString()}`);
   };
 
   const heading = status === "下書き" ? "下書き一覧" : "出品中の商品";

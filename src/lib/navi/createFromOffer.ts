@@ -42,7 +42,7 @@ export function createNaviDraftFromOffer(input: OfferInputForNavi): TradeNaviDra
   return {
     id,
     productId: input.productId,
-    status: "draft",
+    status: null,
     buyerPending: true,
     conditions,
     createdAt: now,

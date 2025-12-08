@@ -1,4 +1,4 @@
-export type NaviStatus = "draft" | "sent_to_buyer" | "buyer_approved" | "buyer_rejected";
+export type NaviStatus = "sent_to_buyer" | "buyer_approved" | "buyer_rejected";
 
 export type AdditionalFee = {
   label: string;
@@ -28,7 +28,7 @@ export type TradeConditions = {
 
 export type TradeNaviDraft = {
   id: string;
-  status: NaviStatus;
+  status: NaviStatus | null;
   productId?: string | null;
   buyerId?: string | null;
   buyerCompanyName?: string | null;

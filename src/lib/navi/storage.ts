@@ -4,6 +4,7 @@ const STORAGE_KEY_PREFIX = "navi_draft_";
 
 export function saveNaviDraft(draft: TradeNaviDraft) {
   if (typeof window === "undefined") return;
+  if (!draft.status) return;
   const key = STORAGE_KEY_PREFIX + draft.id;
   const now = new Date().toISOString();
   const payload: TradeNaviDraft = {
@@ -44,6 +45,7 @@ export function loadAllNavis(): TradeNaviDraft[] {
     try {
       const parsed = JSON.parse(raw) as TradeNaviDraft;
       if (!parsed?.id) continue;
+      if (!parsed.status) continue;
       drafts.push(parsed);
     } catch {
       // ignore malformed data
@@ -68,42 +70,43 @@ export function updateNaviStatus(id: string, status: TradeNaviDraft["status"]): 
   return nextDraft;
 }
 
-export function createEmptyNaviDraft(): TradeNaviDraft {
-  const id = typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `draft-${Date.now()}`;
+export function createEmptyNaviDraft(initial?: Partial<TradeNaviDraft>): TradeNaviDraft {
+  const id =
+    initial?.id ?? (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `draft-${Date.now()}`);
   const now = new Date().toISOString();
 
   return {
     id,
-    status: "draft",
-    productId: null,
-    buyerId: null,
-    buyerCompanyName: null,
-    buyerContactName: null,
-    buyerTel: null,
-    buyerEmail: null,
-    buyerNote: null,
-    buyerPending: true,
+    status: initial?.status ?? null,
+    productId: initial?.productId ?? null,
+    buyerId: initial?.buyerId ?? null,
+    buyerCompanyName: initial?.buyerCompanyName ?? null,
+    buyerContactName: initial?.buyerContactName ?? null,
+    buyerTel: initial?.buyerTel ?? null,
+    buyerEmail: initial?.buyerEmail ?? null,
+    buyerNote: initial?.buyerNote ?? null,
+    buyerPending: initial?.buyerPending ?? true,
     conditions: {
-      unitPrice: 0,
-      quantity: 1,
-      shippingFee: 0,
-      handlingFee: 0,
-      taxRate: 0.1,
-      removalDate: null,
-      machineShipmentDate: null,
-      machineShipmentType: null,
-      documentShipmentDate: null,
-      documentShipmentType: null,
-      paymentDue: null,
-      otherFee1: null,
-      otherFee2: null,
-      notes: null,
-      terms: null,
-      productName: null,
-      makerName: null,
-      location: null,
+      unitPrice: initial?.conditions?.unitPrice ?? 0,
+      quantity: initial?.conditions?.quantity ?? 1,
+      shippingFee: initial?.conditions?.shippingFee ?? 0,
+      handlingFee: initial?.conditions?.handlingFee ?? 0,
+      taxRate: initial?.conditions?.taxRate ?? 0.1,
+      removalDate: initial?.conditions?.removalDate ?? null,
+      machineShipmentDate: initial?.conditions?.machineShipmentDate ?? null,
+      machineShipmentType: initial?.conditions?.machineShipmentType ?? null,
+      documentShipmentDate: initial?.conditions?.documentShipmentDate ?? null,
+      documentShipmentType: initial?.conditions?.documentShipmentType ?? null,
+      paymentDue: initial?.conditions?.paymentDue ?? null,
+      otherFee1: initial?.conditions?.otherFee1 ?? null,
+      otherFee2: initial?.conditions?.otherFee2 ?? null,
+      notes: initial?.conditions?.notes ?? null,
+      terms: initial?.conditions?.terms ?? null,
+      productName: initial?.conditions?.productName ?? null,
+      makerName: initial?.conditions?.makerName ?? null,
+      location: initial?.conditions?.location ?? null,
     },
-    createdAt: now,
-    updatedAt: now,
+    createdAt: initial?.createdAt ?? now,
+    updatedAt: initial?.updatedAt ?? now,
   };
 }

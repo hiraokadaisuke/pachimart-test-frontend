@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
-import { loadNaviDraft, saveNavi, saveNaviDraft, updateNaviStatus } from "@/lib/navi/storage";
+import { createEmptyNaviDraft, loadNaviDraft, saveNavi } from "@/lib/navi/storage";
 import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
 import {
   formatCurrency,
@@ -121,9 +120,9 @@ const validateDraft = (draft: TradeNaviDraft | null): ValidationErrors => {
 export default function TransactionNaviEditPage() {
   const router = useRouter();
   const params = useParams<{ id?: string }>();
+  const searchParams = useSearchParams();
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
-  const [notFound, setNotFound] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const naviTargetId = draft?.productId ?? transactionId;
   const {
@@ -156,14 +155,40 @@ export default function TransactionNaviEditPage() {
 
   useEffect(() => {
     if (!transactionId) return;
+
     const storedDraft = loadNaviDraft(transactionId);
     if (storedDraft) {
       setDraft(storedDraft);
-      setNotFound(false);
-    } else {
-      setNotFound(true);
+      return;
     }
-  }, [transactionId]);
+
+    const parseNumberParam = (value: string | null) => {
+      if (!value) return undefined;
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : undefined;
+    };
+
+    const initialDraft = createEmptyNaviDraft({
+      id: transactionId,
+      productId: searchParams.get("productId") ?? transactionId,
+      buyerId: searchParams.get("buyerId"),
+      buyerCompanyName: searchParams.get("buyerCompanyName"),
+      buyerContactName: searchParams.get("buyerContactName"),
+      buyerTel: searchParams.get("buyerTel"),
+      buyerEmail: searchParams.get("buyerEmail"),
+      buyerNote: searchParams.get("buyerNote"),
+      buyerPending: searchParams.has("buyerId") ? false : undefined,
+      conditions: {
+        quantity: parseNumberParam(searchParams.get("quantity")),
+        unitPrice: parseNumberParam(searchParams.get("unitPrice")),
+        productName: searchParams.get("productName"),
+        makerName: searchParams.get("makerName"),
+        location: searchParams.get("location"),
+      },
+    });
+
+    setDraft(initialDraft);
+  }, [searchParams, transactionId]);
 
   useEffect(() => {
     setEditedConditions(initialEditedConditions);
@@ -187,7 +212,6 @@ export default function TransactionNaviEditPage() {
     setDraft((prev) => {
       if (!prev) return prev;
       const nextDraft = updater(prev);
-      saveNaviDraft(nextDraft);
       return nextDraft;
     });
   };
@@ -253,25 +277,6 @@ export default function TransactionNaviEditPage() {
     return calculateQuote(quoteInput);
   }, [draft]);
 
-  if (notFound) {
-    return (
-      <MainContainer>
-        <div className="space-y-4 rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
-          <h1 className="text-xl font-semibold text-slate-900">取引Naviが見つかりません</h1>
-          <p className="text-sm text-neutral-800">
-            セッションの有効期限切れか、存在しないIDです。再度一覧からやり直してください。
-          </p>
-          <Link
-            href="/trade-navi"
-            className="inline-flex items-center justify-center rounded bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
-          >
-            取引Navi一覧へ戻る
-          </Link>
-        </div>
-      </MainContainer>
-    );
-  }
-
   const handleSendToBuyer = () => {
     const errors = validateDraft(draft);
     setValidationErrors(errors);
@@ -279,8 +284,17 @@ export default function TransactionNaviEditPage() {
 
     if (hasErrors || !draft) return;
 
-    const updatedDraft = updateNaviStatus(draft.id, "sent_to_buyer") ?? draft;
+    const now = new Date().toISOString();
+    const updatedDraft: TradeNaviDraft = {
+      ...draft,
+      status: "sent_to_buyer",
+      buyerPending: false,
+      createdAt: draft.createdAt ?? now,
+      updatedAt: now,
+    };
+
     saveNavi(updatedDraft);
+    setDraft(updatedDraft);
     alert("取引Naviを買手へ送信しました。");
     router.push("/trade-navi");
   };

@@ -136,20 +136,17 @@ const dummyTrades: Array<{
   },
 ];
 
-function getStatusLabel(status: NaviStatus) {
+function getStatusLabel(status: NaviStatus | null) {
   switch (status) {
-    case "draft":
-      return { text: "下書き", className: "bg-slate-200 text-neutral-900" };
     case "sent_to_buyer":
-      return { text: "承認待ち", className: "bg-amber-100 text-amber-700" };
+      return { text: "依頼中", className: "bg-sky-100 text-sky-700" };
     case "buyer_approved":
       return { text: "承認済み", className: "bg-emerald-100 text-emerald-700" };
     case "buyer_rejected":
       return { text: "差戻し", className: "bg-rose-100 text-rose-700" };
     default:
       // eslint-disable-next-line no-case-declarations
-      const unreachable: never = status;
-      return { text: unreachable, className: "" };
+      return { text: "-", className: "bg-slate-100 text-neutral-600" };
   }
 }
 
