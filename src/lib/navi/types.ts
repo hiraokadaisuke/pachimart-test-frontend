@@ -28,6 +28,7 @@ export type TradeConditions = {
 
 export type TradeNaviDraft = {
   id: string;
+  ownerUserId: string;
   status: NaviStatus | null;
   productId?: string | null;
   buyerId?: string | null;

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useDevUser } from "./DevUserContext";
+import { DEV_USERS } from "./users";
 
 export function DevUserSwitcherFloating() {
   const { current, setCurrent } = useDevUser();
@@ -17,36 +18,24 @@ export function DevUserSwitcherFloating() {
           <div className="w-48 rounded-xl border border-gray-200 bg-white p-3 shadow-lg ring-1 ring-black/5">
             <p className="mb-2 text-xs font-semibold text-gray-600">開発用ユーザー</p>
             <div className="space-y-1">
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrent("seller");
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition hover:bg-amber-50 ${
-                  current === "seller" ? "bg-amber-100 font-semibold" : "bg-transparent"
-                }`}
-              >
-                <span role="img" aria-label="ユーザーA">
-                  👤
-                </span>
-                ユーザーA
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setCurrent("buyer");
-                  setOpen(false);
-                }}
-                className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition hover:bg-amber-50 ${
-                  current === "buyer" ? "bg-amber-100 font-semibold" : "bg-transparent"
-                }`}
-              >
-                <span role="img" aria-label="ユーザーB">
-                  👤
-                </span>
-                ユーザーB
-              </button>
+              {Object.values(DEV_USERS).map((user) => (
+                <button
+                  key={user.key}
+                  type="button"
+                  onClick={() => {
+                    setCurrent(user.key);
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm transition hover:bg-amber-50 ${
+                    current === user.key ? "bg-amber-100 font-semibold" : "bg-transparent"
+                  }`}
+                >
+                  <span role="img" aria-label={user.label}>
+                    👤
+                  </span>
+                  {user.label}
+                </button>
+              ))}
             </div>
           </div>
         )}

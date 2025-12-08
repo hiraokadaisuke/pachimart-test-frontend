@@ -6,7 +6,8 @@ import { Suspense, useState } from "react";
 
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
-import { useDevUser } from "@/lib/dev-user/DevUserContext";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { dummyBalances } from "@/lib/dummyBalances";
 import { InventorySearchBar } from "../inventory/InventorySearchBar";
 
 const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
@@ -22,7 +23,7 @@ const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
   { label: "設定", href: "/mypage/settings", matchPrefixes: ["/mypage/user", "/mypage/company", "/mypage/machine-storage-locations", "/mypage/pachi-notification-settings", "/mypage/settings"] },
 ];
 
-const defaultBalanceSummary: BalanceSummary = {
+const fallbackBalanceSummary: BalanceSummary = {
   plannedPurchase: 1_000_000,
   plannedSales: 2_000_000,
   available: 1_500_000,
@@ -41,12 +42,14 @@ const isActiveLink = (pathname: string | null, href: string, matchPrefixes?: str
 };
 
 export default function Header() {
-  const { current } = useDevUser();
+  const currentUser = useCurrentDevUser();
+  const balanceSummary =
+    dummyBalances.find((balance) => balance.userId === currentUser.id) ?? fallbackBalanceSummary;
   const pathname = usePathname();
   const isProductsPage = pathname === "/products" || pathname?.startsWith("/products/");
   const isInventoryPage = pathname?.startsWith("/inventory");
   const [activeTab, setActiveTab] = useState<string>("パチンコ");
-  const devUserLabel = current === "seller" ? "ユーザーA" : "ユーザーB";
+  const devUserLabel = `${currentUser.label}で閲覧中`;
   const isProd = process.env.NEXT_PUBLIC_ENV === "production";
 
   return (

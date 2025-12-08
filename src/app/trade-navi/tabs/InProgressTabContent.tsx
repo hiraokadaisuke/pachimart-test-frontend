@@ -16,10 +16,10 @@ import {
   IN_PROGRESS_STATUS_KEYS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 
 const dummyTrades: Array<{
   id: string;
-  kind: "buy" | "sell";
   status: TradeStatusKey;
   updatedAt: string;
   partnerName: string;
@@ -29,10 +29,13 @@ const dummyTrades: Array<{
   totalAmount: number;
   scheduledShipDate: string;
   pdfUrl: string;
+  sellerUserId: string;
+  buyerUserId: string;
+  sellerName: string;
+  buyerName: string;
 }> = [
   {
     id: "T-2025111901",
-    kind: "buy" as const,
     status: "waiting_payment",
     updatedAt: "2025/11/19 14:55",
     partnerName: "株式会社パチテック",
@@ -42,10 +45,13 @@ const dummyTrades: Array<{
     totalAmount: 1280000,
     scheduledShipDate: "2025/11/25",
     pdfUrl: "#",
+    sellerUserId: "user-b",
+    buyerUserId: "user-a",
+    sellerName: "株式会社パチテック",
+    buyerName: "株式会社トレード連合",
   },
   {
     id: "T-2025111902",
-    kind: "buy" as const,
     status: "navi_in_progress",
     updatedAt: "2025/11/19 13:10",
     partnerName: "有限会社スマイル",
@@ -55,10 +61,13 @@ const dummyTrades: Array<{
     totalAmount: 860000,
     scheduledShipDate: "2025/11/26",
     pdfUrl: "#",
+    sellerUserId: "user-b",
+    buyerUserId: "user-a",
+    sellerName: "有限会社スマイル",
+    buyerName: "関東レジャー販売",
   },
   {
     id: "T-2025111801",
-    kind: "sell" as const,
     status: "waiting_payment",
     updatedAt: "2025/11/18 17:40",
     partnerName: "株式会社アミューズ流通",
@@ -68,10 +77,13 @@ const dummyTrades: Array<{
     totalAmount: 1520000,
     scheduledShipDate: "2025/11/27",
     pdfUrl: "#",
+    sellerUserId: "user-a",
+    buyerUserId: "user-b",
+    sellerName: "株式会社アミューズ流通",
+    buyerName: "九州エンタメ産業",
   },
   {
     id: "T-2025111802",
-    kind: "sell" as const,
     status: "navi_in_progress",
     updatedAt: "2025/11/18 15:05",
     partnerName: "パチンコランド神奈川",
@@ -81,10 +93,13 @@ const dummyTrades: Array<{
     totalAmount: 990000,
     scheduledShipDate: "2025/11/28",
     pdfUrl: "#",
+    sellerUserId: "user-a",
+    buyerUserId: "user-b",
+    sellerName: "パチンコランド神奈川",
+    buyerName: "関東レジャー販売",
   },
   {
     id: "T-2025111701",
-    kind: "buy" as const,
     status: "waiting_payment",
     updatedAt: "2025/11/17 11:20",
     partnerName: "株式会社ミドルウェーブ",
@@ -94,10 +109,13 @@ const dummyTrades: Array<{
     totalAmount: 540000,
     scheduledShipDate: "2025/11/24",
     pdfUrl: "#",
+    sellerUserId: "user-b",
+    buyerUserId: "user-a",
+    sellerName: "株式会社ミドルウェーブ",
+    buyerName: "関東レジャー販売",
   },
   {
     id: "T-2025111702",
-    kind: "sell" as const,
     status: "navi_in_progress",
     updatedAt: "2025/11/17 09:05",
     partnerName: "エムズホールディングス",
@@ -107,10 +125,13 @@ const dummyTrades: Array<{
     totalAmount: 1320000,
     scheduledShipDate: "2025/11/29",
     pdfUrl: "#",
+    sellerUserId: "user-a",
+    buyerUserId: "user-b",
+    sellerName: "エムズホールディングス",
+    buyerName: "関東レジャー販売",
   },
   {
     id: "T-2025111601",
-    kind: "buy" as const,
     status: "navi_in_progress",
     updatedAt: "2025/11/16 18:30",
     partnerName: "株式会社ネクストレード",
@@ -120,10 +141,13 @@ const dummyTrades: Array<{
     totalAmount: 1180000,
     scheduledShipDate: "2025/11/27",
     pdfUrl: "#",
+    sellerUserId: "user-b",
+    buyerUserId: "user-a",
+    sellerName: "株式会社ネクストレード",
+    buyerName: "関東レジャー販売",
   },
   {
     id: "T-2025111602",
-    kind: "sell" as const,
     status: "waiting_payment",
     updatedAt: "2025/11/16 10:12",
     partnerName: "株式会社東海レジャー",
@@ -133,6 +157,10 @@ const dummyTrades: Array<{
     totalAmount: 760000,
     scheduledShipDate: "2025/11/23",
     pdfUrl: "#",
+    sellerUserId: "user-a",
+    buyerUserId: "user-b",
+    sellerName: "株式会社東海レジャー",
+    buyerName: "関東レジャー販売",
   },
 ];
 
@@ -176,6 +204,7 @@ function formatCurrency(amount: number) {
 }
 
 export function InProgressTabContent() {
+  const currentUser = useCurrentDevUser();
   const [navis, setNavis] = useState<TradeNaviDraft[]>([]);
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
@@ -185,6 +214,17 @@ export function InProgressTabContent() {
     const keywordLower = keyword.toLowerCase();
 
     return dummyTrades
+      .filter(
+        (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
+      )
+      .map((trade) => {
+        const isSeller = trade.sellerUserId === currentUser.id;
+        return {
+          ...trade,
+          kind: isSeller ? ("sell" as const) : ("buy" as const),
+          partnerName: isSeller ? trade.buyerName : trade.sellerName,
+        };
+      })
       .filter((trade) => {
         if (statusFilter === "all") return true;
         if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(trade.status);
@@ -198,7 +238,7 @@ export function InProgressTabContent() {
           trade.partnerName.toLowerCase().includes(keywordLower)
         );
       });
-  }, [statusFilter, keyword]);
+  }, [currentUser.id, keyword, statusFilter]);
 
   const buyWaiting = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "waiting_payment");
   const buyChecking = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "navi_in_progress");
@@ -206,8 +246,8 @@ export function InProgressTabContent() {
   const sellChecking = filteredTrades.filter((trade) => trade.kind === "sell" && trade.status === "navi_in_progress");
 
   useEffect(() => {
-    setNavis(loadAllNavis());
-  }, []);
+    setNavis(loadAllNavis(currentUser.id));
+  }, [currentUser.id]);
 
   const sortedNavis = useMemo(
     () => [...navis].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),

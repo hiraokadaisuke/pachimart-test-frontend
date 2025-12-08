@@ -11,6 +11,7 @@ import {
   IN_PROGRESS_STATUS_KEYS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 
 const PURCHASE_ROWS = [
   {
@@ -21,6 +22,8 @@ const PURCHASE_ROWS = [
     totalAmount: 1180000,
     status: "payment_confirmed" as TradeStatusKey, // 状況
     updatedAt: "2025/11/15 09:20", // 更新日時
+    buyerUserId: "user-a",
+    sellerUserId: "user-b",
   },
   {
     id: "P-2025110802",
@@ -30,6 +33,8 @@ const PURCHASE_ROWS = [
     totalAmount: 760000,
     status: "shipped" as TradeStatusKey,
     updatedAt: "2025/11/09 17:05",
+    buyerUserId: "user-a",
+    sellerUserId: "user-b",
   },
   {
     id: "P-2025103011",
@@ -39,18 +44,21 @@ const PURCHASE_ROWS = [
     totalAmount: 840000,
     status: "completed" as TradeStatusKey,
     updatedAt: "2025/10/31 10:45",
+    buyerUserId: "user-b",
+    sellerUserId: "user-a",
   },
 ];
 
 export default function PurchasesPage() {
   const router = useRouter();
+  const currentUser = useCurrentDevUser();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
   const [keyword, setKeyword] = useState("");
 
   const filteredRows = useMemo(() => {
     const keywordLower = keyword.toLowerCase();
 
-    return PURCHASE_ROWS.filter((row) => {
+    return PURCHASE_ROWS.filter((row) => row.buyerUserId === currentUser.id).filter((row) => {
       if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(row.status);
       if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(row.status);
       return true;
@@ -58,7 +66,7 @@ export default function PurchasesPage() {
       if (!keywordLower) return true;
       return row.itemName.toLowerCase().includes(keywordLower) || row.partnerName.toLowerCase().includes(keywordLower);
     });
-  }, [keyword, statusFilter]);
+  }, [currentUser.id, keyword, statusFilter]);
 
   return (
     <main className="space-y-6">

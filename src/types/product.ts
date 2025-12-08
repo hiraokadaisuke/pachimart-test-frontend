@@ -23,4 +23,5 @@ export interface Product {
   removalStatus: '撤去済' | '未撤去';
   shippingSpecifyDate: string;
   warehouseName: string;
+  ownerUserId: string;
 }
