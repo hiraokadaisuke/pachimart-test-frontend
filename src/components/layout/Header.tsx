@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
+import { useDevUser } from "@/lib/dev-user/DevUserContext";
 import { InventorySearchBar } from "../inventory/InventorySearchBar";
 
 const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
@@ -40,10 +41,13 @@ const isActiveLink = (pathname: string | null, href: string, matchPrefixes?: str
 };
 
 export default function Header() {
+  const { current } = useDevUser();
   const pathname = usePathname();
   const isProductsPage = pathname === "/products" || pathname?.startsWith("/products/");
   const isInventoryPage = pathname?.startsWith("/inventory");
   const [activeTab, setActiveTab] = useState<string>("パチンコ");
+  const devUserLabel = current === "seller" ? "ユーザーA" : "ユーザーB";
+  const isProd = process.env.NEXT_PUBLIC_ENV === "production";
 
   return (
     <header className="w-full border-b border-gray-200 bg-white">
@@ -85,6 +89,13 @@ export default function Header() {
         )}
 
         <div className="ml-auto flex w-full flex-1 flex-wrap items-center justify-end gap-4 whitespace-nowrap md:w-auto md:flex-none">
+          {!isProd && (
+            <div className="flex items-center text-[12px] leading-tight text-gray-600">
+              <div className="rounded border border-gray-300 bg-gray-50 px-2 py-1">
+                【テスト環境】{devUserLabel}で閲覧中
+              </div>
+            </div>
+          )}
           <div className="flex items-center gap-3 whitespace-nowrap">
             <div className="text-right text-[11px] leading-tight text-neutral-900">
               <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(defaultBalanceSummary.plannedPurchase)}</div>

@@ -27,10 +27,10 @@ export function DevUserSwitcherFloating() {
                   current === "seller" ? "bg-amber-100 font-semibold" : "bg-transparent"
                 }`}
               >
-                <span role="img" aria-label="売手ユーザー">
+                <span role="img" aria-label="ユーザーA">
                   👤
                 </span>
-                売手ユーザー
+                ユーザーA
               </button>
               <button
                 type="button"
@@ -42,10 +42,10 @@ export function DevUserSwitcherFloating() {
                   current === "buyer" ? "bg-amber-100 font-semibold" : "bg-transparent"
                 }`}
               >
-                <span role="img" aria-label="買手ユーザー">
+                <span role="img" aria-label="ユーザーB">
                   👤
                 </span>
-                買手ユーザー
+                ユーザーB
               </button>
             </div>
           </div>
