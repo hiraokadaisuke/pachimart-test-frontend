@@ -13,7 +13,10 @@ export interface OfferInputForNavi {
 
 const getRandomDraftId = () => (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `draft-${Date.now()}`);
 
-export function createNaviDraftFromOffer(input: OfferInputForNavi): TradeNaviDraft {
+export function createNaviDraftFromOffer(
+  input: OfferInputForNavi,
+  ownerUserId: string,
+): TradeNaviDraft {
   const id = getRandomDraftId();
 
   const conditions: TradeConditions = {
@@ -41,6 +44,7 @@ export function createNaviDraftFromOffer(input: OfferInputForNavi): TradeNaviDra
 
   return {
     id,
+    ownerUserId,
     productId: input.productId,
     status: null,
     buyerPending: true,

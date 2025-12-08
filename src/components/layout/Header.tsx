@@ -6,7 +6,8 @@ import { Suspense, useState } from "react";
 
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
-import { useDevUser } from "@/lib/dev-user/DevUserContext";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { dummyBalances } from "@/lib/dummyBalances";
 import { InventorySearchBar } from "../inventory/InventorySearchBar";
 
 const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
@@ -22,7 +23,7 @@ const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
   { label: "設定", href: "/mypage/settings", matchPrefixes: ["/mypage/user", "/mypage/company", "/mypage/machine-storage-locations", "/mypage/pachi-notification-settings", "/mypage/settings"] },
 ];
 
-const defaultBalanceSummary: BalanceSummary = {
+const fallbackBalanceSummary: BalanceSummary = {
   plannedPurchase: 1_000_000,
   plannedSales: 2_000_000,
   available: 1_500_000,
@@ -41,12 +42,14 @@ const isActiveLink = (pathname: string | null, href: string, matchPrefixes?: str
 };
 
 export default function Header() {
-  const { current } = useDevUser();
+  const currentUser = useCurrentDevUser();
+  const balanceSummary =
+    dummyBalances.find((balance) => balance.userId === currentUser.id) ?? fallbackBalanceSummary;
   const pathname = usePathname();
   const isProductsPage = pathname === "/products" || pathname?.startsWith("/products/");
   const isInventoryPage = pathname?.startsWith("/inventory");
   const [activeTab, setActiveTab] = useState<string>("パチンコ");
-  const devUserLabel = current === "seller" ? "ユーザーA" : "ユーザーB";
+  const devUserLabel = `${currentUser.label}で閲覧中`;
   const isProd = process.env.NEXT_PUBLIC_ENV === "production";
 
   return (
@@ -98,9 +101,9 @@ export default function Header() {
           )}
           <div className="flex items-center gap-3 whitespace-nowrap">
             <div className="text-right text-[11px] leading-tight text-neutral-900">
-              <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(defaultBalanceSummary.plannedPurchase)}</div>
-              <div className="font-semibold text-slate-900">売却予定残高 {formatCurrency(defaultBalanceSummary.plannedSales)}</div>
-              <div className="font-semibold text-slate-900">利用可能残高 {formatCurrency(defaultBalanceSummary.available)}</div>
+              <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(balanceSummary.plannedPurchase)}</div>
+              <div className="font-semibold text-slate-900">売却予定残高 {formatCurrency(balanceSummary.plannedSales)}</div>
+              <div className="font-semibold text-slate-900">利用可能残高 {formatCurrency(balanceSummary.available)}</div>
             </div>
             <div className="flex items-center gap-2">
               <Link

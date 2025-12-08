@@ -5,6 +5,7 @@ import { useState } from 'react';
 
 import { products } from '@/lib/dummyData';
 import type { Product } from '@/types/product';
+import { useCurrentDevUser } from '@/lib/dev-user/DevUserContext';
 
 const sortOptions = ['古い順', '新しい順', '安い順', '高い順'];
 
@@ -25,6 +26,9 @@ const formatMonthDay = (dateString: string) => {
 
 export default function ProductListPage() {
   const [activeSort, setActiveSort] = useState<string>('新しい順');
+  const currentUser = useCurrentDevUser();
+
+  const filteredProducts = products.filter((product) => product.ownerUserId === currentUser.id);
 
   return (
     <div className="w-full bg-white">
@@ -80,7 +84,7 @@ export default function ProductListPage() {
               </tr>
             </thead>
             <tbody>
-              {products.map((product, idx) => {
+              {filteredProducts.map((product, idx) => {
                 const isContracted = product.status === '成約済';
                 const zebra = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
                 const rowStyle = isContracted ? 'bg-gray-100' : zebra;

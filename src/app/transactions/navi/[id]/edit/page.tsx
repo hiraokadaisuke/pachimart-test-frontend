@@ -13,6 +13,7 @@ import {
   type ShippingType,
   type DocumentShippingType,
 } from "@/lib/useDummyNavi";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 
 const mapDraftConditions = (
   conditions: TradeConditions,
@@ -123,6 +124,7 @@ export default function TransactionNaviEditPage() {
   const searchParams = useSearchParams();
   const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
+  const currentUser = useCurrentDevUser();
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
   const naviTargetId = draft?.productId ?? transactionId;
@@ -157,7 +159,7 @@ export default function TransactionNaviEditPage() {
   useEffect(() => {
     if (!transactionId) return;
 
-    const storedDraft = loadNaviDraft(transactionId);
+    const storedDraft = loadNaviDraft(currentUser.id, transactionId);
     if (storedDraft) {
       setDraft(storedDraft);
       return;
@@ -171,6 +173,7 @@ export default function TransactionNaviEditPage() {
 
     const initialDraft = createEmptyNaviDraft({
       id: transactionId,
+      ownerUserId: currentUser.id,
       productId: safeSearchParams.get("productId") ?? transactionId,
       buyerId: safeSearchParams.get("buyerId"),
       buyerCompanyName: safeSearchParams.get("buyerCompanyName"),
@@ -192,7 +195,7 @@ export default function TransactionNaviEditPage() {
     });
 
     setDraft(initialDraft);
-  }, [safeSearchParams, transactionId]);
+  }, [currentUser.id, safeSearchParams, transactionId]);
 
   useEffect(() => {
     setEditedConditions(initialEditedConditions);
@@ -297,7 +300,7 @@ export default function TransactionNaviEditPage() {
       updatedAt: now,
     };
 
-    saveNavi(updatedDraft);
+    saveNavi(currentUser.id, updatedDraft);
     setDraft(updatedDraft);
     alert("取引Naviを買手へ送信しました。");
     router.push("/trade-navi");

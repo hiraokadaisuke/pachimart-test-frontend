@@ -1,8 +1,9 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { DEV_USERS, type DevUserKey } from "./users";
 
-export type DevUserType = "seller" | "buyer";
+type DevUserType = DevUserKey;
 
 type DevUserContextValue = {
   current: DevUserType;
@@ -10,19 +11,19 @@ type DevUserContextValue = {
 };
 
 const DevUserContext = createContext<DevUserContextValue>({
-  current: "seller",
+  current: "A",
   setCurrent: () => {},
 });
 
 const STORAGE_KEY = "dev_user_type";
 
 export function DevUserProvider({ children }: { children: React.ReactNode }) {
-  const [current, setCurrentState] = useState<DevUserType>("seller");
+  const [current, setCurrentState] = useState<DevUserType>("A");
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved === "seller" || saved === "buyer") {
+    if (saved === "A" || saved === "B") {
       setCurrentState(saved);
     }
   }, []);
@@ -43,4 +44,9 @@ export function DevUserProvider({ children }: { children: React.ReactNode }) {
 
 export function useDevUser() {
   return useContext(DevUserContext);
+}
+
+export function useCurrentDevUser() {
+  const { current } = useDevUser();
+  return DEV_USERS[current];
 }

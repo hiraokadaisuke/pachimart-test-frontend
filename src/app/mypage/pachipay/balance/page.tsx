@@ -5,12 +5,8 @@ import { useMemo } from "react";
 import { PachipayInfoCard } from "@/components/pachipay/PachipayInfoCard";
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
-
-const balanceSummary: BalanceSummary = {
-  plannedPurchase: 1_000_000,
-  plannedSales: 2_000_000,
-  available: 1_500_000,
-};
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { dummyBalances } from "@/lib/dummyBalances";
 
 function BalanceSummaryCard({ summary }: { summary: BalanceSummary }) {
   const items = useMemo(
@@ -37,6 +33,10 @@ function BalanceSummaryCard({ summary }: { summary: BalanceSummary }) {
 }
 
 export default function BalancePage() {
+  const currentUser = useCurrentDevUser();
+  const balanceSummary: BalanceSummary =
+    dummyBalances.find((balance) => balance.userId === currentUser.id) ?? dummyBalances[0];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">

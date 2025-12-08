@@ -24,6 +24,7 @@ export const products: Product[] = [
     removalStatus: '未撤去',
     shippingSpecifyDate: '即時手配可',
     warehouseName: '大阪北倉庫',
+    ownerUserId: 'user-a',
   },
   {
     id: 102,
@@ -48,6 +49,7 @@ export const products: Product[] = [
     removalStatus: '撤去済',
     shippingSpecifyDate: '2/20以降',
     warehouseName: '湘南ロジスティクス',
+    ownerUserId: 'user-b',
   },
   {
     id: 103,
@@ -71,6 +73,7 @@ export const products: Product[] = [
     removalStatus: '撤去済',
     shippingSpecifyDate: '応相談',
     warehouseName: '都内第1倉庫',
+    ownerUserId: 'user-a',
   },
   {
     id: 104,
@@ -95,6 +98,7 @@ export const products: Product[] = [
     removalStatus: '未撤去',
     shippingSpecifyDate: '2/5出荷目安',
     warehouseName: '札幌ハブ倉庫',
+    ownerUserId: 'user-b',
   },
   {
     id: 105,
@@ -119,6 +123,7 @@ export const products: Product[] = [
     removalStatus: '未撤去',
     shippingSpecifyDate: '3/3指定可',
     warehouseName: '中部物流センター',
+    ownerUserId: 'user-a',
   },
   {
     id: 106,
@@ -142,5 +147,6 @@ export const products: Product[] = [
     removalStatus: '撤去済',
     shippingSpecifyDate: '1/30以降',
     warehouseName: '九州第2倉庫',
+    ownerUserId: 'user-b',
   },
 ];

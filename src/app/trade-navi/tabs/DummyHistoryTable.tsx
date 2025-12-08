@@ -11,6 +11,7 @@ import {
   IN_PROGRESS_STATUS_KEYS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 
 type DummyHistoryKind = "sales" | "purchases";
 
@@ -23,6 +24,10 @@ type DummyHistoryRow = {
   totalAmount: number;
   status: TradeStatusKey;
   updatedAt: string;
+  sellerUserId: string;
+  buyerUserId: string;
+  sellerName: string;
+  buyerName: string;
 };
 
 const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
@@ -36,6 +41,10 @@ const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
       totalAmount: 980000,
       status: "completed",
       updatedAt: "2025/11/02 12:10",
+      sellerUserId: "user-a",
+      buyerUserId: "user-b",
+      sellerName: "株式会社アミューズ流通",
+      buyerName: "関東レジャー販売",
     },
     {
       id: "S-2025102803",
@@ -46,6 +55,10 @@ const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
       totalAmount: 720000,
       status: "completed",
       updatedAt: "2025/10/29 09:30",
+      sellerUserId: "user-b",
+      buyerUserId: "user-a",
+      sellerName: "有限会社スマイル",
+      buyerName: "関東レジャー販売",
     },
   ],
   purchases: [
@@ -58,6 +71,10 @@ const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
       totalAmount: 1250000,
       status: "completed",
       updatedAt: "2025/11/06 17:50",
+      sellerUserId: "user-b",
+      buyerUserId: "user-a",
+      sellerName: "株式会社パチテック",
+      buyerName: "株式会社トレード連合",
     },
     {
       id: "P-2025103011",
@@ -68,6 +85,10 @@ const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
       totalAmount: 840000,
       status: "completed",
       updatedAt: "2025/10/31 10:45",
+      sellerUserId: "user-a",
+      buyerUserId: "user-b",
+      sellerName: "株式会社ミドルウェーブ",
+      buyerName: "九州エンタメ産業",
     },
   ],
 };
@@ -76,11 +97,22 @@ export function DummyHistoryTable({ kind }: { kind: DummyHistoryKind }) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
   const [keyword, setKeyword] = useState("");
+  const currentUser = useCurrentDevUser();
 
   const filteredRows = useMemo(() => {
     const keywordLower = keyword.toLowerCase();
 
     return HISTORY_DATA[kind]
+      .filter(
+        (row) => row.sellerUserId === currentUser.id || row.buyerUserId === currentUser.id
+      )
+      .map((row) => {
+        const isSeller = row.sellerUserId === currentUser.id;
+        return {
+          ...row,
+          partnerName: isSeller ? row.buyerName : row.sellerName,
+        };
+      })
       .filter((row) => {
         if (statusFilter === "all") return true;
         if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(row.status);
@@ -91,7 +123,7 @@ export function DummyHistoryTable({ kind }: { kind: DummyHistoryKind }) {
         if (!keywordLower) return true;
         return row.itemName.toLowerCase().includes(keywordLower) || row.partnerName.toLowerCase().includes(keywordLower);
       });
-  }, [kind, keyword, statusFilter]);
+  }, [currentUser.id, kind, keyword, statusFilter]);
 
   const emptyMessage = kind === "sales" ? "売却済みの取引はまだありません。" : "購入済みの取引はまだありません。";
 

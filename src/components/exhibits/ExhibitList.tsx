@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { products } from "@/lib/dummyData";
 import type { Product } from "@/types/product";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 
 const statusBadgeStyles: Record<string, string> = {
   出品中: "bg-emerald-50 text-emerald-700 border border-emerald-100",
@@ -26,6 +27,7 @@ type ExhibitListProps = {
 
 export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
   const router = useRouter();
+  const currentUser = useCurrentDevUser();
   const defaultFilters = useMemo(
     () => ({
       status,
@@ -45,7 +47,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
   }, [defaultFilters]);
 
   const listedProducts = useMemo(() => {
-    return products.filter((product) => {
+    return products.filter((product) => product.ownerUserId === currentUser.id).filter((product) => {
       const makerMatched = appliedFilters.maker ? product.maker === appliedFilters.maker : true;
       const modelMatched = appliedFilters.model
         ? product.name.toLowerCase().includes(appliedFilters.model.toLowerCase())
@@ -57,7 +59,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
 
       return makerMatched && modelMatched && noteMatched && statusMatched;
     });
-  }, [appliedFilters]);
+  }, [appliedFilters, currentUser.id]);
 
   const handleApplyFilters = () => {
     setAppliedFilters(draftFilters);
@@ -120,7 +122,8 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
             className="h-8 rounded-md border border-slate-300 px-2 text-sm"
           >
             <option value="">すべて</option>
-            {Array.from(new Set(products.map((product) => product.maker))).map((maker) => (
+            {Array.from(new Set(products.filter((product) => product.ownerUserId === currentUser.id).map((product) => product.maker))
+              ).map((maker) => (
               <option key={maker} value={maker}>
                 {maker}
               </option>
