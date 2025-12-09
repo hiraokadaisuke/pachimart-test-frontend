@@ -10,7 +10,6 @@ import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable"
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { standardNaviColumns } from "@/components/transactions/standardColumns";
 import {
   COMPLETED_STATUS_KEYS,
   IN_PROGRESS_STATUS_KEYS,
@@ -255,25 +254,43 @@ export function InProgressTabContent() {
   );
 
   const tradeColumns: NaviTableColumn[] = [
-    ...standardNaviColumns.map((column) => {
-      if (column.key === "totalAmount") {
-        return {
-          ...column,
-          render: (row: (typeof dummyTrades)[number]) => formatCurrency(row.totalAmount),
-        };
-      }
-
-      if (column.key === "status") {
-        return {
-          ...column,
-          render: (row: (typeof dummyTrades)[number]) => {
-            return <StatusBadge statusKey={row.status} />;
-          },
-        };
-      }
-
-      return column;
-    }),
+    {
+      key: "status",
+      label: "状況",
+      width: "110px",
+      render: (row: (typeof dummyTrades)[number]) => <StatusBadge statusKey={row.status} />,
+    },
+    {
+      key: "updatedAt",
+      label: "更新日時",
+      width: "160px",
+    },
+    {
+      key: "partnerName",
+      label: "取引先",
+      width: "18%",
+    },
+    {
+      key: "makerName",
+      label: "メーカー",
+      width: "140px",
+    },
+    {
+      key: "itemName",
+      label: "物件名",
+      width: "22%",
+    },
+    {
+      key: "totalAmount",
+      label: "合計金額（税込）",
+      width: "140px",
+      render: (row: (typeof dummyTrades)[number]) => formatCurrency(row.totalAmount),
+    },
+    {
+      key: "scheduledShipDate",
+      label: "発送予定日",
+      width: "140px",
+    },
     {
       key: "document",
       label: "確認書",
@@ -291,16 +308,16 @@ export function InProgressTabContent() {
       key: "action",
       label: "操作",
       width: "110px",
-          render: (row: (typeof dummyTrades)[number]) => (
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-100"
-            >
-              {row.status === "waiting_payment" ? "振込" : "OK"}
-            </button>
-          ),
-        },
-      ];
+      render: (row: (typeof dummyTrades)[number]) => (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-100"
+        >
+          {row.status === "waiting_payment" ? "振込" : "OK"}
+        </button>
+      ),
+    },
+  ];
 
   const draftColumns: NaviTableColumn[] = [
     {
