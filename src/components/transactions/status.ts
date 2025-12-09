@@ -1,5 +1,6 @@
 export type TradeStatusKey =
   | "draft"
+  | "requesting"
   | "navi_in_progress"
   | "waiting_payment"
   | "payment_confirmed"
@@ -17,6 +18,7 @@ export type TradeStatusDisplayContext = "inProgress" | "history";
 
 export const TRADE_STATUS_DEFINITIONS: TradeStatusDisplay[] = [
   { key: "draft", label: "下書き", color: "gray" },
+  { key: "requesting", label: "依頼中", color: "blue" },
   { key: "navi_in_progress", label: "取引Navi進行中", color: "blue" },
   { key: "waiting_payment", label: "入金待ち", color: "yellow" },
   { key: "payment_confirmed", label: "入金確認済", color: "green" },
@@ -30,9 +32,11 @@ const TRADE_STATUS_LABEL_OVERRIDES: Record<
   Partial<Record<TradeStatusKey, string>>
 > = {
   inProgress: {
+    requesting: "承認待ち",
     navi_in_progress: "確認中",
   },
   history: {
+    requesting: "承認",
     navi_in_progress: "承認",
   },
 };
