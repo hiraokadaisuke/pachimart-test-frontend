@@ -375,7 +375,9 @@ export function InProgressTabContent() {
       />
 
       <section className="space-y-4">
-        <SectionHeader className="mb-2">買いたい物件 – 入金・確認状況</SectionHeader>
+        <h2 className="bg-indigo-50 text-indigo-900 text-lg font-bold px-4 py-2 rounded mb-2">
+          買いたい物件 – 入金・確認状況
+        </h2>
         <p className="text-xs font-semibold text-red-500">入金待ちの案件は、発注予定日までに必ずご確認ください。</p>
 
         <div className="space-y-3">
@@ -414,7 +416,9 @@ export function InProgressTabContent() {
       </section>
 
       <section className="space-y-4">
-        <SectionHeader className="mb-2">売りたい物件 – 入金・確認状況</SectionHeader>
+        <h2 className="bg-indigo-50 text-indigo-900 text-lg font-bold px-4 py-2 rounded mb-2">
+          売りたい物件 – 入金・確認状況
+        </h2>
         <p className="text-xs font-semibold text-red-500">
           売りたい物件の入金・動作確認状況を確認できます。入金手続き中の案件は、買い手様の手続き完了までお待ちください。
         </p>
