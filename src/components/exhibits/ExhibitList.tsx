@@ -93,7 +93,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
   const heading = status === "下書き" ? "下書き一覧" : "出品中の商品";
 
   return (
-    <section className="space-y-4 text-xs sm:text-sm">
+    <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-4 text-xs sm:text-sm px-4 md:px-6 xl:px-8">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-lg font-semibold text-slate-800">{heading}</h2>

@@ -26,7 +26,7 @@ function ExhibitHubContent() {
   }, [searchParams]);
 
   return (
-    <main className="space-y-6">
+    <main className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-6 px-4 md:px-6 xl:px-8">
       <ExhibitSubTabs activeTab={activeTab === "draft" ? "draft" : "active"} />
 
       <div className="space-y-2">
