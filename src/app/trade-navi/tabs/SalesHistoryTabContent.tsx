@@ -201,7 +201,7 @@ export function SalesHistoryTabContent() {
           }}
           className="rounded border border-slate-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
         >
-          PDFダウンロード
+          PDF
         </button>
       ),
     },
@@ -232,19 +232,16 @@ export function SalesHistoryTabContent() {
       label: "決済",
       width: "180px",
       render: (row) => (
-        <div className="space-y-1">
-          <div className="text-sm text-neutral-900">{row.paymentStatus}</div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              alert(`決済状況を確認: ${row.id}`);
-            }}
-            className="rounded border border-slate-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
-          >
-            確認
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            alert(`決済状況を確認: ${row.id}`);
+          }}
+          className="rounded border border-slate-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+        >
+          振込
+        </button>
       ),
     },
   ];
