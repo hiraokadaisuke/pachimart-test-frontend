@@ -398,23 +398,9 @@ export default function TransactionNaviEditPage() {
     <MainContainer variant="wide">
       <div className="flex flex-col gap-8 pb-8">
         <section className="flex flex-col gap-4 border-b border-slate-200 pb-6">
-          <nav className="text-xs text-neutral-700">
-            <ol className="flex flex-wrap items-center gap-2">
-              {editBreadcrumbItems.map((item, index) => (
-                <li key={item} className="flex items-center gap-2">
-                  <span>{item}</span>
-                  {index < editBreadcrumbItems.length - 1 && <span className="text-neutral-600">›</span>}
-                </li>
-              ))}
-            </ol>
-          </nav>
-
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">取引Naviの編集</h1>
-              <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-700">
-                下書き
-              </span>
+              <h1 className="text-2xl font-bold text-slate-900">依頼作成</h1>
             </div>
             <div className="flex flex-col gap-2 md:items-end">
               {Object.values(validationErrors).some((error) => Boolean(error)) && (
