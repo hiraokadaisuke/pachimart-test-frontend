@@ -327,13 +327,13 @@ export default function TransactionNaviEditPage() {
     onChange: (next: T) => void
   ) => {
     return (
-      <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-900">
         {options.map((option) => (
-          <label key={option} className="inline-flex items-center gap-2">
+          <label key={option} className="inline-flex items-center gap-1">
             <input
               type="radio"
               name={name}
-              className="text-sky-600 focus:ring-sky-500"
+              className="h-3 w-3 text-sky-600 focus:ring-sky-500"
               value={option}
               checked={value === option}
               onChange={() => onChange(option)}
@@ -580,23 +580,23 @@ export default function TransactionNaviEditPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">取引条件</h2>
-            <span className="text-xs font-semibold text-neutral-700">参考値｜編集</span>
+        <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 text-sm font-semibold text-neutral-900">
+            <h2 className="text-sm font-semibold text-slate-900">取引条件</h2>
+            <span className="text-[11px] font-semibold text-neutral-700">参考値｜編集</span>
           </div>
-          <div className="grid gap-6 lg:grid-cols-3">
+          <div className="grid gap-3 px-4 py-3 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <div className="overflow-x-auto">
-                <table className="min-w-full border border-slate-200 text-sm">
+                <table className="min-w-full border border-slate-200 text-xs">
                   <thead>
-                    <tr className="bg-slate-50 text-left text-xs text-neutral-800">
-                      <th className="w-40 px-3 py-2">項目</th>
-                      <th className="w-56 px-3 py-2">参考値</th>
-                      <th className="px-3 py-2">編集</th>
-                    </tr>
+                    <tr className="bg-slate-50 text-left text-[11px] text-neutral-800">
+                      <th className="w-36 px-3 py-1.5">項目</th>
+                      <th className="w-48 px-3 py-1.5">参考値</th>
+                      <th className="px-3 py-1.5">編集</th>
+                  </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 text-slate-800">
+                  <tbody className="text-slate-800">
                     <EditRow label="単価 (税抜)" required>
                       <div className="flex items-center gap-2">
                         <span className="text-neutral-700">{formattedNumber(referenceConditions.price)}</span>
@@ -604,7 +604,7 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
                           value={editedConditions.price}
                           onChange={(e) => handleNumberConditionChange("price", Number(e.target.value) || 0)}
                         />
@@ -619,7 +619,7 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
                           value={editedConditions.quantity}
                           onChange={(e) => handleNumberConditionChange("quantity", Number(e.target.value) || 0)}
                         />
@@ -633,7 +633,7 @@ export default function TransactionNaviEditPage() {
                       <span className="text-neutral-700">{referenceConditions.removalDate}</span>
                       <input
                         type="date"
-                        className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                        className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
                         value={editedConditions.removalDate}
                         onChange={(e) => handleTextConditionChange("removalDate", e.target.value)}
                       />
@@ -643,10 +643,10 @@ export default function TransactionNaviEditPage() {
                       <span className="text-neutral-700">
                         {referenceConditions.machineShipmentDate}（{referenceConditions.machineShipmentType}）
                       </span>
-                      <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-3">
                         <input
                           type="date"
-                          className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
                           value={editedConditions.machineShipmentDate}
                           onChange={(e) => handleTextConditionChange("machineShipmentDate", e.target.value)}
                         />
@@ -663,10 +663,10 @@ export default function TransactionNaviEditPage() {
                       <span className="text-neutral-700">
                         {referenceConditions.documentShipmentDate}（{referenceConditions.documentShipmentType}）
                       </span>
-                      <div className="space-y-2">
+                      <div className="flex flex-wrap items-center gap-3">
                         <input
                           type="date"
-                          className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
                           value={editedConditions.documentShipmentDate}
                           onChange={(e) => handleTextConditionChange("documentShipmentDate", e.target.value)}
                         />
@@ -683,7 +683,7 @@ export default function TransactionNaviEditPage() {
                       <span className="text-neutral-700">{referenceConditions.paymentDue}</span>
                       <input
                         type="date"
-                        className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                        className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
                         value={editedConditions.paymentDue}
                         onChange={(e) => handleTextConditionChange("paymentDue", e.target.value)}
                       />
@@ -694,7 +694,7 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
                           value={editedConditions.freightCost}
                           onChange={(e) => handleNumberConditionChange("freightCost", Number(e.target.value) || 0)}
                         />
@@ -709,7 +709,7 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-44 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
                           value={editedConditions.handlingFee}
                           onChange={(e) => handleNumberConditionChange("handlingFee", Number(e.target.value) || 0)}
                         />
@@ -725,7 +725,7 @@ export default function TransactionNaviEditPage() {
                         <input
                           type="number"
                           step="0.01"
-                          className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
                           value={editedConditions.taxRate}
                           onChange={(e) => handleNumberConditionChange("taxRate", Number(e.target.value) || 0)}
                         />
@@ -741,17 +741,17 @@ export default function TransactionNaviEditPage() {
                           ? `${referenceConditions.otherFee1.label}: ${formattedNumber(referenceConditions.otherFee1.amount)}`
                           : "-"}
                       </span>
-                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
                         <input
                           type="text"
-                          className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-40 rounded border border-slate-300 px-2 py-1 text-xs"
                           placeholder="種別"
                           value={editedConditions.otherFee1?.label ?? ""}
                           onChange={(e) => handleOtherFeeChange("otherFee1", "label", e.target.value)}
                         />
                         <input
                           type="number"
-                          className="w-40 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
                           placeholder="金額"
                           value={editedConditions.otherFee1?.amount ?? 0}
                           onChange={(e) => handleOtherFeeChange("otherFee1", "amount", Number(e.target.value) || 0)}
@@ -765,17 +765,17 @@ export default function TransactionNaviEditPage() {
                           ? `${referenceConditions.otherFee2.label}: ${formattedNumber(referenceConditions.otherFee2.amount)}`
                           : "-"}
                       </span>
-                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
                         <input
                           type="text"
-                          className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-40 rounded border border-slate-300 px-2 py-1 text-xs"
                           placeholder="種別"
                           value={editedConditions.otherFee2?.label ?? ""}
                           onChange={(e) => handleOtherFeeChange("otherFee2", "label", e.target.value)}
                         />
                         <input
                           type="number"
-                          className="w-40 rounded border border-slate-300 px-3 py-2 text-sm"
+                          className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
                           placeholder="金額"
                           value={editedConditions.otherFee2?.amount ?? 0}
                           onChange={(e) => handleOtherFeeChange("otherFee2", "amount", Number(e.target.value) || 0)}
@@ -786,8 +786,8 @@ export default function TransactionNaviEditPage() {
                     <EditRow label="特記事項">
                       <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.notes}</span>
                       <textarea
-                        className="w-64 rounded border border-slate-300 px-3 py-2 text-sm"
-                        rows={3}
+                        className="w-64 rounded border border-slate-300 px-2 py-1 text-xs"
+                        rows={2}
                         value={editedConditions.notes}
                         onChange={(e) => handleTextConditionChange("notes", e.target.value)}
                       />
@@ -796,8 +796,8 @@ export default function TransactionNaviEditPage() {
                     <EditRow label="取引条件">
                       <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.terms}</span>
                       <textarea
-                        className="w-72 rounded border border-slate-300 px-3 py-2 text-sm"
-                        rows={5}
+                        className="w-72 rounded border border-slate-300 px-2 py-1 text-xs"
+                        rows={3}
                         value={editedConditions.terms}
                         onChange={(e) => handleTextConditionChange("terms", e.target.value)}
                       />
@@ -960,15 +960,17 @@ function EditRow({
   const afterContent = Array.isArray(children) ? content[1] : children;
 
   return (
-    <tr>
-      <th className="bg-slate-50 px-3 py-3 text-left text-xs font-semibold text-neutral-900">
-        <div className="flex items-center gap-2">
+    <tr className="border-t border-slate-200">
+      <th className="bg-slate-50 px-3 py-1.5 text-left text-[11px] font-semibold text-neutral-900 align-middle">
+        <div className="flex items-center gap-1.5">
           <span>{label}</span>
-          {required && <span className="rounded bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">必須</span>}
+          {required && (
+            <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
+          )}
         </div>
       </th>
-      <td className="bg-slate-50 px-3 py-3 text-neutral-800">{beforeContent}</td>
-      <td className="px-3 py-3">{afterContent}</td>
+      <td className="bg-slate-50 px-3 py-1 align-middle text-neutral-800">{beforeContent}</td>
+      <td className="px-3 py-1 align-middle">{afterContent}</td>
     </tr>
   );
 }
