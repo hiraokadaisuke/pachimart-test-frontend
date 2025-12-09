@@ -12,6 +12,12 @@ import {
   type TradeStatusKey,
 } from "@/components/transactions/status";
 
+const docLabelMap: Record<string, string> = {
+  "検通": "検",
+  "明細": "撤",
+  "確認": "確",
+};
+
 // TODO: API連携（フィルター条件でサーバーから取得）
 
 type PurchaseHistoryRow = {
@@ -199,7 +205,7 @@ export function PurchaseHistoryTabContent() {
             e.stopPropagation();
             router.push(`/dealings/purchases/${row.id}`);
           }}
-          className="rounded border border-slate-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
         >
           PDF
         </button>
@@ -219,9 +225,9 @@ export function PurchaseHistoryTabContent() {
                 e.stopPropagation();
                 alert(`${doc} を確認しました`);
               }}
-              className="rounded border border-slate-200 px-2 py-1 text-xs text-neutral-900 hover:bg-slate-50"
+              className="inline-flex items-center justify-center rounded px-2 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
             >
-              {doc}
+              {docLabelMap[doc] ?? doc}
             </button>
           ))}
         </div>
@@ -238,7 +244,7 @@ export function PurchaseHistoryTabContent() {
             e.stopPropagation();
             alert(`支払方法を確認しました: ${row.paymentMethod}`);
           }}
-          className="rounded border border-slate-200 px-2 py-1 text-xs text-blue-700 hover:bg-blue-50"
+          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
         >
           振込
         </button>

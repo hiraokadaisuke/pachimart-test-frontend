@@ -298,7 +298,7 @@ export function InProgressTabContent() {
       render: (row: (typeof dummyTrades)[number]) => (
         <a
           href={row.pdfUrl}
-          className="inline-flex items-center rounded border border-blue-600 bg-blue-600 px-2 py-1 text-xs font-semibold text-white"
+          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
         >
           PDF
         </a>
@@ -311,7 +311,7 @@ export function InProgressTabContent() {
       render: (row: (typeof dummyTrades)[number]) => (
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-100"
+          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
         >
           {row.status === "waiting_payment" ? "振込" : "OK"}
         </button>
@@ -393,7 +393,7 @@ export function InProgressTabContent() {
       render: (draft: TradeNaviDraft) => (
         <button
           type="button"
-          className="inline-flex items-center rounded border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-100"
+          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm disabled:opacity-50"
           disabled
         >
           PDF
