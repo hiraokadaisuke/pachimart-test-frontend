@@ -432,7 +432,6 @@ export default function TransactionNaviEditPage() {
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-lg font-semibold text-slate-900">売却先</h2>
-              <span className="text-xs font-semibold text-neutral-700">取引先</span>
             </div>
 
             {isBuyerSet ? (
@@ -455,13 +454,11 @@ export default function TransactionNaviEditPage() {
             ) : (
               <div className="space-y-3">
                 <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <div className="whitespace-nowrap text-sm font-semibold text-neutral-900">売却先</div>
-
+                  <div className="flex flex-wrap items-center gap-2">
                     <input
                       type="text"
                       placeholder="会社名 / 店舗名 / 会員ID / 電話番号 / 担当者名 で検索"
-                      className="flex-1 rounded border border-slate-300 px-3 py-2 text-xs text-slate-800"
+                      className="w-full max-w-[22rem] rounded border border-slate-300 px-3 py-2 text-xs text-slate-800"
                       value={searchKeyword}
                       onChange={(e) => setSearchKeyword(e.target.value)}
                     />
