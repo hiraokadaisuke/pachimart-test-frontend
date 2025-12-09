@@ -246,9 +246,9 @@ export default function TransactionNaviEditPage() {
   };
 
   const buyerSearchResults = useMemo(() => {
-    if (!searchKeyword.trim()) return dummyBuyers;
+    const keyword = searchKeyword.trim();
+    if (!keyword) return [];
     return dummyBuyers.filter((buyer) => {
-      const keyword = searchKeyword.trim();
       return (
         buyer.companyName.includes(keyword) ||
         buyer.contactName.includes(keyword) ||
@@ -257,6 +257,8 @@ export default function TransactionNaviEditPage() {
       );
     });
   }, [searchKeyword]);
+
+  const hasBuyerSearchKeyword = Boolean(searchKeyword.trim());
 
   const handlePropertyChange = (key: keyof TradeConditions, value: string | number | null) => {
     persistDraft((prev) => ({
@@ -461,9 +463,6 @@ export default function TransactionNaviEditPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <p className="text-sm text-neutral-900">
-                  売却先が未設定です。パチマート会員を検索して設定してください。
-                </p>
                 <div className="space-y-2 rounded border border-slate-200 bg-white p-3">
                   <label className="text-xs font-semibold text-neutral-800">会員検索</label>
                   <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -502,7 +501,7 @@ export default function TransactionNaviEditPage() {
                         </button>
                       </div>
                     ))}
-                    {buyerSearchResults.length === 0 && (
+                    {buyerSearchResults.length === 0 && hasBuyerSearchKeyword && (
                       <p className="text-xs text-neutral-700">該当する売却先が見つかりませんでした。</p>
                     )}
                   </div>
