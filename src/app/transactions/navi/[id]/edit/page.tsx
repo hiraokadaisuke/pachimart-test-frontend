@@ -430,13 +430,8 @@ export default function TransactionNaviEditPage() {
 
         <section className="space-y-4">
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">売却先</h2>
-                {(!isBuyerSet || validationErrors.buyer) && (
-                  <p className="text-xs text-red-600">{validationErrors.buyer ?? buyerErrorMessage}</p>
-                )}
-              </div>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-slate-900">売却先</h2>
               <span className="text-xs font-semibold text-neutral-700">取引先</span>
             </div>
 
@@ -458,49 +453,54 @@ export default function TransactionNaviEditPage() {
                 {displayBuyer.notes && <InfoRow label="備考" value={displayBuyer.notes} muted />}
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="space-y-2 rounded border border-slate-200 bg-white p-3">
-                  <label className="text-xs font-semibold text-neutral-800">会員検索</label>
-                  <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <div className="space-y-3">
+                <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <div className="whitespace-nowrap text-sm font-semibold text-neutral-900">売却先</div>
+
                     <input
                       type="text"
-                      className="flex-1 rounded border border-slate-300 px-3 py-2 text-sm"
                       placeholder="会社名 / 店舗名 / 会員ID / 電話番号 / 担当者名 で検索"
+                      className="flex-1 rounded border border-slate-300 px-3 py-2 text-xs text-slate-800"
                       value={searchKeyword}
                       onChange={(e) => setSearchKeyword(e.target.value)}
                     />
+
                     <button
                       type="button"
-                      className="rounded bg-slate-800 px-4 py-2 text-xs font-semibold text-white shadow"
+                      className="whitespace-nowrap rounded bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
                     >
                       検索
                     </button>
                   </div>
-                  <div className="space-y-2 text-sm">
-                    {buyerSearchResults.map((buyer) => (
-                      <div
-                        key={buyer.id}
-                        className="flex flex-col gap-1 rounded border border-slate-200 bg-white px-3 py-2 md:flex-row md:items-center md:justify-between"
-                      >
-                        <div>
-                          <p className="font-semibold text-slate-900">{buyer.companyName}</p>
-                          <p className="text-xs text-neutral-800">
-                            {buyer.contactName}｜{buyer.tel}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleBuyerSelect(buyer)}
-                          className="mt-2 inline-flex items-center justify-center rounded bg-sky-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-sky-700 md:mt-0"
-                        >
-                          この売却先を選択
-                        </button>
+                  {validationErrors.buyer && (
+                    <p className="mt-2 text-[11px] text-red-600">{validationErrors.buyer}</p>
+                  )}
+                </div>
+                <div className="space-y-2 text-sm">
+                  {buyerSearchResults.map((buyer) => (
+                    <div
+                      key={buyer.id}
+                      className="flex flex-col gap-1 rounded border border-slate-200 bg-white px-3 py-2 md:flex-row md:items-center md:justify-between"
+                    >
+                      <div>
+                        <p className="font-semibold text-slate-900">{buyer.companyName}</p>
+                        <p className="text-xs text-neutral-800">
+                          {buyer.contactName}｜{buyer.tel}
+                        </p>
                       </div>
-                    ))}
-                    {buyerSearchResults.length === 0 && hasBuyerSearchKeyword && (
-                      <p className="text-xs text-neutral-700">該当する売却先が見つかりませんでした。</p>
-                    )}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => handleBuyerSelect(buyer)}
+                        className="mt-2 inline-flex items-center justify-center rounded bg-sky-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-sky-700 md:mt-0"
+                      >
+                        この売却先を選択
+                      </button>
+                    </div>
+                  ))}
+                  {buyerSearchResults.length === 0 && hasBuyerSearchKeyword && (
+                    <p className="text-xs text-neutral-700">該当する売却先が見つかりませんでした。</p>
+                  )}
                 </div>
               </div>
             )}
