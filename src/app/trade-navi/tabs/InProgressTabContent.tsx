@@ -321,54 +321,89 @@ export function InProgressTabContent() {
 
   const draftColumns: NaviTableColumn[] = [
     {
-      key: "itemName",
-      label: "物件名（機種名）",
-      render: (draft: TradeNaviDraft) => getProductLabel(draft),
-      width: "22%",
-    },
-    {
-      key: "quantity",
-      label: "台数",
-      render: (draft: TradeNaviDraft) => draft.conditions.quantity,
-      width: "72px",
-    },
-    {
-      key: "partner",
-      label: "相手先",
-      render: (draft: TradeNaviDraft) => getBuyerLabel(draft),
-      width: "18%",
-    },
-    {
-      key: "totalAmount",
-      label: "税込合計",
-      render: (draft: TradeNaviDraft) => {
-        const quote = calculateQuote(draft.conditions);
-        return quote.total ? formatCurrency(quote.total) : "-";
-      },
-      width: "140px",
-    },
-    {
       key: "status",
       label: "状況",
+      width: "110px",
       render: (draft: TradeNaviDraft) => {
         const statusInfo = getStatusLabel(draft.status);
         return (
-          <span className={`inline-block rounded-full px-2 py-1 text-xs font-semibold ${statusInfo.className}`}>{
-            statusInfo.text
-          }</span>
+          <span
+            className={`inline-block rounded-full px-2 py-1 text-xs font-semibold ${statusInfo.className}`}
+          >
+            {statusInfo.text}
+          </span>
         );
       },
-      width: "140px",
     },
     {
       key: "updatedAt",
       label: "更新日時",
-      render: (draft: TradeNaviDraft) => formatDateTime(draft.updatedAt),
       width: "160px",
+      render: (draft: TradeNaviDraft) => formatDateTime(draft.updatedAt),
+    },
+    {
+      key: "partner",
+      label: "取引先",
+      width: "18%",
+      render: (draft: TradeNaviDraft) => getBuyerLabel(draft),
+    },
+    {
+      key: "makerName",
+      label: "メーカー",
+      width: "140px",
+      render: (draft: TradeNaviDraft) => {
+        const product =
+          draft.productId != null
+            ? products.find((p) => String(p.id) === String(draft.productId))
+            : undefined;
+        return product?.maker ?? "-";
+      },
+    },
+    {
+      key: "itemName",
+      label: "物件名（機種名）",
+      width: "22%",
+      render: (draft: TradeNaviDraft) => getProductLabel(draft),
+    },
+    {
+      key: "totalAmount",
+      label: "合計金額（税込）",
+      width: "140px",
+      render: (draft: TradeNaviDraft) => {
+        const quote = calculateQuote(draft.conditions);
+        return quote.total ? formatCurrency(quote.total) : "-";
+      },
+    },
+    {
+      key: "scheduledShipDate",
+      label: "発送予定日",
+      width: "140px",
+      render: (draft: TradeNaviDraft) => {
+        const date =
+          (draft.conditions as any).scheduledShipmentDate ??
+          (draft.conditions as any).expectedShipmentDate ??
+          null;
+        return date ? formatDateTime(date) : "-";
+      },
+    },
+    {
+      key: "document",
+      label: "確認書",
+      width: "110px",
+      render: (draft: TradeNaviDraft) => (
+        <button
+          type="button"
+          className="inline-flex items-center rounded border border-slate-300 bg-white px-2 py-1 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-100"
+          disabled
+        >
+          PDF
+        </button>
+      ),
     },
     {
       key: "actions",
       label: "操作",
+      width: "110px",
       render: (draft: TradeNaviDraft) => (
         <button
           type="button"
@@ -378,7 +413,6 @@ export function InProgressTabContent() {
           Navi確認
         </button>
       ),
-      width: "110px",
     },
   ];
 
