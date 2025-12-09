@@ -17,6 +17,11 @@ export interface PropertyInfo {
   quantity: number;
   storageLocation: string;
   machineNumber?: string;
+  prefecture?: string;
+  hallName?: string;
+  salesPrice: number;
+  removalDate: string;
+  note?: string;
 }
 
 type ShippingType = "元払" | "着払" | "引取";
@@ -57,12 +62,19 @@ const buyerInfo: BuyerInfo = {
   notes: "平日10-18時に連絡可。",
 };
 
+const fallbackRemovalDate = "2025-11-22";
+
 const basePropertyInfo: PropertyInfo = {
   modelName: "P スーパー海物語 JAPAN2 L1",
   maker: "三共",
   quantity: 4,
   storageLocation: "東京都江東区倉庫A-12",
   machineNumber: "#A102-#A105",
+  prefecture: "東京都",
+  hallName: "東京ベイホール",
+  salesPrice: 320000,
+  removalDate: fallbackRemovalDate,
+  note: "搬出は午後14時以降でお願いします。",
 };
 
 const currentConditions: TransactionConditions = {
@@ -128,8 +140,6 @@ const messageLogs: MessageLog[] = [
   },
 ];
 
-const fallbackRemovalDate = "2025-11-22";
-
 const buildPropertyInfo = (transactionId?: string): PropertyInfo => {
   const product = transactionId
     ? products.find((item) => String(item.id) === transactionId)
@@ -143,6 +153,11 @@ const buildPropertyInfo = (transactionId?: string): PropertyInfo => {
     quantity: product.quantity,
     storageLocation: product.warehouseName ?? basePropertyInfo.storageLocation,
     machineNumber: `#${product.id}`,
+    prefecture: product.prefecture,
+    hallName: product.sellerName,
+    salesPrice: product.price,
+    removalDate: product.removalDate ?? fallbackRemovalDate,
+    note: product.note,
   };
 };
 

@@ -362,6 +362,16 @@ export default function TransactionNaviEditPage() {
     location: draft?.conditions.location ?? "",
   };
 
+  const propertyPrevLocation = useMemo(() => {
+    const locationParts = [propertyInfo.prefecture, propertyInfo.hallName].filter(Boolean);
+    if (locationParts.length) return locationParts.join(" ");
+    return propertyInfo.storageLocation;
+  }, [propertyInfo.hallName, propertyInfo.prefecture, propertyInfo.storageLocation]);
+
+  const propertySalesPriceLabel = formattedNumber(propertyInfo.salesPrice);
+  const propertyRemovalDateLabel = propertyInfo.removalDate.replace(/-/g, "/");
+  const propertyNote = propertyInfo.note ?? "-";
+
   const handleNumberConditionChange = (field: keyof TransactionConditions, value: number) => {
     syncEditedConditions((prev) => ({ ...prev, [field]: value } as TransactionConditions));
   };
@@ -510,21 +520,41 @@ export default function TransactionNaviEditPage() {
             )}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">物件情報</h2>
-              <span className="text-xs font-semibold text-neutral-700">対象機器</span>
+          <div className="rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 text-sm font-semibold text-neutral-900">
+              <h2 className="text-sm font-semibold text-slate-900">物件情報</h2>
+              <span className="text-[11px] font-semibold text-neutral-700">対象機器</span>
             </div>
             {isProductLinked ? (
-              <div className="space-y-2 text-sm text-neutral-900">
-                <InfoRow label="機種名" value={propertyInfo.modelName} emphasis />
-                <InfoRow label="メーカー" value={propertyInfo.maker} />
-                <InfoRow label="台数" value={`${propertyInfo.quantity} 台`} />
-                <InfoRow label="台番号" value={propertyInfo.machineNumber ?? "-"} />
-                <InfoRow label="保管場所" value={propertyInfo.storageLocation} />
+              <div className="overflow-x-auto">
+                <table className="min-w-full border-t border-slate-100 text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-neutral-500">
+                      <th className="px-4 py-2 text-left font-semibold">前設置</th>
+                      <th className="px-4 py-2 text-left font-semibold">メーカー</th>
+                      <th className="px-4 py-2 text-left font-semibold">機種名</th>
+                      <th className="px-4 py-2 text-left font-semibold">台数</th>
+                      <th className="px-4 py-2 text-left font-semibold">売却価格</th>
+                      <th className="px-4 py-2 text-left font-semibold">撤去日</th>
+                      <th className="px-4 py-2 text-left font-semibold">備考</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    <tr className="border-t border-slate-100">
+                      <td className="whitespace-nowrap px-4 py-2">{propertyPrevLocation}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{propertyInfo.maker}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{propertyInfo.modelName}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{propertyInfo.quantity}台</td>
+                      <td className="whitespace-nowrap px-4 py-2">{propertySalesPriceLabel}</td>
+                      <td className="whitespace-nowrap px-4 py-2">{propertyRemovalDateLabel}</td>
+                      <td className="px-4 py-2">{propertyNote}</td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <div className="space-y-3 text-sm text-neutral-900">
+              <div className="space-y-3 p-4 text-sm text-neutral-900">
                 <p className="text-xs text-neutral-700">商品が紐付いていないため、ここで情報を入力してください。</p>
                 <div className="space-y-2">
                   <label className="block text-xs font-semibold text-neutral-800">機種名</label>
