@@ -1,13 +1,18 @@
 import React from "react";
 
-import { TRADE_STATUS_DEFINITIONS, type TradeStatusKey } from "./status";
+import {
+  getTradeStatusDisplay,
+  type TradeStatusDisplayContext,
+  type TradeStatusKey,
+} from "./status";
 
 type StatusBadgeProps = {
   statusKey: TradeStatusKey;
+  context?: TradeStatusDisplayContext;
 };
 
-export function StatusBadge({ statusKey }: StatusBadgeProps) {
-  const def = TRADE_STATUS_DEFINITIONS.find((status) => status.key === statusKey);
+export function StatusBadge({ statusKey, context }: StatusBadgeProps) {
+  const def = getTradeStatusDisplay(statusKey, context);
 
   if (!def) return null;
 
