@@ -17,10 +17,13 @@ export type TradeConditions = {
   documentShipmentDate?: string | null;
   documentShipmentType?: string | null;
   paymentDue?: string | null;
-  otherFee1?: AdditionalFee | null;
-  otherFee2?: AdditionalFee | null;
+  cardboardFee?: AdditionalFee | null;
+  nailSheetFee?: AdditionalFee | null;
+  insuranceFee?: AdditionalFee | null;
   notes?: string | null;
   terms?: string | null;
+  memo?: string | null;
+  handler?: string | null;
   productName?: string | null;
   makerName?: string | null;
   location?: string | null;

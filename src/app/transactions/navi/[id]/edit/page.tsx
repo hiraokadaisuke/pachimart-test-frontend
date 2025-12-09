@@ -31,10 +31,13 @@ const mapDraftConditions = (
   freightCost: conditions.shippingFee ?? fallback.freightCost,
   handlingFee: conditions.handlingFee ?? fallback.handlingFee,
   taxRate: conditions.taxRate ?? fallback.taxRate,
-  otherFee1: conditions.otherFee1 ?? fallback.otherFee1,
-  otherFee2: conditions.otherFee2 ?? fallback.otherFee2,
+  cardboardFee: conditions.cardboardFee ?? fallback.cardboardFee,
+  nailSheetFee: conditions.nailSheetFee ?? fallback.nailSheetFee,
+  insuranceFee: conditions.insuranceFee ?? fallback.insuranceFee,
   notes: conditions.notes ?? fallback.notes,
   terms: conditions.terms ?? fallback.terms,
+  memo: conditions.memo ?? fallback.memo,
+  handler: conditions.handler ?? fallback.handler,
 });
 
 const mapTransactionToTradeConditions = (
@@ -53,10 +56,13 @@ const mapTransactionToTradeConditions = (
   documentShipmentDate: conditions.documentShipmentDate,
   documentShipmentType: conditions.documentShipmentType,
   paymentDue: conditions.paymentDue,
-  otherFee1: conditions.otherFee1,
-  otherFee2: conditions.otherFee2,
+  cardboardFee: conditions.cardboardFee,
+  nailSheetFee: conditions.nailSheetFee,
+  insuranceFee: conditions.insuranceFee,
   notes: conditions.notes,
   terms: conditions.terms,
+  memo: conditions.memo,
+  handler: conditions.handler,
 });
 
 const dummyBuyers = [
@@ -64,6 +70,20 @@ const dummyBuyers = [
   { id: "store-2", companyName: "有限会社テスト商会", contactName: "営業部 佐藤花子", tel: "06-9876-5432" },
   { id: "store-3", companyName: "合同会社デモリンク", contactName: "営業部 山本正樹", tel: "052-123-9876" },
 ];
+
+const presetTerms = [
+  "通常取引における標準条件です。納品後7日以内の初期不良のみ対応いたします。",
+  "長期取引向けの条件です。支払いサイトは月末締め翌月末払い、遅延が生じた場合は別途協議します。",
+  "機材に関する追加保証なし。運送事故に関しては保険適用範囲での実費精算となります。",
+];
+
+const presetHandlers = ["山田 太郎", "佐藤 花子", "鈴木 一郎", "中村 真紀"];
+
+const additionalFeeLabels = {
+  cardboardFee: "段ボール",
+  nailSheetFee: "釘シート",
+  insuranceFee: "保険",
+} as const;
 
 type ValidationErrors = {
   buyer?: string;
@@ -154,6 +174,8 @@ export default function TransactionNaviEditPage() {
   const [photoThumbnails, setPhotoThumbnails] = useState<string[]>(defaultPhotoThumbnails);
   const [newMessage, setNewMessage] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
+  const [showTermPresets, setShowTermPresets] = useState(false);
+  const [showHandlerPresets, setShowHandlerPresets] = useState(false);
   const formattedNumber = formatCurrency;
 
   useEffect(() => {
@@ -282,6 +304,9 @@ export default function TransactionNaviEditPage() {
       shippingFee: draft.conditions.shippingFee ?? 0,
       handlingFee: draft.conditions.handlingFee ?? 0,
       taxRate: draft.conditions.taxRate ?? 0.1,
+      cardboardFee: draft.conditions.cardboardFee ?? 0,
+      nailSheetFee: draft.conditions.nailSheetFee ?? 0,
+      insuranceFee: draft.conditions.insuranceFee ?? 0,
     } satisfies Parameters<typeof calculateQuote>[0];
     return calculateQuote(quoteInput);
   }, [draft]);
@@ -380,18 +405,27 @@ export default function TransactionNaviEditPage() {
     syncEditedConditions((prev) => ({ ...prev, [field]: value } as TransactionConditions));
   };
 
-  const handleOtherFeeChange = (
-    key: "otherFee1" | "otherFee2",
-    part: "label" | "amount",
-    value: string | number
+  const handleAdditionalFeeChange = (
+    key: "cardboardFee" | "nailSheetFee" | "insuranceFee",
+    amount: number
   ) => {
     syncEditedConditions((prev) => ({
       ...prev,
       [key]: {
-        label: part === "label" ? String(value) : prev[key]?.label ?? "",
-        amount: part === "amount" ? Number(value) || 0 : prev[key]?.amount ?? 0,
+        label: prev[key]?.label ?? additionalFeeLabels[key],
+        amount,
       },
     }));
+  };
+
+  const handleApplyTermPreset = (value: string) => {
+    handleTextConditionChange("terms", value);
+    setShowTermPresets(false);
+  };
+
+  const handleApplyHandlerPreset = (value: string) => {
+    handleTextConditionChange("handler", value);
+    setShowHandlerPresets(false);
   };
 
   return (
@@ -597,7 +631,7 @@ export default function TransactionNaviEditPage() {
                   </tr>
                   </thead>
                   <tbody className="text-slate-800">
-                    <EditRow label="単価 (税抜)" required>
+                    <EditRow label="単価" required>
                       <div className="flex items-center gap-2">
                         <span className="text-neutral-700">{formattedNumber(referenceConditions.price)}</span>
                       </div>
@@ -689,7 +723,7 @@ export default function TransactionNaviEditPage() {
                       />
                     </EditRow>
 
-                    <EditRow label="送料 / 機械運賃">
+                    <EditRow label="機械運賃">
                       <span className="text-neutral-700">{formattedNumber(referenceConditions.freightCost)}</span>
                       <div className="flex flex-col items-start gap-1">
                         <input
@@ -718,67 +752,50 @@ export default function TransactionNaviEditPage() {
                         )}
                       </div>
                     </EditRow>
-
-                    <EditRow label="税率">
-                      <span className="text-neutral-700">{referenceConditions.taxRate}</span>
+                    <EditRow label="段ボール">
+                      <span className="text-neutral-700">
+                        {referenceConditions.cardboardFee
+                          ? formattedNumber(referenceConditions.cardboardFee.amount)
+                          : "-"}
+                      </span>
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          step="0.01"
-                          className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
-                          value={editedConditions.taxRate}
-                          onChange={(e) => handleNumberConditionChange("taxRate", Number(e.target.value) || 0)}
-                        />
-                        {validationErrors.taxRate && (
-                          <p className="text-xs text-red-600">{validationErrors.taxRate}</p>
-                        )}
-                      </div>
-                    </EditRow>
-
-                    <EditRow label="その他料金1">
-                      <span className="text-neutral-700">
-                        {referenceConditions.otherFee1
-                          ? `${referenceConditions.otherFee1.label}: ${formattedNumber(referenceConditions.otherFee1.amount)}`
-                          : "-"}
-                      </span>
-                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
-                        <input
-                          type="text"
-                          className="w-40 rounded border border-slate-300 px-2 py-1 text-xs"
-                          placeholder="種別"
-                          value={editedConditions.otherFee1?.label ?? ""}
-                          onChange={(e) => handleOtherFeeChange("otherFee1", "label", e.target.value)}
-                        />
-                        <input
-                          type="number"
-                          className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
-                          placeholder="金額"
-                          value={editedConditions.otherFee1?.amount ?? 0}
-                          onChange={(e) => handleOtherFeeChange("otherFee1", "amount", Number(e.target.value) || 0)}
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          value={editedConditions.cardboardFee?.amount ?? 0}
+                          onChange={(e) => handleAdditionalFeeChange("cardboardFee", Number(e.target.value) || 0)}
                         />
                       </div>
                     </EditRow>
 
-                    <EditRow label="その他料金2">
+                    <EditRow label="釘シート">
                       <span className="text-neutral-700">
-                        {referenceConditions.otherFee2
-                          ? `${referenceConditions.otherFee2.label}: ${formattedNumber(referenceConditions.otherFee2.amount)}`
+                        {referenceConditions.nailSheetFee
+                          ? formattedNumber(referenceConditions.nailSheetFee.amount)
                           : "-"}
                       </span>
-                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-2">
-                        <input
-                          type="text"
-                          className="w-40 rounded border border-slate-300 px-2 py-1 text-xs"
-                          placeholder="種別"
-                          value={editedConditions.otherFee2?.label ?? ""}
-                          onChange={(e) => handleOtherFeeChange("otherFee2", "label", e.target.value)}
-                        />
+                      <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
-                          placeholder="金額"
-                          value={editedConditions.otherFee2?.amount ?? 0}
-                          onChange={(e) => handleOtherFeeChange("otherFee2", "amount", Number(e.target.value) || 0)}
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          value={editedConditions.nailSheetFee?.amount ?? 0}
+                          onChange={(e) => handleAdditionalFeeChange("nailSheetFee", Number(e.target.value) || 0)}
+                        />
+                      </div>
+                    </EditRow>
+
+                    <EditRow label="保険">
+                      <span className="text-neutral-700">
+                        {referenceConditions.insuranceFee
+                          ? formattedNumber(referenceConditions.insuranceFee.amount)
+                          : "-"}
+                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <input
+                          type="number"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          value={editedConditions.insuranceFee?.amount ?? 0}
+                          onChange={(e) => handleAdditionalFeeChange("insuranceFee", Number(e.target.value) || 0)}
                         />
                       </div>
                     </EditRow>
@@ -795,12 +812,87 @@ export default function TransactionNaviEditPage() {
 
                     <EditRow label="取引条件">
                       <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.terms}</span>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          className="mb-1 w-fit rounded border border-slate-300 px-2 py-0.5 text-[11px] text-neutral-800 hover:bg-slate-50"
+                          onClick={() => setShowTermPresets((prev) => !prev)}
+                        >
+                          登録情報から選択
+                        </button>
+                        {showTermPresets && (
+                          <select
+                            className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-xs"
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (!e.target.value) return;
+                              handleApplyTermPreset(e.target.value);
+                              e.target.value = "";
+                            }}
+                          >
+                            <option value="">テンプレートを選択</option>
+                            {presetTerms.map((term) => (
+                              <option key={term} value={term}>
+                                {term}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <textarea
+                          className="h-24 w-full resize-vertical rounded border border-slate-300 px-2 py-1 text-xs"
+                          placeholder="400文字以内、7行以内"
+                          value={editedConditions.terms}
+                          onChange={(e) => handleTextConditionChange("terms", e.target.value)}
+                        />
+                      </div>
+                    </EditRow>
+
+                    <EditRow label="メモ">
+                      <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.memo ?? "-"}</span>
                       <textarea
-                        className="w-72 rounded border border-slate-300 px-2 py-1 text-xs"
-                        rows={3}
-                        value={editedConditions.terms}
-                        onChange={(e) => handleTextConditionChange("terms", e.target.value)}
+                        className="h-20 w-full resize-vertical rounded border border-slate-300 px-2 py-1 text-xs"
+                        placeholder="備考など自由入力"
+                        value={editedConditions.memo ?? ""}
+                        onChange={(e) => handleTextConditionChange("memo", e.target.value)}
                       />
+                    </EditRow>
+
+                    <EditRow label="担当者">
+                      <span className="text-neutral-700">{referenceConditions.handler ?? "-"}</span>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          type="button"
+                          className="self-start rounded border border-slate-300 px-2 py-0.5 text-[11px] text-neutral-800 hover:bg-slate-50"
+                          onClick={() => setShowHandlerPresets((prev) => !prev)}
+                        >
+                          登録情報から選択
+                        </button>
+                        {showHandlerPresets && (
+                          <select
+                            className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-xs"
+                            defaultValue=""
+                            onChange={(e) => {
+                              if (!e.target.value) return;
+                              handleApplyHandlerPreset(e.target.value);
+                              e.target.value = "";
+                            }}
+                          >
+                            <option value="">担当者を選択</option>
+                            {presetHandlers.map((handler) => (
+                              <option key={handler} value={handler}>
+                                {handler}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                        <input
+                          type="text"
+                          className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-xs"
+                          placeholder="50文字以内"
+                          value={editedConditions.handler ?? ""}
+                          onChange={(e) => handleTextConditionChange("handler", e.target.value)}
+                        />
+                      </div>
                     </EditRow>
                   </tbody>
                 </table>
@@ -817,6 +909,9 @@ export default function TransactionNaviEditPage() {
                   <SummaryRow label="商品代金" value={formattedNumber(quoteResult.productSubtotal)} />
                   <SummaryRow label="送料" value={formattedNumber(quoteResult.shippingFee)} />
                   <SummaryRow label="出庫手数料" value={formattedNumber(quoteResult.handlingFee)} />
+                  <SummaryRow label="段ボール" value={formattedNumber(quoteResult.cardboardFee)} />
+                  <SummaryRow label="釘シート" value={formattedNumber(quoteResult.nailSheetFee)} />
+                  <SummaryRow label="保険" value={formattedNumber(quoteResult.insuranceFee)} />
                   <div className="h-px bg-slate-200" aria-hidden />
                   <SummaryRow label="小計" value={formattedNumber(quoteResult.subtotal)} />
                   <SummaryRow label="消費税" value={formattedNumber(quoteResult.tax)} />

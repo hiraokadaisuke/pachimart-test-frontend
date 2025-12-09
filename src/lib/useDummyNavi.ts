@@ -39,10 +39,13 @@ export interface TransactionConditions {
   freightCost: number;
   handlingFee: number;
   taxRate: number;
-  otherFee1?: AdditionalFee;
-  otherFee2?: AdditionalFee;
+  cardboardFee?: AdditionalFee;
+  nailSheetFee?: AdditionalFee;
+  insuranceFee?: AdditionalFee;
   notes: string;
   terms: string;
+  memo: string;
+  handler: string;
 }
 
 export interface MessageLog {
@@ -89,11 +92,14 @@ const currentConditions: TransactionConditions = {
   freightCost: 22000,
   handlingFee: 10000,
   taxRate: 0.1,
-  otherFee1: { label: "設置補助", amount: 15000 },
-  otherFee2: { label: "下見費用", amount: 8000 },
+  cardboardFee: { label: "段ボール", amount: 4000 },
+  nailSheetFee: { label: "釘シート", amount: 2000 },
+  insuranceFee: { label: "保険", amount: 3500 },
   notes: "撤去作業は午後14時以降でお願いします。",
   terms:
     "買手都合によるキャンセルの場合、実費精算となります。\n納品後7日以内の初期不良のみ対応。",
+  memo: "取引開始前に在庫確認済み。",
+  handler: "田中 太郎",
 };
 
 const updatedConditions: TransactionConditions = {
@@ -108,11 +114,14 @@ const updatedConditions: TransactionConditions = {
   freightCost: 22000,
   handlingFee: 10000,
   taxRate: 0.1,
-  otherFee1: { label: "設置補助", amount: 15000 },
-  otherFee2: { label: "下見費用", amount: 8000 },
+  cardboardFee: { label: "段ボール", amount: 4000 },
+  nailSheetFee: { label: "釘シート", amount: 2000 },
+  insuranceFee: { label: "保険", amount: 3500 },
   notes: "撤去作業は午後14時以降でお願いします。",
   terms:
     "買手都合によるキャンセルの場合、実費精算となります。\n納品後7日以内の初期不良のみ対応。",
+  memo: "予備の梱包材を確認予定。",
+  handler: "佐藤 花子",
 };
 
 const documentFiles = ["注文書.pdf", "覚書.docx", "搬出指示書.xlsx"];

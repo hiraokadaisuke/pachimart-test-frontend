@@ -33,10 +33,13 @@ export function createNaviDraftFromOffer(
     documentShipmentDate: null,
     documentShipmentType: null,
     paymentDue: null,
-    otherFee1: null,
-    otherFee2: null,
+    cardboardFee: null,
+    nailSheetFee: null,
+    insuranceFee: null,
     notes: null,
     terms: null,
+    memo: null,
+    handler: null,
     // 他の項目は後でNavi画面で編集する想定なので空でOK
   };
 
