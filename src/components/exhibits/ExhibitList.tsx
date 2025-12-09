@@ -90,27 +90,13 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
     router.push(`/transactions/navi/${product.id}/edit?${params.toString()}`);
   };
 
-  const heading = status === "下書き" ? "下書き一覧" : "出品中の商品";
+  const totalCount = listedProducts.length;
 
   return (
     <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-4 text-xs sm:text-sm px-4 md:px-6 xl:px-8">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-lg font-semibold text-slate-800">{heading}</h2>
-          <div className="mt-1 flex flex-wrap gap-3 text-[12px] text-neutral-700">
-            <span>全件数：{listedProducts.length}件</span>
-            <span className="text-neutral-600">絞り込み・更新もこの画面から操作できます</span>
-          </div>
-        </div>
-        {status === "出品中" && (
-          <button
-            type="button"
-            onClick={onNewExhibit}
-            className="inline-flex items-center justify-center rounded-md bg-blue-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-blue-700"
-          >
-            新規出品
-          </button>
-        )}
+      <div className="mb-2 flex items-center justify-between text-xs sm:text-sm">
+        <div className="text-xs text-neutral-700 sm:text-sm">全件数：{totalCount}件</div>
+        <div />
       </div>
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md bg-slate-50 px-4 py-3">

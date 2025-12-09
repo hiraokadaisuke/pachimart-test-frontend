@@ -29,13 +29,6 @@ function ExhibitHubContent() {
     <main className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-6 px-4 md:px-6 xl:px-8">
       <ExhibitSubTabs activeTab={activeTab === "draft" ? "draft" : "active"} />
 
-      <div className="space-y-2">
-        <h1 className="text-xl font-bold text-slate-900">出品</h1>
-        <p className="text-sm text-neutral-900">
-          出品中の管理や下書きの確認をこのハブから行えます。新規出品はタブから遷移してください。
-        </p>
-      </div>
-
       {activeTab === "active" && <ExhibitList status="出品中" />}
       {activeTab === "draft" && <ExhibitList status="下書き" />}
     </main>
