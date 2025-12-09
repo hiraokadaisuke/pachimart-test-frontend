@@ -366,7 +366,7 @@ export function InProgressTabContent() {
   ];
 
   return (
-    <div className="space-y-8">
+    <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-8 px-4 md:px-6 xl:px-8">
       <TransactionFilterBar
         statusFilter={statusFilter}
         keyword={keyword}
@@ -448,6 +448,6 @@ export function InProgressTabContent() {
           />
         </div>
       </section>
-    </div>
+    </section>
   );
 }
