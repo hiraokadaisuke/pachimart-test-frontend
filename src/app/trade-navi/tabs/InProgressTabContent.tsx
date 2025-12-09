@@ -432,7 +432,9 @@ export function InProgressTabContent() {
         <p className="text-xs font-semibold text-red-500">入金待ちの案件は、発注予定日までに必ずご確認ください。</p>
 
         <div className="space-y-3">
-          <h3 className="text-base font-semibold">取引条件の承認状況（Navi）</h3>
+          <div className="bg-slate-100 text-neutral-800 text-sm font-semibold px-3 py-1.5 rounded">
+            承認待ち
+          </div>
           <NaviTable
             columns={draftColumns}
             rows={sortedNavis}
@@ -475,7 +477,9 @@ export function InProgressTabContent() {
         </p>
 
         <div className="space-y-3">
-          <h3 className="text-base font-semibold">取引条件の承認状況（Navi）</h3>
+          <div className="bg-slate-100 text-neutral-800 text-sm font-semibold px-3 py-1.5 rounded">
+            承認待ち
+          </div>
           <NaviTable
             columns={draftColumns}
             rows={sortedNavis}
