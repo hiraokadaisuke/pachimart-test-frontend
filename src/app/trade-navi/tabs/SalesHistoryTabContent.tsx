@@ -179,7 +179,7 @@ export function SalesHistoryTabContent() {
       key: "status",
       label: "状況",
       width: "120px",
-      render: (row) => <StatusBadge statusKey={row.status} />,
+      render: (row) => <StatusBadge statusKey={row.status} context="history" />,
     },
     { key: "contractDate", label: "締結日", width: "120px", render: (row) => formatDate(row.contractDate) },
     { key: "partner", label: "取引先", width: "180px" },

@@ -166,7 +166,7 @@ const dummyTrades: Array<{
 function getStatusLabel(status: NaviStatus | null) {
   switch (status) {
     case "sent_to_buyer":
-      return { text: "依頼中", className: "bg-sky-100 text-sky-700" };
+      return { text: "承認待ち", className: "bg-sky-100 text-sky-700" };
     case "buyer_approved":
       return { text: "承認済み", className: "bg-emerald-100 text-emerald-700" };
     case "buyer_rejected":
@@ -258,7 +258,9 @@ export function InProgressTabContent() {
       key: "status",
       label: "状況",
       width: "110px",
-      render: (row: (typeof dummyTrades)[number]) => <StatusBadge statusKey={row.status} />,
+      render: (row: (typeof dummyTrades)[number]) => (
+        <StatusBadge statusKey={row.status} context="inProgress" />
+      ),
     },
     {
       key: "updatedAt",
