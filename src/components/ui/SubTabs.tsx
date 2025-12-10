@@ -32,6 +32,9 @@ const isActiveLink = (
       const allMatch = Array.from(hrefSearch.entries()).every(([key, value]) => searchParams.get(key) === value);
       if (allMatch) return true;
     }
+    const hrefTab = hrefSearch.get("tab");
+    const searchTab = searchParams?.get("tab");
+    if (!searchTab && hrefTab === "progress") return true;
     return false;
   }
 
