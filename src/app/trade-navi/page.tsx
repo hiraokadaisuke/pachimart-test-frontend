@@ -11,8 +11,8 @@ import type { TradeTabKey } from "./tabsConfig";
 
 const resolveActiveTab = (searchParams: URLSearchParams): TradeTabKey => {
   const tab = searchParams.get("tab");
-  if (tab === "request" || tab === "salesHistory" || tab === "purchaseHistory") return tab;
-  return "inProgress";
+  if (tab === "requestInput" || tab === "progress" || tab === "salesHistory" || tab === "purchaseHistory") return tab;
+  return "progress";
 };
 
 export default function TradeNaviPage() {
@@ -30,8 +30,8 @@ function TradeNaviContent() {
   return (
     <main>
       <section>
-        {activeTab === "request" && <RequestTabContent />}
-        {activeTab === "inProgress" && <InProgressTabContent />}
+        {activeTab === "requestInput" && <RequestTabContent />}
+        {activeTab === "progress" && <InProgressTabContent />}
         {activeTab === "salesHistory" && <SalesHistoryTabContent />}
         {activeTab === "purchaseHistory" && <PurchaseHistoryTabContent />}
       </section>
