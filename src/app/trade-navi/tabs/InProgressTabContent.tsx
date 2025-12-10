@@ -418,10 +418,16 @@ export function InProgressTabContent() {
     },
   ];
 
-  const sectionDescriptions = {
+  const buySectionDescriptions = {
     approval: "オンラインでオファーをしています。売主様からの返答をお待ちください。",
     payment: "発送予定日までに振込をお願いします。",
     checking: "動作確認を行い、OKボタンを押してください。",
+  } as const;
+
+  const sellSectionDescriptions = {
+    approval: "依頼を送りました。買主様からの承認をお待ちください。",
+    payment: "買主様からの入金をお待ちください。",
+    checking: "買主様からの入金がありました。発送をしてください。",
   } as const;
 
   return (
@@ -440,7 +446,7 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={sectionDescriptions.approval}
+            description={buySectionDescriptions.approval}
           >
             承認待ち
           </SectionHeader>
@@ -455,7 +461,7 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={sectionDescriptions.payment}
+            description={buySectionDescriptions.payment}
           >
             入金待ち
           </SectionHeader>
@@ -470,7 +476,7 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={sectionDescriptions.checking}
+            description={buySectionDescriptions.checking}
           >
             確認中
           </SectionHeader>
@@ -490,7 +496,7 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={sectionDescriptions.approval}
+            description={sellSectionDescriptions.approval}
           >
             承認待ち
           </SectionHeader>
@@ -505,7 +511,7 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={sectionDescriptions.payment}
+            description={sellSectionDescriptions.payment}
           >
             入金待ち
           </SectionHeader>
@@ -519,7 +525,7 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={sectionDescriptions.checking}
+            description={sellSectionDescriptions.checking}
           >
             確認中
           </SectionHeader>
