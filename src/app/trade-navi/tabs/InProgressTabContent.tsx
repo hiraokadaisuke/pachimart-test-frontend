@@ -433,10 +433,8 @@ export function InProgressTabContent() {
         </h2>
         <p className="text-xs font-semibold text-red-500">入金待ちの案件は、発注予定日までに必ずご確認ください。</p>
 
-        <div className="space-y-3">
-          <div className="bg-slate-100 text-neutral-800 text-sm font-semibold px-3 py-1.5 rounded">
-            承認待ち
-          </div>
+        <div className="space-y-2">
+          <SectionHeader className="px-3 py-2 text-xs">承認待ち</SectionHeader>
           <NaviTable
             columns={draftColumns}
             rows={sortedNavis}
@@ -478,10 +476,8 @@ export function InProgressTabContent() {
           売りたい物件の入金・動作確認状況を確認できます。入金手続き中の案件は、買い手様の手続き完了までお待ちください。
         </p>
 
-        <div className="space-y-3">
-          <div className="bg-slate-100 text-neutral-800 text-sm font-semibold px-3 py-1.5 rounded">
-            承認待ち
-          </div>
+        <div className="space-y-2">
+          <SectionHeader className="px-3 py-2 text-xs">承認待ち</SectionHeader>
           <NaviTable
             columns={draftColumns}
             rows={sortedNavis}
