@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import SellerAutocomplete from "@/components/transactions/SellerAutocomplete";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
@@ -64,12 +65,6 @@ const mapTransactionToTradeConditions = (
   memo: conditions.memo,
   handler: conditions.handler,
 });
-
-const dummyBuyers = [
-  { id: "store-1", companyName: "株式会社パテテック", contactName: "営業部 田中太郎", tel: "03-1234-5678" },
-  { id: "store-2", companyName: "有限会社テスト商会", contactName: "営業部 佐藤花子", tel: "06-9876-5432" },
-  { id: "store-3", companyName: "合同会社デモリンク", contactName: "営業部 山本正樹", tel: "052-123-9876" },
-];
 
 const presetTerms = [
   "通常取引における標準条件です。納品後7日以内の初期不良のみ対応いたします。",
@@ -146,7 +141,6 @@ export default function TransactionNaviEditPage() {
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const currentUser = useCurrentDevUser();
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
-  const [searchKeyword, setSearchKeyword] = useState("");
   const naviTargetId = draft?.productId ?? transactionId;
   const {
     editBreadcrumbItems,
@@ -256,31 +250,16 @@ export default function TransactionNaviEditPage() {
     });
   };
 
-  const handleBuyerSelect = (buyer: (typeof dummyBuyers)[number]) => {
+  const handleBuyerSelect = (buyer: { id: string; name: string; contactName?: string; tel?: string }) => {
     persistDraft((prev) => ({
       ...prev,
       buyerId: buyer.id,
-      buyerCompanyName: buyer.companyName,
+      buyerCompanyName: buyer.name,
       buyerContactName: buyer.contactName,
-      buyerTel: buyer.tel,
+      buyerTel: buyer.tel ?? "000-0000-0000",
       buyerPending: false,
     }));
   };
-
-  const buyerSearchResults = useMemo(() => {
-    const keyword = searchKeyword.trim();
-    if (!keyword) return [];
-    return dummyBuyers.filter((buyer) => {
-      return (
-        buyer.companyName.includes(keyword) ||
-        buyer.contactName.includes(keyword) ||
-        buyer.tel.includes(keyword) ||
-        buyer.id.includes(keyword)
-      );
-    });
-  }, [searchKeyword]);
-
-  const hasBuyerSearchKeyword = Boolean(searchKeyword.trim());
 
   const handlePropertyChange = (key: keyof TradeConditions, value: string | number | null) => {
     persistDraft((prev) => ({
@@ -470,6 +449,7 @@ export default function TransactionNaviEditPage() {
 
             {isBuyerSet ? (
               <div className="space-y-2 text-sm text-neutral-900">
+                <input type="hidden" name="seller_id" value={draft?.buyerId ?? ""} />
                 <div className="flex items-center justify-between">
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
                   <button
@@ -488,49 +468,14 @@ export default function TransactionNaviEditPage() {
             ) : (
               <div className="space-y-3">
                 <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <input
-                      type="text"
-                      placeholder="会社名 / 店舗名 / 会員ID / 電話番号 / 担当者名 で検索"
-                      className="w-full max-w-[22rem] rounded border border-slate-300 px-3 py-2 text-xs text-slate-800"
-                      value={searchKeyword}
-                      onChange={(e) => setSearchKeyword(e.target.value)}
-                    />
-
-                    <button
-                      type="button"
-                      className="whitespace-nowrap rounded bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                    >
-                      検索
-                    </button>
-                  </div>
+                  <SellerAutocomplete
+                    onSelect={handleBuyerSelect}
+                    hiddenInputName="seller_id"
+                    name="seller_name"
+                    searchApiPath="/api/sellers/search"
+                  />
                   {validationErrors.buyer && (
                     <p className="mt-2 text-[11px] text-red-600">{validationErrors.buyer}</p>
-                  )}
-                </div>
-                <div className="space-y-2 text-sm">
-                  {buyerSearchResults.map((buyer) => (
-                    <div
-                      key={buyer.id}
-                      className="flex flex-col gap-1 rounded border border-slate-200 bg-white px-3 py-2 md:flex-row md:items-center md:justify-between"
-                    >
-                      <div>
-                        <p className="font-semibold text-slate-900">{buyer.companyName}</p>
-                        <p className="text-xs text-neutral-800">
-                          {buyer.contactName}｜{buyer.tel}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => handleBuyerSelect(buyer)}
-                        className="mt-2 inline-flex items-center justify-center rounded bg-sky-600 px-3 py-2 text-xs font-semibold text-white shadow hover:bg-sky-700 md:mt-0"
-                      >
-                        この売却先を選択
-                      </button>
-                    </div>
-                  ))}
-                  {buyerSearchResults.length === 0 && hasBuyerSearchKeyword && (
-                    <p className="text-xs text-neutral-700">該当する売却先が見つかりませんでした。</p>
                   )}
                 </div>
               </div>
