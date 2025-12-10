@@ -250,12 +250,19 @@ export default function TransactionNaviEditPage() {
     });
   };
 
-  const handleBuyerSelect = (buyer: { id: string; name: string; contactName?: string; tel?: string }) => {
+  const handleBuyerSelect = (buyer: {
+    id: string;
+    name: string;
+    contactName?: string;
+    tel?: string;
+    address?: string;
+  }) => {
     persistDraft((prev) => ({
       ...prev,
       buyerId: buyer.id,
       buyerCompanyName: buyer.name,
       buyerContactName: buyer.contactName,
+      buyerAddress: buyer.address,
       buyerTel: buyer.tel ?? "000-0000-0000",
       buyerPending: false,
     }));
@@ -355,6 +362,7 @@ export default function TransactionNaviEditPage() {
   const displayBuyer = {
     companyName: draft?.buyerCompanyName ?? buyerInfo.companyName,
     contactPerson: draft?.buyerContactName ?? buyerInfo.contactPerson,
+    address: draft?.buyerAddress ?? buyerInfo.address,
     phoneNumber: draft?.buyerTel ?? buyerInfo.phoneNumber,
     email: draft?.buyerEmail ?? buyerInfo.email,
     notes: draft?.buyerNote ?? buyerInfo.notes,
@@ -443,27 +451,32 @@ export default function TransactionNaviEditPage() {
 
         <section className="space-y-4">
           <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-slate-900">売却先</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <h2 className="text-lg font-semibold text-slate-900">売却先</h2>
+                {isBuyerSet && (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
+                )}
+              </div>
+              {isBuyerSet && (
+                <button
+                  type="button"
+                  className="text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
+                >
+                  売却先情報を変更
+                </button>
+              )}
             </div>
 
             {isBuyerSet ? (
-              <div className="space-y-2 text-sm text-neutral-900">
+              <div className="space-y-3 text-sm text-neutral-900">
                 <input type="hidden" name="seller_id" value={draft?.buyerId ?? ""} />
-                <div className="flex items-center justify-between">
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
-                  <button
-                    type="button"
-                    className="text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
-                  >
-                    売却先情報を変更
-                  </button>
+                <div className="grid grid-cols-1 gap-x-6 gap-y-2 rounded border border-slate-200 bg-slate-50 px-4 py-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <BuyerInfoItem label="会社名" value={displayBuyer.companyName} emphasis />
+                  <BuyerInfoItem label="住所" value={displayBuyer.address ?? "-"} />
+                  <BuyerInfoItem label="担当者" value={displayBuyer.contactPerson ?? "-"} />
+                  <BuyerInfoItem label="電話番号" value={displayBuyer.phoneNumber ?? "-"} />
                 </div>
-                <InfoRow label="会社名" value={displayBuyer.companyName} emphasis />
-                <InfoRow label="担当者" value={displayBuyer.contactPerson ?? "-"} />
-                <InfoRow label="電話" value={displayBuyer.phoneNumber ?? "-"} />
-                <InfoRow label="メール" value={displayBuyer.email ?? "-"} />
-                {displayBuyer.notes && <InfoRow label="備考" value={displayBuyer.notes} muted />}
               </div>
             ) : (
               <div className="space-y-3">
@@ -1015,23 +1028,11 @@ function EditRow({
   );
 }
 
-function InfoRow({
-  label,
-  value,
-  emphasis,
-  muted,
-}: {
-  label: string;
-  value: string;
-  emphasis?: boolean;
-  muted?: boolean;
-}) {
+function BuyerInfoItem({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
   return (
-    <div className="flex gap-2 text-sm text-neutral-900">
-      <span className="w-24 text-neutral-700">{label}</span>
-      <span className={`${emphasis ? "font-semibold" : ""} ${muted ? "text-neutral-700" : ""}`}>
-        {value}
-      </span>
+    <div className="flex flex-col gap-0.5">
+      <span className="text-[11px] font-semibold text-neutral-500">{label}</span>
+      <span className={`text-sm ${emphasis ? "font-semibold text-slate-900" : "text-neutral-900"}`}>{value}</span>
     </div>
   );
 }

@@ -15,6 +15,7 @@ export interface TradeNavi {
   productId?: string | null;
   buyerCompanyName?: string | null;
   buyerContactName?: string | null;
+  buyerAddress?: string | null;
   buyerTel?: string | null;
   buyerEmail?: string | null;
   buyerNote?: string | null;
