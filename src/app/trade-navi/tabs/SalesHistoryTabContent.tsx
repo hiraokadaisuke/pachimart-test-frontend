@@ -298,138 +298,160 @@ export function SalesHistoryTabContent() {
     <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-3 px-4 md:px-6 xl:px-8">
       <form
         onSubmit={handleSubmit}
-        className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm"
+        className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs shadow-sm"
       >
-        <div className="flex flex-col gap-2 lg:gap-3">
-          <div className="flex flex-wrap items-center gap-3 lg:gap-4">
-            <InlineField label="カテゴリ" className="lg:gap-3">
-              {([
-                { key: "pachinko", label: "パチンコ" },
-                { key: "slot", label: "スロット" },
-                { key: "others", label: "その他物品" },
-              ] as const).map(({ key, label }) => (
-                <label key={key} className="flex items-center gap-2 text-xs text-neutral-900">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600"
-                    checked={filters.categories[key]}
-                    onChange={(e) =>
-                      setFilters((prev) => ({
-                        ...prev,
-                        categories: { ...prev.categories, [key]: e.target.checked },
-                      }))
-                    }
-                  />
-                  {label}
-                </label>
-              ))}
-            </InlineField>
+        <div className="flex flex-wrap items-center gap-y-2 gap-x-3 md:gap-y-2 md:gap-x-4">
+          <fieldset className="flex w-full flex-wrap items-center gap-3 md:w-auto" aria-label="カテゴリ">
+            <legend className="sr-only">カテゴリ</legend>
+            {([
+              { key: "pachinko", label: "パチンコ" },
+              { key: "slot", label: "スロット" },
+              { key: "others", label: "その他物品" },
+            ] as const).map(({ key, label }) => (
+              <label key={key} className="flex items-center gap-2 text-xs text-neutral-900">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-blue-600"
+                  checked={filters.categories[key]}
+                  onChange={(e) =>
+                    setFilters((prev) => ({
+                      ...prev,
+                      categories: { ...prev.categories, [key]: e.target.checked },
+                    }))
+                  }
+                />
+                {label}
+              </label>
+            ))}
+          </fieldset>
 
-            <InlineField label="ステータス">
-              <select
-                value={filters.status}
-                onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value as FilterState["status"] }))}
-                className="h-10 w-full max-w-[180px] rounded border border-slate-300 bg-white px-2 text-xs text-slate-800"
-              >
-                <option value="all">全て</option>
-                <option value="inProgress">進行中</option>
-                <option value="completed">承認済・キャンセル済</option>
-              </select>
-            </InlineField>
-
-            <InlineField label="担当">
-              <select
-                value={filters.handler}
-                onChange={(e) => setFilters((prev) => ({ ...prev, handler: e.target.value }))}
-                className="h-10 w-full max-w-[180px] rounded border border-slate-300 bg-white px-2 text-xs text-slate-800"
-              >
-                {handlerOptions.map((handler) => (
-                  <option key={handler} value={handler}>
-                    {handler ? handler : "全て"}
-                  </option>
-                ))}
-              </select>
-            </InlineField>
-
-            <InlineField label="キーワード" className="lg:ml-auto">
-              <input
-                type="text"
-                value={filters.keyword}
-                onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value }))}
-                placeholder="相手先名や機種名で検索"
-                className="h-10 w-full max-w-[280px] rounded border border-slate-300 px-3 text-xs text-slate-800"
-              />
-            </InlineField>
-
-            <div className="ml-auto flex items-center gap-2">
-              <button
-                type="submit"
-                className="h-10 rounded bg-blue-600 px-4 text-xs font-semibold text-white shadow hover:bg-blue-700"
-              >
-                照会
-              </button>
-              <button
-                type="button"
-                onClick={handleCsvDownload}
-                className="h-10 rounded border border-slate-300 px-4 text-xs font-semibold text-neutral-900 hover:bg-slate-50"
-              >
-                CSV出力
-              </button>
-            </div>
+          <div className="w-full min-w-[140px] md:w-[170px]">
+            <label htmlFor="sales-status" className="sr-only">
+              ステータス
+            </label>
+            <select
+              id="sales-status"
+              aria-label="ステータス"
+              value={filters.status}
+              onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value as FilterState["status"] }))}
+              className="h-10 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-800"
+            >
+              <option value="all">ステータス（全て）</option>
+              <option value="inProgress">進行中</option>
+              <option value="completed">承認済・キャンセル済</option>
+            </select>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3 lg:gap-4">
-            <InlineField label="日付" className="gap-2">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="dateTarget"
-                  value="contract"
-                  checked={filters.dateTarget === "contract"}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
-                  className="h-4 w-4 text-blue-600"
-                />
-                締結日
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="dateTarget"
-                  value="shipment"
-                  checked={filters.dateTarget === "shipment"}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
-                  className="h-4 w-4 text-blue-600"
-                />
-                機械発送日
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
-                  name="dateTarget"
-                  value="document"
-                  checked={filters.dateTarget === "document"}
-                  onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
-                  className="h-4 w-4 text-blue-600"
-                />
-                書類発送日
-              </label>
-            </InlineField>
+          <div className="w-full min-w-[140px] md:w-[170px]">
+            <label htmlFor="sales-handler" className="sr-only">
+              担当
+            </label>
+            <select
+              id="sales-handler"
+              aria-label="担当"
+              value={filters.handler}
+              onChange={(e) => setFilters((prev) => ({ ...prev, handler: e.target.value }))}
+              className="h-10 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-800"
+            >
+              {handlerOptions.map((handler) => (
+                <option key={handler} value={handler}>
+                  {handler ? handler : "担当"}
+                </option>
+              ))}
+            </select>
+          </div>
 
-            <InlineField label="期間" className="gap-2">
+          <div className="w-full flex-1 min-w-[200px]">
+            <label htmlFor="sales-keyword" className="sr-only">
+              キーワード検索
+            </label>
+            <input
+              id="sales-keyword"
+              type="text"
+              value={filters.keyword}
+              onChange={(e) => setFilters((prev) => ({ ...prev, keyword: e.target.value }))}
+              placeholder="相手先名・機種名で検索"
+              className="h-10 w-full rounded border border-slate-300 px-3 text-xs text-slate-800"
+            />
+          </div>
+
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+            <span className="sr-only">日付種別</span>
+            <label className="flex items-center gap-2 whitespace-nowrap">
               <input
-                type="date"
-                value={filters.dateFrom}
-                onChange={(e) => setFilters((prev) => ({ ...prev, dateFrom: e.target.value }))}
-                className="h-10 w-full max-w-[150px] rounded border border-slate-300 px-2 text-xs"
+                type="radio"
+                name="sales-dateTarget"
+                value="contract"
+                checked={filters.dateTarget === "contract"}
+                onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
+                className="h-4 w-4 text-blue-600"
               />
-              <span className="text-neutral-700">〜</span>
+              締結日
+            </label>
+            <label className="flex items-center gap-2 whitespace-nowrap">
               <input
-                type="date"
-                value={filters.dateTo}
-                onChange={(e) => setFilters((prev) => ({ ...prev, dateTo: e.target.value }))}
-                className="h-10 w-full max-w-[150px] rounded border border-slate-300 px-2 text-xs"
+                type="radio"
+                name="sales-dateTarget"
+                value="shipment"
+                checked={filters.dateTarget === "shipment"}
+                onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
+                className="h-4 w-4 text-blue-600"
               />
-            </InlineField>
+              機械発送日
+            </label>
+            <label className="flex items-center gap-2 whitespace-nowrap">
+              <input
+                type="radio"
+                name="sales-dateTarget"
+                value="document"
+                checked={filters.dateTarget === "document"}
+                onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
+                className="h-4 w-4 text-blue-600"
+              />
+              書類発送日
+            </label>
+          </div>
+
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
+            <label htmlFor="sales-date-from" className="sr-only">
+              開始日
+            </label>
+            <input
+              id="sales-date-from"
+              type="date"
+              placeholder="年/月/日"
+              value={filters.dateFrom}
+              onChange={(e) => setFilters((prev) => ({ ...prev, dateFrom: e.target.value }))}
+              className="h-10 w-full min-w-[140px] rounded border border-slate-300 px-2 text-xs"
+            />
+            <span className="text-neutral-700">〜</span>
+            <label htmlFor="sales-date-to" className="sr-only">
+              終了日
+            </label>
+            <input
+              id="sales-date-to"
+              type="date"
+              placeholder="年/月/日"
+              value={filters.dateTo}
+              onChange={(e) => setFilters((prev) => ({ ...prev, dateTo: e.target.value }))}
+              className="h-10 w-full min-w-[140px] rounded border border-slate-300 px-2 text-xs"
+            />
+          </div>
+
+          <div className="ml-auto flex w-full items-center justify-end gap-2 md:w-auto">
+            <button
+              type="submit"
+              className="h-10 rounded bg-blue-600 px-4 text-xs font-semibold text-white shadow hover:bg-blue-700"
+            >
+              照会
+            </button>
+            <button
+              type="button"
+              onClick={handleCsvDownload}
+              className="h-10 rounded border border-slate-300 px-4 text-xs font-semibold text-neutral-900 hover:bg-slate-50"
+            >
+              CSV出力
+            </button>
           </div>
         </div>
       </form>
@@ -441,23 +463,6 @@ export function SalesHistoryTabContent() {
         onRowClick={(row) => row.id && router.push(`/dealings/sales/${row.id}`)}
       />
     </section>
-  );
-}
-
-function InlineField({
-  label,
-  children,
-  className,
-}: {
-  label: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2 ${className ?? ""}`}>
-      <span className="whitespace-nowrap text-xs font-semibold text-neutral-700">{label}</span>
-      <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-900">{children}</div>
-    </div>
   );
 }
 
