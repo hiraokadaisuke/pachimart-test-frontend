@@ -6,6 +6,7 @@ import { type AdditionalFee } from "@/lib/navi/types";
 export interface BuyerInfo {
   companyName: string;
   contactPerson: string;
+  address?: string;
   phoneNumber: string;
   email: string;
   notes?: string;
@@ -60,6 +61,7 @@ const breadcrumbBase = ["ホーム", "マイページ", "取引Navi"];
 const buyerInfo: BuyerInfo = {
   companyName: "株式会社パチテック",
   contactPerson: "営業部 田中 太郎",
+  address: "東京都千代田区丸の内1-1-1 パチマートビル 10F",
   phoneNumber: "03-1234-5678",
   email: "tanaka@example.com",
   notes: "平日10-18時に連絡可。",

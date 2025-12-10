@@ -93,6 +93,7 @@ export function createEmptyNaviDraft(initial?: Partial<TradeNaviDraft>): TradeNa
     buyerId: initial?.buyerId ?? null,
     buyerCompanyName: initial?.buyerCompanyName ?? null,
     buyerContactName: initial?.buyerContactName ?? null,
+    buyerAddress: initial?.buyerAddress ?? null,
     buyerTel: initial?.buyerTel ?? null,
     buyerEmail: initial?.buyerEmail ?? null,
     buyerNote: initial?.buyerNote ?? null,
