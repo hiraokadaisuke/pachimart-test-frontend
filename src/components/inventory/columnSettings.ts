@@ -71,8 +71,7 @@ export const DEFAULT_INVENTORY_COLUMNS: InventoryColumnSetting[] = [
   { id: "boardSerial", label: "主要基板番号", visible: true, width: 140 },
   { id: "removalDate", label: "撤去日", visible: true, width: 120 },
   { id: "usageType", label: "使用次", visible: true, width: 90 },
-  // 表示ラベルを「倉庫」から「保管倉庫」に変更
-  { id: "warehouse", label: "保管倉庫", visible: true, width: 140 },
+  { id: "warehouse", label: "倉庫", visible: true, width: 140 },
   { id: "note", label: "備考", visible: true, width: 180 },
   { id: "installDate", label: "設置日", visible: true, width: 120 },
   { id: "installPeriod", label: "設置期間", visible: true, width: 120 },
