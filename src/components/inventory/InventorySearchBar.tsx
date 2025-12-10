@@ -163,7 +163,8 @@ export function InventorySearchBar() {
     if (values.makers?.length) badges.push(`メーカー: ${values.makers.join(", ")}`);
     if (values.states?.length) badges.push(`状態: ${values.states.join(", ")}`);
     if (values.types?.length) badges.push(`種類: ${values.types.join(", ")}`);
-    if (values.warehouses?.length) badges.push(`倉庫: ${values.warehouses.join(", ")}`);
+    // バッジ表示の項目名を「倉庫」から「保管倉庫」に変更
+    if (values.warehouses?.length) badges.push(`保管倉庫: ${values.warehouses.join(", ")}`);
     if (values.panelColor?.trim()) badges.push(`パネル色: ${values.panelColor}`);
     if (values.priceMin || values.priceMax) {
       badges.push(`価格帯: ${values.priceMin || "0"}〜${values.priceMax || "上限なし"}`);
@@ -196,7 +197,8 @@ export function InventorySearchBar() {
               </svg>
             </span>
             <Input
-              placeholder="機種名・メーカー・倉庫・価格などを横断検索"
+              // キーワード検索の文言を「倉庫」から「保管倉庫」に変更
+              placeholder="機種名・メーカー・保管倉庫・価格などを横断検索"
               className="h-12 rounded-full pl-10 pr-4"
               {...register("keyword")}
             />
@@ -286,7 +288,8 @@ export function InventorySearchBar() {
           <DialogHeader>
             <DialogTitle>絞り込み条件</DialogTitle>
             <DialogDescription>
-              メーカー、状態、種類、倉庫、パネル色、価格帯で詳細に絞り込めます。
+              {/* 説明文の項目名を「倉庫」から「保管倉庫」に変更 */}
+              メーカー、状態、種類、保管倉庫、パネル色、価格帯で詳細に絞り込めます。
             </DialogDescription>
           </DialogHeader>
 
@@ -419,7 +422,8 @@ export function InventorySearchBar() {
               </div>
 
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-slate-800">倉庫</p>
+                {/* フィルター見出しの項目名を「倉庫」から「保管倉庫」に変更 */}
+                <p className="text-sm font-semibold text-slate-800">保管倉庫</p>
                 <Controller
                   name="warehouses"
                   control={control}
@@ -517,7 +521,8 @@ export function InventorySearchBar() {
 
             <div className="px-4">
               <Input
-                placeholder="機種名・メーカー・倉庫・価格などを横断検索"
+                // モバイル検索の文言も「倉庫」から「保管倉庫」に変更
+                placeholder="機種名・メーカー・保管倉庫・価格などを横断検索"
                 className="h-12 rounded-full"
                 {...register("keyword")}
               />
@@ -647,7 +652,8 @@ export function InventorySearchBar() {
               </div>
 
               <div className="space-y-3">
-                <p className="text-sm font-semibold text-slate-800">倉庫</p>
+                {/* モバイルフィルター見出しの項目名を「倉庫」から「保管倉庫」に変更 */}
+                <p className="text-sm font-semibold text-slate-800">保管倉庫</p>
                 <Controller
                   name="warehouses"
                   control={control}
