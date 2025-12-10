@@ -250,7 +250,7 @@ export default function TransactionNaviEditPage() {
     });
   };
 
-  const handleBuyerSelect = (buyer: { id: string | number; name: string; contactName?: string; tel?: string }) => {
+  const handleBuyerSelect = (buyer: { id: string; name: string; contactName?: string; tel?: string }) => {
     persistDraft((prev) => ({
       ...prev,
       buyerId: buyer.id,

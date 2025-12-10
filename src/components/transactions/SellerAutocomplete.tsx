@@ -4,6 +4,13 @@ import type React from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Seller = {
+  id: string;
+  name: string;
+  contactName?: string;
+  tel?: string;
+};
+
+type SellerResponse = {
   id: string | number;
   name: string;
   contactName?: string;
@@ -30,7 +37,9 @@ export const SellerAutocomplete = ({
   onSelect,
 }: SellerAutocompleteProps) => {
   const [keyword, setKeyword] = useState(initialSeller?.name ?? "");
-  const [selectedSellerId, setSelectedSellerId] = useState<string | number | null>(initialSeller?.id ?? null);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(
+    initialSeller?.id ? String(initialSeller.id) : null
+  );
   const [results, setResults] = useState<Seller[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -77,9 +86,13 @@ export const SellerAutocomplete = ({
         if (!response.ok) {
           throw new Error("Failed to fetch sellers");
         }
-        const data: Seller[] = await response.json();
-        setResults(data.slice(0, 10));
-        setHighlightedIndex(data.length > 0 ? 0 : -1);
+        const data: SellerResponse[] = await response.json();
+        const normalizedResults = data.map((seller) => ({
+          ...seller,
+          id: String(seller.id),
+        }));
+        setResults(normalizedResults.slice(0, 10));
+        setHighlightedIndex(normalizedResults.length > 0 ? 0 : -1);
       } catch (error) {
         if ((error as Error).name !== "AbortError") {
           setResults([]);
