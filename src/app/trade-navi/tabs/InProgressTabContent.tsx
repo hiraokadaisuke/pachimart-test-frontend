@@ -418,6 +418,12 @@ export function InProgressTabContent() {
     },
   ];
 
+  const sectionDescriptions = {
+    approval: "オンラインでオファーをしています。売主様からの返答をお待ちください。",
+    payment: "発送予定日までに振込をお願いします。",
+    checking: "動作確認を行い、OKボタンを押してください。",
+  } as const;
+
   return (
     <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-8 px-4 md:px-6 xl:px-8">
       <TransactionFilterBar
@@ -431,10 +437,13 @@ export function InProgressTabContent() {
         <h2 className="bg-indigo-50 text-indigo-900 text-lg font-bold px-4 py-2 rounded mb-2">
           買いたい物件 – 入金・確認状況
         </h2>
-        <p className="text-xs font-semibold text-red-500">入金待ちの案件は、発注予定日までに必ずご確認ください。</p>
-
         <div className="space-y-2">
-          <SectionHeader className="px-3 py-2 text-xs">承認待ち</SectionHeader>
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={sectionDescriptions.approval}
+          >
+            承認待ち
+          </SectionHeader>
           <NaviTable
             columns={draftColumns}
             rows={sortedNavis}
@@ -444,7 +453,12 @@ export function InProgressTabContent() {
         </div>
 
         <div className="space-y-2">
-          <SectionHeader className="px-3 py-2 text-xs">入金待ち</SectionHeader>
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={sectionDescriptions.payment}
+          >
+            入金待ち
+          </SectionHeader>
           <NaviTable
             columns={tradeColumns}
             rows={buyWaiting}
@@ -453,12 +467,13 @@ export function InProgressTabContent() {
           />
         </div>
 
-        <p className="text-xs font-semibold text-red-500">
-          ※ 入金確認後は、必ず「振込」ボタンを押してください。ボタンが押されないと売主様に入金が伝わりません。
-        </p>
-
         <div className="space-y-2">
-          <SectionHeader className="px-3 py-2 text-xs">確認中</SectionHeader>
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={sectionDescriptions.checking}
+          >
+            確認中
+          </SectionHeader>
           <NaviTable
             columns={tradeColumns}
             rows={buyChecking}
@@ -472,12 +487,13 @@ export function InProgressTabContent() {
         <h2 className="bg-indigo-50 text-indigo-900 text-lg font-bold px-4 py-2 rounded mb-2">
           売りたい物件 – 入金・確認状況
         </h2>
-        <p className="text-xs font-semibold text-red-500">
-          売りたい物件の入金・動作確認状況を確認できます。入金手続き中の案件は、買い手様の手続き完了までお待ちください。
-        </p>
-
         <div className="space-y-2">
-          <SectionHeader className="px-3 py-2 text-xs">承認待ち</SectionHeader>
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={sectionDescriptions.approval}
+          >
+            承認待ち
+          </SectionHeader>
           <NaviTable
             columns={draftColumns}
             rows={sortedNavis}
@@ -487,7 +503,12 @@ export function InProgressTabContent() {
         </div>
 
         <div className="space-y-2">
-          <SectionHeader className="px-3 py-2 text-xs">入金待ち</SectionHeader>
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={sectionDescriptions.payment}
+          >
+            入金待ち
+          </SectionHeader>
           <NaviTable
             columns={tradeColumns}
             rows={sellWaiting}
@@ -496,7 +517,12 @@ export function InProgressTabContent() {
           />
         </div>
         <div className="space-y-2">
-          <SectionHeader className="px-3 py-2 text-xs">確認中</SectionHeader>
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={sectionDescriptions.checking}
+          >
+            確認中
+          </SectionHeader>
           <NaviTable
             columns={tradeColumns}
             rows={sellChecking}
