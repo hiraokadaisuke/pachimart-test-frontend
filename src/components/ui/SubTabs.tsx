@@ -24,18 +24,31 @@ const isActiveLink = (
 ) => {
   if (!pathname) return false;
   const [hrefPath, hrefQuery] = href.split("?");
-  if (pathname === hrefPath && hrefQuery) {
-    const hrefSearch = new URLSearchParams(hrefQuery);
+  const hrefSearch = hrefQuery ? new URLSearchParams(hrefQuery) : null;
+
+  if (pathname === hrefPath) {
+    if (!hrefSearch) return true;
     if (searchParams) {
       const allMatch = Array.from(hrefSearch.entries()).every(([key, value]) => searchParams.get(key) === value);
       if (allMatch) return true;
     }
+    return false;
   }
-  if (pathname === hrefPath) return true;
-  if (pathname.startsWith(`${hrefPath}/`)) return true;
+
+  if (pathname.startsWith(`${hrefPath}/`)) return !hrefSearch;
+
   if (matchPrefixes) {
-    return matchPrefixes.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+    return matchPrefixes.some((prefix) => {
+      const [prefixPath, prefixQuery] = prefix.split("?");
+      const prefixSearch = prefixQuery ? new URLSearchParams(prefixQuery) : null;
+      const matchesPath = pathname === prefixPath || pathname.startsWith(`${prefixPath}/`);
+      if (!matchesPath) return false;
+      if (!prefixSearch) return true;
+      if (!searchParams) return false;
+      return Array.from(prefixSearch.entries()).every(([key, value]) => searchParams.get(key) === value);
+    });
   }
+
   return false;
 };
 
