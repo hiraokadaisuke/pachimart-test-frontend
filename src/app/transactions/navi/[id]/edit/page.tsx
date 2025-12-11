@@ -148,8 +148,6 @@ export default function TransactionNaviEditPage() {
     propertyInfo,
     currentConditions,
     updatedConditions,
-    documentFiles,
-    photoThumbnails: defaultPhotoThumbnails,
     messageLogs,
   } = useDummyNavi(naviTargetId);
 
@@ -164,8 +162,6 @@ export default function TransactionNaviEditPage() {
   );
 
   const [editedConditions, setEditedConditions] = useState<TransactionConditions>(initialEditedConditions);
-  const [uploadFiles, setUploadFiles] = useState<string[]>(documentFiles);
-  const [photoThumbnails, setPhotoThumbnails] = useState<string[]>(defaultPhotoThumbnails);
   const [newMessage, setNewMessage] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showTermPresets, setShowTermPresets] = useState(false);
@@ -317,18 +313,6 @@ export default function TransactionNaviEditPage() {
     setDraft(updatedDraft);
     alert("取引Naviを売却先へ送信しました。");
     router.push("/trade-navi");
-  };
-
-  const handleFileAdd = (files: FileList | null) => {
-    if (!files) return;
-    const names = Array.from(files).map((file) => file.name);
-    setUploadFiles((prev) => [...prev, ...names]);
-  };
-
-  const handlePhotoAdd = (files: FileList | null) => {
-    if (!files) return;
-    const names = Array.from(files).map((file) => file.name || "新規写真");
-    setPhotoThumbnails((prev) => [...prev, ...names]);
   };
 
   const renderRadioGroup = <T extends string>(
@@ -881,55 +865,6 @@ export default function TransactionNaviEditPage() {
                 <p className="text-sm text-neutral-700">金額を入力すると自動計算されます。</p>
               )}
             </div>
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-900">書類アップロード</h2>
-            <span className="text-xs font-semibold text-neutral-700">PDF/Excelなど</span>
-          </div>
-          <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-            <div className="space-y-2 text-sm text-neutral-900">
-              <p className="text-neutral-800">見積書や注文書などの書類を追加してください。</p>
-              <div className="flex flex-wrap gap-2">
-                {uploadFiles.map((file) => (
-                  <span
-                    key={file}
-                    className="inline-flex items-center gap-2 rounded border border-slate-300 bg-white px-3 py-1 text-sm text-neutral-900"
-                  >
-                    📄 {file}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <label className="flex cursor-pointer items-center gap-3 rounded border border-dashed border-slate-300 px-4 py-3 text-sm text-neutral-900 hover:border-sky-400 hover:bg-slate-50">
-              <input type="file" className="hidden" multiple onChange={(e) => handleFileAdd(e.target.files)} />
-              <span className="text-sky-700">ファイルを選択</span>
-            </label>
-          </div>
-        </section>
-
-        <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-900">写真アップロード</h2>
-            <span className="text-xs font-semibold text-neutral-700">参考画像</span>
-          </div>
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            <div className="flex flex-wrap gap-3">
-              {photoThumbnails.map((thumb) => (
-                <div
-                  key={thumb}
-                  className="flex h-24 w-32 items-center justify-center rounded border border-slate-300 bg-white text-sm text-neutral-800"
-                >
-                  {thumb}
-                </div>
-              ))}
-            </div>
-            <label className="flex cursor-pointer items-center gap-3 rounded border border-dashed border-slate-300 px-4 py-3 text-sm text-neutral-900 hover:border-sky-400 hover:bg-slate-50">
-              <input type="file" className="hidden" multiple onChange={(e) => handlePhotoAdd(e.target.files)} />
-              <span className="text-sky-700">写真を追加</span>
-            </label>
           </div>
         </section>
 
