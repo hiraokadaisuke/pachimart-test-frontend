@@ -418,14 +418,15 @@ export default function TransactionNaviEditPage() {
   return (
     <MainContainer variant="wide">
       <div className="flex flex-col gap-8 pb-8">
-        <section className="flex flex-col gap-4 border-b border-slate-200 pb-6">
+        <section className="flex flex-col gap-4 border-b border-slate-300 pb-6">
           <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-slate-900">依頼作成</h1>
+              {/* 大見出しをカード見出しより一段階大きく */}
+              <h1 className="text-xl font-bold text-slate-900">依頼作成</h1>
             </div>
             <div className="flex flex-col gap-2 md:items-end">
               {Object.values(validationErrors).some((error) => Boolean(error)) && (
-                <ul className="list-disc space-y-1 rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                <ul className="list-disc space-y-1 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
                   {Object.values(validationErrors)
                     .filter((error): error is string => Boolean(error))
                     .map((error, index) => (
@@ -450,10 +451,11 @@ export default function TransactionNaviEditPage() {
         </section>
 
         <section className="space-y-4">
-          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <h2 className="text-lg font-semibold text-slate-900">売却先</h2>
+                {/* カード見出しを標準文字サイズより一段階大きく */}
+                <h2 className="text-base font-semibold text-slate-900">売却先</h2>
                 {isBuyerSet && (
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
                 )}
@@ -461,7 +463,7 @@ export default function TransactionNaviEditPage() {
               {isBuyerSet && (
                 <button
                   type="button"
-                  className="text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
+                  className="text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
                 >
                   売却先情報を変更
                 </button>
@@ -471,7 +473,7 @@ export default function TransactionNaviEditPage() {
             {isBuyerSet ? (
               <div className="space-y-3 text-sm text-neutral-900">
                 <input type="hidden" name="seller_id" value={draft?.buyerId ?? ""} />
-                <div className="grid grid-cols-1 gap-x-6 gap-y-2 rounded border border-slate-200 bg-slate-50 px-4 py-3 sm:grid-cols-2 xl:grid-cols-4">
+                <div className="grid grid-cols-1 gap-x-6 gap-y-2 rounded border border-slate-300 bg-slate-50 px-4 py-3 sm:grid-cols-2 xl:grid-cols-4">
                   <BuyerInfoItem label="会社名" value={displayBuyer.companyName} emphasis />
                   <BuyerInfoItem label="住所" value={displayBuyer.address ?? "-"} />
                   <BuyerInfoItem label="担当者" value={displayBuyer.contactPerson ?? "-"} />
@@ -479,8 +481,8 @@ export default function TransactionNaviEditPage() {
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
-                <div className="rounded-lg border border-slate-200 bg-white px-4 py-3 text-xs shadow-sm">
+              <div className="space-y-3 text-sm text-neutral-900">
+                <div className="rounded-lg border border-slate-300 bg-white px-4 py-3 shadow-sm">
                   <SellerAutocomplete
                     onSelect={handleBuyerSelect}
                     hiddenInputName="seller_id"
@@ -488,23 +490,23 @@ export default function TransactionNaviEditPage() {
                     searchApiPath="/api/sellers/search"
                   />
                   {validationErrors.buyer && (
-                    <p className="mt-2 text-[11px] text-red-600">{validationErrors.buyer}</p>
+                    <p className="mt-2 text-sm text-red-600">{validationErrors.buyer}</p>
                   )}
                 </div>
               </div>
             )}
           </div>
 
-          <div className="rounded-lg border border-slate-200 bg-white text-xs shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 text-sm font-semibold text-neutral-900">
-              <h2 className="text-sm font-semibold text-slate-900">物件情報</h2>
-              <span className="text-[11px] font-semibold text-neutral-700">対象機器</span>
+          <div className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2 text-base font-semibold text-neutral-900">
+              <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
+              <span className="text-xs font-semibold text-neutral-700">対象機器</span>
             </div>
             {isProductLinked ? (
               <div className="overflow-x-auto">
-                <table className="min-w-full border-t border-slate-100 text-xs">
+                <table className="min-w-full border-t border-slate-300 text-sm">
                   <thead>
-                    <tr className="bg-slate-50 text-neutral-500">
+                    <tr className="bg-slate-50 text-xs text-neutral-600">
                       <th className="px-4 py-2 text-left font-semibold">前設置</th>
                       <th className="px-4 py-2 text-left font-semibold">メーカー</th>
                       <th className="px-4 py-2 text-left font-semibold">機種名</th>
@@ -516,7 +518,7 @@ export default function TransactionNaviEditPage() {
                   </thead>
 
                   <tbody>
-                    <tr className="border-t border-slate-100">
+                    <tr className="border-t border-slate-300 text-slate-900">
                       <td className="whitespace-nowrap px-4 py-2">{propertyPrevLocation}</td>
                       <td className="whitespace-nowrap px-4 py-2">{propertyInfo.maker}</td>
                       <td className="whitespace-nowrap px-4 py-2">{propertyInfo.modelName}</td>
@@ -530,9 +532,9 @@ export default function TransactionNaviEditPage() {
               </div>
             ) : (
               <div className="space-y-3 p-4 text-sm text-neutral-900">
-                <p className="text-xs text-neutral-700">商品が紐付いていないため、ここで情報を入力してください。</p>
+                <p className="text-sm text-neutral-700">商品が紐付いていないため、ここで情報を入力してください。</p>
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-neutral-800">機種名</label>
+                  <label className="block text-sm font-semibold text-neutral-800">機種名</label>
                   <input
                     type="text"
                     className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
@@ -541,7 +543,7 @@ export default function TransactionNaviEditPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-neutral-800">メーカー</label>
+                  <label className="block text-sm font-semibold text-neutral-800">メーカー</label>
                   <input
                     type="text"
                     className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
@@ -550,7 +552,7 @@ export default function TransactionNaviEditPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-neutral-800">台数</label>
+                  <label className="block text-sm font-semibold text-neutral-800">台数</label>
                   <input
                     type="number"
                     className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
@@ -559,7 +561,7 @@ export default function TransactionNaviEditPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-xs font-semibold text-neutral-800">保管場所</label>
+                  <label className="block text-sm font-semibold text-neutral-800">保管場所</label>
                   <input
                     type="text"
                     className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
@@ -572,23 +574,23 @@ export default function TransactionNaviEditPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2 text-sm font-semibold text-neutral-900">
-            <h2 className="text-sm font-semibold text-slate-900">取引条件</h2>
-            <span className="text-[11px] font-semibold text-neutral-700">参考値｜編集</span>
+        <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2 text-base font-semibold text-neutral-900">
+            <h2 className="text-base font-semibold text-slate-900">取引条件</h2>
+            <span className="text-xs font-semibold text-neutral-700">参考値｜編集</span>
           </div>
           <div className="grid gap-3 px-4 py-3 lg:grid-cols-3">
             <div className="lg:col-span-2">
               <div className="overflow-x-auto">
-                <table className="min-w-full border border-slate-200 text-xs">
+                <table className="min-w-full border border-slate-300 text-sm">
                   <thead>
-                    <tr className="bg-slate-50 text-left text-[11px] text-neutral-800">
+                    <tr className="bg-slate-50 text-left text-xs text-neutral-700">
                       <th className="w-36 px-3 py-1.5">項目</th>
                       <th className="w-48 px-3 py-1.5">参考値</th>
                       <th className="px-3 py-1.5">編集</th>
                   </tr>
                   </thead>
-                  <tbody className="text-slate-800">
+                  <tbody className="text-slate-900">
                     <EditRow label="単価" required>
                       <div className="flex items-center gap-2">
                         <span className="text-neutral-700">{formattedNumber(referenceConditions.price)}</span>
@@ -596,12 +598,12 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
                           value={editedConditions.price}
                           onChange={(e) => handleNumberConditionChange("price", Number(e.target.value) || 0)}
                         />
                         {validationErrors.unitPrice && (
-                          <p className="text-xs text-red-600">{validationErrors.unitPrice}</p>
+                          <p className="text-sm text-red-600">{validationErrors.unitPrice}</p>
                         )}
                       </div>
                     </EditRow>
@@ -611,12 +613,12 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-24 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-24 rounded border border-slate-300 px-2 py-1 text-sm"
                           value={editedConditions.quantity}
                           onChange={(e) => handleNumberConditionChange("quantity", Number(e.target.value) || 0)}
                         />
                         {validationErrors.quantity && (
-                          <p className="text-xs text-red-600">{validationErrors.quantity}</p>
+                          <p className="text-sm text-red-600">{validationErrors.quantity}</p>
                         )}
                       </div>
                     </EditRow>
@@ -625,7 +627,7 @@ export default function TransactionNaviEditPage() {
                       <span className="text-neutral-700">{referenceConditions.removalDate}</span>
                       <input
                         type="date"
-                        className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
+                        className="w-32 rounded border border-slate-300 px-2 py-1 text-sm"
                         value={editedConditions.removalDate}
                         onChange={(e) => handleTextConditionChange("removalDate", e.target.value)}
                       />
@@ -638,7 +640,7 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-wrap items-center gap-3">
                         <input
                           type="date"
-                          className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-32 rounded border border-slate-300 px-2 py-1 text-sm"
                           value={editedConditions.machineShipmentDate}
                           onChange={(e) => handleTextConditionChange("machineShipmentDate", e.target.value)}
                         />
@@ -658,7 +660,7 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-wrap items-center gap-3">
                         <input
                           type="date"
-                          className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-32 rounded border border-slate-300 px-2 py-1 text-sm"
                           value={editedConditions.documentShipmentDate}
                           onChange={(e) => handleTextConditionChange("documentShipmentDate", e.target.value)}
                         />
@@ -675,7 +677,7 @@ export default function TransactionNaviEditPage() {
                       <span className="text-neutral-700">{referenceConditions.paymentDue}</span>
                       <input
                         type="date"
-                        className="w-32 rounded border border-slate-300 px-2 py-1 text-xs"
+                        className="w-32 rounded border border-slate-300 px-2 py-1 text-sm"
                         value={editedConditions.paymentDue}
                         onChange={(e) => handleTextConditionChange("paymentDue", e.target.value)}
                       />
@@ -686,12 +688,12 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
                           value={editedConditions.freightCost}
                           onChange={(e) => handleNumberConditionChange("freightCost", Number(e.target.value) || 0)}
                         />
                         {validationErrors.shippingFee && (
-                          <p className="text-xs text-red-600">{validationErrors.shippingFee}</p>
+                          <p className="text-sm text-red-600">{validationErrors.shippingFee}</p>
                         )}
                       </div>
                     </EditRow>
@@ -701,12 +703,12 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
                           value={editedConditions.handlingFee}
                           onChange={(e) => handleNumberConditionChange("handlingFee", Number(e.target.value) || 0)}
                         />
                         {validationErrors.handlingFee && (
-                          <p className="text-xs text-red-600">{validationErrors.handlingFee}</p>
+                          <p className="text-sm text-red-600">{validationErrors.handlingFee}</p>
                         )}
                       </div>
                     </EditRow>
@@ -719,7 +721,7 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
                           value={editedConditions.cardboardFee?.amount ?? 0}
                           onChange={(e) => handleAdditionalFeeChange("cardboardFee", Number(e.target.value) || 0)}
                         />
@@ -735,7 +737,7 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
                           value={editedConditions.nailSheetFee?.amount ?? 0}
                           onChange={(e) => handleAdditionalFeeChange("nailSheetFee", Number(e.target.value) || 0)}
                         />
@@ -751,7 +753,7 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col items-start gap-1">
                         <input
                           type="number"
-                          className="w-28 rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-28 rounded border border-slate-300 px-2 py-1 text-sm"
                           value={editedConditions.insuranceFee?.amount ?? 0}
                           onChange={(e) => handleAdditionalFeeChange("insuranceFee", Number(e.target.value) || 0)}
                         />
@@ -761,7 +763,7 @@ export default function TransactionNaviEditPage() {
                     <EditRow label="特記事項">
                       <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.notes}</span>
                       <textarea
-                        className="w-64 rounded border border-slate-300 px-2 py-1 text-xs"
+                        className="w-64 rounded border border-slate-300 px-2 py-1 text-sm"
                         rows={2}
                         value={editedConditions.notes}
                         onChange={(e) => handleTextConditionChange("notes", e.target.value)}
@@ -780,7 +782,7 @@ export default function TransactionNaviEditPage() {
                         </button>
                         {showTermPresets && (
                           <select
-                            className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-xs"
+                            className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-sm"
                             defaultValue=""
                             onChange={(e) => {
                               if (!e.target.value) return;
@@ -797,7 +799,7 @@ export default function TransactionNaviEditPage() {
                           </select>
                         )}
                         <textarea
-                          className="h-24 w-full resize-vertical rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="h-24 w-full resize-vertical rounded border border-slate-300 px-2 py-1 text-sm"
                           placeholder="400文字以内、7行以内"
                           value={editedConditions.terms}
                           onChange={(e) => handleTextConditionChange("terms", e.target.value)}
@@ -808,7 +810,7 @@ export default function TransactionNaviEditPage() {
                     <EditRow label="メモ">
                       <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.memo ?? "-"}</span>
                       <textarea
-                        className="h-20 w-full resize-vertical rounded border border-slate-300 px-2 py-1 text-xs"
+                        className="h-20 w-full resize-vertical rounded border border-slate-300 px-2 py-1 text-sm"
                         placeholder="備考など自由入力"
                         value={editedConditions.memo ?? ""}
                         onChange={(e) => handleTextConditionChange("memo", e.target.value)}
@@ -820,14 +822,14 @@ export default function TransactionNaviEditPage() {
                       <div className="flex flex-col gap-1">
                         <button
                           type="button"
-                          className="self-start rounded border border-slate-300 px-2 py-0.5 text-[11px] text-neutral-800 hover:bg-slate-50"
+                          className="self-start rounded border border-slate-300 px-2 py-0.5 text-xs text-neutral-800 hover:bg-slate-50"
                           onClick={() => setShowHandlerPresets((prev) => !prev)}
                         >
                           登録情報から選択
                         </button>
                         {showHandlerPresets && (
                           <select
-                            className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-xs"
+                            className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-sm"
                             defaultValue=""
                             onChange={(e) => {
                               if (!e.target.value) return;
@@ -845,7 +847,7 @@ export default function TransactionNaviEditPage() {
                         )}
                         <input
                           type="text"
-                          className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-xs"
+                          className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-sm"
                           placeholder="50文字以内"
                           value={editedConditions.handler ?? ""}
                           onChange={(e) => handleTextConditionChange("handler", e.target.value)}
@@ -857,10 +859,10 @@ export default function TransactionNaviEditPage() {
               </div>
             </div>
 
-            <div className="space-y-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
+            <div className="space-y-3 rounded border border-slate-300 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold text-slate-900">お支払いサマリー</h3>
-                <span className="text-[11px] font-semibold text-neutral-700">自動再計算</span>
+                <h3 className="text-base font-semibold text-slate-900">お支払いサマリー</h3>
+                <span className="text-xs font-semibold text-neutral-700">自動再計算</span>
               </div>
               {quoteResult ? (
                 <div className="space-y-2 text-sm text-slate-800">
@@ -870,21 +872,21 @@ export default function TransactionNaviEditPage() {
                   <SummaryRow label="段ボール" value={formattedNumber(quoteResult.cardboardFee)} />
                   <SummaryRow label="釘シート" value={formattedNumber(quoteResult.nailSheetFee)} />
                   <SummaryRow label="保険" value={formattedNumber(quoteResult.insuranceFee)} />
-                  <div className="h-px bg-slate-200" aria-hidden />
+                  <div className="h-px bg-slate-300" aria-hidden />
                   <SummaryRow label="小計" value={formattedNumber(quoteResult.subtotal)} />
                   <SummaryRow label="消費税" value={formattedNumber(quoteResult.tax)} />
                   <SummaryRow label="合計" value={formattedNumber(quoteResult.total)} emphasis />
                 </div>
               ) : (
-                <p className="text-xs text-neutral-700">金額を入力すると自動計算されます。</p>
+                <p className="text-sm text-neutral-700">金額を入力すると自動計算されます。</p>
               )}
             </div>
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">書類アップロード</h2>
+            <h2 className="text-base font-semibold text-slate-900">書類アップロード</h2>
             <span className="text-xs font-semibold text-neutral-700">PDF/Excelなど</span>
           </div>
           <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
@@ -894,7 +896,7 @@ export default function TransactionNaviEditPage() {
                 {uploadFiles.map((file) => (
                   <span
                     key={file}
-                    className="inline-flex items-center gap-2 rounded border border-slate-200 bg-white px-3 py-1 text-xs text-neutral-900"
+                    className="inline-flex items-center gap-2 rounded border border-slate-300 bg-white px-3 py-1 text-sm text-neutral-900"
                   >
                     📄 {file}
                   </span>
@@ -908,9 +910,9 @@ export default function TransactionNaviEditPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">写真アップロード</h2>
+            <h2 className="text-base font-semibold text-slate-900">写真アップロード</h2>
             <span className="text-xs font-semibold text-neutral-700">参考画像</span>
           </div>
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -918,7 +920,7 @@ export default function TransactionNaviEditPage() {
               {photoThumbnails.map((thumb) => (
                 <div
                   key={thumb}
-                  className="flex h-24 w-32 items-center justify-center rounded border border-slate-200 bg-white text-xs text-neutral-800"
+                  className="flex h-24 w-32 items-center justify-center rounded border border-slate-300 bg-white text-sm text-neutral-800"
                 >
                   {thumb}
                 </div>
@@ -931,9 +933,9 @@ export default function TransactionNaviEditPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-slate-900">取引メッセージ</h2>
+            <h2 className="text-base font-semibold text-slate-900">取引メッセージ</h2>
             <span className="text-xs font-semibold text-neutral-700">売却先への連絡</span>
           </div>
           <div className="space-y-3">
@@ -941,7 +943,7 @@ export default function TransactionNaviEditPage() {
               {messageLogs.map((log) => (
                 <div
                   key={log.id}
-                  className={`rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm ${
+                  className={`rounded border border-slate-300 bg-slate-50 px-3 py-2 text-sm ${
                     log.sender === "seller" ? "border-sky-100 bg-sky-50" : ""
                   }`}
                 >
@@ -992,7 +994,7 @@ function ConditionRow({
   fullWidth?: boolean;
 }) {
   return (
-    <div className={`flex flex-col gap-1 rounded border border-slate-200 bg-white p-3 ${fullWidth ? "md:col-span-2" : ""}`}>
+    <div className={`flex flex-col gap-1 rounded border border-slate-300 bg-white p-3 ${fullWidth ? "md:col-span-2" : ""}`}>
       <dt className="text-xs font-semibold uppercase tracking-wide text-neutral-700">{label}</dt>
       <dd className="text-sm text-neutral-900 whitespace-pre-wrap">{value}</dd>
     </div>
@@ -1013,8 +1015,8 @@ function EditRow({
   const afterContent = Array.isArray(children) ? content[1] : children;
 
   return (
-    <tr className="border-t border-slate-200">
-      <th className="bg-slate-50 px-3 py-1.5 text-left text-[11px] font-semibold text-neutral-900 align-middle">
+    <tr className="border-t border-slate-300">
+      <th className="bg-slate-50 px-3 py-1.5 text-left text-xs font-semibold text-neutral-900 align-middle">
         <div className="flex items-center gap-1.5">
           <span>{label}</span>
           {required && (
