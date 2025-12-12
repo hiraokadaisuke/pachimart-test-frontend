@@ -416,20 +416,8 @@ export default function TransactionNaviEditPage() {
                     ))}
                 </ul>
               )}
-              <button
-                type="button"
-                onClick={handleSendToBuyer}
-                disabled={draft?.buyerPending || !isBuyerSet}
-                className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                売却先へ送信
-              </button>
             </div>
           </div>
-
-          <p className="text-sm text-neutral-900">
-            電話で合意した条件を入力し、売却先に送信するための編集画面です。内容を確認してから送信してください。
-          </p>
         </section>
 
         <section className="space-y-4">
@@ -865,6 +853,17 @@ export default function TransactionNaviEditPage() {
             </div>
           </div>
         </section>
+
+        <div className="flex justify-center pt-4">
+          <button
+            type="button"
+            onClick={handleSendToBuyer}
+            disabled={draft?.buyerPending || !isBuyerSet}
+            className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            内容を確定して取引先に送信する
+          </button>
+        </div>
 
       </div>
     </MainContainer>
