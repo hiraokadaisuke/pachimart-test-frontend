@@ -216,85 +216,117 @@ export function PurchaseHistoryTabContent() {
   );
 
   const columns: NaviTableColumn[] = [
-    {
-      key: "status",
-      label: "状況",
-      width: "120px",
-      sortable: true,
-      render: (row) => <StatusBadge statusKey={row.status} context="history" />,
-    },
-    {
-      key: "contractDate",
-      label: "締結日",
-      width: "120px",
-      sortable: true,
-      render: (row) => formatDate(row.contractDate),
-    },
-    { key: "seller", label: "取引先（売手）", width: "180px", sortable: true },
-    { key: "maker", label: "メーカー", width: "140px", sortable: true },
-    { key: "itemName", label: "物件名", width: "200px", sortable: true },
-    { key: "quantity", label: "数量", width: "80px" },
-    {
-      key: "amount",
-      label: "金額",
-      width: "140px",
-      sortable: true,
-      render: (row) => <span className="whitespace-nowrap">{currencyFormatter.format(row.amount)}</span>,
-    },
-    { key: "shipmentDate", label: "機械発送日", width: "140px", render: (row) => formatDate(row.shipmentDate) },
-    { key: "receiveMethod", label: "受取方法", width: "100px" },
-    {
-      key: "pdf",
-      label: "受注票",
-      width: "120px",
-      render: (row) => (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/dealings/purchases/${row.id}`);
-          }}
-          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-        >
-          PDF
-        </button>
-      ),
-    },
-    {
-      key: "documents",
-      label: "書類",
-      width: "220px",
-      render: (row) => (
-        <DocumentBadges
-          status={row.documentStatus}
-          onUploadClick={() => router.push(row.uploadUrl)}
-        />
-      ),
-    },
-    {
-      key: "paymentMethod",
-      label: "決済",
-      width: "120px",
-      render: (row) => (row.paymentCompleted ? "済" : "-"),
-    },
-    {
-      key: "message",
-      label: "メッセージ",
-      width: "120px",
-      render: (row) => (
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            setMessageTarget(row.id);
-          }}
-        >
-          メッセージ
-        </button>
-      ),
-    },
-  ];
+  {
+    key: "status",
+    label: "状況",
+    width: "120px",
+    sortable: true,
+    render: (row) => <StatusBadge statusKey={row.status} context="history" />,
+  },
+  {
+    key: "contractDate",
+    label: "締結日",
+    width: "120px",
+    sortable: true,
+    render: (row) => formatDate(row.contractDate),
+  },
+  {
+    key: "seller",
+    label: "取引先（売手）",
+    width: "180px",
+    sortable: true,
+  },
+  {
+    key: "maker",
+    label: "メーカー",
+    width: "140px",
+    sortable: true,
+  },
+  {
+    key: "itemName",
+    label: "機種名", // ← 物件名 → 機種名 に統一
+    width: "200px",
+    sortable: true,
+  },
+  {
+    key: "quantity",
+    label: "数量",
+    width: "80px",
+  },
+  {
+    key: "amount",
+    label: "金額",
+    width: "140px",
+    sortable: true,
+    render: (row) => (
+      <span className="whitespace-nowrap">
+        {currencyFormatter.format(row.amount)}
+      </span>
+    ),
+  },
+  {
+    key: "shipmentDate",
+    label: "機械発送日",
+    width: "140px",
+    render: (row) => formatDate(row.shipmentDate),
+  },
+  {
+    key: "receiveMethod",
+    label: "受取方法",
+    width: "100px",
+  },
+  {
+    key: "pdf",
+    label: "受注票",
+    width: "120px",
+    render: (row) => (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          router.push(`/dealings/purchases/${row.id}`);
+        }}
+        className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+      >
+        PDF
+      </button>
+    ),
+  },
+  {
+    key: "documents",
+    label: "書類",
+    width: "220px",
+    render: (row) => (
+      <DocumentBadges
+        status={row.documentStatus}
+        onUploadClick={() => router.push(row.uploadUrl)}
+      />
+    ),
+  },
+  {
+    key: "paymentMethod",
+    label: "決済",
+    width: "120px",
+    render: (row) => (row.paymentCompleted ? "済" : "-"),
+  },
+  {
+    key: "message",
+    label: "メッセージ",
+    width: "120px",
+    render: (row) => (
+      <button
+        type="button"
+        className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+        onClick={(e) => {
+          e.stopPropagation();
+          setMessageTarget(row.id);
+        }}
+      >
+        メッセージ
+      </button>
+    ),
+  },
+];
 
   const handleSortChange = (key: string) => {
     setSortState((prev) => {
@@ -318,7 +350,7 @@ export function PurchaseHistoryTabContent() {
       "締結日",
       "取引先（売手）",
       "メーカー",
-      "物件名",
+      "機種名",
       "数量",
       "金額",
       "機械発送日",

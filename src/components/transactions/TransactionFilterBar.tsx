@@ -31,7 +31,7 @@ export function TransactionFilterBar({
         <input
           type="search"
           className="w-full rounded-md border border-slate-300 px-3 py-1 text-sm md:w-64"
-          placeholder="物件名・相手先で検索"
+          placeholder="機種名・相手先で検索"
           value={keyword}
           onChange={(e) => onKeywordChange(e.target.value)}
         />
