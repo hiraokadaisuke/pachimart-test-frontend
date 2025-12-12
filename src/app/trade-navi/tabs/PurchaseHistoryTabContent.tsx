@@ -184,7 +184,7 @@ export function PurchaseHistoryTabContent() {
     { key: "contractDate", label: "締結日", width: "120px", render: (row) => formatDate(row.contractDate) },
     { key: "seller", label: "取引先（売手）", width: "180px" },
     { key: "maker", label: "メーカー", width: "140px" },
-    { key: "itemName", label: "物件名", width: "200px" },
+    { key: "itemName", label: "機種名", width: "200px" },
     { key: "quantity", label: "数量", width: "80px" },
     {
       key: "amount",
@@ -263,7 +263,7 @@ export function PurchaseHistoryTabContent() {
       "締結日",
       "取引先（売手）",
       "メーカー",
-      "物件名",
+      "機種名",
       "数量",
       "金額",
       "機械発送日",

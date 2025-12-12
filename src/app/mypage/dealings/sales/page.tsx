@@ -86,7 +86,7 @@ export default function SalesPage() {
         />
 
         <div className="rounded border border-slate-200 bg-white px-4 py-2 text-xs text-neutral-800">
-          物件名 / 台数 / 相手先 / 税込合計 / ステータス / 更新日時 の順で並べ、他タブと世界観を合わせています。
+          機種名 / 台数 / 相手先 / 税込合計 / ステータス / 更新日時 の順で並べ、他タブと世界観を合わせています。
         </div>
 
         <NaviTable

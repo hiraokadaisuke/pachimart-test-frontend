@@ -279,7 +279,7 @@ export function InProgressTabContent() {
     },
     {
       key: "itemName",
-      label: "物件名",
+      label: "機種名",
       width: "22%",
     },
     {
@@ -392,7 +392,7 @@ export function InProgressTabContent() {
     },
     {
       key: "document",
-      label: "確認書",
+      label: "明細書",
       width: "110px",
       render: (draft: TradeNaviDraft) => (
         <button

@@ -86,7 +86,7 @@ export default function PurchasesPage() {
         />
 
         <div className="rounded border border-slate-200 bg-white px-4 py-2 text-xs text-neutral-800">
-          物件名・台数・相手先・税込合計・ステータス・更新日時を共通レイアウトで表示しています。
+          機種名・台数・相手先・税込合計・ステータス・更新日時を共通レイアウトで表示しています。
         </div>
 
         <NaviTable

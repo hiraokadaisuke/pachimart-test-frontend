@@ -48,7 +48,7 @@ export type InventoryDocumentKind =
 export const INVENTORY_DOCUMENT_LABELS: Record<InventoryDocumentKind, string> = {
   kentei_notice: "検定通知書",
   tekkyo_meisai: "撤去明細書",
-  chuko_kakunin: "中古遊技機確認書",
+  chuko_kakunin: "中古遊技機明細書",
 };
 
 export interface InventoryDocumentMeta {
