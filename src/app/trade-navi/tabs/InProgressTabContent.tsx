@@ -441,7 +441,7 @@ export function InProgressTabContent() {
 
       <section className="space-y-4">
         <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">
-          買いたい物件
+          購入中の商品
         </h2>
         <div className="space-y-2">
           <SectionHeader
@@ -491,7 +491,7 @@ export function InProgressTabContent() {
 
       <section className="space-y-4">
         <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">
-          売りたい物件
+          売却中の商品
         </h2>
         <div className="space-y-2">
           <SectionHeader
