@@ -421,27 +421,46 @@ export default function TransactionNaviEditPage() {
         </section>
 
         <section className="space-y-4">
-          <div className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-3">
+          <div className="rounded-lg border border-slate-300 bg-white p-3 shadow-sm">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-center gap-2">
                 {/* カード見出しを標準文字サイズより一段階大きく */}
                 <h2 className="text-base font-semibold text-slate-900">売却先</h2>
+                <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
                 {isBuyerSet && (
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
                 )}
               </div>
-              {isBuyerSet && (
-                <button
-                  type="button"
-                  className="text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
-                >
-                  売却先情報を変更
-                </button>
-              )}
+
+              <div className="w-full md:w-auto md:max-w-xl">
+                {isBuyerSet ? (
+                  <div className="flex justify-start md:justify-end">
+                    <button
+                      type="button"
+                      className="text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
+                    >
+                      売却先情報を変更
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex w-full justify-start md:justify-end">
+                    <SellerAutocomplete
+                      onSelect={handleBuyerSelect}
+                      hiddenInputName="seller_id"
+                      name="seller_name"
+                      searchApiPath="/api/sellers/search"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
-            {isBuyerSet ? (
-              <div className="space-y-3 text-sm text-neutral-900">
+            {validationErrors.buyer && !isBuyerSet && (
+              <p className="mt-2 text-sm text-red-600">{validationErrors.buyer}</p>
+            )}
+
+            {isBuyerSet && (
+              <div className="mt-3 space-y-3 text-sm text-neutral-900">
                 <input type="hidden" name="seller_id" value={draft?.buyerId ?? ""} />
                 <div className="grid grid-cols-1 gap-x-6 gap-y-2 rounded border border-slate-300 bg-slate-50 px-4 py-3 sm:grid-cols-2 xl:grid-cols-4">
                   <BuyerInfoItem label="会社名" value={displayBuyer.companyName} emphasis />
@@ -450,27 +469,12 @@ export default function TransactionNaviEditPage() {
                   <BuyerInfoItem label="電話番号" value={displayBuyer.phoneNumber ?? "-"} />
                 </div>
               </div>
-            ) : (
-              <div className="space-y-3 text-sm text-neutral-900">
-                <div className="rounded-lg border border-slate-300 bg-white px-4 py-3 shadow-sm">
-                  <SellerAutocomplete
-                    onSelect={handleBuyerSelect}
-                    hiddenInputName="seller_id"
-                    name="seller_name"
-                    searchApiPath="/api/sellers/search"
-                  />
-                  {validationErrors.buyer && (
-                    <p className="mt-2 text-sm text-red-600">{validationErrors.buyer}</p>
-                  )}
-                </div>
-              </div>
             )}
           </div>
 
           <div className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
             <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2 text-base font-semibold text-neutral-900">
               <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
-              <span className="text-xs font-semibold text-neutral-700">対象機器</span>
             </div>
             {isProductLinked ? (
               <div className="overflow-x-auto">
@@ -547,7 +551,6 @@ export default function TransactionNaviEditPage() {
         <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2 text-base font-semibold text-neutral-900">
             <h2 className="text-base font-semibold text-slate-900">取引条件</h2>
-            <span className="text-xs font-semibold text-neutral-700">参考値｜編集</span>
           </div>
           <div className="grid gap-3 px-4 py-3 lg:grid-cols-3">
             <div className="lg:col-span-2">
@@ -831,7 +834,7 @@ export default function TransactionNaviEditPage() {
 
             <div className="space-y-3 rounded border border-slate-300 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <h3 className="text-base font-semibold text-slate-900">お支払いサマリー</h3>
+                <h3 className="text-base font-semibold text-slate-900">金額内訳</h3>
                 <span className="text-xs font-semibold text-neutral-700">自動再計算</span>
               </div>
               {quoteResult ? (
