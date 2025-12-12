@@ -6,8 +6,11 @@ export type NaviTableColumn = {
   key: string;
   label: string;
   width?: string;
+  sortable?: boolean;
   render?: (row: any) => React.ReactNode;
 };
+
+export type SortState = { key: string; direction: "asc" | "desc" } | null;
 
 type Props = {
   columns: NaviTableColumn[];
@@ -15,9 +18,19 @@ type Props = {
   emptyMessage?: string;
   getRowKey?: (row: any, index: number) => string | number;
   onRowClick?: (row: any) => void;
+  sortState?: SortState;
+  onSortChange?: (key: string) => void;
 };
 
-export function NaviTable({ columns, rows, emptyMessage, getRowKey, onRowClick }: Props) {
+export function NaviTable({
+  columns,
+  rows,
+  emptyMessage,
+  getRowKey,
+  onRowClick,
+  sortState,
+  onSortChange,
+}: Props) {
   const colSpan = columns.length;
 
   return (
@@ -25,15 +38,33 @@ export function NaviTable({ columns, rows, emptyMessage, getRowKey, onRowClick }
       <table className="min-w-full table-fixed divide-y divide-slate-200 border border-slate-200 text-xs">
         <thead className="bg-slate-50 text-[11px] font-semibold text-neutral-700">
           <tr className="divide-x divide-slate-200">
-            {columns.map((column) => (
-              <th
-                key={column.key}
-                className="px-2 py-1.5 text-left"
-                style={column.width ? { width: column.width } : undefined}
-              >
-                {column.label}
-              </th>
-            ))}
+            {columns.map((column) => {
+              const isSorted = sortState?.key === column.key;
+              const sortable = column.sortable && onSortChange;
+
+              return (
+                <th
+                  key={column.key}
+                  className="px-2 py-1.5 text-left"
+                  style={column.width ? { width: column.width } : undefined}
+                >
+                  {sortable ? (
+                    <button
+                      type="button"
+                      className="flex items-center gap-1 text-left text-xs font-semibold text-neutral-700 hover:text-[#142B5E]"
+                      onClick={() => onSortChange?.(column.key)}
+                    >
+                      <span>{column.label}</span>
+                      <span className="text-[11px] text-neutral-500">
+                        {isSorted ? (sortState?.direction === "asc" ? "▲" : "▼") : "⇅"}
+                      </span>
+                    </button>
+                  ) : (
+                    column.label
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200 text-slate-800">
