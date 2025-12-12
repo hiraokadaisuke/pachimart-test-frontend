@@ -15,7 +15,9 @@ import {
   IN_PROGRESS_STATUS_KEYS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
+import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { getMessagesForTrade } from "@/lib/dummyMessages";
 
 const dummyTrades: Array<{
   id: string;
@@ -208,6 +210,7 @@ export function InProgressTabContent() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
   const [keyword, setKeyword] = useState("");
+  const [messageTarget, setMessageTarget] = useState<string | null>(null);
 
   const filteredTrades = useMemo(() => {
     const keywordLower = keyword.toLowerCase();
@@ -319,6 +322,23 @@ export function InProgressTabContent() {
         </button>
       ),
     },
+    {
+      key: "message",
+      label: "メッセージ",
+      width: "110px",
+      render: (row: (typeof dummyTrades)[number]) => (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMessageTarget(row.id);
+          }}
+        >
+          メッセージ
+        </button>
+      ),
+    },
   ];
 
   const draftColumns: NaviTableColumn[] = [
@@ -416,6 +436,23 @@ export function InProgressTabContent() {
         </button>
       ),
     },
+    {
+      key: "message",
+      label: "メッセージ",
+      width: "110px",
+      render: (draft: TradeNaviDraft) => (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (draft.id) setMessageTarget(draft.id);
+          }}
+        >
+          メッセージ
+        </button>
+      ),
+    },
   ];
 
   const buySectionDescriptions = {
@@ -429,6 +466,8 @@ export function InProgressTabContent() {
     payment: "買主様からの入金をお待ちください。",
     checking: "買主様からの入金がありました。発送をしてください。",
   } as const;
+
+  const messageThread = getMessagesForTrade(messageTarget);
 
   return (
     <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-8 px-4 md:px-6 xl:px-8">
@@ -537,6 +576,13 @@ export function InProgressTabContent() {
           />
         </div>
       </section>
+
+      <TradeMessageModal
+        open={messageTarget !== null}
+        tradeId={messageTarget}
+        messages={messageThread}
+        onClose={() => setMessageTarget(null)}
+      />
     </section>
   );
 }
