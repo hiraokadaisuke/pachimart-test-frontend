@@ -166,7 +166,7 @@ const dummyTrades: Array<{
 function getStatusLabel(status: NaviStatus | null) {
   switch (status) {
     case "sent_to_buyer":
-      return { text: "承認待ち", className: "bg-sky-100 text-sky-700" };
+      return { text: "要承認", className: "bg-sky-100 text-sky-700" };
     case "buyer_approved":
       return { text: "承認済み", className: "bg-emerald-100 text-emerald-700" };
     case "buyer_rejected":
@@ -295,7 +295,7 @@ export function InProgressTabContent() {
     },
     {
       key: "document",
-      label: "確認書",
+      label: "明細書",
       width: "110px",
       render: (row: (typeof dummyTrades)[number]) => (
         <a
@@ -315,7 +315,7 @@ export function InProgressTabContent() {
           type="button"
           className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
         >
-          {row.status === "waiting_payment" ? "振込" : "OK"}
+          {row.status === "waiting_payment" ? "振込" : "動作確認"}
         </button>
       ),
     },
@@ -363,7 +363,7 @@ export function InProgressTabContent() {
     },
     {
       key: "itemName",
-      label: "物件名（機種名）",
+      label: "機種名",
       width: "22%",
       render: (draft: TradeNaviDraft) => getProductLabel(draft),
     },
@@ -421,7 +421,7 @@ export function InProgressTabContent() {
   const buySectionDescriptions = {
     approval: "オンラインでオファーをしています。売主様からの返答をお待ちください。",
     payment: "発送予定日までに振込をお願いします。",
-    checking: "動作確認を行い、OKボタンを押してください。",
+    checking: "動作確認を行い、動作確認ボタンを押してください。",
   } as const;
 
   const sellSectionDescriptions = {
@@ -448,7 +448,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.approval}
           >
-            承認待ち
+            要承認
           </SectionHeader>
           <NaviTable
             columns={draftColumns}
@@ -463,7 +463,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.payment}
           >
-            入金待ち
+            要入金
           </SectionHeader>
           <NaviTable
             columns={tradeColumns}
@@ -478,7 +478,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.checking}
           >
-            確認中
+            要確認
           </SectionHeader>
           <NaviTable
             columns={tradeColumns}
@@ -498,7 +498,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.approval}
           >
-            承認待ち
+            要承認
           </SectionHeader>
           <NaviTable
             columns={draftColumns}
@@ -513,7 +513,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.payment}
           >
-            入金待ち
+            要入金
           </SectionHeader>
           <NaviTable
             columns={tradeColumns}
@@ -527,7 +527,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.checking}
           >
-            確認中
+            要確認
           </SectionHeader>
           <NaviTable
             columns={tradeColumns}
