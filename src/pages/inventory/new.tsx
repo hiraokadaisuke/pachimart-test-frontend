@@ -641,8 +641,8 @@ export default function InventoryNewPage() {
                         type="number"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.salePriceIncTax}
-                        onChange={(event) =>
-                          handleRowChange(index, "salePriceIncTax", event.target.value)
+                        onChange={(e) =>
+                          handleRowChange(index, "salePriceIncTax", e.target.value)
                         }
                       />
                     </label>
@@ -652,9 +652,7 @@ export default function InventoryNewPage() {
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.stockInDate}
-                        onChange={(event) =>
-                          handleRowChange(index, "stockInDate", event.target.value)
-                        }
+                        onChange={(e) => handleRowChange(index, "stockInDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -663,9 +661,7 @@ export default function InventoryNewPage() {
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.stockOutDate}
-                        onChange={(event) =>
-                          handleRowChange(index, "stockOutDate", event.target.value)
-                        }
+                        onChange={(e) => handleRowChange(index, "stockOutDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -674,8 +670,8 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.stockOutDestination}
-                        onChange={(event) =>
-                          handleRowChange(index, "stockOutDestination", event.target.value)
+                        onChange={(e) =>
+                          handleRowChange(index, "stockOutDestination", e.target.value)
                         }
                       />
                     </label>
@@ -684,7 +680,7 @@ export default function InventoryNewPage() {
                       <textarea
                         className="min-h-[80px] rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.note}
-                        onChange={(event) => handleRowChange(index, "note", event.target.value)}
+                        onChange={(e) => handleRowChange(index, "note", e.target.value)}
                         placeholder="取引メモや特記事項を入力"
                       />
                     </label>
@@ -694,9 +690,7 @@ export default function InventoryNewPage() {
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.installDate}
-                        onChange={(event) =>
-                          handleRowChange(index, "installDate", event.target.value)
-                        }
+                        onChange={(e) => handleRowChange(index, "installDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -705,9 +699,7 @@ export default function InventoryNewPage() {
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.inspectionDate}
-                        onChange={(event) =>
-                          handleRowChange(index, "inspectionDate", event.target.value)
-                        }
+                        onChange={(e) => handleRowChange(index, "inspectionDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -716,9 +708,7 @@ export default function InventoryNewPage() {
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.approvalDate}
-                        onChange={(event) =>
-                          handleRowChange(index, "approvalDate", event.target.value)
-                        }
+                        onChange={(e) => handleRowChange(index, "approvalDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -727,9 +717,7 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.externalCompany}
-                        onChange={(event) =>
-                          handleRowChange(index, "externalCompany", event.target.value)
-                        }
+                        onChange={(e) => handleRowChange(index, "externalCompany", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -738,9 +726,7 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.externalStore}
-                        onChange={(event) =>
-                          handleRowChange(index, "externalStore", event.target.value)
-                        }
+                        onChange={(e) => handleRowChange(index, "externalStore", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -749,9 +735,7 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.serialNumber}
-                        onChange={(event) =>
-                          handleRowChange(index, "serialNumber", event.target.value)
-                        }
+                        onChange={(e) => handleRowChange(index, "serialNumber", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -760,9 +744,7 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.inspectionInfo}
-                        onChange={(event) =>
-                          handleRowChange(index, "inspectionInfo", event.target.value)
-                        }
+                        onChange={(e) => handleRowChange(index, "inspectionInfo", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -771,8 +753,8 @@ export default function InventoryNewPage() {
                           type="checkbox"
                           className="h-4 w-4 accent-sky-600"
                           checked={row.hasDocuments}
-                          onChange={(event) =>
-                            handleRowChange(index, "hasDocuments", event.target.checked)
+                          onChange={(e) =>
+                            handleRowChange(index, "hasDocuments", e.target.checked)
                           }
                         />
                         書類あり
