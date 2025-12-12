@@ -321,6 +321,8 @@ export function InProgressTabContent() {
     },
   ];
 
+  const tradeColumnsWithoutAction = tradeColumns.filter((column) => column.key !== "action");
+
   const draftColumns: NaviTableColumn[] = [
     {
       key: "status",
@@ -516,7 +518,7 @@ export function InProgressTabContent() {
             要入金
           </SectionHeader>
           <NaviTable
-            columns={tradeColumns}
+            columns={tradeColumnsWithoutAction}
             rows={sellWaiting}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
@@ -530,7 +532,7 @@ export function InProgressTabContent() {
             要確認
           </SectionHeader>
           <NaviTable
-            columns={tradeColumns}
+            columns={tradeColumnsWithoutAction}
             rows={sellChecking}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
