@@ -9,8 +9,10 @@ import { addInventoryItems, type StoredInventoryItem } from "@/lib/inventory/sto
 
 const CATEGORY_OPTIONS: InventoryCategory[] = ["P本体", "S本体", "P枠", "Pセル"];
 
+// メーカー一覧（5社）
 const MANUFACTURER_OPTIONS = ["三洋", "ユニバーサル", "京楽", "サミー", "平和"] as const;
 
+// 種別×メーカーごとの機種名候補（7機種ずつ）
 const MODEL_OPTIONS: Record<
   InventoryCategory,
   Record<(typeof MANUFACTURER_OPTIONS)[number], string[]>
@@ -207,6 +209,7 @@ const MODEL_OPTIONS: Record<
 
 const USAGE_TYPE_OPTIONS: Array<"一次" | "二次"> = ["一次", "二次"];
 
+// 数値変換ユーティリティ
 const parseNumber = (value: string) => {
   const trimmed = value.trim();
   if (!trimmed) return undefined;
@@ -214,13 +217,14 @@ const parseNumber = (value: string) => {
   return Number.isNaN(parsed) ? undefined : parsed;
 };
 
+// 行ごとのフォームデータ型
 type InventoryFormRow = {
   purchaseSource: string;
   purchaseRepresentative: string;
   taxCategory: string;
   isConsignment: boolean;
   category: InventoryCategory;
-  manufacturer: string;
+  manufacturer: (typeof MANUFACTURER_OPTIONS)[number];
   modelName: string;
   colorPanel: string;
   inspectionNumber: string;
@@ -249,6 +253,7 @@ type InventoryFormRow = {
   hasDocuments: boolean;
 };
 
+// 新しい行の初期値
 const createEmptyRow = (): InventoryFormRow => ({
   purchaseSource: "",
   purchaseRepresentative: "",
@@ -288,6 +293,7 @@ export default function InventoryNewPage() {
   const router = useRouter();
   const [rows, setRows] = useState<InventoryFormRow[]>([createEmptyRow()]);
 
+  // 行のフィールド更新
   const handleRowChange = <K extends keyof InventoryFormRow>(
     index: number,
     key: K,
@@ -296,10 +302,12 @@ export default function InventoryNewPage() {
     setRows((prev) => prev.map((row, i) => (i === index ? { ...row, [key]: value } : row)));
   };
 
+  // 新規行の追加
   const addEmptyLine = () => {
     setRows((prev) => [...prev, createEmptyRow()]);
   };
 
+  // 直前行のコピー追加
   const copyPreviousLine = () => {
     setRows((prev) => {
       const lastRow = prev[prev.length - 1] ?? createEmptyRow();
@@ -307,6 +315,7 @@ export default function InventoryNewPage() {
     });
   };
 
+  // 行の削除（最低1行は残す）
   const removeLine = (index: number) => {
     setRows((prev) => {
       const updated = prev.filter((_, i) => i !== index);
@@ -314,11 +323,16 @@ export default function InventoryNewPage() {
     });
   };
 
-  const modelCandidates = (category: InventoryCategory, manufacturer: string) => {
+  // カテゴリとメーカーから機種候補を取得
+  const modelCandidates = (
+    category: InventoryCategory,
+    manufacturer: (typeof MANUFACTURER_OPTIONS)[number],
+  ) => {
     const byCategory = MODEL_OPTIONS[category];
-    return byCategory?.[manufacturer as (typeof MANUFACTURER_OPTIONS)[number]] ?? [];
+    return byCategory?.[manufacturer] ?? [];
   };
 
+  // 登録用データの生成（掲載IDは自動生成）
   const newItems = useMemo(() => {
     const baseTimestamp = Date.now();
     return rows.map<StoredInventoryItem>((row, index) => {
@@ -363,6 +377,7 @@ export default function InventoryNewPage() {
     });
   }, [rows]);
 
+  // フォーム送信処理
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     addInventoryItems(newItems);
@@ -372,6 +387,7 @@ export default function InventoryNewPage() {
   return (
     <MainContainer>
       <div className="mx-auto max-w-5xl space-y-4">
+        {/* ヘッダー */}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-neutral-900">在庫登録</h1>
@@ -388,6 +404,7 @@ export default function InventoryNewPage() {
           </button>
         </div>
 
+        {/* 行追加／コピー */}
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
@@ -405,6 +422,7 @@ export default function InventoryNewPage() {
           </button>
         </div>
 
+        {/* 入力フォーム */}
         <form onSubmit={handleSubmit} className="space-y-4">
           {rows.map((row, index) => {
             const candidateModels = modelCandidates(row.category, row.manufacturer);
@@ -415,6 +433,7 @@ export default function InventoryNewPage() {
                 key={`inventory-row-${index}`}
                 className="space-y-3 rounded-2xl border border-sky-100 bg-white/70 p-4 shadow-sm"
               >
+                {/* 行ヘッダーと削除ボタン */}
                 <div className="flex items-center justify-between">
                   <div className="text-sm font-semibold text-neutral-900">登録行 {index + 1}</div>
                   <div className="flex items-center gap-2 text-xs text-sky-700">
@@ -429,6 +448,7 @@ export default function InventoryNewPage() {
                   </div>
                 </div>
 
+                {/* 1行目：仕入情報 */}
                 <div className="rounded-xl border border-sky-100 bg-sky-50 p-3">
                   <div className="grid gap-3 md:grid-cols-4">
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -475,15 +495,19 @@ export default function InventoryNewPage() {
                   </div>
                 </div>
 
+                {/* 2行目：機種情報・取引情報 */}
                 <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
                   <div className="mb-1 text-xs font-semibold text-blue-700">機種情報・取引情報</div>
                   <div className="grid gap-3 md:grid-cols-3">
+                    {/* 種別 */}
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
                       種別
                       <select
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.category}
-                        onChange={(e) => handleRowChange(index, "category", e.target.value as InventoryCategory)}
+                        onChange={(e) =>
+                          handleRowChange(index, "category", e.target.value as InventoryCategory)
+                        }
                       >
                         {CATEGORY_OPTIONS.map((option) => (
                           <option key={option} value={option}>
@@ -492,12 +516,13 @@ export default function InventoryNewPage() {
                         ))}
                       </select>
                     </label>
+                    {/* メーカー */}
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
                       メーカー
                       <select
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.manufacturer}
-                        onChange={(e) => handleRowChange(index, "manufacturer", e.target.value)}
+                        onChange={(e) => handleRowChange(index, "manufacturer", e.target.value as any)}
                       >
                         {MANUFACTURER_OPTIONS.map((option) => (
                           <option key={option} value={option}>
@@ -506,6 +531,7 @@ export default function InventoryNewPage() {
                         ))}
                       </select>
                     </label>
+                    {/* 機種名 */}
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
                       機種名
                       <input
@@ -522,6 +548,7 @@ export default function InventoryNewPage() {
                         ))}
                       </datalist>
                     </label>
+                    {/* 以下、その他の入力欄を同様にブルー系スタイルで配置 */}
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
                       枠色／パネル
                       <input
@@ -572,7 +599,9 @@ export default function InventoryNewPage() {
                       <select
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.usageType}
-                        onChange={(e) => handleRowChange(index, "usageType", e.target.value as "一次" | "二次")}
+                        onChange={(e) =>
+                          handleRowChange(index, "usageType", e.target.value as "一次" | "二次")
+                        }
                       >
                         {USAGE_TYPE_OPTIONS.map((option) => (
                           <option key={option} value={option}>
@@ -641,7 +670,7 @@ export default function InventoryNewPage() {
                         type="number"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.salePriceIncTax}
-                        onChange={(e) => handleRowChange(index, "salePriceIncTax", e.target.value)}
+                        onChange((e) => handleRowChange(index, "salePriceIncTax", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -650,7 +679,7 @@ export default function InventoryNewPage() {
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.stockInDate}
-                        onChange={(e) => handleRowChange(index, "stockInDate", e.target.value)}
+                        onChange((e) => handleRowChange(index, "stockInDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -659,7 +688,7 @@ export default function InventoryNewPage() {
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.stockOutDate}
-                        onChange={(e) => handleRowChange(index, "stockOutDate", e.target.value)}
+                        onChange((e) => handleRowChange(index, "stockOutDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -668,25 +697,27 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.stockOutDestination}
-                        onChange={(e) => handleRowChange(index, "stockOutDestination", e.target.value)}
+                        onChange((e) => handleRowChange(index, "stockOutDestination", e.target.value)}
                       />
                     </label>
+                    {/* メモ欄 */}
                     <label className="flex flex-col gap-1 text-sm text-neutral-700 md:col-span-3">
                       備考
                       <textarea
                         className="min-h-[80px] rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.note}
-                        onChange={(e) => handleRowChange(index, "note", e.target.value)}
+                        onChange((e) => handleRowChange(index, "note", e.target.value)}
                         placeholder="取引メモや特記事項を入力"
                       />
                     </label>
+                    {/* 日付・外部情報・書類有無など */}
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
                       設置日
                       <input
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.installDate}
-                        onChange={(e) => handleRowChange(index, "installDate", e.target.value)}
+                        onChange((e) => handleRowChange(index, "installDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -695,7 +726,7 @@ export default function InventoryNewPage() {
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.inspectionDate}
-                        onChange={(e) => handleRowChange(index, "inspectionDate", e.target.value)}
+                        onChange((e) => handleRowChange(index, "inspectionDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -704,7 +735,7 @@ export default function InventoryNewPage() {
                         type="date"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.approvalDate}
-                        onChange={(e) => handleRowChange(index, "approvalDate", e.target.value)}
+                        onChange((e) => handleRowChange(index, "approvalDate", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -713,7 +744,7 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.externalCompany}
-                        onChange={(e) => handleRowChange(index, "externalCompany", e.target.value)}
+                        onChange((e) => handleRowChange(index, "externalCompany", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -722,7 +753,7 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.externalStore}
-                        onChange={(e) => handleRowChange(index, "externalStore", e.target.value)}
+                        onChange((e) => handleRowChange(index, "externalStore", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -731,7 +762,7 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.serialNumber}
-                        onChange={(e) => handleRowChange(index, "serialNumber", e.target.value)}
+                        onChange((e) => handleRowChange(index, "serialNumber", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -740,7 +771,7 @@ export default function InventoryNewPage() {
                         type="text"
                         className="rounded border border-sky-200 px-3 py-2 text-sm"
                         value={row.inspectionInfo}
-                        onChange={(e) => handleRowChange(index, "inspectionInfo", e.target.value)}
+                        onChange((e) => handleRowChange(index, "inspectionInfo", e.target.value)}
                       />
                     </label>
                     <label className="flex flex-col gap-1 text-sm text-neutral-700">
@@ -749,7 +780,7 @@ export default function InventoryNewPage() {
                           type="checkbox"
                           className="h-4 w-4 accent-sky-600"
                           checked={row.hasDocuments}
-                          onChange={(e) => handleRowChange(index, "hasDocuments", e.target.checked)}
+                          onChange((e) => handleRowChange(index, "hasDocuments", e.target.checked)}
                         />
                         書類あり
                       </span>
@@ -760,6 +791,7 @@ export default function InventoryNewPage() {
             );
           })}
 
+          {/* 登録ボタン */}
           <div className="flex justify-end">
             <button
               type="submit"
