@@ -23,6 +23,7 @@ import {
   type InventoryColumnSetting,
   type InventorySortKey,
 } from "./columnSettings";
+import { loadAllInventory } from "@/lib/inventory/storage";
 
 const PAGE_SIZE = 20;
 const COLUMN_PREFS_KEY = "inventory_column_prefs_v1";
@@ -558,9 +559,27 @@ export function InventoryDashboard() {
     rawInventory.forEach((item) => {
       initial[item.id] = item.listingStatus ?? "UNLISTED";
     });
+
+    loadAllInventory().forEach((item) => {
+      initial[item.id] = item.listingStatus ?? "UNLISTED";
+    });
     return initial;
   });
-  const inventory: InventoryItem[] = useMemo(() => {
+
+  const storedItems: InventoryItem[] = useMemo(() => {
+    return loadAllInventory().map((item) => {
+      const listingStatus =
+        listingStatusById[item.id] ?? item.listingStatus ?? "UNLISTED";
+
+      return {
+        ...item,
+        status: item.status ?? "倉庫",
+        listingStatus,
+      } satisfies InventoryItem;
+    });
+  }, [listingStatusById]);
+
+  const baseItems: InventoryItem[] = useMemo(() => {
     return rawInventory.map((item, index) => {
       const status = statusMap[item.status] ?? item.status;
       const listingStatus = listingStatusById[item.id] ?? item.listingStatus ?? "UNLISTED";
@@ -600,6 +619,10 @@ export function InventoryDashboard() {
       };
     });
   }, [listingStatusById]);
+
+  const inventory: InventoryItem[] = useMemo(() => {
+    return [...baseItems, ...storedItems];
+  }, [baseItems, storedItems]);
 
   const toggleListingStatus = (id: number) => {
     setListingStatusById((prev) => {
