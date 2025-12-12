@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviTable";
+import { NaviTable, type NaviTableColumn, type SortState } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import {
   COMPLETED_STATUS_KEYS,
@@ -11,12 +11,9 @@ import {
   TRADE_STATUS_DEFINITIONS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
-
-const docLabelMap: Record<string, string> = {
-  "検通": "検",
-  "明細": "撤",
-  "確認": "確",
-};
+import { DocumentBadges, type DocumentStatus } from "@/components/transactions/DocumentBadges";
+import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
+import { getMessagesForTrade } from "@/lib/dummyMessages";
 
 // TODO: API連携（フィルター条件でサーバーから取得）
 
@@ -32,8 +29,9 @@ type SalesHistoryRow = {
   amount: number;
   shipmentDate?: string;
   shippingMethod: string;
-  documents: string[];
-  paymentStatus: string;
+  documentStatus: DocumentStatus;
+  uploadUrl: string;
+  paymentCompleted: boolean;
   handler: string;
   documentSentDate?: string;
 };
@@ -65,8 +63,14 @@ const salesHistoryData: SalesHistoryRow[] = [
     amount: 980000,
     shipmentDate: "2025-11-03",
     shippingMethod: "元払",
-    documents: ["検通", "明細", "確認"],
-    paymentStatus: "入金確認済",
+    documentStatus: {
+      inspection: true,
+      removal: true,
+      confirmation: true,
+      other: false,
+    },
+    uploadUrl: "/dealings/sales/S-2025110101/documents",
+    paymentCompleted: true,
     handler: "田中",
     documentSentDate: "2025-11-02",
   },
@@ -82,8 +86,14 @@ const salesHistoryData: SalesHistoryRow[] = [
     amount: 720000,
     shipmentDate: "2025-10-30",
     shippingMethod: "着払",
-    documents: ["明細", "確認"],
-    paymentStatus: "請求済（確認待ち）",
+    documentStatus: {
+      inspection: false,
+      removal: true,
+      confirmation: true,
+      other: false,
+    },
+    uploadUrl: "/dealings/sales/S-2025102803/documents",
+    paymentCompleted: true,
     handler: "佐藤",
     documentSentDate: "2025-10-29",
   },
@@ -99,8 +109,14 @@ const salesHistoryData: SalesHistoryRow[] = [
     amount: 540000,
     shipmentDate: "2025-10-18",
     shippingMethod: "引取",
-    documents: ["検通"],
-    paymentStatus: "決済確認待ち",
+    documentStatus: {
+      inspection: true,
+      removal: false,
+      confirmation: false,
+      other: false,
+    },
+    uploadUrl: "/dealings/sales/S-2025101507/documents",
+    paymentCompleted: false,
     handler: "田中",
     documentSentDate: "2025-10-17",
   },
@@ -116,8 +132,14 @@ const salesHistoryData: SalesHistoryRow[] = [
     amount: 360000,
     shipmentDate: undefined,
     shippingMethod: "未発送",
-    documents: ["他"],
-    paymentStatus: "キャンセル",
+    documentStatus: {
+      inspection: false,
+      removal: false,
+      confirmation: false,
+      other: true,
+    },
+    uploadUrl: "/dealings/sales/S-2025092004/documents",
+    paymentCompleted: false,
     handler: "佐藤",
     documentSentDate: undefined,
   },
@@ -133,8 +155,14 @@ const salesHistoryData: SalesHistoryRow[] = [
     amount: 200000,
     shipmentDate: "2025-08-14",
     shippingMethod: "元払",
-    documents: ["検通", "他"],
-    paymentStatus: "配送中（代引）",
+    documentStatus: {
+      inspection: true,
+      removal: false,
+      confirmation: false,
+      other: true,
+    },
+    uploadUrl: "/dealings/sales/S-2025081208/documents",
+    paymentCompleted: false,
     handler: "鈴木",
     documentSentDate: "2025-08-13",
   },
@@ -159,6 +187,8 @@ export function SalesHistoryTabContent() {
     keyword: "",
   });
   const [appliedFilters, setAppliedFilters] = useState(filters);
+  const [sortState, setSortState] = useState<SortState>(null);
+  const [messageTarget, setMessageTarget] = useState<string | null>(null);
 
   const handlerOptions = useMemo(() => {
     const handlers = Array.from(new Set(salesHistoryData.map((row) => row.handler)));
@@ -174,22 +204,50 @@ export function SalesHistoryTabContent() {
       .filter((row) => matchKeyword(appliedFilters.keyword, row));
   }, [appliedFilters]);
 
+  const sortedRows = useMemo(
+    () => sortRows(filteredRows, sortState),
+    [filteredRows, sortState]
+  );
+
   const columns: NaviTableColumn[] = [
     {
       key: "status",
       label: "状況",
       width: "120px",
+      sortable: true,
       render: (row) => <StatusBadge statusKey={row.status} context="history" />,
     },
-    { key: "contractDate", label: "締結日", width: "120px", render: (row) => formatDate(row.contractDate) },
-    { key: "partner", label: "取引先", width: "180px" },
-    { key: "maker", label: "メーカー", width: "140px" },
-    { key: "itemName", label: "物件名", width: "200px" },
+{
+  key: "contractDate",
+  label: "締結日",
+  width: "120px",
+  sortable: true,
+  render: (row) => formatDate(row.contractDate),
+},
+{
+  key: "partner",
+  label: "取引先",
+  width: "180px",
+  sortable: true,
+},
+{
+  key: "maker",
+  label: "メーカー",
+  width: "140px",
+  sortable: true,
+},
+{
+  key: "itemName",
+  label: "機種名", // ← 物件名 → 機種名 に統一
+  width: "200px",
+  sortable: true,
+},
     { key: "quantity", label: "数量", width: "80px" },
     {
       key: "amount",
       label: "金額",
       width: "140px",
+      sortable: true,
       render: (row) => <span className="whitespace-nowrap">{currencyFormatter.format(row.amount)}</span>,
     },
     { key: "shipmentDate", label: "機械発送日", width: "140px", render: (row) => formatDate(row.shipmentDate) },
@@ -214,43 +272,49 @@ export function SalesHistoryTabContent() {
     {
       key: "documents",
       label: "書類",
-      width: "180px",
+      width: "220px",
       render: (row) => (
-        <div className="flex flex-wrap gap-2">
-          {row.documents.map((doc: string) => (
-            <button
-              type="button"
-              key={doc}
-              onClick={(e) => {
-                e.stopPropagation();
-                alert(`${doc} を確認しました`);
-              }}
-              className="inline-flex items-center justify-center rounded px-2 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-            >
-              {docLabelMap[doc] ?? doc}
-            </button>
-          ))}
-        </div>
+        <DocumentBadges
+          status={row.documentStatus}
+          onUploadClick={() => router.push(row.uploadUrl)}
+        />
       ),
     },
     {
       key: "paymentStatus",
       label: "決済",
-      width: "180px",
+      width: "80px",
+      render: (row) => (row.paymentCompleted ? "済" : "-"),
+    },
+    {
+      key: "message",
+      label: "メッセージ",
+      width: "120px",
       render: (row) => (
         <button
           type="button"
+          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
           onClick={(e) => {
             e.stopPropagation();
-            alert(`決済状況を確認: ${row.id}`);
+            setMessageTarget(row.id);
           }}
-          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
         >
-          振込
+          メッセージ
         </button>
       ),
     },
   ];
+
+  const handleSortChange = (key: string) => {
+    setSortState((prev) => {
+      if (prev?.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  const messageThread = getMessagesForTrade(messageTarget);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -263,7 +327,7 @@ export function SalesHistoryTabContent() {
       "締結日",
       "取引先",
       "メーカー",
-      "物件名",
+      "機種名",
       "数量",
       "金額",
       "機械発送日",
@@ -458,12 +522,65 @@ export function SalesHistoryTabContent() {
 
       <NaviTable
         columns={columns}
-        rows={filteredRows}
+        rows={sortedRows}
         emptyMessage="該当する取引はありません。"
         onRowClick={(row) => row.id && router.push(`/dealings/sales/${row.id}`)}
+        sortState={sortState}
+        onSortChange={handleSortChange}
+      />
+
+      <TradeMessageModal
+        open={messageTarget !== null}
+        tradeId={messageTarget}
+        messages={messageThread}
+        onClose={() => setMessageTarget(null)}
       />
     </section>
   );
+}
+
+function sortRows(rows: SalesHistoryRow[], sortState: SortState) {
+  if (!sortState) return rows;
+  const { key, direction } = sortState;
+  const sorted = [...rows].sort((a, b) => {
+    const aValue = getSortableValue(a, key);
+    const bValue = getSortableValue(b, key);
+
+    if (aValue == null && bValue == null) return 0;
+    if (aValue == null) return 1;
+    if (bValue == null) return -1;
+
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return direction === "asc" ? aValue - bValue : bValue - aValue;
+    }
+
+    return direction === "asc"
+      ? String(aValue).localeCompare(String(bValue))
+      : String(bValue).localeCompare(String(aValue));
+  });
+
+  return sorted;
+}
+
+function getSortableValue(row: SalesHistoryRow, key: string) {
+  switch (key) {
+    case "contractDate":
+      return new Date(row.contractDate).getTime();
+    case "partner":
+      return row.partner;
+    case "maker":
+      return row.maker;
+    case "itemName":
+      return row.itemName;
+    case "amount":
+      return row.amount;
+    case "status":
+      return (
+        TRADE_STATUS_DEFINITIONS.findIndex((def) => def.key === row.status) ?? row.status
+      );
+    default:
+      return undefined;
+  }
 }
 
 function matchStatus(filter: FilterState["status"], status: TradeStatusKey) {

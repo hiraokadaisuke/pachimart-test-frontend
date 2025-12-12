@@ -15,7 +15,9 @@ import {
   IN_PROGRESS_STATUS_KEYS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
+import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { getMessagesForTrade } from "@/lib/dummyMessages";
 
 const dummyTrades: Array<{
   id: string;
@@ -166,7 +168,7 @@ const dummyTrades: Array<{
 function getStatusLabel(status: NaviStatus | null) {
   switch (status) {
     case "sent_to_buyer":
-      return { text: "承認待ち", className: "bg-sky-100 text-sky-700" };
+      return { text: "要承認", className: "bg-sky-100 text-sky-700" };
     case "buyer_approved":
       return { text: "承認済み", className: "bg-emerald-100 text-emerald-700" };
     case "buyer_rejected":
@@ -208,6 +210,7 @@ export function InProgressTabContent() {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
   const [keyword, setKeyword] = useState("");
+  const [messageTarget, setMessageTarget] = useState<string | null>(null);
 
   const filteredTrades = useMemo(() => {
     const keywordLower = keyword.toLowerCase();
@@ -279,7 +282,7 @@ export function InProgressTabContent() {
     },
     {
       key: "itemName",
-      label: "物件名",
+      label: "機種名",
       width: "22%",
     },
     {
@@ -295,7 +298,7 @@ export function InProgressTabContent() {
     },
     {
       key: "document",
-      label: "確認書",
+      label: "明細書",
       width: "110px",
       render: (row: (typeof dummyTrades)[number]) => (
         <a
@@ -315,11 +318,30 @@ export function InProgressTabContent() {
           type="button"
           className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
         >
-          {row.status === "waiting_payment" ? "振込" : "OK"}
+          {row.status === "waiting_payment" ? "振込" : "動作確認"}
+        </button>
+      ),
+    },
+    {
+      key: "message",
+      label: "メッセージ",
+      width: "110px",
+      render: (row: (typeof dummyTrades)[number]) => (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            setMessageTarget(row.id);
+          }}
+        >
+          メッセージ
         </button>
       ),
     },
   ];
+
+  const tradeColumnsWithoutAction = tradeColumns.filter((column) => column.key !== "action");
 
   const draftColumns: NaviTableColumn[] = [
     {
@@ -363,7 +385,7 @@ export function InProgressTabContent() {
     },
     {
       key: "itemName",
-      label: "物件名（機種名）",
+      label: "機種名",
       width: "22%",
       render: (draft: TradeNaviDraft) => getProductLabel(draft),
     },
@@ -390,7 +412,7 @@ export function InProgressTabContent() {
     },
     {
       key: "document",
-      label: "確認書",
+      label: "明細書",
       width: "110px",
       render: (draft: TradeNaviDraft) => (
         <button
@@ -416,12 +438,29 @@ export function InProgressTabContent() {
         </button>
       ),
     },
+    {
+      key: "message",
+      label: "メッセージ",
+      width: "110px",
+      render: (draft: TradeNaviDraft) => (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (draft.id) setMessageTarget(draft.id);
+          }}
+        >
+          メッセージ
+        </button>
+      ),
+    },
   ];
 
   const buySectionDescriptions = {
     approval: "オンラインでオファーをしています。売主様からの返答をお待ちください。",
     payment: "発送予定日までに振込をお願いします。",
-    checking: "動作確認を行い、OKボタンを押してください。",
+    checking: "動作確認を行い、動作確認ボタンを押してください。",
   } as const;
 
   const sellSectionDescriptions = {
@@ -429,6 +468,8 @@ export function InProgressTabContent() {
     payment: "買主様からの入金をお待ちください。",
     checking: "買主様からの入金がありました。発送をしてください。",
   } as const;
+
+  const messageThread = getMessagesForTrade(messageTarget);
 
   return (
     <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-8 px-4 md:px-6 xl:px-8">
@@ -441,14 +482,14 @@ export function InProgressTabContent() {
 
       <section className="space-y-4">
         <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">
-          買いたい物件
+          購入中の商品
         </h2>
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.approval}
           >
-            承認待ち
+            要承認
           </SectionHeader>
           <NaviTable
             columns={draftColumns}
@@ -463,7 +504,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.payment}
           >
-            入金待ち
+            要入金
           </SectionHeader>
           <NaviTable
             columns={tradeColumns}
@@ -478,7 +519,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.checking}
           >
-            確認中
+            要確認
           </SectionHeader>
           <NaviTable
             columns={tradeColumns}
@@ -491,14 +532,14 @@ export function InProgressTabContent() {
 
       <section className="space-y-4">
         <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">
-          売りたい物件
+          売却中の商品
         </h2>
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.approval}
           >
-            承認待ち
+            要承認
           </SectionHeader>
           <NaviTable
             columns={draftColumns}
@@ -513,10 +554,10 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.payment}
           >
-            入金待ち
+            要入金
           </SectionHeader>
           <NaviTable
-            columns={tradeColumns}
+            columns={tradeColumnsWithoutAction}
             rows={sellWaiting}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
@@ -527,16 +568,23 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.checking}
           >
-            確認中
+            要確認
           </SectionHeader>
           <NaviTable
-            columns={tradeColumns}
+            columns={tradeColumnsWithoutAction}
             rows={sellChecking}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
           />
         </div>
       </section>
+
+      <TradeMessageModal
+        open={messageTarget !== null}
+        tradeId={messageTarget}
+        messages={messageThread}
+        onClose={() => setMessageTarget(null)}
+      />
     </section>
   );
 }

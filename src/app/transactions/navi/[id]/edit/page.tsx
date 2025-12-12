@@ -148,7 +148,6 @@ export default function TransactionNaviEditPage() {
     propertyInfo,
     currentConditions,
     updatedConditions,
-    messageLogs,
   } = useDummyNavi(naviTargetId);
 
   const draftConditions = useMemo(
@@ -162,7 +161,6 @@ export default function TransactionNaviEditPage() {
   );
 
   const [editedConditions, setEditedConditions] = useState<TransactionConditions>(initialEditedConditions);
-  const [newMessage, setNewMessage] = useState<string>("");
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showTermPresets, setShowTermPresets] = useState(false);
   const [showHandlerPresets, setShowHandlerPresets] = useState(false);
@@ -418,20 +416,8 @@ export default function TransactionNaviEditPage() {
                     ))}
                 </ul>
               )}
-              <button
-                type="button"
-                onClick={handleSendToBuyer}
-                disabled={draft?.buyerPending || !isBuyerSet}
-                className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                売却先へ送信
-              </button>
             </div>
           </div>
-
-          <p className="text-sm text-neutral-900">
-            電話で合意した条件を入力し、売却先に送信するための編集画面です。内容を確認してから送信してください。
-          </p>
         </section>
 
         <section className="space-y-4">
@@ -868,52 +854,17 @@ export default function TransactionNaviEditPage() {
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-slate-900">取引メッセージ</h2>
-            <span className="text-xs font-semibold text-neutral-700">売却先への連絡</span>
-          </div>
-          <div className="space-y-3">
-            <div className="space-y-2">
-              {messageLogs.map((log) => (
-                <div
-                  key={log.id}
-                  className={`rounded border border-slate-300 bg-slate-50 px-3 py-2 text-sm ${
-                    log.sender === "seller" ? "border-sky-100 bg-sky-50" : ""
-                  }`}
-                >
-                  <div className="flex items-center justify-between text-xs text-neutral-700">
-                    <span>{log.sender === "seller" ? "あなた" : "売却先"}</span>
-                    <span>{log.timestamp}</span>
-                  </div>
-                  <p className="mt-1 whitespace-pre-wrap text-slate-800">{log.message}</p>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-slate-800">新規メッセージ</label>
-              <textarea
-                className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                rows={3}
-                placeholder="売却先へのメモや連絡事項を入力"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-              />
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={() => {
-                    console.log("send message", newMessage);
-                    setNewMessage("");
-                  }}
-                  className="rounded bg-slate-800 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-slate-900"
-                >
-                  送信
-                </button>
-              </div>
-            </div>
-          </div>
-        </section>
+        <div className="flex justify-center pt-4">
+          <button
+            type="button"
+            onClick={handleSendToBuyer}
+            disabled={draft?.buyerPending || !isBuyerSet}
+            className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-400"
+          >
+            内容を確定して取引先に送信する
+          </button>
+        </div>
+
       </div>
     </MainContainer>
   );

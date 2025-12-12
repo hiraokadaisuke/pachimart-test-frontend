@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviTable";
+import { NaviTable, type NaviTableColumn, type SortState } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import {
   COMPLETED_STATUS_KEYS,
@@ -11,12 +11,9 @@ import {
   TRADE_STATUS_DEFINITIONS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
-
-const docLabelMap: Record<string, string> = {
-  "検通": "検",
-  "明細": "撤",
-  "確認": "確",
-};
+import { DocumentBadges, type DocumentStatus } from "@/components/transactions/DocumentBadges";
+import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
+import { getMessagesForTrade } from "@/lib/dummyMessages";
 
 // TODO: API連携（フィルター条件でサーバーから取得）
 
@@ -32,8 +29,10 @@ type PurchaseHistoryRow = {
   amount: number;
   shipmentDate?: string;
   receiveMethod: string;
-  documents: string[];
+  documentStatus: DocumentStatus;
+  uploadUrl: string;
   paymentMethod: string;
+  paymentCompleted: boolean;
   handler: string;
   documentReceivedDate?: string;
 };
@@ -65,8 +64,15 @@ const purchaseHistoryData: PurchaseHistoryRow[] = [
     amount: 1250000,
     shipmentDate: "2025-11-07",
     receiveMethod: "元払",
-    documents: ["受注票", "検収"],
+    documentStatus: {
+      inspection: true,
+      removal: false,
+      confirmation: false,
+      other: false,
+    },
+    uploadUrl: "/dealings/purchases/P-2025110501/documents",
     paymentMethod: "振込（前払い）",
+    paymentCompleted: true,
     handler: "佐藤",
     documentReceivedDate: "2025-11-06",
   },
@@ -82,8 +88,15 @@ const purchaseHistoryData: PurchaseHistoryRow[] = [
     amount: 960000,
     shipmentDate: "2025-11-01",
     receiveMethod: "引取",
-    documents: ["受注票"],
+    documentStatus: {
+      inspection: false,
+      removal: true,
+      confirmation: false,
+      other: false,
+    },
+    uploadUrl: "/dealings/purchases/P-2025103008/documents",
     paymentMethod: "代引（現金）",
+    paymentCompleted: true,
     handler: "鈴木",
     documentReceivedDate: "2025-10-31",
   },
@@ -99,8 +112,15 @@ const purchaseHistoryData: PurchaseHistoryRow[] = [
     amount: 180000,
     shipmentDate: "2025-10-15",
     receiveMethod: "指定便（着払）",
-    documents: ["受注票", "確認"],
+    documentStatus: {
+      inspection: false,
+      removal: false,
+      confirmation: true,
+      other: false,
+    },
+    uploadUrl: "/dealings/purchases/P-2025101204/documents",
     paymentMethod: "請求書払い（末締め翌月末）",
+    paymentCompleted: false,
     handler: "田中",
     documentReceivedDate: "2025-10-13",
   },
@@ -116,8 +136,15 @@ const purchaseHistoryData: PurchaseHistoryRow[] = [
     amount: 690000,
     shipmentDate: undefined,
     receiveMethod: "未定",
-    documents: ["受注票"],
+    documentStatus: {
+      inspection: false,
+      removal: false,
+      confirmation: false,
+      other: true,
+    },
+    uploadUrl: "/dealings/purchases/P-2025092506/documents",
     paymentMethod: "キャンセル",
+    paymentCompleted: false,
     handler: "佐藤",
     documentReceivedDate: undefined,
   },
@@ -133,8 +160,15 @@ const purchaseHistoryData: PurchaseHistoryRow[] = [
     amount: 1400000,
     shipmentDate: "2025-08-21",
     receiveMethod: "元払",
-    documents: ["受注票", "検収"],
+    documentStatus: {
+      inspection: true,
+      removal: false,
+      confirmation: false,
+      other: false,
+    },
+    uploadUrl: "/dealings/purchases/P-2025081803/documents",
     paymentMethod: "振込（納品後）",
+    paymentCompleted: false,
     handler: "鈴木",
     documentReceivedDate: "2025-08-20",
   },
@@ -159,6 +193,8 @@ export function PurchaseHistoryTabContent() {
     keyword: "",
   });
   const [appliedFilters, setAppliedFilters] = useState(filters);
+  const [sortState, setSortState] = useState<SortState>(null);
+  const [messageTarget, setMessageTarget] = useState<string | null>(null);
 
   const handlerOptions = useMemo(() => {
     const handlers = Array.from(new Set(purchaseHistoryData.map((row) => row.handler)));
@@ -174,83 +210,134 @@ export function PurchaseHistoryTabContent() {
       .filter((row) => matchKeyword(appliedFilters.keyword, row));
   }, [appliedFilters]);
 
+  const sortedRows = useMemo(
+    () => sortRows(filteredRows, sortState),
+    [filteredRows, sortState]
+  );
+
   const columns: NaviTableColumn[] = [
-    {
-      key: "status",
-      label: "状況",
-      width: "120px",
-      render: (row) => <StatusBadge statusKey={row.status} context="history" />,
-    },
-    { key: "contractDate", label: "締結日", width: "120px", render: (row) => formatDate(row.contractDate) },
-    { key: "seller", label: "取引先（売手）", width: "180px" },
-    { key: "maker", label: "メーカー", width: "140px" },
-    { key: "itemName", label: "物件名", width: "200px" },
-    { key: "quantity", label: "数量", width: "80px" },
-    {
-      key: "amount",
-      label: "金額",
-      width: "140px",
-      render: (row) => <span className="whitespace-nowrap">{currencyFormatter.format(row.amount)}</span>,
-    },
-    { key: "shipmentDate", label: "機械発送日", width: "140px", render: (row) => formatDate(row.shipmentDate) },
-    { key: "receiveMethod", label: "受取方法", width: "100px" },
-    {
-      key: "pdf",
-      label: "受注票",
-      width: "120px",
-      render: (row) => (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            router.push(`/dealings/purchases/${row.id}`);
-          }}
-          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-        >
-          PDF
-        </button>
-      ),
-    },
-    {
-      key: "documents",
-      label: "書類",
-      width: "180px",
-      render: (row) => (
-        <div className="flex flex-wrap gap-2">
-          {row.documents.map((doc: string) => (
-            <button
-              type="button"
-              key={doc}
-              onClick={(e) => {
-                e.stopPropagation();
-                alert(`${doc} を確認しました`);
-              }}
-              className="inline-flex items-center justify-center rounded px-2 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-            >
-              {docLabelMap[doc] ?? doc}
-            </button>
-          ))}
-        </div>
-      ),
-    },
-    {
-      key: "paymentMethod",
-      label: "決済",
-      width: "200px",
-      render: (row) => (
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            alert(`支払方法を確認しました: ${row.paymentMethod}`);
-          }}
-          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-        >
-          振込
-        </button>
-      ),
-    },
-  ];
+  {
+    key: "status",
+    label: "状況",
+    width: "120px",
+    sortable: true,
+    render: (row) => <StatusBadge statusKey={row.status} context="history" />,
+  },
+  {
+    key: "contractDate",
+    label: "締結日",
+    width: "120px",
+    sortable: true,
+    render: (row) => formatDate(row.contractDate),
+  },
+  {
+    key: "seller",
+    label: "取引先（売手）",
+    width: "180px",
+    sortable: true,
+  },
+  {
+    key: "maker",
+    label: "メーカー",
+    width: "140px",
+    sortable: true,
+  },
+  {
+    key: "itemName",
+    label: "機種名", // ← 物件名 → 機種名 に統一
+    width: "200px",
+    sortable: true,
+  },
+  {
+    key: "quantity",
+    label: "数量",
+    width: "80px",
+  },
+  {
+    key: "amount",
+    label: "金額",
+    width: "140px",
+    sortable: true,
+    render: (row) => (
+      <span className="whitespace-nowrap">
+        {currencyFormatter.format(row.amount)}
+      </span>
+    ),
+  },
+  {
+    key: "shipmentDate",
+    label: "機械発送日",
+    width: "140px",
+    render: (row) => formatDate(row.shipmentDate),
+  },
+  {
+    key: "receiveMethod",
+    label: "受取方法",
+    width: "100px",
+  },
+  {
+    key: "pdf",
+    label: "受注票",
+    width: "120px",
+    render: (row) => (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          router.push(`/dealings/purchases/${row.id}`);
+        }}
+        className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+      >
+        PDF
+      </button>
+    ),
+  },
+  {
+    key: "documents",
+    label: "書類",
+    width: "220px",
+    render: (row) => (
+      <DocumentBadges
+        status={row.documentStatus}
+        onUploadClick={() => router.push(row.uploadUrl)}
+      />
+    ),
+  },
+  {
+    key: "paymentMethod",
+    label: "決済",
+    width: "120px",
+    render: (row) => (row.paymentCompleted ? "済" : "-"),
+  },
+  {
+    key: "message",
+    label: "メッセージ",
+    width: "120px",
+    render: (row) => (
+      <button
+        type="button"
+        className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+        onClick={(e) => {
+          e.stopPropagation();
+          setMessageTarget(row.id);
+        }}
+      >
+        メッセージ
+      </button>
+    ),
+  },
+];
+
+  const handleSortChange = (key: string) => {
+    setSortState((prev) => {
+      if (prev?.key === key) {
+        return { key, direction: prev.direction === "asc" ? "desc" : "asc" };
+      }
+      return { key, direction: "asc" };
+    });
+  };
+
+  const messageThread = getMessagesForTrade(messageTarget);
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -263,7 +350,7 @@ export function PurchaseHistoryTabContent() {
       "締結日",
       "取引先（売手）",
       "メーカー",
-      "物件名",
+      "機種名",
       "数量",
       "金額",
       "機械発送日",
@@ -458,12 +545,65 @@ export function PurchaseHistoryTabContent() {
 
       <NaviTable
         columns={columns}
-        rows={filteredRows}
+        rows={sortedRows}
         emptyMessage="該当する取引はありません。"
         onRowClick={(row) => row.id && router.push(`/dealings/purchases/${row.id}`)}
+        sortState={sortState}
+        onSortChange={handleSortChange}
+      />
+
+      <TradeMessageModal
+        open={messageTarget !== null}
+        tradeId={messageTarget}
+        messages={messageThread}
+        onClose={() => setMessageTarget(null)}
       />
     </section>
   );
+}
+
+function sortRows(rows: PurchaseHistoryRow[], sortState: SortState) {
+  if (!sortState) return rows;
+  const { key, direction } = sortState;
+  const sorted = [...rows].sort((a, b) => {
+    const aValue = getSortableValue(a, key);
+    const bValue = getSortableValue(b, key);
+
+    if (aValue == null && bValue == null) return 0;
+    if (aValue == null) return 1;
+    if (bValue == null) return -1;
+
+    if (typeof aValue === "number" && typeof bValue === "number") {
+      return direction === "asc" ? aValue - bValue : bValue - aValue;
+    }
+
+    return direction === "asc"
+      ? String(aValue).localeCompare(String(bValue))
+      : String(bValue).localeCompare(String(aValue));
+  });
+
+  return sorted;
+}
+
+function getSortableValue(row: PurchaseHistoryRow, key: string) {
+  switch (key) {
+    case "contractDate":
+      return new Date(row.contractDate).getTime();
+    case "seller":
+      return row.seller;
+    case "maker":
+      return row.maker;
+    case "itemName":
+      return row.itemName;
+    case "amount":
+      return row.amount;
+    case "status":
+      return (
+        TRADE_STATUS_DEFINITIONS.findIndex((def) => def.key === row.status) ?? row.status
+      );
+    default:
+      return undefined;
+  }
 }
 
 function matchStatus(filter: FilterState["status"], status: TradeStatusKey) {
