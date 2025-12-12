@@ -570,7 +570,7 @@ function getSortableValue(row: PurchaseHistoryRow, key: string) {
         TRADE_STATUS_DEFINITIONS.findIndex((def) => def.key === row.status) ?? row.status
       );
     default:
-      return (row as Record<string, string | number | undefined>)[key];
+      return undefined;
   }
 }
 
