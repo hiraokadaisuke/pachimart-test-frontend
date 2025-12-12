@@ -9,7 +9,7 @@ const currencyFormatter = new Intl.NumberFormat("ja-JP", { style: "currency", cu
 export const standardNaviColumns: NaviTableColumn[] = [
   {
     key: "itemName",
-    label: "物件名（機種名）",
+    label: "機種名",
     render: (row) => row.itemName ?? row.item ?? row.productName ?? "-",
     width: "20%",
   },
