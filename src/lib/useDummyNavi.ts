@@ -49,13 +49,6 @@ export interface TransactionConditions {
   handler: string;
 }
 
-export interface MessageLog {
-  id: string;
-  sender: "buyer" | "seller";
-  message: string;
-  timestamp: string;
-}
-
 const breadcrumbBase = ["ホーム", "マイページ", "取引Navi"];
 
 const buyerInfo: BuyerInfo = {
@@ -130,27 +123,6 @@ const documentFiles = ["注文書.pdf", "覚書.docx", "搬出指示書.xlsx"];
 
 const photoThumbnails = ["搬出口周辺写真", "梱包イメージ", "倉庫全景"];
 
-const messageLogs: MessageLog[] = [
-  {
-    id: "1",
-    sender: "buyer",
-    message: "搬出日と発送日の目安を教えてください。",
-    timestamp: "2025/11/18 10:12",
-  },
-  {
-    id: "2",
-    sender: "seller",
-    message: "搬出は11/22午後、発送は11/25を予定しています。",
-    timestamp: "2025/11/18 10:35",
-  },
-  {
-    id: "3",
-    sender: "buyer",
-    message: "ありがとうございます。引取でなく元払でお願いします。",
-    timestamp: "2025/11/18 10:50",
-  },
-];
-
 const buildPropertyInfo = (transactionId?: string): PropertyInfo => {
   const product = transactionId
     ? products.find((item) => String(item.id) === transactionId)
@@ -219,7 +191,6 @@ export function useDummyNavi(transactionId?: string) {
       updatedConditions,
       documentFiles,
       photoThumbnails,
-      messageLogs,
       statusLabel: "依頼中",
     };
   }, [transactionId]);
