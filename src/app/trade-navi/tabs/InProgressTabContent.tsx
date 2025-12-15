@@ -240,7 +240,7 @@ const sellingNeedResponses: TradeRow[] = [
 function getStatusLabel(status: NaviStatus | null) {
   switch (status) {
     case "sent_to_buyer":
-      return { text: "要承認", className: "bg-sky-100 text-sky-700" };
+      return { text: "承認待ち", className: "bg-sky-100 text-sky-700" };
     case "buyer_approved":
       return { text: "承認済み", className: "bg-emerald-100 text-emerald-700" };
     case "buyer_rejected":
@@ -460,6 +460,24 @@ export function InProgressTabContent() {
     messageColumn,
   ];
 
+  const tradeColumnsForBuyNetInquiry: NaviTableColumn[] = [
+    {
+      ...tradeColumnBase[0],
+      render: (row: TradeRow) => <StatusBadge statusKey={row.status} context="netInquiryBuy" />,
+    },
+    ...tradeColumnBase.slice(1),
+    messageColumn,
+  ];
+
+  const tradeColumnsForSellNetInquiry: NaviTableColumn[] = [
+    {
+      ...tradeColumnBase[0],
+      render: (row: TradeRow) => <StatusBadge statusKey={row.status} context="netInquirySell" />,
+    },
+    ...tradeColumnBase.slice(1),
+    messageColumn,
+  ];
+
   const draftColumns: NaviTableColumn[] = [
     {
       key: "status",
@@ -608,7 +626,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.approval}
           >
-            要承認
+            承認待ち
           </SectionHeader>
           <NaviTable
             columns={draftColumns}
@@ -623,7 +641,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.payment}
           >
-            要入金
+            入金待ち
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsForPayment}
@@ -638,7 +656,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.checking}
           >
-            要確認
+            確認待ち
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsForChecking}
@@ -653,10 +671,10 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.pendingResponse}
           >
-            返答待ち
+            ネット問い合わせ返答待ち
           </SectionHeader>
           <NaviTable
-            columns={tradeColumnsWithoutAction}
+            columns={tradeColumnsForBuyNetInquiry}
             rows={buyPendingResponse}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
@@ -673,7 +691,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.approval}
           >
-            要承認
+            承認待ち
           </SectionHeader>
           <NaviTable
             columns={draftColumns}
@@ -688,7 +706,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.payment}
           >
-            要入金
+            入金待ち
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsWithoutAction}
@@ -702,7 +720,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.checking}
           >
-            要確認
+            確認待ち
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsWithoutAction}
@@ -717,10 +735,10 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.needResponse}
           >
-            要返答
+            ネット問い合わせ要返答
           </SectionHeader>
           <NaviTable
-            columns={tradeColumnsWithoutAction}
+            columns={tradeColumnsForSellNetInquiry}
             rows={sellNeedResponse}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}

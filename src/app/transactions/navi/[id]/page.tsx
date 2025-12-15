@@ -325,7 +325,7 @@ export default function TransactionDetailPage() {
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-slate-900">届いた依頼を確認し、配送先を入力してください。</p>
-                <p className="text-xs text-neutral-700">入力内容は承認時に保存され、ステータスが「要入金」に更新されます。</p>
+                <p className="text-xs text-neutral-700">入力内容は承認時に保存され、ステータスが「入金待ち」に更新されます。</p>
               </div>
               <button
                 type="button"
