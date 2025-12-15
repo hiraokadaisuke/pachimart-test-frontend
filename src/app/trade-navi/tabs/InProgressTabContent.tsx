@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { products } from "@/lib/dummyData";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
@@ -19,7 +19,7 @@ import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
 
-const dummyTrades: Array<{
+type TradeRow = {
   id: string;
   status: TradeStatusKey;
   updatedAt: string;
@@ -34,7 +34,9 @@ const dummyTrades: Array<{
   buyerUserId: string;
   sellerName: string;
   buyerName: string;
-}> = [
+};
+
+const dummyTrades: TradeRow[] = [
   {
     id: "T-2025111901",
     status: "waiting_payment",
@@ -165,6 +167,76 @@ const dummyTrades: Array<{
   },
 ];
 
+const buyingPendingResponses: TradeRow[] = [
+  {
+    id: "T-2025112001",
+    status: "navi_in_progress",
+    updatedAt: "2025/11/20 09:30",
+    partnerName: "株式会社オファーテック",
+    makerName: "サミー",
+    itemName: "P 北斗の拳 暴凶星",
+    quantity: 3,
+    totalAmount: 450000,
+    scheduledShipDate: "2025/11/29",
+    pdfUrl: "#",
+    sellerUserId: "user-b",
+    buyerUserId: "user-a",
+    sellerName: "株式会社オファーテック",
+    buyerName: "株式会社パチテック",
+  },
+  {
+    id: "T-2025112002",
+    status: "navi_in_progress",
+    updatedAt: "2025/11/20 12:10",
+    partnerName: "株式会社ディーエル商会",
+    makerName: "SANKYO",
+    itemName: "P フィーバー機動戦士ガンダムSEED",
+    quantity: 2,
+    totalAmount: 360000,
+    scheduledShipDate: "2025/11/30",
+    pdfUrl: "#",
+    sellerUserId: "user-b",
+    buyerUserId: "user-a",
+    sellerName: "株式会社ディーエル商会",
+    buyerName: "株式会社トレード連合",
+  },
+];
+
+const sellingNeedResponses: TradeRow[] = [
+  {
+    id: "T-2025112003",
+    status: "navi_in_progress",
+    updatedAt: "2025/11/20 14:45",
+    partnerName: "株式会社トレード連合",
+    makerName: "ニューギン",
+    itemName: "P 真・花の慶次3 黄金一閃",
+    quantity: 4,
+    totalAmount: 680000,
+    scheduledShipDate: "2025/12/02",
+    pdfUrl: "#",
+    sellerUserId: "user-a",
+    buyerUserId: "user-b",
+    sellerName: "株式会社パチテック",
+    buyerName: "株式会社トレード連合",
+  },
+  {
+    id: "T-2025112004",
+    status: "navi_in_progress",
+    updatedAt: "2025/11/20 16:20",
+    partnerName: "関西エンタメ商事",
+    makerName: "京楽",
+    itemName: "P とある魔術の禁書目録",
+    quantity: 5,
+    totalAmount: 850000,
+    scheduledShipDate: "2025/12/03",
+    pdfUrl: "#",
+    sellerUserId: "user-a",
+    buyerUserId: "user-b",
+    sellerName: "株式会社パチテック",
+    buyerName: "関西エンタメ商事",
+  },
+];
+
 function getStatusLabel(status: NaviStatus | null) {
   switch (status) {
     case "sent_to_buyer":
@@ -212,40 +284,54 @@ export function InProgressTabContent() {
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
 
-  const filteredTrades = useMemo(() => {
-    const keywordLower = keyword.toLowerCase();
+  const filterTrades = useCallback(
+    (trades: TradeRow[]) => {
+      const keywordLower = keyword.toLowerCase();
 
-    return dummyTrades
-      .filter(
-        (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
-      )
-      .map((trade) => {
-        const isSeller = trade.sellerUserId === currentUser.id;
-        return {
-          ...trade,
-          kind: isSeller ? ("sell" as const) : ("buy" as const),
-          partnerName: isSeller ? trade.buyerName : trade.sellerName,
-        };
-      })
-      .filter((trade) => {
-        if (statusFilter === "all") return true;
-        if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(trade.status);
-        if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(trade.status);
-        return true;
-      })
-      .filter((trade) => {
-        if (!keywordLower) return true;
-        return (
-          trade.itemName.toLowerCase().includes(keywordLower) ||
-          trade.partnerName.toLowerCase().includes(keywordLower)
-        );
-      });
-  }, [currentUser.id, keyword, statusFilter]);
+      return trades
+        .filter(
+          (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
+        )
+        .map((trade) => {
+          const isSeller = trade.sellerUserId === currentUser.id;
+          return {
+            ...trade,
+            kind: isSeller ? ("sell" as const) : ("buy" as const),
+            partnerName: isSeller ? trade.buyerName : trade.sellerName,
+          };
+        })
+        .filter((trade) => {
+          if (statusFilter === "all") return true;
+          if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(trade.status);
+          if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(trade.status);
+          return true;
+        })
+        .filter((trade) => {
+          if (!keywordLower) return true;
+          return (
+            trade.itemName.toLowerCase().includes(keywordLower) ||
+            trade.partnerName.toLowerCase().includes(keywordLower)
+          );
+        });
+    },
+    [currentUser.id, keyword, statusFilter]
+  );
+
+  const filteredTrades = useMemo(() => filterTrades(dummyTrades), [filterTrades]);
+
+  const filteredPendingResponses = useMemo(
+    () => filterTrades(buyingPendingResponses),
+    [filterTrades]
+  );
+
+  const filteredNeedResponses = useMemo(() => filterTrades(sellingNeedResponses), [filterTrades]);
 
   const buyWaiting = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "waiting_payment");
   const buyChecking = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "navi_in_progress");
+  const buyPendingResponse = filteredPendingResponses.filter((trade) => trade.kind === "buy");
   const sellWaiting = filteredTrades.filter((trade) => trade.kind === "sell" && trade.status === "waiting_payment");
   const sellChecking = filteredTrades.filter((trade) => trade.kind === "sell" && trade.status === "navi_in_progress");
+  const sellNeedResponse = filteredNeedResponses.filter((trade) => trade.kind === "sell");
 
   useEffect(() => {
     setNavis(loadAllNavis(currentUser.id));
@@ -261,7 +347,7 @@ export function InProgressTabContent() {
       key: "status",
       label: "状況",
       width: "110px",
-      render: (row: (typeof dummyTrades)[number]) => (
+      render: (row: TradeRow) => (
         <StatusBadge statusKey={row.status} context="inProgress" />
       ),
     },
@@ -289,7 +375,7 @@ export function InProgressTabContent() {
       key: "totalAmount",
       label: "合計金額（税込）",
       width: "140px",
-      render: (row: (typeof dummyTrades)[number]) => formatCurrency(row.totalAmount),
+      render: (row: TradeRow) => formatCurrency(row.totalAmount),
     },
     {
       key: "scheduledShipDate",
@@ -300,7 +386,7 @@ export function InProgressTabContent() {
       key: "document",
       label: "明細書",
       width: "110px",
-      render: (row: (typeof dummyTrades)[number]) => (
+      render: (row: TradeRow) => (
         <a
           href={row.pdfUrl}
           className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
@@ -315,7 +401,7 @@ export function InProgressTabContent() {
     key: "message",
     label: "メッセージ",
     width: "110px",
-    render: (row: (typeof dummyTrades)[number]) => (
+    render: (row: TradeRow) => (
       <button
         type="button"
         className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
@@ -333,7 +419,7 @@ export function InProgressTabContent() {
     key: "action",
     label: "入金",
     width: "110px",
-    render: (row: (typeof dummyTrades)[number]) => (
+    render: (row: TradeRow) => (
       <button
         type="button"
         className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
@@ -347,7 +433,7 @@ export function InProgressTabContent() {
     key: "action",
     label: "動作確認",
     width: "110px",
-    render: (row: (typeof dummyTrades)[number]) => (
+    render: (row: TradeRow) => (
       <button
         type="button"
         className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
@@ -489,15 +575,17 @@ export function InProgressTabContent() {
   ];
 
   const buySectionDescriptions = {
-    approval: "オンラインでオファーをしています。売主様からの返答をお待ちください。",
+    approval: "売主様から届いた依頼です。内容を確認のうえ、承認してください。",
     payment: "発送予定日までに振込をお願いします。",
     checking: "動作確認を行い、動作確認ボタンを押してください。",
+    pendingResponse: "オンラインでオファーをしています。売主様からの返答をお待ちください。",
   } as const;
 
   const sellSectionDescriptions = {
     approval: "依頼を送りました。買主様からの承認をお待ちください。",
     payment: "買主様からの入金をお待ちください。",
     checking: "買主様からの入金がありました。発送をしてください。",
+    needResponse: "買主様からオンラインでのオファー相談が届いています。内容をご確認のうえ、ご返答ください。",
   } as const;
 
   const messageThread = getMessagesForTrade(messageTarget);
@@ -559,6 +647,21 @@ export function InProgressTabContent() {
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
           />
         </div>
+
+        <div className="space-y-2">
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={buySectionDescriptions.pendingResponse}
+          >
+            返答待ち
+          </SectionHeader>
+          <NaviTable
+            columns={tradeColumnsWithoutAction}
+            rows={buyPendingResponse}
+            emptyMessage="現在進行中の取引はありません。"
+            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
+          />
+        </div>
       </section>
 
       <section className="space-y-4">
@@ -604,6 +707,21 @@ export function InProgressTabContent() {
           <NaviTable
             columns={tradeColumnsWithoutAction}
             rows={sellChecking}
+            emptyMessage="現在進行中の取引はありません。"
+            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={sellSectionDescriptions.needResponse}
+          >
+            要返答
+          </SectionHeader>
+          <NaviTable
+            columns={tradeColumnsWithoutAction}
+            rows={sellNeedResponse}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
           />
