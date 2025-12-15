@@ -14,17 +14,13 @@ export type TradeStatusDisplay = {
   color: "gray" | "blue" | "yellow" | "green" | "red";
 };
 
-export type TradeStatusDisplayContext =
-  | "inProgress"
-  | "history"
-  | "netInquiryBuy"
-  | "netInquirySell";
+export type TradeStatusDisplayContext = "inProgress" | "history";
 
 export const TRADE_STATUS_DEFINITIONS: TradeStatusDisplay[] = [
   { key: "draft", label: "下書き", color: "gray" },
   { key: "requesting", label: "依頼中", color: "blue" },
   { key: "navi_in_progress", label: "取引Navi進行中", color: "blue" },
-  { key: "waiting_payment", label: "入金待ち", color: "yellow" },
+  { key: "waiting_payment", label: "要入金", color: "yellow" },
   { key: "payment_confirmed", label: "入金確認済", color: "green" },
   { key: "shipped", label: "発送済", color: "blue" },
   { key: "completed", label: "完了", color: "green" },
@@ -36,18 +32,12 @@ const TRADE_STATUS_LABEL_OVERRIDES: Record<
   Partial<Record<TradeStatusKey, string>>
 > = {
   inProgress: {
-    requesting: "承認待ち",
-    navi_in_progress: "確認待ち",
+    requesting: "要承認",
+    navi_in_progress: "要確認",
   },
   history: {
     requesting: "承認",
     navi_in_progress: "承認",
-  },
-  netInquiryBuy: {
-    navi_in_progress: "返答待ち",
-  },
-  netInquirySell: {
-    navi_in_progress: "要返答",
   },
 };
 
