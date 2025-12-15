@@ -219,7 +219,7 @@ export function SalesHistoryTabContent() {
     },
 {
   key: "contractDate",
-  label: "締結日",
+  label: "成約日",
   width: "120px",
   sortable: true,
   render: (row) => formatDate(row.contractDate),
@@ -245,16 +245,22 @@ export function SalesHistoryTabContent() {
     { key: "quantity", label: "数量", width: "80px" },
     {
       key: "amount",
-      label: "金額",
+  label: "金額",
+  width: "140px",
+  sortable: true,
+  render: (row) => <span className="whitespace-nowrap">{currencyFormatter.format(row.amount)}</span>,
+},
+    {
+      key: "shipmentDate",
+      label: "機械発送日",
       width: "140px",
       sortable: true,
-      render: (row) => <span className="whitespace-nowrap">{currencyFormatter.format(row.amount)}</span>,
+      render: (row) => formatDate(row.shipmentDate),
     },
-    { key: "shipmentDate", label: "機械発送日", width: "140px", render: (row) => formatDate(row.shipmentDate) },
     { key: "shippingMethod", label: "発送方法", width: "100px" },
     {
       key: "pdf",
-      label: "受注票",
+      label: "明細書",
       width: "120px",
       render: (row) => (
         <button
@@ -324,7 +330,7 @@ export function SalesHistoryTabContent() {
   const handleCsvDownload = () => {
     const header = [
       "状況",
-      "締結日",
+      "成約日",
       "取引先",
       "メーカー",
       "機種名",
@@ -445,13 +451,13 @@ export function SalesHistoryTabContent() {
               <input
                 type="radio"
                 name="sales-dateTarget"
-                value="contract"
-                checked={filters.dateTarget === "contract"}
-                onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
-                className="h-4 w-4 text-blue-600"
-              />
-              締結日
-            </label>
+            value="contract"
+            checked={filters.dateTarget === "contract"}
+            onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
+            className="h-4 w-4 text-blue-600"
+          />
+          成約日
+        </label>
             <label className="flex items-center gap-2 whitespace-nowrap">
               <input
                 type="radio"
@@ -574,6 +580,8 @@ function getSortableValue(row: SalesHistoryRow, key: string) {
       return row.itemName;
     case "amount":
       return row.amount;
+    case "shipmentDate":
+      return row.shipmentDate ? new Date(row.shipmentDate).getTime() : undefined;
     case "status":
       return (
         TRADE_STATUS_DEFINITIONS.findIndex((def) => def.key === row.status) ?? row.status
