@@ -225,7 +225,7 @@ export function PurchaseHistoryTabContent() {
   },
   {
     key: "contractDate",
-    label: "締結日",
+    label: "成約日",
     width: "120px",
     sortable: true,
     render: (row) => formatDate(row.contractDate),
@@ -268,6 +268,7 @@ export function PurchaseHistoryTabContent() {
     key: "shipmentDate",
     label: "機械発送日",
     width: "140px",
+    sortable: true,
     render: (row) => formatDate(row.shipmentDate),
   },
   {
@@ -277,7 +278,7 @@ export function PurchaseHistoryTabContent() {
   },
   {
     key: "pdf",
-    label: "受注票",
+    label: "明細書",
     width: "120px",
     render: (row) => (
       <button
@@ -347,7 +348,7 @@ export function PurchaseHistoryTabContent() {
   const handleCsvDownload = () => {
     const header = [
       "状況",
-      "締結日",
+      "成約日",
       "取引先（売手）",
       "メーカー",
       "機種名",
@@ -468,13 +469,13 @@ export function PurchaseHistoryTabContent() {
               <input
                 type="radio"
                 name="purchase-dateTarget"
-                value="contract"
-                checked={filters.dateTarget === "contract"}
-                onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
-                className="h-4 w-4 text-blue-600"
-              />
-              締結日
-            </label>
+            value="contract"
+            checked={filters.dateTarget === "contract"}
+            onChange={(e) => setFilters((prev) => ({ ...prev, dateTarget: e.target.value as FilterState["dateTarget"] }))}
+            className="h-4 w-4 text-blue-600"
+          />
+          成約日
+        </label>
             <label className="flex items-center gap-2 whitespace-nowrap">
               <input
                 type="radio"
@@ -597,6 +598,8 @@ function getSortableValue(row: PurchaseHistoryRow, key: string) {
       return row.itemName;
     case "amount":
       return row.amount;
+    case "shipmentDate":
+      return row.shipmentDate ? new Date(row.shipmentDate).getTime() : undefined;
     case "status":
       return (
         TRADE_STATUS_DEFINITIONS.findIndex((def) => def.key === row.status) ?? row.status
