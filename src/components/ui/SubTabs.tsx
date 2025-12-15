@@ -67,14 +67,10 @@ function SubTabsContent({ tabs, className }: SubTabsProps) {
             typeof tab.isActive === "boolean"
               ? tab.isActive
               : isActiveLink(pathname, tab.href, tab.matchPrefixes, searchParams ?? undefined);
-          const handleClick = () => {
-            window.scrollTo({ top: 0, behavior: "smooth" });
-          };
           return (
             <li key={tab.href} className="flex-shrink-0">
               <Link
                 href={tab.href}
-                onClick={handleClick}
                 className={`inline-flex h-10 items-center border-b-2 px-1 text-sm font-medium transition-colors ${
                   active
                     ? "border-blue-600 text-blue-700"
