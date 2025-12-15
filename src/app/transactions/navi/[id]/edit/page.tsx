@@ -422,7 +422,7 @@ export default function TransactionNaviEditPage() {
 
         <section className="space-y-4">
           <div className="rounded-lg border border-slate-300 bg-white p-3 shadow-sm">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
               <div className="flex items-center gap-2">
                 {/* カード見出しを標準文字サイズより一段階大きく */}
                 <h2 className="text-base font-semibold text-slate-900">売却先</h2>
@@ -432,9 +432,9 @@ export default function TransactionNaviEditPage() {
                 )}
               </div>
 
-              <div className="w-full md:w-auto md:max-w-xl">
+              <div className="w-full md:max-w-[420px]">
                 {isBuyerSet ? (
-                  <div className="flex justify-start md:justify-end">
+                  <div className="flex justify-start">
                     <button
                       type="button"
                       className="text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
@@ -443,7 +443,7 @@ export default function TransactionNaviEditPage() {
                     </button>
                   </div>
                 ) : (
-                  <div className="flex w-full justify-start md:justify-end">
+                  <div className="flex w-full justify-start">
                     <SellerAutocomplete
                       onSelect={handleBuyerSelect}
                       hiddenInputName="seller_id"
