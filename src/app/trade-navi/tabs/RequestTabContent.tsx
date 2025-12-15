@@ -1,21 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useMemo } from "react";
+import { useSearchParams } from "next/navigation";
+
+import { TransactionNaviEditor } from "@/app/transactions/navi/[id]/edit/page";
+
 export function RequestTabContent() {
-  const router = useRouter();
-  const initializedRef = useRef(false);
+  const searchParams = useSearchParams();
+  const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
 
-  useEffect(() => {
-    if (initializedRef.current) return;
-    initializedRef.current = true;
-
-    router.replace(`/transactions/navi/new/edit`);
-  }, [router]);
-
-  return (
-    <section className="p-4 text-sm text-slate-800">
-      <p>新しい取引Naviの編集画面に移動しています…</p>
-    </section>
-  );
+  return <TransactionNaviEditor transactionId="new" searchParams={safeSearchParams} />;
 }

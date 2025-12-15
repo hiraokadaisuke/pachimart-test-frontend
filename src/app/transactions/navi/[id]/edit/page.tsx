@@ -133,12 +133,14 @@ const validateDraft = (draft: TradeNaviDraft | null): ValidationErrors => {
   return errors;
 };
 
-export default function TransactionNaviEditPage() {
+type TransactionNaviEditorProps = {
+  transactionId: string;
+  searchParams?: URLSearchParams;
+};
+
+export function TransactionNaviEditor({ transactionId, searchParams }: TransactionNaviEditorProps) {
   const router = useRouter();
-  const params = useParams<{ id?: string }>();
-  const searchParams = useSearchParams();
   const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
-  const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const currentUser = useCurrentDevUser();
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
   const naviTargetId = draft?.productId ?? transactionId;
@@ -917,6 +919,14 @@ function EditRow({
       <td className="px-3 py-1 align-middle">{afterContent}</td>
     </tr>
   );
+}
+
+export default function TransactionNaviEditPage() {
+  const params = useParams<{ id?: string }>();
+  const searchParams = useSearchParams();
+  const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
+
+  return <TransactionNaviEditor transactionId={transactionId} searchParams={searchParams ?? undefined} />;
 }
 
 function BuyerInfoItem({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
