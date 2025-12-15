@@ -557,11 +557,11 @@ export function TransactionNaviEditor({ transactionId, searchParams }: Transacti
                 <span>最新の条件</span>
                 <ol className="flex items-center text-[10px] text-neutral-600">
                   {editBreadcrumbItems.map((item, index) => (
-                    <li key={item.label} className="flex items-center gap-1">
+                    <li key={item} className="flex items-center gap-1">
                       <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px] font-semibold text-slate-800">
                         {index + 1}
                       </span>
-                      <span className="text-xs font-medium text-neutral-800">{item.label}</span>
+                      <span className="text-xs font-medium text-neutral-800">{item}</span>
                       {index < editBreadcrumbItems.length - 1 && <span className="mx-1">›</span>}
                     </li>
                   ))}
