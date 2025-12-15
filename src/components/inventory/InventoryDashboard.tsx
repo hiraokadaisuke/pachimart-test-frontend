@@ -125,6 +125,26 @@ const statusMap: Record<RawInventoryItem["status"], InventoryStatus> = {
   廃棄: "廃棄",
 };
 
+const parseDateValue = (value?: string | null) => {
+  if (!value) return null;
+  const timestamp = Date.parse(value);
+  return Number.isNaN(timestamp) ? null : timestamp;
+};
+
+const compareByCreatedAtDesc = (a: InventoryItem, b: InventoryItem) => {
+  const timeA = parseDateValue(a.createdAt);
+  const timeB = parseDateValue(b.createdAt);
+
+  if (timeA !== null && timeB !== null && timeA !== timeB) {
+    return timeB - timeA;
+  }
+
+  if (timeA !== null) return -1;
+  if (timeB !== null) return 1;
+
+  return b.id - a.id;
+};
+
 const rawInventory: RawInventoryItem[] = [
   {
     id: 1,
@@ -575,6 +595,7 @@ export function InventoryDashboard() {
         ...item,
         status: item.status ?? "倉庫",
         listingStatus,
+        createdAt: item.createdAt ?? item.stockInDate ?? null,
       } satisfies InventoryItem;
     });
   }, [listingStatusById]);
@@ -588,6 +609,7 @@ export function InventoryDashboard() {
         id: item.id,
         status,
         listingStatus,
+        createdAt: new Date(2024, 0, index + 1).toISOString(),
         category: item.category,
         manufacturer: item.manufacturer,
         modelName: item.modelName,
@@ -621,8 +643,40 @@ export function InventoryDashboard() {
   }, [listingStatusById]);
 
   const inventory: InventoryItem[] = useMemo(() => {
-    return [...baseItems, ...storedItems];
+    return [...baseItems, ...storedItems].sort(compareByCreatedAtDesc);
   }, [baseItems, storedItems]);
+
+  const purchaseSourceOptions = useMemo(() => {
+    const set = new Set<string>();
+    inventory.forEach((item) => {
+      if (item.purchaseSource?.trim()) set.add(item.purchaseSource);
+    });
+    return Array.from(set).sort();
+  }, [inventory]);
+
+  const saleDestinationOptions = useMemo(() => {
+    const set = new Set<string>();
+    inventory.forEach((item) => {
+      if (item.saleDestination?.trim()) set.add(item.saleDestination);
+    });
+    return Array.from(set).sort();
+  }, [inventory]);
+
+  const externalCompanyOptions = useMemo(() => {
+    const set = new Set<string>();
+    inventory.forEach((item) => {
+      if (item.externalCompany?.trim()) set.add(item.externalCompany);
+    });
+    return Array.from(set).sort();
+  }, [inventory]);
+
+  const externalStoreOptions = useMemo(() => {
+    const set = new Set<string>();
+    inventory.forEach((item) => {
+      if (item.externalStore?.trim()) set.add(item.externalStore);
+    });
+    return Array.from(set).sort();
+  }, [inventory]);
 
   const toggleListingStatus = (id: number) => {
     setListingStatusById((prev) => {
@@ -709,6 +763,22 @@ export function InventoryDashboard() {
   const priceMax = searchParams?.get("priceMax");
   const priceMinValue = priceMin ? Number(priceMin) : null;
   const priceMaxValue = priceMax ? Number(priceMax) : null;
+  const purchaseSourceFilter = useMemo(
+    () => searchParams?.get("purchaseSource")?.trim().toLowerCase() ?? "",
+    [searchParams],
+  );
+  const saleDestinationFilter = useMemo(
+    () => searchParams?.get("saleDestination")?.trim().toLowerCase() ?? "",
+    [searchParams],
+  );
+  const externalCompanyFilter = useMemo(
+    () => searchParams?.get("externalCompany")?.trim().toLowerCase() ?? "",
+    [searchParams],
+  );
+  const externalStoreFilter = useMemo(
+    () => searchParams?.get("externalStore")?.trim().toLowerCase() ?? "",
+    [searchParams],
+  );
 
   const filteredInventory = useMemo(() => {
     return inventory.filter((item) => {
@@ -760,6 +830,34 @@ export function InventoryDashboard() {
         return false;
       }
 
+      if (
+        purchaseSourceFilter &&
+        (item.purchaseSource?.toLowerCase() ?? "") !== purchaseSourceFilter
+      ) {
+        return false;
+      }
+
+      if (
+        saleDestinationFilter &&
+        (item.saleDestination?.toLowerCase() ?? "") !== saleDestinationFilter
+      ) {
+        return false;
+      }
+
+      if (
+        externalCompanyFilter &&
+        (item.externalCompany?.toLowerCase() ?? "") !== externalCompanyFilter
+      ) {
+        return false;
+      }
+
+      if (
+        externalStoreFilter &&
+        (item.externalStore?.toLowerCase() ?? "") !== externalStoreFilter
+      ) {
+        return false;
+      }
+
       const priceValue = item.salePriceExTax ?? item.purchasePriceExTax ?? null;
       if (priceMinValue != null && priceValue != null && priceValue < priceMinValue) {
         return false;
@@ -776,10 +874,14 @@ export function InventoryDashboard() {
     keywordQuery,
     makerFilters,
     panelColorFilter,
+    purchaseSourceFilter,
     priceMaxValue,
     priceMinValue,
+    saleDestinationFilter,
     statusFilter,
     typeFilters,
+    externalCompanyFilter,
+    externalStoreFilter,
     warehouseFilter,
   ]);
 
@@ -862,10 +964,14 @@ export function InventoryDashboard() {
     keywordQuery,
     makerFilters,
     panelColorFilter,
+    purchaseSourceFilter,
     priceMaxValue,
     priceMinValue,
+    saleDestinationFilter,
     statusFilter,
     typeFilters,
+    externalCompanyFilter,
+    externalStoreFilter,
     warehouseFilter,
   ]);
 
@@ -1086,7 +1192,12 @@ export function InventoryDashboard() {
           {/* 在庫検索フォーム（タイトルと同じ高さ） */}
           <div className="order-3 w-full md:order-none md:flex-1">
             <Suspense fallback={<div className="h-10" aria-hidden />}>
-              <InventorySearchBar />
+              <InventorySearchBar
+                purchaseSources={purchaseSourceOptions}
+                saleDestinations={saleDestinationOptions}
+                externalCompanies={externalCompanyOptions}
+                externalStores={externalStoreOptions}
+              />
             </Suspense>
           </div>
 

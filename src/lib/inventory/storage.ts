@@ -8,6 +8,7 @@ export interface StoredInventoryItem {
   id: number;
   status: InventoryStatus;
   listingStatus?: ListingStatus;
+  createdAt?: string;
   category: InventoryCategory;
   manufacturer: string;
   modelName: string;

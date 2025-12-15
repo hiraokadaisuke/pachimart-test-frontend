@@ -327,6 +327,7 @@ export default function InventoryNewPage() {
         status: "倉庫",
         listingStatus: "UNLISTED",
         listingId: `LIST-${baseTimestamp}-${index + 1}`,
+        createdAt: new Date(baseTimestamp + index).toISOString(),
         category: row.category,
         manufacturer: row.manufacturer,
         modelName: row.modelName,

@@ -24,6 +24,13 @@ import { cn } from "@/lib/utils";
 
 type FilterFormValues = z.infer<typeof filterSchema>;
 
+type InventorySearchBarProps = {
+  purchaseSources?: string[];
+  saleDestinations?: string[];
+  externalCompanies?: string[];
+  externalStores?: string[];
+};
+
 const filterSchema = z.object({
   keyword: z.string().optional().default(""),
   makers: z.array(z.string()).optional().default([]),
@@ -33,6 +40,10 @@ const filterSchema = z.object({
   panelColor: z.string().optional().default(""),
   priceMin: z.string().optional().default(""),
   priceMax: z.string().optional().default(""),
+  purchaseSource: z.string().optional().default(""),
+  saleDestination: z.string().optional().default(""),
+  externalCompany: z.string().optional().default(""),
+  externalStore: z.string().optional().default(""),
 });
 
 const makerOptions = ["SANKYO", "三洋", "京楽", "山佐", "ユニバーサル"];
@@ -55,6 +66,22 @@ function buildSearchParams(values: FilterFormValues) {
 
   if (values.panelColor?.trim()) {
     params.set("panelColor", values.panelColor.trim());
+  }
+
+  if (values.purchaseSource?.trim()) {
+    params.set("purchaseSource", values.purchaseSource.trim());
+  }
+
+  if (values.saleDestination?.trim()) {
+    params.set("saleDestination", values.saleDestination.trim());
+  }
+
+  if (values.externalCompany?.trim()) {
+    params.set("externalCompany", values.externalCompany.trim());
+  }
+
+  if (values.externalStore?.trim()) {
+    params.set("externalStore", values.externalStore.trim());
   }
 
   if (values.priceMin && !Number.isNaN(Number(values.priceMin))) {
@@ -83,6 +110,10 @@ function parseSearchParams(searchParams: Readonly<URLSearchParams> | null): Filt
     panelColor: searchParams?.get("panelColor") ?? "",
     priceMin: searchParams?.get("priceMin") ?? "",
     priceMax: searchParams?.get("priceMax") ?? "",
+    purchaseSource: searchParams?.get("purchaseSource") ?? "",
+    saleDestination: searchParams?.get("saleDestination") ?? "",
+    externalCompany: searchParams?.get("externalCompany") ?? "",
+    externalStore: searchParams?.get("externalStore") ?? "",
   };
 }
 
@@ -95,9 +126,18 @@ const emptyValues: FilterFormValues = {
   panelColor: "",
   priceMin: "",
   priceMax: "",
+  purchaseSource: "",
+  saleDestination: "",
+  externalCompany: "",
+  externalStore: "",
 };
 
-export function InventorySearchBar() {
+export function InventorySearchBar({
+  purchaseSources = [],
+  saleDestinations = [],
+  externalCompanies = [],
+  externalStores = [],
+}: InventorySearchBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -165,6 +205,10 @@ export function InventorySearchBar() {
     if (values.types?.length) badges.push(`種類: ${values.types.join(", ")}`);
     if (values.warehouses?.length) badges.push(`倉庫: ${values.warehouses.join(", ")}`);
     if (values.panelColor?.trim()) badges.push(`パネル色: ${values.panelColor}`);
+    if (values.purchaseSource?.trim()) badges.push(`購入元: ${values.purchaseSource}`);
+    if (values.saleDestination?.trim()) badges.push(`売却先: ${values.saleDestination}`);
+    if (values.externalCompany?.trim()) badges.push(`外れ法人: ${values.externalCompany}`);
+    if (values.externalStore?.trim()) badges.push(`外れ店舗: ${values.externalStore}`);
     if (values.priceMin || values.priceMax) {
       badges.push(`価格帯: ${values.priceMin || "0"}〜${values.priceMax || "上限なし"}`);
     }
@@ -682,6 +726,166 @@ export function InventorySearchBar() {
                         );
                       })}
                     </div>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Controller
+                  name="purchaseSource"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      label="購入元"
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    >
+                      <option value="">指定なし</option>
+                      {purchaseSources.map((source) => (
+                        <option key={source} value={source}>
+                          {source}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                />
+
+                <Controller
+                  name="saleDestination"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      label="売却先"
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    >
+                      <option value="">指定なし</option>
+                      {saleDestinations.map((destination) => (
+                        <option key={destination} value={destination}>
+                          {destination}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Controller
+                  name="externalCompany"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      label="外れ法人"
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    >
+                      <option value="">指定なし</option>
+                      {externalCompanies.map((company) => (
+                        <option key={company} value={company}>
+                          {company}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                />
+
+                <Controller
+                  name="externalStore"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      label="外れ店舗"
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    >
+                      <option value="">指定なし</option>
+                      {externalStores.map((store) => (
+                        <option key={store} value={store}>
+                          {store}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Controller
+                  name="purchaseSource"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      label="購入元"
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    >
+                      <option value="">指定なし</option>
+                      {purchaseSources.map((source) => (
+                        <option key={source} value={source}>
+                          {source}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                />
+
+                <Controller
+                  name="saleDestination"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      label="売却先"
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    >
+                      <option value="">指定なし</option>
+                      {saleDestinations.map((destination) => (
+                        <option key={destination} value={destination}>
+                          {destination}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Controller
+                  name="externalCompany"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      label="外れ法人"
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    >
+                      <option value="">指定なし</option>
+                      {externalCompanies.map((company) => (
+                        <option key={company} value={company}>
+                          {company}
+                        </option>
+                      ))}
+                    </Select>
+                  )}
+                />
+
+                <Controller
+                  name="externalStore"
+                  control={control}
+                  render={({ field }) => (
+                    <Select
+                      label="外れ店舗"
+                      value={field.value ?? ""}
+                      onChange={(event) => field.onChange(event.target.value)}
+                    >
+                      <option value="">指定なし</option>
+                      {externalStores.map((store) => (
+                        <option key={store} value={store}>
+                          {store}
+                        </option>
+                      ))}
+                    </Select>
                   )}
                 />
               </div>
