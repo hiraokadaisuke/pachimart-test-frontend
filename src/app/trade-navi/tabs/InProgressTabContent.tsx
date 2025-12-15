@@ -256,7 +256,7 @@ export function InProgressTabContent() {
     [navis]
   );
 
-  const tradeColumns: NaviTableColumn[] = [
+  const tradeColumnBase: NaviTableColumn[] = [
     {
       key: "status",
       label: "状況",
@@ -309,39 +309,70 @@ export function InProgressTabContent() {
         </a>
       ),
     },
-    {
-      key: "action",
-      label: "操作",
-      width: "110px",
-      render: (row: (typeof dummyTrades)[number]) => (
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-        >
-          {row.status === "waiting_payment" ? "振込" : "動作確認"}
-        </button>
-      ),
-    },
-    {
-      key: "message",
-      label: "メッセージ",
-      width: "110px",
-      render: (row: (typeof dummyTrades)[number]) => (
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            setMessageTarget(row.id);
-          }}
-        >
-          メッセージ
-        </button>
-      ),
-    },
   ];
 
-  const tradeColumnsWithoutAction = tradeColumns.filter((column) => column.key !== "action");
+  const messageColumn: NaviTableColumn = {
+    key: "message",
+    label: "メッセージ",
+    width: "110px",
+    render: (row: (typeof dummyTrades)[number]) => (
+      <button
+        type="button"
+        className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+        onClick={(e) => {
+          e.stopPropagation();
+          setMessageTarget(row.id);
+        }}
+      >
+        メッセージ
+      </button>
+    ),
+  };
+
+  const paymentActionColumn: NaviTableColumn = {
+    key: "action",
+    label: "入金",
+    width: "110px",
+    render: (row: (typeof dummyTrades)[number]) => (
+      <button
+        type="button"
+        className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+      >
+        入金
+      </button>
+    ),
+  };
+
+  const checkingActionColumn: NaviTableColumn = {
+    key: "action",
+    label: "動作確認",
+    width: "110px",
+    render: (row: (typeof dummyTrades)[number]) => (
+      <button
+        type="button"
+        className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+      >
+        確認完了
+      </button>
+    ),
+  };
+
+  const tradeColumnsForPayment: NaviTableColumn[] = [
+    ...tradeColumnBase,
+    paymentActionColumn,
+    messageColumn,
+  ];
+
+  const tradeColumnsForChecking: NaviTableColumn[] = [
+    ...tradeColumnBase,
+    checkingActionColumn,
+    messageColumn,
+  ];
+
+  const tradeColumnsWithoutAction: NaviTableColumn[] = [
+    ...tradeColumnBase,
+    messageColumn,
+  ];
 
   const draftColumns: NaviTableColumn[] = [
     {
@@ -507,7 +538,7 @@ export function InProgressTabContent() {
             要入金
           </SectionHeader>
           <NaviTable
-            columns={tradeColumns}
+            columns={tradeColumnsForPayment}
             rows={buyWaiting}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
@@ -522,7 +553,7 @@ export function InProgressTabContent() {
             要確認
           </SectionHeader>
           <NaviTable
-            columns={tradeColumns}
+            columns={tradeColumnsForChecking}
             rows={buyChecking}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
