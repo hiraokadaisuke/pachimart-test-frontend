@@ -26,7 +26,7 @@ function getRemovalDisplay(removalStatus: Product["removalStatus"], removalDate?
   if (removalStatus === "撤去済") return "撤去済";
 
   const formattedDate = formatMonthDay(removalDate);
-  if (formattedDate) return `先撤去：${formattedDate}`;
+  if (formattedDate) return formattedDate;
   return "未定";
 }
 
@@ -197,7 +197,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
           {status === "下書き" ? "下書きはまだありません。" : "該当する出品がありません。"}
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+        <div className="relative overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm min-h-[420px]">
           <table className="min-w-full table-auto border-collapse text-sm text-slate-800">
             <colgroup>
               <col className="w-[90px]" />
@@ -211,7 +211,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
               <col className="w-[120px]" />
               <col className="w-[120px]" />
               <col className="w-[180px]" />
-              <col className="w-[150px]" />
+              <col className="w-[160px]" />
             </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
@@ -226,7 +226,9 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                 <th className="px-3 py-2 text-right text-xs font-semibold text-neutral-700">商品価</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">撤去日</th>
                 <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">備考</th>
-                <th className="px-3 py-2 text-center text-xs font-semibold text-neutral-700">操作</th>
+                <th className="sticky right-0 px-3 py-2 text-center text-xs font-semibold text-neutral-700 bg-slate-50">
+                  操作
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -270,7 +272,11 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 align-top font-semibold text-slate-800">{removalDisplay}</td>
                     <td className="px-3 py-2 align-top text-neutral-900">{product.note ?? "-"}</td>
-                    <td className="px-3 py-2 align-top">
+                    <td
+                      className={`sticky right-0 px-3 py-2 align-top border-l border-slate-200 ${
+                        zebra === "bg-white" ? "bg-white" : "bg-slate-50"
+                      }`}
+                    >
                       <div className="flex items-center gap-2 text-xs">
                         <button
                           className="rounded border border-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
