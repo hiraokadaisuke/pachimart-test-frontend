@@ -27,7 +27,7 @@ function getRemovalDisplay(removalStatus: Product["removalStatus"], removalDate?
 
   const formattedDate = formatMonthDay(removalDate);
   if (formattedDate) return formattedDate;
-  return "未定";
+  return "";
 }
 
 const statusBadgeStyles: Record<string, string> = {
@@ -115,7 +115,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
   const totalCount = listedProducts.length;
 
   return (
-    <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-4 text-xs sm:text-sm px-4 md:px-6 xl:px-8">
+    <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-4 px-4 text-xs md:px-6 xl:px-8">
       <div className="mb-2 flex items-center justify-between text-xs sm:text-sm">
         <div className="text-xs text-neutral-700 sm:text-sm">全件数：{totalCount}件</div>
         <div />
@@ -198,35 +198,35 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
         </div>
       ) : (
         <div className="relative overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm min-h-[420px]">
-          <table className="min-w-full table-auto border-collapse text-sm text-slate-800">
+          <table className="min-w-full table-auto border-collapse text-xs text-slate-800">
             <colgroup>
               <col className="w-[90px]" />
               <col className="w-[90px]" />
-              <col className="w-[140px]" />
+              <col className="w-[120px]" />
               <col className="w-[120px]" />
               <col className="w-[220px]" />
-              <col className="w-[90px]" />
-              <col className="w-[90px]" />
-              <col className="w-[90px]" />
-              <col className="w-[120px]" />
-              <col className="w-[120px]" />
-              <col className="w-[180px]" />
-              <col className="w-[160px]" />
+              <col className="w-[80px]" />
+              <col className="w-[80px]" />
+              <col className="w-[80px]" />
+              <col className="w-[110px]" />
+              <col className="w-[110px]" />
+              <col className="w-[200px]" />
+              <col className="w-[88px]" />
             </colgroup>
             <thead>
-              <tr className="border-b border-slate-200 bg-slate-50">
-                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">更新日</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">状況</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">前設置</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">メーカー</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">機種名</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-neutral-700">台数</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-neutral-700">売却数</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-neutral-700">残数</th>
-                <th className="px-3 py-2 text-right text-xs font-semibold text-neutral-700">商品価</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">撤去日</th>
-                <th className="px-3 py-2 text-left text-xs font-semibold text-neutral-700">備考</th>
-                <th className="sticky right-0 px-3 py-2 text-center text-xs font-semibold text-neutral-700 bg-slate-50">
+              <tr className="border-b border-slate-200 bg-slate-50 text-[11px] font-semibold text-neutral-700">
+                <th className="px-2 py-1.5 text-left">更新日</th>
+                <th className="px-2 py-1.5 text-left">状況</th>
+                <th className="px-2 py-1.5 text-left">前設置</th>
+                <th className="px-2 py-1.5 text-left">メーカー</th>
+                <th className="px-2 py-1.5 text-left">機種名</th>
+                <th className="px-2 py-1.5 text-right">台数</th>
+                <th className="px-2 py-1.5 text-right">売却数</th>
+                <th className="px-2 py-1.5 text-right">残数</th>
+                <th className="px-2 py-1.5 text-right">商品価</th>
+                <th className="px-2 py-1.5 text-left">撤去日</th>
+                <th className="px-2 py-1.5 text-left">備考</th>
+                <th className="sticky right-0 bg-slate-50 px-2 py-1.5 text-center">
                   操作
                 </th>
               </tr>
@@ -239,9 +239,9 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                 const removalDisplay = getRemovalDisplay(product.removalStatus, product.removalDate);
 
                 return (
-                  <tr key={product.id} className={`${zebra} border-b border-slate-100 text-sm`}>
-                    <td className="whitespace-nowrap px-3 py-2 align-top">{product.updatedAt}</td>
-                    <td className="px-3 py-2 align-top">
+                  <tr key={product.id} className={`${zebra} border-b border-slate-100 text-xs`}>
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-neutral-900">{product.updatedAt}</td>
+                    <td className="px-2 py-1.5 align-top">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${
                           statusBadgeStyles[product.status] ?? "bg-slate-100 text-neutral-900 border border-slate-200"
@@ -250,41 +250,45 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                         {product.status}
                       </span>
                     </td>
-                    <td className="px-3 py-2 align-top font-semibold text-slate-800">
+                    <td className="px-2 py-1.5 align-top font-semibold text-slate-800">
                       {formatPrefecture(product.prefecture)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top">{product.maker}</td>
-                    <td className="px-3 py-2 align-top">
+                    <td className="px-2 py-1.5 align-top text-neutral-900" title={product.maker}>
+                      <span className="block max-w-[110px] truncate whitespace-nowrap">{product.maker}</span>
+                    </td>
+                    <td className="px-2 py-1.5 align-top">
                       <Link
                         href={`/products/${product.id}`}
-                        className="block max-w-full text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
+                        className="block max-w-[220px] truncate text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
+                        title={product.name}
                       >
                         {product.name}
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-right font-semibold tabular-nums">
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-right font-semibold tabular-nums">
                       {product.quantity}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-right tabular-nums">{soldCount}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-right tabular-nums">{remainingCount}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-right font-semibold tabular-nums">
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-right tabular-nums">{soldCount}</td>
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-right tabular-nums">{remainingCount}</td>
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-right font-semibold tabular-nums">
                       {currencyFormatter.format(product.price)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top font-semibold text-slate-800">{removalDisplay}</td>
-                    <td className="px-3 py-2 align-top text-neutral-900">{product.note ?? "-"}</td>
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top font-semibold text-slate-800">{removalDisplay}</td>
+                    <td className="px-2 py-1.5 align-top text-neutral-900" title={product.note ?? ""}>
+                      <span className="block max-w-[220px] truncate whitespace-nowrap">{product.note ?? "-"}</span>
+                    </td>
                     <td
-                      className={`sticky right-0 px-3 py-2 align-top border-l border-slate-200 ${
+                      className={`sticky right-0 px-2 py-1.5 align-top border-l border-slate-200 ${
                         zebra === "bg-white" ? "bg-white" : "bg-slate-50"
                       }`}
                     >
-                      <div className="flex items-center gap-2 text-xs">
-                        <button
-                          className="rounded border border-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
-                          onClick={() => handleCreateNaviFromListing(product)}
-                        >
-                          取引Navi
-                        </button>
-                        <ActionMenu />
+                      <div className="flex items-center justify-center">
+                        <ActionMenu
+                          onCreateNavi={() => handleCreateNaviFromListing(product)}
+                          onEdit={() => {}}
+                          onWithdraw={status === "出品中" ? () => {} : undefined}
+                          onDelete={() => {}}
+                        />
                       </div>
                     </td>
                   </tr>
@@ -298,7 +302,14 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
   );
 }
 
-function ActionMenu() {
+type ActionMenuProps = {
+  onCreateNavi: () => void;
+  onEdit?: () => void;
+  onWithdraw?: () => void;
+  onDelete?: () => void;
+};
+
+function ActionMenu({ onCreateNavi, onEdit, onWithdraw, onDelete }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -329,7 +340,7 @@ function ActionMenu() {
       <button
         type="button"
         onClick={() => setOpen((prev) => !prev)}
-        className="flex h-7 w-8 items-center justify-center rounded border border-slate-300 text-lg leading-none text-slate-700 transition hover:bg-slate-50"
+        className="flex h-7 w-8 items-center justify-center rounded border border-slate-300 text-base leading-none text-slate-700 transition hover:bg-slate-50"
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -337,26 +348,47 @@ function ActionMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 z-10 mt-2 w-36 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg">
+        <div className="absolute right-0 z-10 mt-2 w-40 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg">
           <button
             type="button"
             className="block w-full px-3 py-1.5 text-left text-[13px] font-semibold text-neutral-800 hover:bg-slate-50"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              onCreateNavi();
+              setOpen(false);
+            }}
           >
-            編集
+            取引Navi
           </button>
-          <div className="my-1 border-t border-slate-200" />
           <button
             type="button"
             className="block w-full px-3 py-1.5 text-left text-[13px] text-neutral-800 hover:bg-slate-50"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              onEdit?.();
+              setOpen(false);
+            }}
           >
-            取り下げ
+            編集
           </button>
+          {onWithdraw && (
+            <button
+              type="button"
+              className="block w-full px-3 py-1.5 text-left text-[13px] text-neutral-800 hover:bg-slate-50"
+              onClick={() => {
+                onWithdraw();
+                setOpen(false);
+              }}
+            >
+              取り下げ
+            </button>
+          )}
+          <div className="my-1 border-t border-slate-200" />
           <button
             type="button"
             className="block w-full px-3 py-1.5 text-left text-[13px] font-semibold text-rose-600 hover:bg-rose-50"
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              onDelete?.();
+              setOpen(false);
+            }}
           >
             削除
           </button>
