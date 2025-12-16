@@ -399,7 +399,21 @@ export function InProgressTabContent() {
   ];
 
   const buyerApprovalColumns: NaviTableColumn[] = draftColumns.map((col) =>
-    col.key === "document" ? { ...col, label: "発送先入力" } : col
+    col.key === "document"
+      ? {
+          ...col,
+          label: "発送先入力",
+          render: (draft: TradeNaviDraft) => (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm disabled:opacity-50"
+              disabled
+            >
+              入力
+            </button>
+          ),
+        }
+      : col
   );
 
   const buySectionDescriptions = {
