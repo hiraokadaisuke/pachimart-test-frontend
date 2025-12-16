@@ -2,22 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { products } from "@/lib/dummyData";
+import { calculateQuote } from "@/lib/quotes/calculateQuote";
+import { loadAllNavis } from "@/lib/navi/storage";
+import { NaviStatus, TradeNaviDraft } from "@/lib/navi/types";
 import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { calculateQuote } from "@/lib/quotes/calculateQuote";
-import { loadAllNavis } from "@/lib/navi/storage";
-import { NaviStatus, TradeNaviDraft } from "@/lib/navi/types";
-import { products } from "@/lib/dummyData";
-import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import {
   COMPLETED_STATUS_KEYS,
   IN_PROGRESS_STATUS_KEYS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
+import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
 
 type TradeRow = {
@@ -277,7 +276,7 @@ function formatCurrency(amount: number) {
   return formatter.format(amount);
 }
 
-export function CashflowInProgressTabContent() {
+export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [navis, setNavis] = useState<TradeNaviDraft[]>([]);
   const router = useRouter();

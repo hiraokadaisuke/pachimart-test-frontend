@@ -24,7 +24,6 @@ const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
     matchPrefixes: ["/cashflow-navi"],
   },
   { label: "通知", href: "/mypage/notices", matchPrefixes: ["/mypage/notices", "/mypage/pachi-notice"] },
-  { label: "残高", href: "/mypage/pachipay/balance", matchPrefixes: ["/mypage/pachipay"] },
   { label: "設定", href: "/mypage/settings", matchPrefixes: ["/mypage/user", "/mypage/company", "/mypage/machine-storage-locations", "/mypage/pachi-notification-settings", "/mypage/settings"] },
 ];
 
