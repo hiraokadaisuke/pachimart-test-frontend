@@ -398,6 +398,10 @@ export function InProgressTabContent() {
     },
   ];
 
+  const buyerApprovalColumns: NaviTableColumn[] = draftColumns.map((col) =>
+    col.key === "document" ? { ...col, label: "発送先入力" } : col
+  );
+
   const buySectionDescriptions = {
     approval: "売主様から届いた依頼です。内容を確認のうえ、承認してください。",
     pendingResponse: "オンラインでオファーをしています。売主様からの返答をお待ちください。",
@@ -431,7 +435,7 @@ export function InProgressTabContent() {
             要承認
           </SectionHeader>
           <NaviTable
-            columns={draftColumns}
+            columns={buyerApprovalColumns}
             rows={sortedNavis}
             emptyMessage="現在進行中の取引Naviはありません。"
             onRowClick={(draft) => draft.id && router.push(`/transactions/navi/${draft.id}`)}
