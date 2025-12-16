@@ -36,137 +36,6 @@ type TradeRow = {
   buyerName: string;
 };
 
-const dummyTrades: TradeRow[] = [
-  {
-    id: "T-2025111901",
-    status: "waiting_payment",
-    updatedAt: "2025/11/19 14:55",
-    partnerName: "株式会社パチテック",
-    makerName: "三京商会",
-    itemName: "P スーパー海物語 JAPAN2 L1",
-    quantity: 10,
-    totalAmount: 1280000,
-    scheduledShipDate: "2025/11/25",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "株式会社パチテック",
-    buyerName: "株式会社トレード連合",
-  },
-  {
-    id: "T-2025111902",
-    status: "navi_in_progress",
-    updatedAt: "2025/11/19 13:10",
-    partnerName: "有限会社スマイル",
-    makerName: "平和",
-    itemName: "P ルパン三世 2000カラットの涙",
-    quantity: 6,
-    totalAmount: 860000,
-    scheduledShipDate: "2025/11/26",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "有限会社スマイル",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111801",
-    status: "waiting_payment",
-    updatedAt: "2025/11/18 17:40",
-    partnerName: "株式会社アミューズ流通",
-    makerName: "SANKYO",
-    itemName: "P フィーバー機動戦士ガンダムSEED",
-    quantity: 8,
-    totalAmount: 1520000,
-    scheduledShipDate: "2025/11/27",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "株式会社アミューズ流通",
-    buyerName: "九州エンタメ産業",
-  },
-  {
-    id: "T-2025111802",
-    status: "navi_in_progress",
-    updatedAt: "2025/11/18 15:05",
-    partnerName: "パチンコランド神奈川",
-    makerName: "サミー",
-    itemName: "P 北斗の拳9 闘神",
-    quantity: 5,
-    totalAmount: 990000,
-    scheduledShipDate: "2025/11/28",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "パチンコランド神奈川",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111701",
-    status: "waiting_payment",
-    updatedAt: "2025/11/17 11:20",
-    partnerName: "株式会社ミドルウェーブ",
-    makerName: "京楽",
-    itemName: "P AKB48 バラの儀式",
-    quantity: 4,
-    totalAmount: 540000,
-    scheduledShipDate: "2025/11/24",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "株式会社ミドルウェーブ",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111702",
-    status: "navi_in_progress",
-    updatedAt: "2025/11/17 09:05",
-    partnerName: "エムズホールディングス",
-    makerName: "大都技研",
-    itemName: "S 押忍！番長ZERO",
-    quantity: 12,
-    totalAmount: 1320000,
-    scheduledShipDate: "2025/11/29",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "エムズホールディングス",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111601",
-    status: "navi_in_progress",
-    updatedAt: "2025/11/16 18:30",
-    partnerName: "株式会社ネクストレード",
-    makerName: "ニューギン",
-    itemName: "P 真・花の慶次3 黄金一閃",
-    quantity: 7,
-    totalAmount: 1180000,
-    scheduledShipDate: "2025/11/27",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "株式会社ネクストレード",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111602",
-    status: "waiting_payment",
-    updatedAt: "2025/11/16 10:12",
-    partnerName: "株式会社東海レジャー",
-    makerName: "藤商事",
-    itemName: "P とある魔術の禁書目録",
-    quantity: 9,
-    totalAmount: 760000,
-    scheduledShipDate: "2025/11/23",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "株式会社東海レジャー",
-    buyerName: "関東レジャー販売",
-  },
-];
-
 const buyingPendingResponses: TradeRow[] = [
   {
     id: "T-2025112001",
@@ -317,8 +186,6 @@ export function InProgressTabContent() {
     [currentUser.id, keyword, statusFilter]
   );
 
-  const filteredTrades = useMemo(() => filterTrades(dummyTrades), [filterTrades]);
-
   const filteredPendingResponses = useMemo(
     () => filterTrades(buyingPendingResponses),
     [filterTrades]
@@ -326,11 +193,7 @@ export function InProgressTabContent() {
 
   const filteredNeedResponses = useMemo(() => filterTrades(sellingNeedResponses), [filterTrades]);
 
-  const buyWaiting = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "waiting_payment");
-  const buyChecking = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "navi_in_progress");
   const buyPendingResponse = filteredPendingResponses.filter((trade) => trade.kind === "buy");
-  const sellWaiting = filteredTrades.filter((trade) => trade.kind === "sell" && trade.status === "waiting_payment");
-  const sellChecking = filteredTrades.filter((trade) => trade.kind === "sell" && trade.status === "navi_in_progress");
   const sellNeedResponse = filteredNeedResponses.filter((trade) => trade.kind === "sell");
 
   useEffect(() => {
@@ -414,46 +277,6 @@ export function InProgressTabContent() {
       </button>
     ),
   };
-
-  const paymentActionColumn: NaviTableColumn = {
-    key: "action",
-    label: "入金",
-    width: "110px",
-    render: (row: TradeRow) => (
-      <button
-        type="button"
-        className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-      >
-        入金
-      </button>
-    ),
-  };
-
-  const checkingActionColumn: NaviTableColumn = {
-    key: "action",
-    label: "動作確認",
-    width: "110px",
-    render: (row: TradeRow) => (
-      <button
-        type="button"
-        className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-      >
-        確認完了
-      </button>
-    ),
-  };
-
-  const tradeColumnsForPayment: NaviTableColumn[] = [
-    ...tradeColumnBase,
-    paymentActionColumn,
-    messageColumn,
-  ];
-
-  const tradeColumnsForChecking: NaviTableColumn[] = [
-    ...tradeColumnBase,
-    checkingActionColumn,
-    messageColumn,
-  ];
 
   const tradeColumnsWithoutAction: NaviTableColumn[] = [
     ...tradeColumnBase,
@@ -576,15 +399,11 @@ export function InProgressTabContent() {
 
   const buySectionDescriptions = {
     approval: "売主様から届いた依頼です。内容を確認のうえ、承認してください。",
-    payment: "発送予定日までに振込をお願いします。",
-    checking: "動作確認を行い、動作確認ボタンを押してください。",
     pendingResponse: "オンラインでオファーをしています。売主様からの返答をお待ちください。",
   } as const;
 
   const sellSectionDescriptions = {
     approval: "依頼を送りました。買主様からの承認をお待ちください。",
-    payment: "買主様からの入金をお待ちください。",
-    checking: "買主様からの入金がありました。発送をしてください。",
     needResponse: "買主様からオンラインでのオファー相談が届いています。内容をご確認のうえ、ご返答ください。",
   } as const;
 
@@ -621,36 +440,6 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={buySectionDescriptions.payment}
-          >
-            要入金
-          </SectionHeader>
-          <NaviTable
-            columns={tradeColumnsForPayment}
-            rows={buyWaiting}
-            emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
-            description={buySectionDescriptions.checking}
-          >
-            要確認
-          </SectionHeader>
-          <NaviTable
-            columns={tradeColumnsForChecking}
-            rows={buyChecking}
-            emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
             description={buySectionDescriptions.pendingResponse}
           >
             返答待ち
@@ -680,35 +469,6 @@ export function InProgressTabContent() {
             rows={sortedNavis}
             emptyMessage="現在進行中の取引Naviはありません。"
             onRowClick={(draft) => draft.id && router.push(`/transactions/navi/${draft.id}`)}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
-            description={sellSectionDescriptions.payment}
-          >
-            要入金
-          </SectionHeader>
-          <NaviTable
-            columns={tradeColumnsWithoutAction}
-            rows={sellWaiting}
-            emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
-          />
-        </div>
-        <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
-            description={sellSectionDescriptions.checking}
-          >
-            要確認
-          </SectionHeader>
-          <NaviTable
-            columns={tradeColumnsWithoutAction}
-            rows={sellChecking}
-            emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(`/transactions/navi/${row.id}`)}
           />
         </div>
 
