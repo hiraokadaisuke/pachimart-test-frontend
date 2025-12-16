@@ -2,11 +2,33 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { products } from "@/lib/dummyData";
 import type { Product } from "@/types/product";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+
+function formatPrefecture(prefecture: string) {
+  if (prefecture === "北海道") return "北海道";
+  return prefecture.replace(/(都|府|県)$/u, "");
+}
+
+function formatMonthDay(dateString: string | undefined) {
+  if (!dateString) return "";
+  const match = dateString.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (!match) return "";
+
+  const [, , month, day] = match;
+  return `${month.padStart(2, "0")}/${day.padStart(2, "0")}`;
+}
+
+function getRemovalDisplay(removalStatus: Product["removalStatus"], removalDate?: string) {
+  if (removalStatus === "撤去済") return "撤去済";
+
+  const formattedDate = formatMonthDay(removalDate);
+  if (formattedDate) return `先撤去：${formattedDate}`;
+  return "未定";
+}
 
 const statusBadgeStyles: Record<string, string> = {
   出品中: "bg-emerald-50 text-emerald-700 border border-emerald-100",
@@ -180,7 +202,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
             <colgroup>
               <col className="w-[90px]" />
               <col className="w-[90px]" />
-              <col className="w-[200px]" />
+              <col className="w-[140px]" />
               <col className="w-[120px]" />
               <col className="w-[220px]" />
               <col className="w-[90px]" />
@@ -189,7 +211,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
               <col className="w-[120px]" />
               <col className="w-[120px]" />
               <col className="w-[180px]" />
-              <col className="w-[210px]" />
+              <col className="w-[150px]" />
             </colgroup>
             <thead>
               <tr className="border-b border-slate-200 bg-slate-50">
@@ -212,6 +234,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                 const zebra = idx % 2 === 0 ? "bg-white" : "bg-slate-50";
                 const soldCount = 0;
                 const remainingCount = product.quantity - soldCount;
+                const removalDisplay = getRemovalDisplay(product.removalStatus, product.removalDate);
 
                 return (
                   <tr key={product.id} className={`${zebra} border-b border-slate-100 text-sm`}>
@@ -225,9 +248,8 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                         {product.status}
                       </span>
                     </td>
-                    <td className="px-3 py-2 align-top">
-                      <div className="font-semibold text-slate-800">{product.prefecture}</div>
-                      <div className="text-xs text-neutral-700">{product.sellerName}</div>
+                    <td className="px-3 py-2 align-top font-semibold text-slate-800">
+                      {formatPrefecture(product.prefecture)}
                     </td>
                     <td className="whitespace-nowrap px-3 py-2 align-top">{product.maker}</td>
                     <td className="px-3 py-2 align-top">
@@ -246,28 +268,17 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                     <td className="whitespace-nowrap px-3 py-2 align-top text-right font-semibold tabular-nums">
                       {currencyFormatter.format(product.price)}
                     </td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top">
-                      <div className="font-semibold text-slate-800">{product.removalDate}</div>
-                      <div className="text-xs text-neutral-700">{product.removalStatus ?? "撤去状況未設定"}</div>
-                    </td>
+                    <td className="whitespace-nowrap px-3 py-2 align-top font-semibold text-slate-800">{removalDisplay}</td>
                     <td className="px-3 py-2 align-top text-neutral-900">{product.note ?? "-"}</td>
                     <td className="px-3 py-2 align-top">
-                      <div className="flex flex-col items-start gap-1 text-xs">
-                        <div className="flex flex-wrap items-center gap-1">
-                          <button
-                            className="rounded border border-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
-                            onClick={() => handleCreateNaviFromListing(product)}
-                          >
-                            取引Navi
-                          </button>
-                          <button className="rounded border border-slate-300 px-2 py-0.5 text-[11px] text-neutral-900 hover:bg-slate-50">
-                            編集
-                          </button>
-                        </div>
-                        <div className="flex flex-wrap items-center gap-1">
-                          <button className="px-1 py-0.5 text-[11px] text-neutral-700 hover:text-neutral-900">取り下げ</button>
-                          <button className="px-1 py-0.5 text-[11px] text-rose-600 hover:text-rose-700">削除</button>
-                        </div>
+                      <div className="flex items-center gap-2 text-xs">
+                        <button
+                          className="rounded border border-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 hover:bg-emerald-50"
+                          onClick={() => handleCreateNaviFromListing(product)}
+                        >
+                          取引Navi
+                        </button>
+                        <ActionMenu />
                       </div>
                     </td>
                   </tr>
@@ -278,5 +289,73 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
         </div>
       )}
     </section>
+  );
+}
+
+function ActionMenu() {
+  const [open, setOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!menuRef.current) return;
+      if (menuRef.current.contains(event.target as Node)) return;
+      setOpen(false);
+    };
+
+    const handleKeydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleKeydown);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleKeydown);
+    };
+  }, [open]);
+
+  return (
+    <div className="relative" ref={menuRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className="flex h-7 w-8 items-center justify-center rounded border border-slate-300 text-lg leading-none text-slate-700 transition hover:bg-slate-50"
+        aria-haspopup="menu"
+        aria-expanded={open}
+      >
+        ︙
+      </button>
+
+      {open && (
+        <div className="absolute right-0 z-10 mt-2 w-36 rounded-md border border-slate-200 bg-white py-1 text-left shadow-lg">
+          <button
+            type="button"
+            className="block w-full px-3 py-1.5 text-left text-[13px] font-semibold text-neutral-800 hover:bg-slate-50"
+            onClick={() => setOpen(false)}
+          >
+            編集
+          </button>
+          <div className="my-1 border-t border-slate-200" />
+          <button
+            type="button"
+            className="block w-full px-3 py-1.5 text-left text-[13px] text-neutral-800 hover:bg-slate-50"
+            onClick={() => setOpen(false)}
+          >
+            取り下げ
+          </button>
+          <button
+            type="button"
+            className="block w-full px-3 py-1.5 text-left text-[13px] font-semibold text-rose-600 hover:bg-rose-50"
+            onClick={() => setOpen(false)}
+          >
+            削除
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
