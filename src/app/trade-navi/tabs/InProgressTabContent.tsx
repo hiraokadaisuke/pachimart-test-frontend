@@ -235,6 +235,12 @@ export function InProgressTabContent() {
       width: "22%",
     },
     {
+      key: "quantity",
+      label: "台数",
+      width: "80px",
+      render: (row: TradeRow) => `${row.quantity}台`,
+    },
+    {
       key: "totalAmount",
       label: "合計金額（税込）",
       width: "140px",
@@ -284,120 +290,6 @@ export function InProgressTabContent() {
   ];
 
   const draftColumns: NaviTableColumn[] = [
-    {
-      key: "status",
-      label: "状況",
-      width: "110px",
-      render: (draft: TradeNaviDraft) => {
-        const statusInfo = getStatusLabel(draft.status);
-        return (
-          <span
-            className={`inline-block rounded-full px-2 py-1 text-xs font-semibold ${statusInfo.className}`}
-          >
-            {statusInfo.text}
-          </span>
-        );
-      },
-    },
-    {
-      key: "updatedAt",
-      label: "更新日時",
-      width: "160px",
-      render: (draft: TradeNaviDraft) => formatDateTime(draft.updatedAt),
-    },
-    {
-      key: "partner",
-      label: "取引先",
-      width: "18%",
-      render: (draft: TradeNaviDraft) => getBuyerLabel(draft),
-    },
-    {
-      key: "makerName",
-      label: "メーカー",
-      width: "140px",
-      render: (draft: TradeNaviDraft) => {
-        const product =
-          draft.productId != null
-            ? products.find((p) => String(p.id) === String(draft.productId))
-            : undefined;
-        return product?.maker ?? "-";
-      },
-    },
-    {
-      key: "itemName",
-      label: "機種名",
-      width: "22%",
-      render: (draft: TradeNaviDraft) => getProductLabel(draft),
-    },
-    {
-      key: "totalAmount",
-      label: "合計金額（税込）",
-      width: "140px",
-      render: (draft: TradeNaviDraft) => {
-        const quote = calculateQuote(draft.conditions);
-        return quote.total ? formatCurrency(quote.total) : "-";
-      },
-    },
-    {
-      key: "scheduledShipDate",
-      label: "発送予定日",
-      width: "140px",
-      render: (draft: TradeNaviDraft) => {
-        const date =
-          (draft.conditions as any).scheduledShipmentDate ??
-          (draft.conditions as any).expectedShipmentDate ??
-          null;
-        return date ? formatDateTime(date) : "-";
-      },
-    },
-    {
-      key: "document",
-      label: "明細書",
-      width: "110px",
-      render: (draft: TradeNaviDraft) => (
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm disabled:opacity-50"
-          disabled
-        >
-          PDF
-        </button>
-      ),
-    },
-    {
-      key: "actions",
-      label: "操作",
-      width: "110px",
-      render: (draft: TradeNaviDraft) => (
-        <button
-          type="button"
-          className="pm-secondary-button px-3 py-1 text-xs"
-          onClick={() => router.push(`/transactions/navi/${draft.id}/edit`)}
-        >
-          Navi確認
-        </button>
-      ),
-    },
-    {
-      key: "message",
-      label: "メッセージ",
-      width: "110px",
-      render: (draft: TradeNaviDraft) => (
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (draft.id) setMessageTarget(draft.id);
-          }}
-        >
-          メッセージ
-        </button>
-      ),
-    },
-  ];
-
-  const buyerApprovalColumns: NaviTableColumn[] = [
     {
       key: "status",
       label: "状況",
@@ -539,7 +431,7 @@ export function InProgressTabContent() {
             要承認
           </SectionHeader>
           <NaviTable
-            columns={buyerApprovalColumns}
+            columns={draftColumns}
             rows={sortedNavis}
             emptyMessage="現在進行中の取引Naviはありません。"
             onRowClick={(draft) => draft.id && router.push(`/transactions/navi/${draft.id}`)}
