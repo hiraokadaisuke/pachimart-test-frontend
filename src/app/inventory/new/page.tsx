@@ -10,9 +10,7 @@ type SupplierInfo = {
   supplier: string;
   inputDate: string;
   notes: string;
-  taxType: string;
   buyerStaff: string;
-  consignment: boolean;
 };
 
 type MachineCatalogItem = {
@@ -21,21 +19,21 @@ type MachineCatalogItem = {
   title: string;
 };
 
-type SupplierCandidate = {
-  name: string;
+type InventoryFormRow = {
+  id?: string;
+  maker: string;
+  model: string;
+  kind: "" | "P" | "S";
+  type: "" | "本体" | "枠" | "セル";
+  quantity: number;
+  unitPrice: number;
+  stockInDate: string;
+  removeDate: string;
+  pattern: string;
+  warehouse: string;
   note: string;
+  sellNow: boolean;
 };
-
-const SUPPLIER_CANDIDATES: SupplierCandidate[] = [
-  { name: "サンプル商事", note: "東京都 / 遊技機卸" },
-  { name: "北日本物産", note: "東北エリア" },
-  { name: "西日本商会", note: "関西を中心に展開" },
-  { name: "ユニ商会", note: "中古機強み" },
-  { name: "パチマートテスト", note: "デモ用" },
-];
-
-const P_MAKERS = ["三洋", "京楽", "サミー", "SANKYO", "平和"];
-const S_MAKERS = ["ユニバーサル", "北電子", "大都技研", "サミー", "山佐"];
 
 const MACHINE_CATALOG: MachineCatalogItem[] = [
   { kind: "P", maker: "三洋", title: "大海物語5" },
@@ -49,145 +47,118 @@ const MACHINE_CATALOG: MachineCatalogItem[] = [
   { kind: "S", maker: "山佐", title: "モンキーターンV" },
 ];
 
-const DEVICE_TYPES = ["本体", "枠", "セル"];
+const DEVICE_TYPES: InventoryFormRow["type"][] = ["本体", "枠", "セル"];
 
-const BLANK_ROW: InventoryRecord = {
-  id: "",
-  createdAt: "",
+const createBlankRow = (today: string): InventoryFormRow => ({
   maker: "",
-  machineName: "",
+  model: "",
+  kind: "",
   type: "",
-  deviceType: "",
   quantity: 1,
   unitPrice: 0,
-  remainingDebt: undefined,
-  arrivalDate: "",
-  removalDate: "",
+  stockInDate: today,
+  removeDate: "",
   pattern: "",
-  storageLocation: "",
-  supplier: "",
-  buyerStaff: "",
-  notes: "",
-  consignment: false,
-  stockStatus: "倉庫",
-  customFields: {
-    salePrice: "",
-    saleFlag: "",
-  },
-};
-
-const SALE_FLAG_ON = "販売する";
-
-const createBlankRow = (): InventoryRecord => ({
-  ...BLANK_ROW,
-  customFields: { ...BLANK_ROW.customFields },
+  warehouse: "",
+  note: "",
+  sellNow: false,
 });
+
+const todayString = () => new Date().toISOString().slice(0, 10);
 
 export default function InventoryNewPage() {
   const router = useRouter();
-  const [rows, setRows] = useState<InventoryRecord[]>([createBlankRow()]);
+  const [today, setToday] = useState<string>(todayString());
+  const [rows, setRows] = useState<InventoryFormRow[]>([createBlankRow(todayString())]);
   const [supplierInfo, setSupplierInfo] = useState<SupplierInfo>({
     supplier: "",
-    inputDate: "",
+    inputDate: todayString(),
     notes: "",
-    taxType: "税込",
     buyerStaff: "",
-    consignment: false,
   });
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
-  const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("");
 
   useEffect(() => {
     setMasterData(loadMasterData());
+    const todayValue = todayString();
+    setToday(todayValue);
+    setSupplierInfo((prev) => ({ ...prev, inputDate: todayValue }));
+    setRows([createBlankRow(todayValue)]);
   }, []);
 
-  const handleChange = (index: number, key: keyof InventoryRecord, value: string | number | boolean) => {
+  const handleRowChange = <K extends keyof InventoryFormRow>(index: number, key: K, value: InventoryFormRow[K]) => {
     setRows((prev) => prev.map((row, idx) => (idx === index ? { ...row, [key]: value } : row)));
   };
 
-  const handleCustomFieldChange = (index: number, key: string, value: string) => {
-    setRows((prev) =>
-      prev.map((row, idx) => (idx === index ? { ...row, customFields: { ...row.customFields, [key]: value } } : row)),
-    );
-  };
-
-  const handleSupplierChange = (key: keyof SupplierInfo, value: string | boolean) => {
+  const handleSupplierChange = <K extends keyof SupplierInfo>(key: K, value: SupplierInfo[K]) => {
     setSupplierInfo((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleKindChange = (index: number, value: "" | "P" | "S") => {
-    setRows((prev) =>
-      prev.map((row, idx) =>
-        idx === index
-          ? {
-              ...row,
-              type: value,
-              maker: value ? row.maker : "",
-              machineName: value ? row.machineName : "",
-            }
-          : row,
-      ),
-    );
-  };
+  const handleAddRow = () => setRows((prev) => [...prev, createBlankRow(today)]);
 
-  const handleMakerChange = (index: number, maker: string) => {
-    setRows((prev) => prev.map((row, idx) => (idx === index ? { ...row, maker, machineName: "" } : row)));
-  };
-
-  const handleAddEmptyRow = () => {
-    setRows((prev) => [...prev, createBlankRow()]);
-  };
-
-  const handleDuplicateRow = () => {
+  const handleDuplicateRow = () =>
     setRows((prev) => {
-      if (prev.length === 0) return [createBlankRow()];
+      if (prev.length === 0) return [createBlankRow(today)];
       const last = prev[prev.length - 1];
-      return [...prev, { ...last, id: "", customFields: { ...last.customFields } }];
+      return [...prev, { ...last, id: undefined }];
     });
-  };
 
   const handleDeleteRow = (index: number) => {
-    setRows((prev) => {
-      if (prev.length <= 1) return prev;
-      return prev.filter((_, idx) => idx !== index);
-    });
+    setRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== index)));
   };
 
-  const handleMachineSelect = (index: number, machine: MachineCatalogItem) => {
-    setRows((prev) =>
-      prev.map((row, idx) =>
-        idx === index
-          ? {
-              ...row,
-              type: machine.kind,
-              maker: machine.maker,
-              machineName: machine.title,
-            }
-          : row,
-      ),
-    );
+  const handleSupplierSelect = () => {
+    if (selectedSupplier) {
+      setSupplierInfo((prev) => ({ ...prev, supplier: selectedSupplier }));
+    }
   };
+
+  const summary = useMemo(() => {
+    return rows.reduce(
+      (acc, row) => {
+        const qty = row.quantity ?? 0;
+        if (row.kind === "P") acc.pCount += qty;
+        if (row.kind === "S") acc.sCount += qty;
+        const unit = row.unitPrice ?? 0;
+        acc.totalAmount += unit * qty;
+        return acc;
+      },
+      { pCount: 0, sCount: 0, totalAmount: 0 },
+    );
+  }, [rows]);
 
   const handleSubmit = () => {
-    const prepared = rows
-      .filter((row) => row.maker || row.machineName)
+    const prepared: InventoryRecord[] = rows
+      .filter((row) => row.maker || row.model)
       .map((row) => {
-        const saleEnabled = row.customFields?.saleFlag === SALE_FLAG_ON;
+        const status = row.sellNow ? "出品中" : "倉庫";
+        const stockInDate = row.stockInDate || supplierInfo.inputDate || today;
         return {
-          ...row,
           id: row.id || generateInventoryId(),
-          createdAt: supplierInfo.inputDate || row.createdAt || new Date().toISOString(),
-          stockStatus: saleEnabled ? "出品中" : "倉庫",
-          supplier: supplierInfo.supplier,
-          buyerStaff: supplierInfo.buyerStaff,
-          notes: supplierInfo.notes,
-          consignment: supplierInfo.consignment,
-          customFields: {
-            ...row.customFields,
-            taxType: supplierInfo.taxType,
-          },
-        } as InventoryRecord;
+          createdAt: supplierInfo.inputDate || today,
+          status,
+          stockStatus: status,
+          maker: row.maker,
+          model: row.model,
+          machineName: row.model,
+          kind: row.kind || undefined,
+          type: row.type || undefined,
+          quantity: row.quantity,
+          unitPrice: row.unitPrice,
+          stockInDate,
+          arrivalDate: stockInDate,
+          removeDate: row.removeDate || undefined,
+          removalDate: row.removeDate || undefined,
+          pattern: row.pattern || undefined,
+          warehouse: row.warehouse || undefined,
+          storageLocation: row.warehouse || undefined,
+          supplier: supplierInfo.supplier || undefined,
+          staff: supplierInfo.buyerStaff || undefined,
+          buyerStaff: supplierInfo.buyerStaff || undefined,
+          note: row.note || supplierInfo.notes || undefined,
+          notes: row.note || supplierInfo.notes || undefined,
+        } satisfies InventoryRecord;
       });
 
     if (prepared.length === 0) {
@@ -199,28 +170,10 @@ export default function InventoryNewPage() {
     router.push("/inventory");
   };
 
-  const makerOptions = (kind: string) => {
-    if (kind === "P") return P_MAKERS;
-    if (kind === "S") return S_MAKERS;
-    return [];
-  };
-
-  const filteredMachines = (kind: string, maker?: string) =>
-    MACHINE_CATALOG.filter((item) => (!kind || item.kind === kind) && (!maker || item.maker === maker));
-
-  const summary = useMemo(() => {
-    return rows.reduce(
-      (acc, row) => {
-        const qty = row.quantity ?? 0;
-        if (row.type === "P") acc.pCount += qty;
-        if (row.type === "S") acc.sCount += qty;
-        const unit = row.unitPrice ?? 0;
-        acc.totalAmount += unit * qty;
-        return acc;
-      },
-      { pCount: 0, sCount: 0, totalAmount: 0 },
-    );
-  }, [rows]);
+  const machineMatches = (keyword: string, kind?: string) =>
+    MACHINE_CATALOG.filter(
+      (item) => item.title.includes(keyword) && (!kind || item.kind === kind),
+    ).slice(0, 5);
 
   return (
     <div className="space-y-6">
@@ -232,13 +185,9 @@ export default function InventoryNewPage() {
       <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-neutral-900">仕入先情報</h2>
-          <button
-            type="button"
-            onClick={() => setShowSupplierModal(true)}
-            className="rounded-md border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            仕入先検索
-          </button>
+          <div className="flex items-center gap-2 text-sm text-neutral-700">
+            <span className="rounded bg-slate-100 px-2 py-1">今日の日付: {today}</span>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -255,37 +204,31 @@ export default function InventoryNewPage() {
                 <option key={supplier} value={supplier} />
               ))}
             </datalist>
-          </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-neutral-800">在庫入力日</label>
-            <input
-              type="date"
-              value={supplierInfo.inputDate}
-              onChange={(event) => handleSupplierChange("inputDate", event.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-            />
-          </div>
-          <div className="space-y-2">
-            <label className="block text-sm font-medium text-neutral-800">備考</label>
-            <textarea
-              value={supplierInfo.notes}
-              onChange={(event) => handleSupplierChange("notes", event.target.value)}
-              rows={3}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-neutral-800">消費税</label>
-              <select
-                value={supplierInfo.taxType}
-                onChange={(event) => handleSupplierChange("taxType", event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+            <div className="flex items-center gap-3">
+              <input
+                value={selectedSupplier}
+                onChange={(event) => setSelectedSupplier(event.target.value)}
+                placeholder="候補から貼り付け"
+                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={handleSupplierSelect}
+                className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
               >
-                <option value="税込">税込</option>
-                <option value="税別">税別</option>
-                <option value="10%">10%</option>
-              </select>
+                反映
+              </button>
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-neutral-800">在庫入力日</label>
+              <input
+                type="date"
+                value={supplierInfo.inputDate}
+                onChange={(event) => handleSupplierChange("inputDate", event.target.value)}
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+              />
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-neutral-800">仕入担当</label>
@@ -302,17 +245,15 @@ export default function InventoryNewPage() {
                 ))}
               </select>
             </div>
-            <div className="flex items-end space-x-3">
-              <label className="flex items-center gap-2 text-sm font-medium text-neutral-800">
-                <input
-                  type="checkbox"
-                  checked={supplierInfo.consignment}
-                  onChange={(event) => handleSupplierChange("consignment", event.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                />
-                委託
-              </label>
-            </div>
+          </div>
+          <div className="md:col-span-2">
+            <label className="mb-2 block text-sm font-medium text-neutral-800">備考</label>
+            <textarea
+              value={supplierInfo.notes}
+              onChange={(event) => handleSupplierChange("notes", event.target.value)}
+              rows={3}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+            />
           </div>
         </div>
       </section>
@@ -327,226 +268,10 @@ export default function InventoryNewPage() {
       <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-neutral-900">仕入機種</h2>
-          <p className="text-sm text-neutral-600">追加ボタンで行を増やし、最後の行をコピーして追加できます。</p>
-        </div>
-
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full table-auto divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-700">
-              <tr>
-                <th className="whitespace-nowrap px-3 py-3">種別</th>
-                <th className="whitespace-nowrap px-3 py-3">メーカー名</th>
-                <th className="whitespace-nowrap px-3 py-3">機種名</th>
-                <th className="whitespace-nowrap px-3 py-3">タイプ</th>
-                <th className="whitespace-nowrap px-3 py-3">仕入数</th>
-                <th className="whitespace-nowrap px-3 py-3">仕入単価</th>
-                <th className="whitespace-nowrap px-3 py-3">販売価格</th>
-                <th className="whitespace-nowrap px-3 py-3">残債</th>
-                <th className="whitespace-nowrap px-3 py-3">入庫日</th>
-                <th className="whitespace-nowrap px-3 py-3">撤去日</th>
-                <th className="whitespace-nowrap px-3 py-3">柄</th>
-                <th className="whitespace-nowrap px-3 py-3">保管先</th>
-                <th className="whitespace-nowrap px-3 py-3 text-center">販売</th>
-                <th className="whitespace-nowrap px-3 py-3 text-center">削除</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {rows.map((row, index) => {
-                const makers = makerOptions(row.type);
-                const machineOptions = filteredMachines(row.type, row.maker);
-                const searchResults = !row.maker && row.machineName
-                  ? MACHINE_CATALOG.filter((item) => item.title.toLowerCase().includes(row.machineName.toLowerCase())).slice(
-                      0,
-                      5,
-                    )
-                  : [];
-
-                return (
-                  <tr key={`row-${index}`} className="hover:bg-slate-50">
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <select
-                        value={row.type}
-                        onChange={(event) => handleKindChange(index, event.target.value as "" | "P" | "S")}
-                        className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      >
-                        <option value="">選択</option>
-                        <option value="P">P</option>
-                        <option value="S">S</option>
-                      </select>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <select
-                        value={row.maker}
-                        onChange={(event) => handleMakerChange(index, event.target.value)}
-                        className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                        disabled={!row.type}
-                      >
-                        <option value="">{row.type ? "選択してください" : "種別を先に選択"}</option>
-                        {makers.map((maker) => (
-                          <option key={maker} value={maker}>
-                            {maker}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      {row.maker ? (
-                        <select
-                          value={row.machineName}
-                          onChange={(event) => handleChange(index, "machineName", event.target.value)}
-                          className="w-48 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                        >
-                          <option value="">選択してください</option>
-                          {machineOptions.map((machine) => (
-                            <option key={machine.title} value={machine.title}>
-                              {machine.title}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <div className="relative w-56">
-                          <input
-                            value={row.machineName}
-                            onChange={(event) => handleChange(index, "machineName", event.target.value)}
-                            placeholder="機種名を検索"
-                            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                          />
-                          {searchResults.length > 0 && (
-                            <div className="absolute z-10 mt-1 w-full rounded-md border border-slate-200 bg-white shadow-lg">
-                              {searchResults.map((machine) => (
-                                <button
-                                  key={`${machine.maker}-${machine.title}`}
-                                  type="button"
-                                  onClick={() => handleMachineSelect(index, machine)}
-                                  className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
-                                >
-                                  <span>{machine.title}</span>
-                                  <span className="text-xs text-neutral-500">{machine.maker}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <select
-                        value={row.deviceType ?? ""}
-                        onChange={(event) => handleChange(index, "deviceType", event.target.value)}
-                        className="w-28 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      >
-                        <option value="">選択してください</option>
-                        {DEVICE_TYPES.map((type) => (
-                          <option key={type} value={type}>
-                            {type}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <input
-                        type="number"
-                        value={row.quantity ?? 0}
-                        min={0}
-                        onChange={(event) => handleChange(index, "quantity", Number(event.target.value))}
-                        className="w-24 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      />
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <input
-                        type="number"
-                        value={row.unitPrice ?? 0}
-                        min={0}
-                        onChange={(event) => handleChange(index, "unitPrice", Number(event.target.value))}
-                        className="w-28 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      />
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <input
-                        type="text"
-                        value={row.customFields?.salePrice ?? ""}
-                        onChange={(event) => handleCustomFieldChange(index, "salePrice", event.target.value)}
-                        className="w-28 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      />
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <input
-                        type="number"
-                        value={row.remainingDebt ?? 0}
-                        min={0}
-                        onChange={(event) => handleChange(index, "remainingDebt", Number(event.target.value))}
-                        className="w-28 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      />
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <input
-                        type="date"
-                        value={row.arrivalDate ?? ""}
-                        onChange={(event) => handleChange(index, "arrivalDate", event.target.value)}
-                        className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      />
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <input
-                        type="date"
-                        value={row.removalDate ?? ""}
-                        onChange={(event) => handleChange(index, "removalDate", event.target.value)}
-                        className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      />
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <input
-                        value={row.pattern ?? ""}
-                        onChange={(event) => handleChange(index, "pattern", event.target.value)}
-                        className="w-28 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      />
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3">
-                      <select
-                        value={row.storageLocation ?? ""}
-                        onChange={(event) => handleChange(index, "storageLocation", event.target.value)}
-                        className="w-36 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      >
-                        <option value="">選択してください</option>
-                        {masterData.warehouses.map((warehouse) => (
-                          <option key={warehouse} value={warehouse}>
-                            {warehouse}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-center">
-                      <input
-                        type="checkbox"
-                        checked={row.customFields?.saleFlag === SALE_FLAG_ON}
-                        onChange={(event) =>
-                          handleCustomFieldChange(index, "saleFlag", event.target.checked ? SALE_FLAG_ON : "")
-                        }
-                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                      />
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-3 text-center">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteRow(index)}
-                        className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={rows.length <= 1}
-                      >
-                        削除
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        <div className="flex flex-wrap justify-between gap-3">
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={handleAddEmptyRow}
+              onClick={handleAddRow}
               className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
             >
               空行追加
@@ -559,88 +284,203 @@ export default function InventoryNewPage() {
               同一行追加
             </button>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-            >
-              戻る
-            </button>
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="rounded-md bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-500"
-            >
-              確認
-            </button>
-          </div>
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          {rows.map((row, index) => {
+            const suggestions = row.model ? machineMatches(row.model, row.kind) : [];
+            return (
+              <div key={`row-${index}`} className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-inner">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-neutral-900">{index + 1}行目</div>
+                  <div className="flex items-center gap-3 text-xs text-neutral-600">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={row.sellNow}
+                        onChange={(event) => handleRowChange(index, "sellNow", event.target.checked)}
+                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      />
+                      販売する（出品中）
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteRow(index)}
+                      className="rounded-md border border-slate-300 px-2 py-1 font-semibold text-slate-700 shadow-sm hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                      disabled={rows.length <= 1}
+                    >
+                      削除
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">種別</label>
+                    <div className="flex gap-2">
+                      {["P", "S"].map((kind) => (
+                        <button
+                          key={kind}
+                          type="button"
+                          onClick={() => handleRowChange(index, "kind", kind as InventoryFormRow["kind"])}
+                          className={`flex-1 rounded-md border px-3 py-2 text-sm font-semibold shadow-sm ${
+                            row.kind === kind
+                              ? "border-sky-500 bg-sky-50 text-sky-700"
+                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          {kind}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">タイプ</label>
+                    <select
+                      value={row.type}
+                      onChange={(event) => handleRowChange(index, "type", event.target.value as InventoryFormRow["type"])}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                    >
+                      <option value="">選択してください</option>
+                      {DEVICE_TYPES.map((type) => (
+                        <option key={type} value={type}>
+                          {type}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">メーカー名</label>
+                    <input
+                      value={row.maker}
+                      onChange={(event) => handleRowChange(index, "maker", event.target.value)}
+                      placeholder="例：三洋"
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">機種名</label>
+                    <div className="relative">
+                      <input
+                        value={row.model}
+                        onChange={(event) => handleRowChange(index, "model", event.target.value)}
+                        placeholder="機種名を入力"
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      />
+                      {suggestions.length > 0 && (
+                        <div className="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+                          {suggestions.map((machine) => (
+                            <button
+                              key={`${machine.maker}-${machine.title}`}
+                              type="button"
+                              onClick={() => {
+                                handleRowChange(index, "model", machine.title);
+                                handleRowChange(index, "maker", machine.maker);
+                                handleRowChange(index, "kind", machine.kind);
+                              }}
+                              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
+                            >
+                              <span>{machine.title}</span>
+                              <span className="text-xs text-neutral-500">{machine.maker}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">仕入数</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.quantity}
+                      onChange={(event) => handleRowChange(index, "quantity", Number(event.target.value))}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">仕入単価</label>
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.unitPrice}
+                      onChange={(event) => handleRowChange(index, "unitPrice", Number(event.target.value))}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">入庫日</label>
+                    <input
+                      type="date"
+                      value={row.stockInDate}
+                      onChange={(event) => handleRowChange(index, "stockInDate", event.target.value)}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">撤去日</label>
+                    <input
+                      type="date"
+                      value={row.removeDate}
+                      onChange={(event) => handleRowChange(index, "removeDate", event.target.value)}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">柄</label>
+                    <input
+                      value={row.pattern}
+                      onChange={(event) => handleRowChange(index, "pattern", event.target.value)}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-neutral-800">保管先</label>
+                    <select
+                      value={row.warehouse}
+                      onChange={(event) => handleRowChange(index, "warehouse", event.target.value)}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                    >
+                      <option value="">選択してください</option>
+                      {masterData.warehouses.map((warehouse) => (
+                        <option key={warehouse} value={warehouse}>
+                          {warehouse}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-neutral-800">備考</label>
+                    <textarea
+                      value={row.note}
+                      onChange={(event) => handleRowChange(index, "note", event.target.value)}
+                      rows={2}
+                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+          >
+            戻る
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            className="rounded-md bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-500"
+          >
+            確認
+          </button>
         </div>
       </section>
-
-      {showSupplierModal && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-semibold text-neutral-900">仕入先を選択</h3>
-                <p className="text-sm text-neutral-600">候補から選択して反映を押してください。</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowSupplierModal(false)}
-                className="rounded-md border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-              >
-                閉じる
-              </button>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {SUPPLIER_CANDIDATES.map((candidate) => (
-                <label
-                  key={candidate.name}
-                  className="flex cursor-pointer items-center justify-between rounded-md border border-slate-200 px-3 py-2 hover:bg-slate-50"
-                >
-                  <div>
-                    <p className="text-sm font-semibold text-neutral-900">{candidate.name}</p>
-                    <p className="text-xs text-neutral-600">{candidate.note}</p>
-                  </div>
-                  <input
-                    type="radio"
-                    name="supplier"
-                    value={candidate.name}
-                    checked={selectedSupplier === candidate.name}
-                    onChange={(event) => setSelectedSupplier(event.target.value)}
-                    className="h-4 w-4 text-sky-600 focus:ring-sky-500"
-                  />
-                </label>
-              ))}
-            </div>
-
-            <div className="mt-6 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setShowSupplierModal(false)}
-                className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-              >
-                キャンセル
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedSupplier) {
-                    setSupplierInfo((prev) => ({ ...prev, supplier: selectedSupplier }));
-                  }
-                  setShowSupplierModal(false);
-                }}
-                className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-500"
-              >
-                反映
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
