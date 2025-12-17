@@ -8,6 +8,7 @@ export interface StoredInventoryItem {
   id: number;
   status: InventoryStatus;
   listingStatus?: ListingStatus;
+  createdAt?: string;
   category: InventoryCategory;
   manufacturer: string;
   modelName: string;
@@ -41,6 +42,9 @@ export interface StoredInventoryItem {
   inspectionInfo?: string;
   listingId?: string;
   hasDocuments?: boolean;
+  quantity?: number;
+  unitPrice?: number;
+  supplier?: string;
 }
 
 const STORAGE_KEY = "inventory_items_v1";
