@@ -36,6 +36,10 @@ const seedTrades: TradeRecord[] = [
   {
     id: "T-REQ-5001",
     status: "APPROVAL_REQUIRED",
+    sellerUserId: "user-b",
+    buyerUserId: "user-a",
+    sellerName: companyDirectory["user-b"].companyName,
+    buyerName: companyDirectory["user-a"].companyName,
     createdAt: "2025-11-20T09:30:00.000Z",
     updatedAt: "2025-11-20T09:30:00.000Z",
     contractDate: "2025-11-21",
@@ -98,6 +102,10 @@ const seedTrades: TradeRecord[] = [
   {
     id: "T-REQ-5002",
     status: "PAYMENT_REQUIRED",
+    sellerUserId: "user-a",
+    buyerUserId: "user-b",
+    sellerName: companyDirectory["user-a"].companyName,
+    buyerName: companyDirectory["user-b"].companyName,
     createdAt: "2025-11-18T12:00:00.000Z",
     updatedAt: "2025-11-19T08:00:00.000Z",
     contractDate: "2025-11-19",
@@ -165,6 +173,21 @@ function readTradesFromStorage(): TradeRecord[] {
   }
 }
 
+function normalizeTrade(trade: TradeRecord): TradeRecord {
+  const sellerUserId = trade.sellerUserId ?? trade.seller.userId ?? "seller";
+  const buyerUserId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
+  const sellerName = trade.sellerName ?? trade.seller.companyName ?? "売主";
+  const buyerName = trade.buyerName ?? trade.buyer.companyName ?? "買主";
+
+  return {
+    ...trade,
+    sellerUserId,
+    buyerUserId,
+    sellerName,
+    buyerName,
+  };
+}
+
 function writeTradesToStorage(trades: TradeRecord[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(TRADE_STORAGE_KEY, JSON.stringify(trades));
@@ -190,7 +213,7 @@ function getContactScopeId(trade?: TradeRecord | null) {
 
 export function loadAllTrades(): TradeRecord[] {
   const stored = readTradesFromStorage();
-  const trades = mergeSeedTrades(stored);
+  const trades = mergeSeedTrades(stored).map(normalizeTrade);
 
   if (typeof window !== "undefined" && stored.length === 0) {
     writeTradesToStorage(trades);
@@ -209,10 +232,10 @@ function calculateTradeTotal(trade: TradeRecord): number {
 }
 
 function upsertTradeInternal(nextTrade: TradeRecord): TradeRecord {
-  const trades = mergeSeedTrades(readTradesFromStorage());
+  const trades = mergeSeedTrades(readTradesFromStorage()).map(normalizeTrade);
   const idx = trades.findIndex((trade) => trade.id === nextTrade.id);
   const now = new Date().toISOString();
-  const payload = { ...nextTrade, updatedAt: now };
+  const payload = normalizeTrade({ ...nextTrade, updatedAt: now });
 
   if (idx >= 0) {
     trades[idx] = payload;
@@ -226,6 +249,30 @@ function upsertTradeInternal(nextTrade: TradeRecord): TradeRecord {
 
 export function saveTradeRecord(trade: TradeRecord): TradeRecord {
   return upsertTradeInternal(trade);
+}
+
+export function getAllTrades(): TradeRecord[] {
+  return loadAllTrades();
+}
+
+export function getTradesForUser(userId: string): TradeRecord[] {
+  return getAllTrades().filter(
+    (trade) => trade.sellerUserId === userId || trade.buyerUserId === userId
+  );
+}
+
+export function getHistoryTradesForUser(userId: string): TradeRecord[] {
+  return getTradesForUser(userId).filter((trade) =>
+    ["PAYMENT_REQUIRED", "CONFIRM_REQUIRED", "COMPLETED", "CANCELED"].includes(trade.status)
+  );
+}
+
+export function getPurchaseHistoryForUser(userId: string): TradeRecord[] {
+  return getHistoryTradesForUser(userId).filter((trade) => trade.buyerUserId === userId);
+}
+
+export function getSalesHistoryForUser(userId: string): TradeRecord[] {
+  return getHistoryTradesForUser(userId).filter((trade) => trade.sellerUserId === userId);
 }
 
 export function updateTradeStatus(tradeId: string, status: TradeStatus): TradeRecord | null {
@@ -248,7 +295,7 @@ export function approveTrade(
   return upsertTradeInternal({
     ...trade,
     status: "PAYMENT_REQUIRED",
-    contractDate: now,
+    contractDate: trade.contractDate ?? now,
     updatedAt: now,
     shipping: nextShipping,
     buyerContacts: nextContacts,
@@ -416,6 +463,7 @@ export function createTradeFromDraft(
     userId: sellerUserId,
     companyName: "売主（仮）",
   };
+
   const buyerProfile: CompanyProfile = {
     userId: draft.buyerId ?? undefined,
     companyName: draft.buyerCompanyName ?? "買主（未設定）",
@@ -428,26 +476,73 @@ export function createTradeFromDraft(
   const items = buildItemsFromDraft(draft);
   const taxRate = draft.conditions.taxRate ?? 0.1;
   const termsText = draft.conditions.terms ?? defaults?.termsText ?? defaultTermsText;
+
+  // --- merge: codex/finalize-buyer-approval-screen-ui + main ---
+  // どちらか入っていれば表示できるように fallback（機械発送日→書類発送日）
   const shipmentDate =
     draft.conditions.machineShipmentDate ?? draft.conditions.documentShipmentDate ?? undefined;
+
   const removalDate = draft.conditions.removalDate ?? undefined;
   const paymentTerms = draft.conditions.paymentDue ?? undefined;
+
+  const quantity = draft.conditions.quantity ?? 1;
+
+  const totalAmount = calculateTradeTotal({
+    id: draft.id,
+    status: "DRAFT",
+    sellerUserId,
+    buyerUserId: buyerProfile.userId ?? draft.buyerId ?? "buyer",
+    sellerName: sellerProfile.companyName,
+    buyerName: buyerProfile.companyName,
+    items,
+    taxRate,
+    seller: sellerProfile,
+    buyer: buyerProfile,
+    shipping: { companyName: draft.buyerCompanyName ?? buyerProfile.companyName },
+    buyerContacts: draft.buyerContactName
+      ? [{ contactId: generateId(), name: draft.buyerContactName }]
+      : undefined,
+  });
+  // --- /merge ---
 
   return {
     id: draft.id,
     status: "APPROVAL_REQUIRED",
+    sellerUserId,
+    buyerUserId: buyerProfile.userId ?? draft.buyerId ?? "buyer",
+    sellerName: sellerProfile.companyName,
+    buyerName: buyerProfile.companyName,
     createdAt: draft.createdAt ?? now,
     updatedAt: now,
-    contractDate: now.slice(0, 10),
-    shipmentDate: shipmentDate ?? undefined,
+
+    // codex 側：画面で日付表示したい意図を維持（作成日を初期値にする）
+    contractDate: (draft.createdAt ?? now).slice(0, 10),
+
+    // main 側：取引一覧/サマリーに必要な情報
+    makerName: draft.conditions.makerName ?? undefined,
+    itemName: draft.conditions.productName ?? "取引商品",
+    category: draft.conditions.location ? "pachinko" : undefined,
+    quantity,
+    totalAmount,
+
+    // 日付・配送系は統合
+    shipmentDate,
     removalDate,
     paymentTerms,
+
+    receiveMethod: draft.conditions.machineShipmentType ?? undefined,
+    shippingMethod: draft.conditions.machineShipmentType ?? undefined,
+    documentSentDate: draft.conditions.documentShipmentDate ?? undefined,
+    documentReceivedDate: draft.conditions.documentShipmentDate ?? undefined,
+    handlerName: draft.conditions.handler ?? undefined,
+
     seller: sellerProfile,
     buyer: buyerProfile,
     items,
     taxRate,
     remarks: draft.conditions.notes ?? draft.conditions.memo ?? undefined,
     termsText,
+
     shipping: {
       companyName: draft.buyerCompanyName ?? buyerProfile.companyName,
       zip: undefined,
@@ -455,12 +550,14 @@ export function createTradeFromDraft(
       tel: draft.buyerTel ?? "",
       personName: draft.buyerContactName ?? "",
     },
+
     buyerContactName: draft.buyerContactName ?? undefined,
     buyerContacts: draft.buyerContactName
       ? [{ contactId: generateId(), name: draft.buyerContactName }]
       : undefined,
   };
 }
+
 
 export function ensureContactsLoaded(trade: TradeRecord | null): BuyerContact[] {
   if (!trade) return [];

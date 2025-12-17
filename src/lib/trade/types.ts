@@ -44,6 +44,10 @@ export type BuyerContact = {
 export type TradeRecord = {
   id: string;
   status: TradeStatus;
+  sellerUserId: string;
+  buyerUserId: string;
+  sellerName: string;
+  buyerName: string;
   createdAt?: string;
   updatedAt?: string;
   contractDate?: string;
@@ -57,6 +61,17 @@ export type TradeRecord = {
   completedAt?: string;
   canceledAt?: string;
   canceledBy?: "buyer" | "seller";
+  makerName?: string;
+  itemName?: string;
+  category?: "pachinko" | "slot" | "others";
+  quantity?: number;
+  totalAmount?: number;
+  shipmentDate?: string;
+  receiveMethod?: string;
+  shippingMethod?: string;
+  documentSentDate?: string;
+  documentReceivedDate?: string;
+  handlerName?: string;
   seller: CompanyProfile;
   buyer: CompanyProfile;
   items: StatementItem[];

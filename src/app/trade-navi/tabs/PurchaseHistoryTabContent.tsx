@@ -14,6 +14,10 @@ import {
 import { DocumentBadges, type DocumentStatus } from "@/components/transactions/DocumentBadges";
 import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { getPurchaseHistoryForUser } from "@/lib/trade/storage";
+import type { TradeRecord } from "@/lib/trade/types";
 
 // TODO: API連携（フィルター条件でサーバーから取得）
 
@@ -51,129 +55,6 @@ type FilterState = {
   keyword: string;
 };
 
-const purchaseHistoryData: PurchaseHistoryRow[] = [
-  {
-    id: "P-2025110501",
-    status: "completed",
-    contractDate: "2025-11-05",
-    seller: "株式会社トレードリンク",
-    maker: "SANKYO",
-    itemName: "P フィーバー機動戦士ガンダムSEED",
-    category: "pachinko",
-    quantity: 5,
-    amount: 1250000,
-    shipmentDate: "2025-11-07",
-    receiveMethod: "元払",
-    documentStatus: {
-      inspection: true,
-      removal: false,
-      confirmation: false,
-      other: false,
-    },
-    uploadUrl: "/dealings/purchases/P-2025110501/documents",
-    paymentMethod: "振込（前払い）",
-    paymentCompleted: true,
-    handler: "佐藤",
-    documentReceivedDate: "2025-11-06",
-  },
-  {
-    id: "P-2025103008",
-    status: "payment_confirmed",
-    contractDate: "2025-10-30",
-    seller: "有限会社メダルサプライ",
-    maker: "大都技研",
-    itemName: "L 押忍！番長4",
-    category: "slot",
-    quantity: 4,
-    amount: 960000,
-    shipmentDate: "2025-11-01",
-    receiveMethod: "引取",
-    documentStatus: {
-      inspection: false,
-      removal: true,
-      confirmation: false,
-      other: false,
-    },
-    uploadUrl: "/dealings/purchases/P-2025103008/documents",
-    paymentMethod: "代引（現金）",
-    paymentCompleted: true,
-    handler: "鈴木",
-    documentReceivedDate: "2025-10-31",
-  },
-  {
-    id: "P-2025101204",
-    status: "navi_in_progress",
-    contractDate: "2025-10-12",
-    seller: "株式会社オーシャンパーツ",
-    maker: "京楽",
-    itemName: "周辺機器（のぼりセット）",
-    category: "others",
-    quantity: 12,
-    amount: 180000,
-    shipmentDate: "2025-10-15",
-    receiveMethod: "指定便（着払）",
-    documentStatus: {
-      inspection: false,
-      removal: false,
-      confirmation: true,
-      other: false,
-    },
-    uploadUrl: "/dealings/purchases/P-2025101204/documents",
-    paymentMethod: "請求書払い（末締め翌月末）",
-    paymentCompleted: false,
-    handler: "田中",
-    documentReceivedDate: "2025-10-13",
-  },
-  {
-    id: "P-2025092506",
-    status: "canceled",
-    contractDate: "2025-09-25",
-    seller: "株式会社サプライチェーン",
-    maker: "三洋",
-    itemName: "P 大海物語5",
-    category: "pachinko",
-    quantity: 3,
-    amount: 690000,
-    shipmentDate: undefined,
-    receiveMethod: "未定",
-    documentStatus: {
-      inspection: false,
-      removal: false,
-      confirmation: false,
-      other: true,
-    },
-    uploadUrl: "/dealings/purchases/P-2025092506/documents",
-    paymentMethod: "キャンセル",
-    paymentCompleted: false,
-    handler: "佐藤",
-    documentReceivedDate: undefined,
-  },
-  {
-    id: "P-2025081803",
-    status: "shipped",
-    contractDate: "2025-08-18",
-    seller: "株式会社アーク貿易",
-    maker: "ニューギン",
-    itemName: "P うる星やつら",
-    category: "pachinko",
-    quantity: 7,
-    amount: 1400000,
-    shipmentDate: "2025-08-21",
-    receiveMethod: "元払",
-    documentStatus: {
-      inspection: true,
-      removal: false,
-      confirmation: false,
-      other: false,
-    },
-    uploadUrl: "/dealings/purchases/P-2025081803/documents",
-    paymentMethod: "振込（納品後）",
-    paymentCompleted: false,
-    handler: "鈴木",
-    documentReceivedDate: "2025-08-20",
-  },
-];
-
 const currencyFormatter = new Intl.NumberFormat("ja-JP", {
   style: "currency",
   currency: "JPY",
@@ -183,6 +64,7 @@ const dateFormatter = new Intl.DateTimeFormat("ja-JP", { year: "numeric", month:
 
 export function PurchaseHistoryTabContent() {
   const router = useRouter();
+  const currentUser = useCurrentDevUser();
   const [filters, setFilters] = useState<FilterState>({
     categories: { pachinko: true, slot: true, others: true },
     status: "all",
@@ -196,19 +78,21 @@ export function PurchaseHistoryTabContent() {
   const [sortState, setSortState] = useState<SortState>(null);
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
 
+  const rows = useMemo(() => buildPurchaseRows(currentUser.id), [currentUser.id]);
+
   const handlerOptions = useMemo(() => {
-    const handlers = Array.from(new Set(purchaseHistoryData.map((row) => row.handler)));
+    const handlers = Array.from(new Set(rows.map((row) => row.handler).filter(Boolean)));
     return ["", ...handlers];
-  }, []);
+  }, [rows]);
 
   const filteredRows = useMemo(() => {
-    return purchaseHistoryData
+    return rows
       .filter((row) => filtersToCategories(appliedFilters).includes(row.category))
       .filter((row) => matchStatus(appliedFilters.status, row.status))
       .filter((row) => (appliedFilters.handler ? row.handler === appliedFilters.handler : true))
       .filter((row) => matchDateRange(appliedFilters, row))
       .filter((row) => matchKeyword(appliedFilters.keyword, row));
-  }, [appliedFilters]);
+  }, [appliedFilters, rows]);
 
   const sortedRows = useMemo(
     () => sortRows(filteredRows, sortState),
@@ -561,6 +445,76 @@ export function PurchaseHistoryTabContent() {
       />
     </section>
   );
+}
+
+function buildPurchaseRows(userId: string): PurchaseHistoryRow[] {
+  return getPurchaseHistoryForUser(userId).map(mapTradeToPurchaseHistoryRow);
+}
+
+function mapTradeToPurchaseHistoryRow(trade: TradeRecord): PurchaseHistoryRow {
+  const primaryItem = getPrimaryItem(trade);
+  const totalQuantity = trade.quantity ?? trade.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
+  const totalAmount =
+    trade.totalAmount ?? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1).total;
+
+  return {
+    id: trade.id,
+    status: mapTradeStatusToKey(trade.status),
+    contractDate: trade.contractDate ?? trade.createdAt ?? "",
+    seller: trade.sellerName ?? trade.seller.companyName ?? "",
+    maker: trade.makerName ?? primaryItem?.maker ?? "-",
+    itemName: trade.itemName ?? primaryItem?.itemName ?? "商品",
+    category: getCategoryFromTrade(trade),
+    quantity: totalQuantity,
+    amount: totalAmount,
+    shipmentDate: trade.shipmentDate,
+    receiveMethod: trade.receiveMethod ?? trade.shippingMethod ?? "未定",
+    documentStatus: buildDocumentStatusFromTrade(trade),
+    uploadUrl: `/dealings/purchases/${trade.id}/documents`,
+    paymentMethod: trade.paymentMethod ?? "-",
+    paymentCompleted: Boolean(trade.paymentDate) || trade.status === "COMPLETED",
+    handler: trade.handlerName ?? "",
+    documentReceivedDate: trade.documentReceivedDate,
+  };
+}
+
+function getCategoryFromTrade(trade: TradeRecord): PurchaseHistoryRow["category"] {
+  if (trade.category === "pachinko" || trade.category === "slot" || trade.category === "others") {
+    return trade.category;
+  }
+  return "others";
+}
+
+function getPrimaryItem(trade: TradeRecord) {
+  return trade.items[0];
+}
+
+function buildDocumentStatusFromTrade(trade: TradeRecord): DocumentStatus {
+  const isCompleted = trade.status === "COMPLETED";
+  const isCanceled = trade.status === "CANCELED";
+  return {
+    inspection: isCompleted,
+    removal: isCompleted,
+    confirmation: isCompleted,
+    other: isCanceled,
+  };
+}
+
+function mapTradeStatusToKey(status: TradeRecord["status"]): TradeStatusKey {
+  switch (status) {
+    case "APPROVAL_REQUIRED":
+      return "requesting";
+    case "PAYMENT_REQUIRED":
+      return "waiting_payment";
+    case "CONFIRM_REQUIRED":
+      return "payment_confirmed";
+    case "COMPLETED":
+      return "completed";
+    case "CANCELED":
+      return "canceled";
+    default:
+      return "navi_in_progress";
+  }
 }
 
 function sortRows(rows: PurchaseHistoryRow[], sortState: SortState) {
