@@ -16,3 +16,62 @@ a {
   color: inherit;
   text-decoration: none;
 }
+
+.statement-sheet {
+  max-width: 900px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 16px;
+  color: #0f1f3c;
+  font-size: 12px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+  border: 1px solid #cbd5e1;
+}
+
+.statement-input {
+  border: 1px solid #cbd5e1;
+  padding: 6px 8px;
+  border-radius: 4px;
+  min-height: 32px;
+}
+
+.statement-readonly-field {
+  border: 1px solid #e2e8f0;
+  padding: 6px 8px;
+  border-radius: 4px;
+  background: #f8fafc;
+  min-height: 32px;
+}
+
+.statement-sheet table th,
+.statement-sheet table td {
+  font-size: 12px;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+
+  .print-hidden {
+    display: none !important;
+  }
+
+  .statement-sheet {
+    box-shadow: none;
+    border: 1px solid #000;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .statement-input {
+    border: none;
+    padding: 2px 0;
+    background: transparent;
+  }
+}
+
+@page {
+  size: A4;
+  margin: 10mm;
+}
