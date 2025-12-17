@@ -39,6 +39,9 @@ const seedTrades: TradeRecord[] = [
     createdAt: "2025-11-20T09:30:00.000Z",
     updatedAt: "2025-11-20T09:30:00.000Z",
     contractDate: "2025-11-21",
+    shipmentDate: "2025-11-28",
+    preRemovalDate: "2025-11-26",
+    paymentTerms: "請求書到着後5営業日以内に指定口座へ振込",
     seller: companyDirectory["user-b"],
     buyer: companyDirectory["user-a"],
     items: [
@@ -81,11 +84,12 @@ const seedTrades: TradeRecord[] = [
     termsText: "納品後7日以内の初期不良のみ対応いたします。キャンセルは原則不可です。",
     shipping: {
       companyName: "株式会社パチテック",
-      zip: "",
-      address: "",
-      tel: "",
-      personName: "",
+      zip: "100-0005",
+      address: "東京都千代田区丸の内1-1-1 パチマートビル 3F 物流センター行",
+      tel: "03-1000-2000",
+      personName: "田中 責任者",
     },
+    buyerContactName: "田中 責任者",
     buyerContacts: [
       { contactId: "contact-a1", name: "田中 責任者" },
       { contactId: "contact-a2", name: "山本 進行" },
@@ -97,6 +101,9 @@ const seedTrades: TradeRecord[] = [
     createdAt: "2025-11-18T12:00:00.000Z",
     updatedAt: "2025-11-19T08:00:00.000Z",
     contractDate: "2025-11-19",
+    shipmentDate: "2025-11-30",
+    preRemovalDate: "2025-11-29",
+    paymentTerms: "納品後3営業日以内に着金",
     seller: companyDirectory["user-a"],
     buyer: companyDirectory["user-b"],
     items: [
@@ -124,10 +131,11 @@ const seedTrades: TradeRecord[] = [
     shipping: {
       companyName: "株式会社トレード連合",
       zip: "530-0001",
-      address: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
-      tel: "06-9876-5432",
+      address: "大阪府大阪市北区梅田1-2-3 西倉庫B棟 2F",
+      tel: "06-1111-2222",
       personName: "佐藤 花子",
     },
+    buyerContactName: "佐藤 花子",
     buyerContacts: [{ contactId: "contact-b1", name: "佐藤 花子" }],
   },
 ];
@@ -226,16 +234,25 @@ export function updateTradeStatus(tradeId: string, status: TradeStatus): TradeRe
   return upsertTradeInternal({ ...trade, status });
 }
 
-export function approveTrade(tradeId: string): TradeRecord | null {
+export function approveTrade(
+  tradeId: string,
+  options?: { shipping?: ShippingInfo; contacts?: BuyerContact[]; buyerContactName?: string }
+): TradeRecord | null {
   const trade = loadTrade(tradeId);
   if (!trade) return null;
 
   const now = new Date().toISOString();
+  const nextShipping = options?.shipping ?? trade.shipping;
+  const nextContacts = options?.contacts ?? trade.buyerContacts;
+
   return upsertTradeInternal({
     ...trade,
     status: "PAYMENT_REQUIRED",
     contractDate: now,
     updatedAt: now,
+    shipping: nextShipping,
+    buyerContacts: nextContacts,
+    buyerContactName: options?.buyerContactName ?? trade.buyerContactName ?? nextShipping.personName,
   });
 }
 
@@ -251,6 +268,7 @@ export function updateTradeShipping(
     ...trade,
     shipping,
     buyerContacts: contacts ?? trade.buyerContacts,
+    buyerContactName: shipping.personName ?? trade.buyerContactName,
   };
   return upsertTradeInternal(updated);
 }
@@ -410,13 +428,19 @@ export function createTradeFromDraft(
   const items = buildItemsFromDraft(draft);
   const taxRate = draft.conditions.taxRate ?? 0.1;
   const termsText = draft.conditions.terms ?? defaults?.termsText ?? defaultTermsText;
+  const shipmentDate =
+    draft.conditions.machineShipmentDate ?? draft.conditions.documentShipmentDate ?? undefined;
+  const removalDate = draft.conditions.removalDate ?? undefined;
+  const paymentTerms = draft.conditions.paymentDue ?? undefined;
 
   return {
     id: draft.id,
     status: "APPROVAL_REQUIRED",
     createdAt: draft.createdAt ?? now,
     updatedAt: now,
-    contractDate: now.slice(0, 10),
+    shipmentDate: shipmentDate ?? undefined,
+    removalDate,
+    paymentTerms,
     seller: sellerProfile,
     buyer: buyerProfile,
     items,
@@ -425,10 +449,12 @@ export function createTradeFromDraft(
     termsText,
     shipping: {
       companyName: draft.buyerCompanyName ?? buyerProfile.companyName,
+      zip: undefined,
       address: draft.buyerAddress ?? "",
       tel: draft.buyerTel ?? "",
       personName: draft.buyerContactName ?? "",
     },
+    buyerContactName: draft.buyerContactName ?? undefined,
     buyerContacts: draft.buyerContactName
       ? [{ contactId: generateId(), name: draft.buyerContactName }]
       : undefined,

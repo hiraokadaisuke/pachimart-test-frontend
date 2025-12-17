@@ -47,6 +47,10 @@ export type TradeRecord = {
   createdAt?: string;
   updatedAt?: string;
   contractDate?: string;
+  shipmentDate?: string;
+  removalDate?: string;
+  preRemovalDate?: string;
+  paymentTerms?: string;
   paymentDate?: string;
   paymentMethod?: string;
   paymentAmount?: number;
@@ -60,5 +64,6 @@ export type TradeRecord = {
   remarks?: string;
   termsText?: string;
   shipping: ShippingInfo;
+  buyerContactName?: string;
   buyerContacts?: BuyerContact[];
 };
