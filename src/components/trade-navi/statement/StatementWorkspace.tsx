@@ -9,9 +9,9 @@ import {
   addBuyerContact,
   ensureContactsLoaded,
   loadTrade,
+  approveTrade,
   saveContactsToTrade,
   updateTradeShipping,
-  updateTradeStatus,
 } from "@/lib/trade/storage";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
@@ -103,7 +103,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     }
 
     const updatedShipping = updateTradeShipping(trade.id, shipping, contacts);
-    const updated = updateTradeStatus(trade.id, "APPROVED");
+    const updated = approveTrade(trade.id);
     if (updatedShipping) setShipping(updatedShipping.shipping);
     if (updated) {
       setTrade(updated);
@@ -229,11 +229,14 @@ function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
   switch (status) {
     case "APPROVAL_REQUIRED":
       return "requesting";
-    case "APPROVED":
     case "PAYMENT_REQUIRED":
       return "waiting_payment";
     case "CONFIRM_REQUIRED":
-      return "payment_confirmed";
+      return "navi_in_progress";
+    case "COMPLETED":
+      return "completed";
+    case "CANCELED":
+      return "canceled";
     default:
       return "navi_in_progress";
   }

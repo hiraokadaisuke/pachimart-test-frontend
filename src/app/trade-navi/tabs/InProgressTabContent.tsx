@@ -122,11 +122,14 @@ function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
   switch (status) {
     case "APPROVAL_REQUIRED":
       return "requesting";
-    case "APPROVED":
     case "PAYMENT_REQUIRED":
       return "waiting_payment";
     case "CONFIRM_REQUIRED":
       return "payment_confirmed";
+    case "COMPLETED":
+      return "completed";
+    case "CANCELED":
+      return "canceled";
     default:
       return "navi_in_progress";
   }

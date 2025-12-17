@@ -2,9 +2,10 @@ export type TradeStatus =
   | "DRAFT"
   | "SENT"
   | "APPROVAL_REQUIRED"
-  | "APPROVED"
   | "PAYMENT_REQUIRED"
-  | "CONFIRM_REQUIRED";
+  | "CONFIRM_REQUIRED"
+  | "COMPLETED"
+  | "CANCELED";
 
 export type CompanyProfile = {
   userId?: string;
@@ -46,6 +47,12 @@ export type TradeRecord = {
   createdAt?: string;
   updatedAt?: string;
   contractDate?: string;
+  paymentDate?: string;
+  paymentMethod?: string;
+  paymentAmount?: number;
+  completedAt?: string;
+  canceledAt?: string;
+  canceledBy?: "buyer" | "seller";
   seller: CompanyProfile;
   buyer: CompanyProfile;
   items: StatementItem[];

@@ -8,6 +8,7 @@ import {
   type TradeRecord,
   type TradeStatus,
 } from "./types";
+import { calculateStatementTotals } from "./calcTotals";
 
 export const TRADE_STORAGE_KEY = "trade_records_v1";
 const CONTACT_STORAGE_PREFIX = "buyerContacts:";
@@ -92,7 +93,7 @@ const seedTrades: TradeRecord[] = [
   },
   {
     id: "T-REQ-5002",
-    status: "APPROVED",
+    status: "PAYMENT_REQUIRED",
     createdAt: "2025-11-18T12:00:00.000Z",
     updatedAt: "2025-11-19T08:00:00.000Z",
     contractDate: "2025-11-19",
@@ -195,6 +196,10 @@ export function loadTrade(tradeId: string): TradeRecord | null {
   return trades.find((trade) => trade.id === tradeId) ?? null;
 }
 
+function calculateTradeTotal(trade: TradeRecord): number {
+  return calculateStatementTotals(trade.items, trade.taxRate ?? 0.1).total;
+}
+
 function upsertTradeInternal(nextTrade: TradeRecord): TradeRecord {
   const trades = mergeSeedTrades(readTradesFromStorage());
   const idx = trades.findIndex((trade) => trade.id === nextTrade.id);
@@ -219,6 +224,19 @@ export function updateTradeStatus(tradeId: string, status: TradeStatus): TradeRe
   const trade = loadTrade(tradeId);
   if (!trade) return null;
   return upsertTradeInternal({ ...trade, status });
+}
+
+export function approveTrade(tradeId: string): TradeRecord | null {
+  const trade = loadTrade(tradeId);
+  if (!trade) return null;
+
+  const now = new Date().toISOString();
+  return upsertTradeInternal({
+    ...trade,
+    status: "PAYMENT_REQUIRED",
+    contractDate: now,
+    updatedAt: now,
+  });
 }
 
 export function updateTradeShipping(
@@ -286,6 +304,49 @@ export function saveContactsToTrade(tradeId: string, contacts: BuyerContact[]): 
   return upsertTradeInternal({
     ...trade,
     buyerContacts: contacts,
+  });
+}
+
+export function markTradePaid(tradeId: string): TradeRecord | null {
+  const trade = loadTrade(tradeId);
+  if (!trade) return null;
+
+  const now = new Date().toISOString();
+  const totalAmount = calculateTradeTotal(trade);
+  return upsertTradeInternal({
+    ...trade,
+    status: "CONFIRM_REQUIRED",
+    paymentDate: now,
+    paymentAmount: totalAmount,
+    paymentMethod: "振込（テスト）",
+    updatedAt: now,
+  });
+}
+
+export function markTradeCompleted(tradeId: string): TradeRecord | null {
+  const trade = loadTrade(tradeId);
+  if (!trade) return null;
+
+  const now = new Date().toISOString();
+  return upsertTradeInternal({
+    ...trade,
+    status: "COMPLETED",
+    completedAt: now,
+    updatedAt: now,
+  });
+}
+
+export function cancelTrade(tradeId: string, by: "buyer" | "seller"): TradeRecord | null {
+  const trade = loadTrade(tradeId);
+  if (!trade) return null;
+
+  const now = new Date().toISOString();
+  return upsertTradeInternal({
+    ...trade,
+    status: "CANCELED",
+    canceledBy: by,
+    canceledAt: now,
+    updatedAt: now,
   });
 }
 
