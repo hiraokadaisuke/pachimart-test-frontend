@@ -2,10 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { products } from "@/lib/dummyData";
-import { calculateQuote } from "@/lib/quotes/calculateQuote";
-import { loadAllNavis } from "@/lib/navi/storage";
-import { NaviStatus, TradeNaviDraft } from "@/lib/navi/types";
+import { TradeRecord } from "@/lib/trade/types";
+import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { loadAllTrades, TRADE_STORAGE_KEY } from "@/lib/trade/storage";
 import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
@@ -34,6 +33,7 @@ type TradeRow = {
   buyerUserId: string;
   sellerName: string;
   buyerName: string;
+  kind?: "buy" | "sell";
 };
 
 const buyingPendingResponses: TradeRow[] = [
@@ -106,20 +106,6 @@ const sellingNeedResponses: TradeRow[] = [
   },
 ];
 
-function getStatusLabel(status: NaviStatus | null) {
-  switch (status) {
-    case "sent_to_buyer":
-      return { text: "要承認", className: "bg-sky-100 text-sky-700" };
-    case "buyer_approved":
-      return { text: "承認済み", className: "bg-emerald-100 text-emerald-700" };
-    case "buyer_rejected":
-      return { text: "差戻し", className: "bg-rose-100 text-rose-700" };
-    default:
-      // eslint-disable-next-line no-case-declarations
-      return { text: "-", className: "bg-slate-100 text-neutral-600" };
-  }
-}
-
 function formatDateTime(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "-";
@@ -127,27 +113,55 @@ function formatDateTime(iso: string) {
   return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function getBuyerLabel(draft: TradeNaviDraft) {
-  return draft.buyerCompanyName ?? draft.buyerId ?? "未設定";
-}
-
-function getProductLabel(draft: TradeNaviDraft) {
-  const product =
-    draft.productId != null
-      ? products.find((p) => String(p.id) === String(draft.productId))
-      : undefined;
-
-  return product?.name ?? draft.conditions.productName ?? "未設定";
-}
-
 function formatCurrency(amount: number) {
   const formatter = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" });
   return formatter.format(amount);
 }
 
+function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
+  switch (status) {
+    case "APPROVAL_REQUIRED":
+      return "requesting";
+    case "APPROVED":
+    case "PAYMENT_REQUIRED":
+      return "waiting_payment";
+    case "CONFIRM_REQUIRED":
+      return "payment_confirmed";
+    default:
+      return "navi_in_progress";
+  }
+}
+
+function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
+  const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
+  const primaryItem = trade.items[0];
+  const totalQty = trade.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
+  const updatedAtLabel = formatDateTime(trade.updatedAt ?? trade.createdAt ?? new Date().toISOString());
+  const status = mapTradeStatus(trade.status);
+  const sellerId = trade.seller.userId ?? "seller";
+  const buyerId = trade.buyer.userId ?? "buyer";
+  const isSeller = sellerId === viewerId;
+  return {
+    id: trade.id,
+    status,
+    updatedAt: updatedAtLabel,
+    partnerName: isSeller ? trade.buyer.companyName : trade.seller.companyName,
+    makerName: primaryItem?.maker ?? "-",
+    itemName: primaryItem?.itemName ?? "商品",
+    quantity: totalQty,
+    totalAmount: totals.total,
+    scheduledShipDate: trade.contractDate ?? "-",
+    pdfUrl: `/trade-navi/${trade.id}/statement`,
+    sellerUserId: sellerId,
+    buyerUserId: buyerId,
+    sellerName: trade.seller.companyName,
+    buyerName: trade.buyer.companyName,
+  };
+}
+
 export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
-  const [navis, setNavis] = useState<TradeNaviDraft[]>([]);
+  const [trades, setTrades] = useState<TradeRecord[]>([]);
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
   const [keyword, setKeyword] = useState("");
@@ -171,7 +185,8 @@ export function InProgressTabContent() {
         })
         .filter((trade) => {
           if (statusFilter === "all") return true;
-          if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(trade.status);
+          if (statusFilter === "inProgress")
+            return IN_PROGRESS_STATUS_KEYS.includes(trade.status) || trade.status === "requesting";
           if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(trade.status);
           return true;
         })
@@ -197,13 +212,27 @@ export function InProgressTabContent() {
   const sellNeedResponse = filteredNeedResponses.filter((trade) => trade.kind === "sell");
 
   useEffect(() => {
-    setNavis(loadAllNavis(currentUser.id));
-  }, [currentUser.id]);
+    setTrades(loadAllTrades());
+  }, []);
 
-  const sortedNavis = useMemo(
-    () => [...navis].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()),
-    [navis]
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === TRADE_STORAGE_KEY) {
+        setTrades(loadAllTrades());
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  const mappedTradeRows = useMemo(
+    () => trades.map((trade) => buildTradeRow(trade, currentUser.id)),
+    [currentUser.id, trades]
   );
+
+  const filteredTradeRows = useMemo(() => filterTrades(mappedTradeRows), [filterTrades, mappedTradeRows]);
+  const buyerApprovalRows = filteredTradeRows.filter((row) => row.kind === "buy");
+  const sellerApprovalRows = filteredTradeRows.filter((row) => row.kind === "sell");
 
   const tradeColumnBase: NaviTableColumn[] = [
     {
@@ -289,128 +318,19 @@ export function InProgressTabContent() {
     messageColumn,
   ];
 
-  const draftColumns: NaviTableColumn[] = [
-    {
-      key: "status",
-      label: "状況",
-      width: "110px",
-      render: (draft: TradeNaviDraft) => {
-        const statusInfo = getStatusLabel(draft.status);
-        return (
-          <span
-            className={`inline-block rounded-full px-2 py-1 text-xs font-semibold ${statusInfo.className}`}
-          >
-            {statusInfo.text}
-          </span>
-        );
-      },
-    },
-    {
-      key: "updatedAt",
-      label: "更新日時",
-      width: "160px",
-      render: (draft: TradeNaviDraft) => formatDateTime(draft.updatedAt),
-    },
-    {
-      key: "partner",
-      label: "取引先",
-      width: "18%",
-      render: (draft: TradeNaviDraft) => getBuyerLabel(draft),
-    },
-    {
-      key: "makerName",
-      label: "メーカー",
-      width: "140px",
-      render: (draft: TradeNaviDraft) => {
-        const product =
-          draft.productId != null
-            ? products.find((p) => String(p.id) === String(draft.productId))
-            : undefined;
-        return product?.maker ?? "-";
-      },
-    },
-    {
-      key: "itemName",
-      label: "機種名",
-      width: "22%",
-      render: (draft: TradeNaviDraft) => getProductLabel(draft),
-    },
-    {
-      key: "quantity",
-      label: "台数",
-      width: "80px",
-      render: (draft: TradeNaviDraft) => {
-        const qty = (draft.conditions as any).quantity ?? (draft.conditions as any).units ?? null;
-        return qty != null ? `${qty}台` : "-";
-      },
-    },
-    {
-      key: "totalAmount",
-      label: "合計金額（税込）",
-      width: "140px",
-      render: (draft: TradeNaviDraft) => {
-        const quote = calculateQuote(draft.conditions);
-        return quote.total ? formatCurrency(quote.total) : "-";
-      },
-    },
-    {
-      key: "scheduledShipDate",
-      label: "発送予定日",
-      width: "140px",
-      render: (draft: TradeNaviDraft) => {
-        const date =
-          (draft.conditions as any).scheduledShipmentDate ??
-          (draft.conditions as any).expectedShipmentDate ??
-          null;
-        return date ? formatDateTime(date) : "-";
-      },
-    },
-    {
-      key: "document",
-      label: "明細書",
-      width: "110px",
-      render: (draft: TradeNaviDraft) => (
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm disabled:opacity-50"
-          disabled
-        >
-          PDF
-        </button>
-      ),
-    },
-    {
-      key: "message",
-      label: "メッセージ",
-      width: "110px",
-      render: (draft: TradeNaviDraft) => (
-        <button
-          type="button"
-          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (draft.id) setMessageTarget(draft.id);
-          }}
-        >
-          メッセージ
-        </button>
-      ),
-    },
-  ];
-
-  const buyerApprovalColumns: NaviTableColumn[] = draftColumns.map((col) =>
+  const buyerApprovalColumns: NaviTableColumn[] = tradeColumnsWithoutAction.map((col) =>
     col.key === "document"
       ? {
           ...col,
           label: "発送先入力",
-          render: (draft: TradeNaviDraft) => (
-            <button
-              type="button"
-              className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm disabled:opacity-50"
-              disabled
+          render: (row: TradeRow) => (
+            <a
+              href={`/trade-navi/buyer/requests/${row.id}`}
+              className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+              onClick={(e) => e.stopPropagation()}
             >
               入力
-            </button>
+            </a>
           ),
         }
       : col
@@ -450,9 +370,9 @@ export function InProgressTabContent() {
           </SectionHeader>
           <NaviTable
             columns={buyerApprovalColumns}
-            rows={sortedNavis}
-            emptyMessage="現在進行中の取引Naviはありません。"
-            onRowClick={(draft) => draft.id && router.push(`/transactions/navi/${draft.id}`)}
+            rows={buyerApprovalRows}
+            emptyMessage="現在承認待ちの取引はありません。"
+            onRowClick={(row) => row.id && router.push(`/trade-navi/buyer/requests/${row.id}`)}
           />
         </div>
 
@@ -484,10 +404,10 @@ export function InProgressTabContent() {
             要承認
           </SectionHeader>
           <NaviTable
-            columns={draftColumns}
-            rows={sortedNavis}
-            emptyMessage="現在進行中の取引Naviはありません。"
-            onRowClick={(draft) => draft.id && router.push(`/transactions/navi/${draft.id}`)}
+            columns={tradeColumnsWithoutAction}
+            rows={sellerApprovalRows}
+            emptyMessage="現在承認待ちの送信済み取引はありません。"
+            onRowClick={(row) => row.id && router.push(`/trade-navi/${row.id}/statement`)}
           />
         </div>
 

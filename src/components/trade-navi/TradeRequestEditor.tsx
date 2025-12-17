@@ -14,6 +14,7 @@ import {
   type DocumentShippingType,
 } from "@/lib/useDummyNavi";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { createTradeFromDraft, saveTradeRecord } from "@/lib/trade/storage";
 
 const mapDraftConditions = (
   conditions: TradeConditions,
@@ -301,6 +302,8 @@ export function TradeRequestEditor() {
     };
 
     saveNavi(currentUser.id, updatedDraft);
+    const tradeRecord = createTradeFromDraft(updatedDraft, currentUser.id);
+    saveTradeRecord(tradeRecord);
     setDraft(updatedDraft);
     alert("取引Naviを売却先へ送信しました。");
     router.push("/trade-navi");
