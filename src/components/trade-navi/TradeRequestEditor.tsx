@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import SellerAutocomplete from "@/components/transactions/SellerAutocomplete";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
 import { createEmptyNaviDraft, loadNaviDraft, saveNavi } from "@/lib/navi/storage";
 import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
@@ -14,6 +13,7 @@ import {
   type DocumentShippingType,
 } from "@/lib/useDummyNavi";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { getDevUsers } from "@/lib/dev-user/users";
 import { createTradeFromDraft, saveTradeRecord } from "@/lib/trade/storage";
 
 const mapDraftConditions = (
@@ -143,6 +143,12 @@ export function TradeRequestEditor() {
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
   const naviTargetId = draft?.productId ?? transactionId;
   const { buyerInfo, propertyInfo, currentConditions, updatedConditions } = useDummyNavi(naviTargetId);
+  const [isEditingBuyer, setIsEditingBuyer] = useState(false);
+  const buyerCandidates = useMemo(
+    () => getDevUsers().filter((user) => user.id !== currentUser.id),
+    [currentUser.id]
+  );
+  const [selectedBuyerId, setSelectedBuyerId] = useState<string>("");
 
   const draftConditions = useMemo(
     () => (draft ? mapDraftConditions(draft.conditions, currentConditions) : null),
@@ -219,6 +225,19 @@ export function TradeRequestEditor() {
     });
   }, [draft]);
 
+  useEffect(() => {
+    const buyerId = draft?.buyerId;
+    if (buyerId) {
+      setSelectedBuyerId(buyerId);
+      setIsEditingBuyer(false);
+      return;
+    }
+
+    if (!buyerId && buyerCandidates.length > 0) {
+      setSelectedBuyerId(buyerCandidates[0].id);
+    }
+  }, [buyerCandidates, draft?.buyerId]);
+
   const persistDraft = (updater: (prev: TradeNaviDraft) => TradeNaviDraft) => {
     setDraft((prev) => {
       if (!prev) return prev;
@@ -253,6 +272,48 @@ export function TradeRequestEditor() {
       buyerAddress: buyer.address,
       buyerTel: buyer.tel ?? "000-0000-0000",
       buyerPending: false,
+    }));
+    setSelectedBuyerId(buyer.id);
+    setIsEditingBuyer(false);
+    setValidationErrors((prev) => ({ ...prev, buyer: undefined }));
+  };
+
+  const handleBuyerSelectionConfirm = () => {
+    if (!selectedBuyerId) {
+      setValidationErrors((prev) => ({ ...prev, buyer: buyerErrorMessage }));
+      return;
+    }
+
+    const buyer = buyerCandidates.find((candidate) => candidate.id === selectedBuyerId);
+    if (!buyer) {
+      setValidationErrors((prev) => ({ ...prev, buyer: buyerErrorMessage }));
+      return;
+    }
+
+    handleBuyerSelect({
+      id: buyer.id,
+      name: buyer.companyName,
+      contactName: buyer.contactName,
+      tel: buyer.tel,
+      address: buyer.address,
+    });
+  };
+
+  const handleResetBuyerSelection = () => {
+    setIsEditingBuyer(true);
+    const defaultCandidate = buyerCandidates[0];
+    if (defaultCandidate) {
+      setSelectedBuyerId(defaultCandidate.id);
+    }
+    persistDraft((prev) => ({
+      ...prev,
+      buyerId: null,
+      buyerCompanyName: null,
+      buyerContactName: null,
+      buyerAddress: null,
+      buyerTel: null,
+      buyerEmail: null,
+      buyerPending: true,
     }));
   };
 
@@ -345,6 +406,7 @@ export function TradeRequestEditor() {
     email: draft?.buyerEmail ?? buyerInfo.email,
     notes: draft?.buyerNote ?? buyerInfo.notes,
   };
+  const shouldShowBuyerSelector = !isBuyerSet || isEditingBuyer;
   const editableProperty = {
     modelName: draft?.conditions.productName ?? "",
     maker: draft?.conditions.makerName ?? "",
@@ -422,29 +484,59 @@ export function TradeRequestEditor() {
               {/* カード見出しを標準文字サイズより一段階大きく */}
               <h2 className="text-base font-semibold text-slate-900">売却先</h2>
               <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
-              {isBuyerSet && (
+              {isBuyerSet && !shouldShowBuyerSelector && (
                 <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
               )}
             </div>
 
             <div className="w-full md:max-w-[420px]">
-              {isBuyerSet ? (
+              {shouldShowBuyerSelector ? (
+                <div className="space-y-2 text-sm">
+                  <label className="block text-xs font-semibold text-neutral-800">
+                    売却先（買手）を選択してください
+                  </label>
+                  <select
+                    className="w-full rounded border border-slate-300 px-3 py-2"
+                    value={selectedBuyerId}
+                    onChange={(e) => setSelectedBuyerId(e.target.value)}
+                  >
+                    {buyerCandidates.map((candidate) => (
+                      <option key={candidate.id} value={candidate.id}>
+                        {candidate.companyName}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-neutral-600">
+                    売却先として選んだ会社に依頼が送信され、買手側の「届いた依頼」に表示されます。
+                  </p>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      className="rounded bg-[#142B5E] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#0f2248]"
+                      onClick={handleBuyerSelectionConfirm}
+                    >
+                      この買手に送信する
+                    </button>
+                    {isBuyerSet && (
+                      <button
+                        type="button"
+                        className="rounded border border-slate-300 px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
+                        onClick={() => setIsEditingBuyer(false)}
+                      >
+                        キャンセル
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
                 <div className="flex justify-start">
                   <button
                     type="button"
                     className="text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
+                    onClick={handleResetBuyerSelection}
                   >
                     売却先情報を変更
                   </button>
-                </div>
-              ) : (
-                <div className="flex w-full justify-start">
-                  <SellerAutocomplete
-                    onSelect={handleBuyerSelect}
-                    hiddenInputName="seller_id"
-                    name="seller_name"
-                    searchApiPath="/api/sellers/search"
-                  />
                 </div>
               )}
             </div>

@@ -1,4 +1,5 @@
 import { TradeNaviDraft } from "@/lib/navi/types";
+import { DEV_USERS } from "@/lib/dev-user/users";
 
 import {
   type BuyerContact,
@@ -13,24 +14,20 @@ import { calculateStatementTotals } from "./calcTotals";
 export const TRADE_STORAGE_KEY = "trade_records_v1";
 const CONTACT_STORAGE_PREFIX = "buyerContacts:";
 
-const companyDirectory: Record<string, CompanyProfile> = {
-  "user-a": {
-    userId: "user-a",
-    companyName: "株式会社パチテック",
-    address: "東京都千代田区丸の内1-1-1 パチマートビル 10F",
-    tel: "03-1234-5678",
-    fax: "03-1234-5679",
-    contactName: "田中 太郎",
+const companyDirectory: Record<string, CompanyProfile> = Object.values(DEV_USERS).reduce(
+  (acc, user) => {
+    acc[user.id] = {
+      userId: user.id,
+      companyName: user.companyName,
+      address: user.address,
+      tel: user.tel,
+      fax: user.fax,
+      contactName: user.contactName,
+    } satisfies CompanyProfile;
+    return acc;
   },
-  "user-b": {
-    userId: "user-b",
-    companyName: "株式会社トレード連合",
-    address: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
-    tel: "06-9876-5432",
-    fax: "06-9876-5433",
-    contactName: "佐藤 花子",
-  },
-};
+  {} as Record<string, CompanyProfile>
+);
 
 const seedTrades: TradeRecord[] = [
   {
@@ -90,7 +87,7 @@ const seedTrades: TradeRecord[] = [
     remarks: "搬出時に立ち会いが必要です。",
     termsText: "納品後7日以内の初期不良のみ対応いたします。キャンセルは原則不可です。",
     shipping: {
-      companyName: "株式会社パチテック",
+      companyName: companyDirectory["user-a"].companyName,
       zip: "100-0005",
       address: "東京都千代田区丸の内1-1-1 パチマートビル 10F",
       tel: "03-1234-5678",
@@ -98,7 +95,7 @@ const seedTrades: TradeRecord[] = [
     },
     buyerContactName: "田中 太郎",
     buyerShippingAddress: {
-      companyName: "株式会社パチテック",
+      companyName: companyDirectory["user-a"].companyName,
       zip: "100-0005",
       address: "東京都千代田区丸の内1-1-1 パチマートビル 10F",
       tel: "03-1234-5678",
@@ -150,7 +147,7 @@ const seedTrades: TradeRecord[] = [
     remarks: "梱包材は売主にて手配します。",
     termsText: "支払期日は請求日から5営業日以内。キャンセルは協議の上で判断します。",
     shipping: {
-      companyName: "株式会社トレード連合",
+      companyName: companyDirectory["user-b"].companyName,
       zip: "530-0001",
       address: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
       tel: "06-9876-5432",
@@ -158,7 +155,7 @@ const seedTrades: TradeRecord[] = [
     },
     buyerContactName: "佐藤 花子",
     buyerShippingAddress: {
-      companyName: "株式会社トレード連合",
+      companyName: companyDirectory["user-b"].companyName,
       zip: "530-0001",
       address: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
       tel: "06-9876-5432",
