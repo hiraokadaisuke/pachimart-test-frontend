@@ -29,18 +29,21 @@ export default function HallInvoicePage() {
     const all = loadInventoryRecords();
     const targets = draft ? all.filter((inv) => draft.inventoryIds.includes(inv.id)) : [];
     setIssuedDate(new Date().toISOString().slice(0, 10));
-    setItems(
-      targets.map((inv) => ({
+    const normalizedItems: PurchaseInvoiceItem[] = targets.map((inv) => {
+      const quantity = inv.quantity ?? 0;
+      const unitPrice = inv.unitPrice ?? 0;
+      return {
         inventoryId: inv.id,
-        maker: inv.maker,
-        machineName: inv.machineName,
-        type: inv.type,
-        quantity: inv.quantity ?? 0,
-        unitPrice: inv.unitPrice ?? 0,
-        amount: (inv.quantity ?? 0) * (inv.unitPrice ?? 0),
-        note: inv.notes,
-      })),
-    );
+        maker: inv.maker ?? "",
+        machineName: inv.machineName ?? "",
+        type: inv.type ?? "",
+        quantity,
+        unitPrice,
+        amount: quantity * unitPrice,
+        note: inv.notes ?? inv.note ?? "",
+      };
+    });
+    setItems(normalizedItems);
   }, [params?.draftId]);
 
   const total = useMemo(() => items.reduce((sum, item) => sum + (item.amount ?? 0), 0), [items]);

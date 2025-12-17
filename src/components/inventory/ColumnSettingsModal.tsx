@@ -72,7 +72,7 @@ export function ColumnSettingsModal({ open, onClose, columns, onSave }: ColumnSe
   }, [columns, open]);
 
   const sortedColumns = useMemo(
-    () => [...localColumns].sort((a, b) => a.order - b.order),
+    () => [...localColumns].sort((a, b) => (a.order ?? 0) - (b.order ?? 0)),
     [localColumns],
   );
 
@@ -83,7 +83,7 @@ export function ColumnSettingsModal({ open, onClose, columns, onSave }: ColumnSe
     if (!over || active.id === over.id) return;
 
     setLocalColumns((prev) => {
-      const ordered = [...prev].sort((a, b) => a.order - b.order);
+      const ordered = [...prev].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       const oldIndex = ordered.findIndex((col) => col.key === active.id);
       const newIndex = ordered.findIndex((col) => col.key === over.id);
       const moved = arrayMove(ordered, oldIndex, newIndex);
@@ -101,6 +101,8 @@ export function ColumnSettingsModal({ open, onClose, columns, onSave }: ColumnSe
     const next: ColumnSetting = {
       key: `custom-${Date.now()}`,
       label,
+      width: 140,
+      minWidth: 100,
       visible: true,
       order: localColumns.length,
       isCustom: true,
