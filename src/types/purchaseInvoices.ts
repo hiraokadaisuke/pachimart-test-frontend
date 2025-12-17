@@ -30,7 +30,10 @@ export type PurchaseInvoice = {
   createdAt: string;
   issuedDate?: string;
   partnerName?: string;
+  staff?: string;
   inventoryIds: string[];
   items: PurchaseInvoiceItem[];
   totalAmount?: number;
+  formInput?: Record<string, string>;
+  displayTitle?: string;
 };
