@@ -53,7 +53,7 @@ export default function Header() {
   const isProductsPage = pathname === "/products" || pathname?.startsWith("/products/");
   const isInventoryPage = pathname?.startsWith("/inventory");
   const [activeTab, setActiveTab] = useState<string>("パチンコ");
-  const devUserLabel = `${currentUser.label}で閲覧中`;
+  const devUserLabel = `${currentUser.companyName}で閲覧中`;
   const isProd = process.env.NEXT_PUBLIC_ENV === "production";
 
   return (

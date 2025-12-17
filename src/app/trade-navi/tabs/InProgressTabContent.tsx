@@ -234,8 +234,12 @@ export function InProgressTabContent() {
   );
 
   const filteredTradeRows = useMemo(() => filterTrades(mappedTradeRows), [filterTrades, mappedTradeRows]);
-  const buyerApprovalRows = filteredTradeRows.filter((row) => row.kind === "buy");
-  const sellerApprovalRows = filteredTradeRows.filter((row) => row.kind === "sell");
+  const buyerApprovalRows = filteredTradeRows.filter(
+    (row) => row.kind === "buy" && row.status === "requesting"
+  );
+  const sellerApprovalRows = filteredTradeRows.filter(
+    (row) => row.kind === "sell" && row.status === "requesting"
+  );
 
   const tradeColumnBase: NaviTableColumn[] = [
     {
