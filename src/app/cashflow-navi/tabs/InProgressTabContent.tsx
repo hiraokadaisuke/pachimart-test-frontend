@@ -363,7 +363,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.payment}
           >
-            要入金
+            入金待ち
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsForPayment}
@@ -378,7 +378,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.checking}
           >
-            要確認
+            確認待ち
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsForChecking}
@@ -399,7 +399,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.payment}
           >
-            要入金
+            入金待ち
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsWithoutAction}
@@ -413,7 +413,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.checking}
           >
-            要確認
+            確認待ち
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsWithoutAction}
