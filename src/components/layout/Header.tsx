@@ -56,6 +56,10 @@ export default function Header() {
   const devUserLabel = `${currentUser.companyName}で閲覧中`;
   const isProd = process.env.NEXT_PUBLIC_ENV === "production";
 
+  if (isInventoryPage) {
+    return null;
+  }
+
   return (
     <header className="w-full border-b border-gray-200 bg-white">
       <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-4 px-4 py-3 md:flex-nowrap md:py-4">

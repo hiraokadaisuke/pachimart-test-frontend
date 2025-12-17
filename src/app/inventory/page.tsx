@@ -3,9 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-import {
-  ColumnSettingsModal,
-} from "@/components/inventory/ColumnSettingsModal";
+import { ColumnSettingsModal } from "@/components/inventory/ColumnSettingsModal";
 import {
   formatCurrency,
   formatDate,
@@ -20,47 +18,53 @@ import type { InventoryStatusOption } from "@/types/purchaseInvoices";
 
 const STATUS_OPTIONS: InventoryStatusOption[] = ["倉庫", "出品中", "売却済"];
 
-const renderCell = (record: InventoryRecord, key: string) => {
+type CellValue = {
+  text: string;
+};
+
+const truncateText = (text: string, maxLength = 10) => {
+  if (!text) return "-";
+  return text.length > maxLength ? `${text.slice(0, maxLength)}...` : text;
+};
+
+const renderCell = (record: InventoryRecord, key: string): CellValue => {
   switch (key) {
     case "id":
-      return record.id;
+      return { text: record.id };
     case "createdAt":
-      return formatDate(record.createdAt);
+      return { text: formatDate(record.createdAt) };
     case "maker":
-      return record.maker || "-";
+      return { text: record.maker || "-" };
     case "machineName":
-      return record.machineName || "-";
+      return { text: record.machineName || "-" };
     case "type":
-      return record.type || "-";
+      return { text: record.type || "-" };
     case "deviceType":
-      return record.deviceType || "-";
+      return { text: record.deviceType || "-" };
     case "quantity":
-      return record.quantity?.toLocaleString() ?? "-";
+      return { text: record.quantity?.toLocaleString() ?? "-" };
     case "unitPrice":
-      return formatCurrency(record.unitPrice);
+      return { text: formatCurrency(record.unitPrice) };
     case "remainingDebt":
-      return record.remainingDebt != null ? formatCurrency(record.remainingDebt) : "-";
+      return { text: record.remainingDebt != null ? formatCurrency(record.remainingDebt) : "-" };
     case "dates":
-      return (
-        <div className="flex flex-col gap-1 text-sm text-neutral-800 sm:flex-row sm:items-center sm:gap-2">
-          <span className="text-xs text-slate-500 sm:text-sm">入庫: {formatDate(record.arrivalDate)}</span>
-          <span className="text-xs text-slate-500 sm:text-sm">撤去: {formatDate(record.removalDate)}</span>
-        </div>
-      );
+      return {
+        text: `入庫: ${formatDate(record.arrivalDate)} / 撤去: ${formatDate(record.removalDate)}`,
+      };
     case "pattern":
-      return record.pattern || "-";
+      return { text: record.pattern || "-" };
     case "storageLocation":
-      return record.storageLocation || "-";
+      return { text: record.storageLocation || "-" };
     case "supplier":
-      return record.supplier || "-";
+      return { text: record.supplier || "-" };
     case "buyerStaff":
-      return record.buyerStaff || "-";
+      return { text: record.buyerStaff || "-" };
     case "notes":
-      return record.notes || "-";
+      return { text: record.notes || "-" };
     case "stockStatus":
-      return record.stockStatus;
+      return { text: record.stockStatus };
     default:
-      return record.customFields?.[key] ?? "";
+      return { text: record.customFields?.[key] ?? "-" };
   }
 };
 
@@ -151,12 +155,12 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
+      <div className="w-full overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+        <table className="min-w-full table-auto divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-700">
             <tr>
               {visibleColumns.map((col) => (
-                <th key={col.key} className="px-3 py-3 whitespace-nowrap">
+                <th key={col.key} className="whitespace-nowrap px-3 py-3">
                   {col.label}
                 </th>
               ))}
@@ -172,27 +176,37 @@ export default function InventoryPage() {
             ) : (
               filtered.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50">
-                  {visibleColumns.map((col) => (
-                    <td key={col.key} className="px-3 py-3 align-top text-neutral-800">
-                      {col.key === "stockStatus" ? (
-                        <select
-                          value={item.stockStatus}
-                          onChange={(event) =>
-                            handleStatusChange(item.id, event.target.value as InventoryStatusOption)
-                          }
-                          className="rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                        >
-                          {STATUS_OPTIONS.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        renderCell(item, col.key)
-                      )}
-                    </td>
-                  ))}
+                  {visibleColumns.map((col) => {
+                    const cellValue = renderCell(item, col.key);
+                    const shouldTruncate = cellValue.text.length > 10;
+
+                    return (
+                      <td key={col.key} className="whitespace-nowrap px-3 py-3 align-top text-neutral-800">
+                        {col.key === "stockStatus" ? (
+                          <select
+                            value={item.stockStatus}
+                            onChange={(event) =>
+                              handleStatusChange(item.id, event.target.value as InventoryStatusOption)
+                            }
+                            className="rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                          >
+                            {STATUS_OPTIONS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        ) : (
+                          <span
+                            className="block max-w-[240px] truncate"
+                            title={shouldTruncate ? cellValue.text : undefined}
+                          >
+                            {truncateText(cellValue.text)}
+                          </span>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}
