@@ -43,6 +43,12 @@ const seedTrades: TradeRecord[] = [
     createdAt: "2025-11-20T09:30:00.000Z",
     updatedAt: "2025-11-20T09:30:00.000Z",
     contractDate: "2025-11-21",
+    shipmentDate: "2025-11-28",
+    receiveMethod: "混載便（指定なし）",
+    shippingMethod: "路線便",
+    handlerName: "川田",
+    paymentMethod: "銀行振込（請求後3営業日以内）",
+    paymentTerms: "請求書到着後3営業日以内に指定口座へ振込",
     seller: companyDirectory["user-b"],
     buyer: companyDirectory["user-a"],
     items: [
@@ -85,10 +91,18 @@ const seedTrades: TradeRecord[] = [
     termsText: "納品後7日以内の初期不良のみ対応いたします。キャンセルは原則不可です。",
     shipping: {
       companyName: "株式会社パチテック",
-      zip: "",
-      address: "",
-      tel: "",
-      personName: "",
+      zip: "100-0005",
+      address: "東京都千代田区丸の内1-1-1 パチマートビル 10F",
+      tel: "03-1234-5678",
+      personName: "田中 太郎",
+    },
+    buyerContactName: "田中 太郎",
+    buyerShippingAddress: {
+      companyName: "株式会社パチテック",
+      zip: "100-0005",
+      address: "東京都千代田区丸の内1-1-1 パチマートビル 10F",
+      tel: "03-1234-5678",
+      personName: "田中 太郎",
     },
     buyerContacts: [
       { contactId: "contact-a1", name: "田中 責任者" },
@@ -105,6 +119,12 @@ const seedTrades: TradeRecord[] = [
     createdAt: "2025-11-18T12:00:00.000Z",
     updatedAt: "2025-11-19T08:00:00.000Z",
     contractDate: "2025-11-19",
+    shipmentDate: "2025-11-26",
+    receiveMethod: "混載便（午後着）",
+    shippingMethod: "専用便",
+    handlerName: "佐藤",
+    paymentMethod: "銀行振込（即日）",
+    paymentTerms: "請求日から5営業日以内に振込",
     seller: companyDirectory["user-a"],
     buyer: companyDirectory["user-b"],
     items: [
@@ -130,6 +150,14 @@ const seedTrades: TradeRecord[] = [
     remarks: "梱包材は売主にて手配します。",
     termsText: "支払期日は請求日から5営業日以内。キャンセルは協議の上で判断します。",
     shipping: {
+      companyName: "株式会社トレード連合",
+      zip: "530-0001",
+      address: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
+      tel: "06-9876-5432",
+      personName: "佐藤 花子",
+    },
+    buyerContactName: "佐藤 花子",
+    buyerShippingAddress: {
       companyName: "株式会社トレード連合",
       zip: "530-0001",
       address: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
@@ -281,7 +309,7 @@ export function approveTrade(tradeId: string): TradeRecord | null {
   return upsertTradeInternal({
     ...trade,
     status: "PAYMENT_REQUIRED",
-    contractDate: trade.contractDate ?? now,
+    contractDate: now,
     updatedAt: now,
   });
 }
@@ -297,6 +325,8 @@ export function updateTradeShipping(
   const updated = {
     ...trade,
     shipping,
+    buyerShippingAddress: shipping,
+    buyerContactName: shipping.personName ?? trade.buyerContactName,
     buyerContacts: contacts ?? trade.buyerContacts,
   };
   return upsertTradeInternal(updated);
@@ -503,6 +533,13 @@ export function createTradeFromDraft(
     remarks: draft.conditions.notes ?? draft.conditions.memo ?? undefined,
     termsText,
     shipping: {
+      companyName: draft.buyerCompanyName ?? buyerProfile.companyName,
+      address: draft.buyerAddress ?? "",
+      tel: draft.buyerTel ?? "",
+      personName: draft.buyerContactName ?? "",
+    },
+    buyerContactName: draft.buyerContactName ?? undefined,
+    buyerShippingAddress: {
       companyName: draft.buyerCompanyName ?? buyerProfile.companyName,
       address: draft.buyerAddress ?? "",
       tel: draft.buyerTel ?? "",

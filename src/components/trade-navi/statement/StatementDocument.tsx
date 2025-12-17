@@ -1,6 +1,6 @@
 "use client";
 
-import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 
 import { ContactSelector } from "./ContactSelector";
@@ -23,6 +23,19 @@ const formatDateLabel = (value?: string) => {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
+};
+
+const formatDateTimeLabel = (value?: string) => {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
 
 const fallbackTerms =
@@ -55,6 +68,9 @@ export function StatementDocument({
     trade.contractDate ??
     (trade.updatedAt ? trade.updatedAt.slice(0, 10) : new Date().toISOString().slice(0, 10));
 
+  const primaryItem = trade.items[0];
+  const paymentTerms = trade.paymentTerms ?? trade.paymentMethod ?? "支払条件未設定";
+
   return (
     <div className="statement-sheet">
       <header className="flex flex-col gap-2 border-b-2 border-[#0f1f3c] pb-3">
@@ -72,6 +88,23 @@ export function StatementDocument({
           下記の通りご請求申し上げます。内容をご確認の上、ご承認をお願いいたします。
         </p>
       </header>
+
+      <section className="mt-4 rounded border border-slate-400 bg-white">
+        <div className="bg-[#0f1f3c] px-3 py-2 text-[12px] font-semibold text-white">取引概要</div>
+        <div className="grid grid-cols-1 gap-2 p-3 text-[12px] md:grid-cols-2">
+          <InfoRow label="取引ID" value={trade.id} dense />
+          <InfoRow label="合計金額（税込）" value={formatYen(totals.total)} emphasize />
+          <InfoRow label="機種カテゴリ" value={trade.category ?? primaryItem?.category ?? "-"} />
+          <InfoRow label="メーカー" value={trade.makerName ?? primaryItem?.maker ?? "-"} />
+          <InfoRow label="機種名" value={trade.itemName ?? primaryItem?.itemName ?? "-"} />
+          <InfoRow label="台数" value={trade.quantity?.toString() ?? primaryItem?.qty?.toString() ?? "-"} />
+          <InfoRow label="単価（参考）" value={primaryItem?.unitPrice ? formatYen(primaryItem.unitPrice) : "-"} />
+          <InfoRow label="支払条件" value={paymentTerms} />
+          <InfoRow label="発送予定日" value={formatDateLabel(trade.shipmentDate)} />
+          <InfoRow label="受渡方法" value={trade.receiveMethod ?? trade.shippingMethod ?? "-"} />
+          <InfoRow label="備考" value={trade.remarks ?? "特記事項なし"} multiline />
+        </div>
+      </section>
 
       <section className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[2fr_1fr]">
         <ItemsTable items={trade.items} taxRate={trade.taxRate} />
@@ -170,6 +203,31 @@ export function StatementDocument({
         </div>
       </section>
 
+      <section className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="rounded border border-slate-400">
+          <div className="bg-[#0f1f3c] px-3 py-2 text-[12px] font-semibold text-white">スケジュール / 発送</div>
+          <div className="space-y-2 p-3 text-[12px] text-neutral-900">
+            <InfoRow label="発送予定日" value={formatDateLabel(trade.shipmentDate)} />
+            <InfoRow label="受渡方法" value={trade.receiveMethod ?? "-"} />
+            <InfoRow label="発送手段" value={trade.shippingMethod ?? "-"} />
+            <InfoRow label="書類発送日" value={formatDateLabel(trade.documentSentDate)} />
+            <InfoRow label="書類到着予定" value={formatDateLabel(trade.documentReceivedDate)} />
+            <InfoRow label="現場担当" value={trade.handlerName ?? "-"} />
+          </div>
+        </div>
+
+        <div className="rounded border border-slate-400">
+          <div className="bg-[#0f1f3c] px-3 py-2 text-[12px] font-semibold text-white">金額・支払条件</div>
+          <div className="space-y-2 p-3 text-[12px] text-neutral-900">
+            <InfoRow label="支払方法" value={trade.paymentMethod ?? "-"} />
+            <InfoRow label="支払条件" value={paymentTerms} />
+            <InfoRow label="成約日" value={formatDateLabel(trade.contractDate)} />
+            <InfoRow label="支払日" value={formatDateLabel(trade.paymentDate)} />
+            <InfoRow label="合計金額（税込）" value={formatYen(totals.total)} emphasize />
+          </div>
+        </div>
+      </section>
+
       <section className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-[2fr_1fr]">
         <div className="rounded border border-slate-400">
           <div className="bg-[#0f1f3c] px-3 py-2 text-[12px] font-semibold text-white">取引条件</div>
@@ -192,15 +250,43 @@ export function StatementDocument({
           </div>
         </div>
       </section>
+
+      <section className="mt-4 rounded border border-slate-400">
+        <div className="bg-[#0f1f3c] px-3 py-2 text-[12px] font-semibold text-white">タイムスタンプ</div>
+        <div className="grid grid-cols-1 gap-2 p-3 text-[12px] md:grid-cols-2">
+          <InfoRow label="作成日時" value={formatDateTimeLabel(trade.createdAt)} dense />
+          <InfoRow label="更新日時" value={formatDateTimeLabel(trade.updatedAt)} dense />
+          <InfoRow label="成約日" value={formatDateLabel(trade.contractDate)} dense />
+          <InfoRow label="キャンセル日時" value={formatDateTimeLabel(trade.canceledAt)} dense />
+        </div>
+      </section>
     </div>
   );
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
+function InfoRow({
+  label,
+  value,
+  multiline = false,
+  emphasize = false,
+  dense = false,
+}: {
+  label: string;
+  value: string;
+  multiline?: boolean;
+  emphasize?: boolean;
+  dense?: boolean;
+}) {
   return (
     <div className="flex items-start gap-3">
-      <span className="w-16 text-neutral-600">{label}</span>
-      <span className="flex-1 font-semibold text-neutral-900">{value || "-"}</span>
+      <span className={`w-24 shrink-0 text-neutral-600 ${dense ? "text-[11px]" : ""}`}>{label}</span>
+      <span
+        className={`flex-1 whitespace-pre-line ${emphasize ? "font-bold text-indigo-700" : "font-semibold text-neutral-900"} ${
+          multiline ? "leading-relaxed" : ""
+        }`}
+      >
+        {value || "-"}
+      </span>
     </div>
   );
 }
