@@ -366,7 +366,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={buySectionDescriptions.approval}
           >
-            要承認
+            承認待ち
           </SectionHeader>
           <NaviTable
             columns={buyerApprovalColumns}
@@ -401,7 +401,7 @@ export function InProgressTabContent() {
             className="px-3 py-2 text-xs"
             description={sellSectionDescriptions.approval}
           >
-            要承認
+            承認待ち
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsWithoutAction}
