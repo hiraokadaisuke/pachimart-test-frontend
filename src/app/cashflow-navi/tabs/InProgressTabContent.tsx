@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
@@ -14,6 +14,14 @@ import {
 import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
+import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import {
+  TRADE_STORAGE_KEY,
+  loadAllTrades,
+  markTradeCompleted,
+  markTradePaid,
+} from "@/lib/trade/storage";
+import { TradeRecord } from "@/lib/trade/types";
 
 type TradeRow = {
   id: string;
@@ -30,146 +38,71 @@ type TradeRow = {
   buyerUserId: string;
   sellerName: string;
   buyerName: string;
+  kind?: "buy" | "sell";
 };
-
-const dummyTrades: TradeRow[] = [
-  {
-    id: "T-2025111901",
-    status: "waiting_payment",
-    updatedAt: "2025/11/19 14:55",
-    partnerName: "株式会社パチテック",
-    makerName: "三京商会",
-    itemName: "P スーパー海物語 JAPAN2 L1",
-    quantity: 10,
-    totalAmount: 1280000,
-    scheduledShipDate: "2025/11/25",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "株式会社パチテック",
-    buyerName: "株式会社トレード連合",
-  },
-  {
-    id: "T-2025111902",
-    status: "navi_in_progress",
-    updatedAt: "2025/11/19 13:10",
-    partnerName: "有限会社スマイル",
-    makerName: "平和",
-    itemName: "P ルパン三世 2000カラットの涙",
-    quantity: 6,
-    totalAmount: 860000,
-    scheduledShipDate: "2025/11/26",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "有限会社スマイル",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111801",
-    status: "waiting_payment",
-    updatedAt: "2025/11/18 17:40",
-    partnerName: "株式会社アミューズ流通",
-    makerName: "SANKYO",
-    itemName: "P フィーバー機動戦士ガンダムSEED",
-    quantity: 8,
-    totalAmount: 1520000,
-    scheduledShipDate: "2025/11/27",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "株式会社アミューズ流通",
-    buyerName: "九州エンタメ産業",
-  },
-  {
-    id: "T-2025111802",
-    status: "navi_in_progress",
-    updatedAt: "2025/11/18 15:05",
-    partnerName: "パチンコランド神奈川",
-    makerName: "サミー",
-    itemName: "P 北斗の拳9 闘神",
-    quantity: 5,
-    totalAmount: 990000,
-    scheduledShipDate: "2025/11/28",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "パチンコランド神奈川",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111701",
-    status: "waiting_payment",
-    updatedAt: "2025/11/17 11:20",
-    partnerName: "株式会社ミドルウェーブ",
-    makerName: "京楽",
-    itemName: "P AKB48 バラの儀式",
-    quantity: 4,
-    totalAmount: 540000,
-    scheduledShipDate: "2025/11/24",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "株式会社ミドルウェーブ",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111702",
-    status: "navi_in_progress",
-    updatedAt: "2025/11/17 09:05",
-    partnerName: "エムズホールディングス",
-    makerName: "大都技研",
-    itemName: "S 押忍！番長ZERO",
-    quantity: 12,
-    totalAmount: 1320000,
-    scheduledShipDate: "2025/11/29",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "エムズホールディングス",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111601",
-    status: "navi_in_progress",
-    updatedAt: "2025/11/16 18:30",
-    partnerName: "株式会社ネクストレード",
-    makerName: "ニューギン",
-    itemName: "P 真・花の慶次3 黄金一閃",
-    quantity: 7,
-    totalAmount: 1180000,
-    scheduledShipDate: "2025/11/27",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "株式会社ネクストレード",
-    buyerName: "関東レジャー販売",
-  },
-  {
-    id: "T-2025111602",
-    status: "waiting_payment",
-    updatedAt: "2025/11/16 10:12",
-    partnerName: "株式会社東海レジャー",
-    makerName: "藤商事",
-    itemName: "P とある魔術の禁書目録",
-    quantity: 9,
-    totalAmount: 760000,
-    scheduledShipDate: "2025/11/23",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "株式会社東海レジャー",
-    buyerName: "関東レジャー販売",
-  },
-];
 
 function formatCurrency(amount: number) {
   const formatter = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" });
   return formatter.format(amount);
 }
 
+function formatDateTime(iso?: string) {
+  if (!iso) return "-";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "-";
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
+  switch (status) {
+    case "APPROVAL_REQUIRED":
+      return "requesting";
+    case "PAYMENT_REQUIRED":
+      return "waiting_payment";
+    case "CONFIRM_REQUIRED":
+      return "navi_in_progress";
+    case "COMPLETED":
+      return "completed";
+    case "CANCELED":
+      return "canceled";
+    default:
+      return "navi_in_progress";
+  }
+}
+
+function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
+  const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
+  const primaryItem = trade.items[0];
+  const totalQty = trade.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
+  const status = mapTradeStatus(trade.status);
+  const sellerUserId = trade.seller.userId ?? "seller";
+  const buyerUserId = trade.buyer.userId ?? "buyer";
+  const updatedAtLabel = formatDateTime(trade.updatedAt ?? trade.createdAt ?? new Date().toISOString());
+  const scheduledShipDate = trade.contractDate ? trade.contractDate.slice(0, 10) : "-";
+  const isSeller = sellerUserId === viewerId;
+
+  return {
+    id: trade.id,
+    status,
+    updatedAt: updatedAtLabel,
+    partnerName: isSeller ? trade.buyer.companyName : trade.seller.companyName,
+    makerName: primaryItem?.maker ?? "-",
+    itemName: primaryItem?.itemName ?? "商品",
+    quantity: totalQty,
+    totalAmount: totals.total,
+    scheduledShipDate,
+    pdfUrl: `/trade-navi/${trade.id}/statement`,
+    sellerUserId,
+    buyerUserId,
+    sellerName: trade.seller.companyName,
+    buyerName: trade.buyer.companyName,
+  };
+}
+
 export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
+  const [trades, setTrades] = useState<TradeRecord[]>([]);
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
   const [keyword, setKeyword] = useState("");
@@ -193,7 +126,8 @@ export function InProgressTabContent() {
         })
         .filter((trade) => {
           if (statusFilter === "all") return true;
-          if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(trade.status);
+          if (statusFilter === "inProgress")
+            return IN_PROGRESS_STATUS_KEYS.includes(trade.status) || trade.status === "requesting";
           if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(trade.status);
           return true;
         })
@@ -208,12 +142,59 @@ export function InProgressTabContent() {
     [currentUser.id, keyword, statusFilter]
   );
 
-  const filteredTrades = useMemo(() => filterTrades(dummyTrades), [filterTrades]);
+  const refreshTrades = useCallback(() => {
+    setTrades(loadAllTrades());
+  }, []);
 
-  const buyWaiting = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "waiting_payment");
-  const buyChecking = filteredTrades.filter((trade) => trade.kind === "buy" && trade.status === "navi_in_progress");
-  const sellWaiting = filteredTrades.filter((trade) => trade.kind === "sell" && trade.status === "waiting_payment");
-  const sellChecking = filteredTrades.filter((trade) => trade.kind === "sell" && trade.status === "navi_in_progress");
+  const handleMarkPaid = useCallback(
+    (tradeId: string) => {
+      markTradePaid(tradeId);
+      refreshTrades();
+    },
+    [refreshTrades]
+  );
+
+  const handleMarkCompleted = useCallback(
+    (tradeId: string) => {
+      markTradeCompleted(tradeId);
+      refreshTrades();
+    },
+    [refreshTrades]
+  );
+
+  useEffect(() => {
+    setTrades(loadAllTrades());
+  }, []);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === TRADE_STORAGE_KEY) {
+        setTrades(loadAllTrades());
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
+
+  const tradeRows = useMemo(
+    () => trades.map((trade) => buildTradeRow(trade, currentUser.id)),
+    [currentUser.id, trades]
+  );
+
+  const filteredTrades = useMemo(() => filterTrades(tradeRows), [filterTrades, tradeRows]);
+
+  const buyWaiting = filteredTrades.filter(
+    (trade) => trade.kind === "buy" && trade.status === "waiting_payment"
+  );
+  const buyChecking = filteredTrades.filter(
+    (trade) => trade.kind === "buy" && trade.status === "navi_in_progress"
+  );
+  const sellWaiting = filteredTrades.filter(
+    (trade) => trade.kind === "sell" && trade.status === "waiting_payment"
+  );
+  const sellChecking = filteredTrades.filter(
+    (trade) => trade.kind === "sell" && trade.status === "navi_in_progress"
+  );
 
   const tradeColumnBase: NaviTableColumn[] = [
     {
@@ -296,6 +277,10 @@ export function InProgressTabContent() {
       <button
         type="button"
         className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleMarkPaid(row.id);
+        }}
       >
         入金
       </button>
@@ -310,6 +295,10 @@ export function InProgressTabContent() {
       <button
         type="button"
         className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleMarkCompleted(row.id);
+        }}
       >
         確認完了
       </button>
