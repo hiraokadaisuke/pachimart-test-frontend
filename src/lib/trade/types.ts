@@ -57,6 +57,7 @@ export type TradeRecord = {
   completedAt?: string;
   canceledAt?: string;
   canceledBy?: "buyer" | "seller";
+  paymentTerms?: string;
   makerName?: string;
   itemName?: string;
   category?: "pachinko" | "slot" | "others";
@@ -68,6 +69,8 @@ export type TradeRecord = {
   documentSentDate?: string;
   documentReceivedDate?: string;
   handlerName?: string;
+  buyerContactName?: string;
+  buyerShippingAddress?: ShippingInfo;
   seller: CompanyProfile;
   buyer: CompanyProfile;
   items: StatementItem[];

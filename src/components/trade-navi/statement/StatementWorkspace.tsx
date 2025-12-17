@@ -11,6 +11,7 @@ import {
   loadTrade,
   approveTrade,
   saveContactsToTrade,
+  cancelTrade,
   updateTradeShipping,
 } from "@/lib/trade/storage";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
@@ -27,6 +28,13 @@ type StatementWorkspaceProps = {
 };
 
 const requiredFields: (keyof ShippingInfo)[] = ["companyName", "address", "tel", "personName"];
+const requiredFieldLabels: Record<keyof ShippingInfo, string> = {
+  companyName: "会社名",
+  address: "住所",
+  tel: "TEL",
+  personName: "担当者",
+  zip: "郵便番号",
+};
 
 export function StatementWorkspace({ tradeId, pageTitle, description, backHref }: StatementWorkspaceProps) {
   const router = useRouter();
@@ -40,7 +48,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   useEffect(() => {
     const record = loadTrade(tradeId);
     setTrade(record);
-    setShipping(record?.shipping ?? {});
+    setShipping(record?.buyerShippingAddress ?? record?.shipping ?? {});
     setContacts(ensureContactsLoaded(record));
   }, [tradeId]);
 
@@ -53,20 +61,15 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
   const statusKey = trade ? mapTradeStatus(trade.status) : null;
 
+  const missingFields = useMemo(
+    () => requiredFields.filter((field) => !shipping[field] || (shipping[field] ?? "").toString().trim() === ""),
+    [shipping]
+  );
+
+  const approveDisabled = !isEditable || missingFields.length > 0;
+
   const handlePrint = () => {
     window.print();
-  };
-
-  const handleSave = () => {
-    if (!trade) return;
-    const updated = updateTradeShipping(trade.id, shipping, contacts);
-    if (updated) {
-      setTrade(updated);
-      setMessage("発送先情報を保存しました。");
-      setError(null);
-    } else {
-      setError("発送先情報の保存に失敗しました。");
-    }
   };
 
   const handleAddContact = (name: string) => {
@@ -109,6 +112,18 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       setTrade(updated);
       setMessage("承認しました。ステータスを更新しました。");
       setError(null);
+      router.push("/trade-navi?tab=purchaseHistory");
+    }
+  };
+
+  const handleCancel = () => {
+    if (!trade) return;
+    const canceled = cancelTrade(trade.id, "buyer");
+    if (canceled) {
+      setTrade(canceled);
+      setMessage("依頼をキャンセルしました。");
+      setError(null);
+      router.push("/trade-navi?tab=purchaseHistory");
     }
   };
 
@@ -143,36 +158,45 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
           {description && <p className="text-sm text-neutral-800">{description}</p>}
         </div>
         <div className="print-hidden flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleSave}
-            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
-          >
-            保存
-          </button>
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
-          >
-            印刷 / PDF保存
-          </button>
-          {isEditable && (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
+            >
+              印刷 / PDF保存
+            </button>
+            <button
+              type="button"
+              onClick={handleBack}
+              className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
+            >
+              戻る
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleCancel}
+              disabled={!isBuyer}
+              className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              キャンセル
+            </button>
             <button
               type="button"
               onClick={handleApprove}
-              className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800"
+              disabled={approveDisabled}
+              className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
             >
               承認
             </button>
+          </div>
+          {isEditable && approveDisabled && (
+            <p className="w-full text-[11px] text-red-700">
+              承認には {missingFields.map((field) => requiredFieldLabels[field]).join(" / ")} の入力が必要です。
+            </p>
           )}
-          <button
-            type="button"
-            onClick={handleBack}
-            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
-          >
-            戻る
-          </button>
         </div>
       </div>
 
