@@ -4,14 +4,16 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const NAV_ITEMS = [
+  { href: "/inventory/new", label: "在庫登録" },
   { href: "/inventory", label: "在庫一覧" },
   { href: "/inventory/purchase-invoice/create", label: "購入伝票作成" },
   { href: "/inventory/purchase-invoice/list", label: "購入伝票一覧" },
+  { href: "/inventory/settings", label: "詳細設定" },
 ];
 
 const isActive = (path: string, href: string) => {
   if (href === "/inventory") {
-    return path.startsWith("/inventory") && !path.includes("purchase-invoice");
+    return path === "/inventory";
   }
   return path.startsWith(href);
 };
