@@ -57,12 +57,6 @@ export const MY_PAGE_SUB_TABS: MyPageSubTabsConfig = {
       matchPatterns: ["/mypage/dealings/purchases"],
     },
     {
-      key: "sales",
-      label: "売却一覧",
-      href: "/mypage/dealings/sales",
-      matchPatterns: ["/mypage/dealings/sales"],
-    },
-    {
       key: "todo",
       label: "やる事リスト",
       href: "/mypage/todo-list",
