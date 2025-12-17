@@ -150,8 +150,10 @@ export default function InventoryPage() {
   const handleDragOver = (event: ReactDragEvent<HTMLTableCellElement>, key: string) => {
     event.preventDefault();
     if (!draggingKey || draggingKey === key) return;
-    const { offsetX, currentTarget } = event.nativeEvent as DragEvent;
-    const position = offsetX < currentTarget.clientWidth / 2 ? "left" : "right";
+    const target = event.currentTarget;
+    const { offsetX } = event.nativeEvent as DragEvent;
+    if (!target) return;
+    const position = offsetX < target.clientWidth / 2 ? "left" : "right";
     setDragOver({ key, position });
   };
 

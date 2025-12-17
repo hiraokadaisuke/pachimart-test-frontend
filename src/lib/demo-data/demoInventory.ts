@@ -5,6 +5,7 @@ export type InventoryRecord = {
   createdAt: string;
   status: InventoryStatusOption;
   stockStatus?: InventoryStatusOption;
+  purchaseInvoiceId?: string;
   maker?: string;
   model?: string;
   machineName?: string;
@@ -41,6 +42,12 @@ export type ColumnSetting = {
 };
 
 const INVENTORY_KEY = "pachimart_demo_inventory_v1";
+const DRAFT_KEY = "pachimart_demo_invoice_drafts_v1";
+
+type InvoiceDraft = {
+  id: string;
+  inventoryIds: string[];
+};
 
 const safeParse = <T,>(raw: string | null): T | null => {
   if (!raw) return null;
@@ -97,6 +104,45 @@ export const addInventoryRecords = (records: InventoryRecord[]): InventoryRecord
 export const updateInventoryStatus = (id: string, status: InventoryStatusOption): InventoryRecord[] => {
   const current = loadInventoryRecords();
   const updated = current.map((item) => (item.id === id ? { ...item, status, stockStatus: status } : item));
+  saveInventoryRecords(updated);
+  return updated;
+};
+
+const loadDrafts = (): InvoiceDraft[] => {
+  const stored = readLocalStorage<InvoiceDraft[]>(DRAFT_KEY);
+  if (stored && Array.isArray(stored)) return stored;
+  return [];
+};
+
+const saveDrafts = (drafts: InvoiceDraft[]) => {
+  writeLocalStorage(DRAFT_KEY, drafts);
+};
+
+export const saveDraft = (draft: InvoiceDraft): InvoiceDraft[] => {
+  const drafts = loadDrafts();
+  const filtered = drafts.filter((item) => item.id !== draft.id);
+  const updated = [...filtered, draft];
+  saveDrafts(updated);
+  return updated;
+};
+
+export const loadDraftById = (id: string): InvoiceDraft | null => {
+  const drafts = loadDrafts();
+  return drafts.find((draft) => draft.id === id) ?? null;
+};
+
+export const deleteDraft = (id: string): InvoiceDraft[] => {
+  const drafts = loadDrafts();
+  const updated = drafts.filter((draft) => draft.id !== id);
+  saveDrafts(updated);
+  return updated;
+};
+
+export const markInventoriesWithInvoice = (ids: string[], invoiceId: string): InventoryRecord[] => {
+  const current = loadInventoryRecords();
+  const updated = current.map((item) =>
+    ids.includes(item.id) ? { ...item, purchaseInvoiceId: invoiceId } : item,
+  );
   saveInventoryRecords(updated);
   return updated;
 };
