@@ -21,7 +21,7 @@ export default function VendorInvoicePage() {
   const [staff, setStaff] = useState("");
   const [remarks, setRemarks] = useState("");
   const [address, setAddress] = useState("");
-  const [shippingInsurance, setShippingInsurance] = useState(0);
+  const [shippingInsurance, setShippingInsurance] = useState<string>("");
   const [paymentDate, setPaymentDate] = useState("");
   const [invoiceCategory, setInvoiceCategory] = useState("");
   const [receiptDate, setReceiptDate] = useState("");
@@ -72,7 +72,7 @@ export default function VendorInvoicePage() {
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + (item.amount ?? 0), 0), [items]);
   const taxRate = 0.1;
   const tax = Math.floor(subtotal * taxRate);
-  const grandTotal = subtotal + tax + shippingInsurance;
+  const grandTotal = subtotal + tax + Number(shippingInsurance || 0);
 
   const handleItemChange = (index: number, key: keyof PurchaseInvoiceItem, value: string | number) => {
     setItems((prev) =>
@@ -144,7 +144,7 @@ export default function VendorInvoicePage() {
       formInput: {
         remarks,
         address,
-        shippingInsurance,
+        shippingInsurance: shippingInsurance ?? "",
         paymentDate,
         invoiceCategory,
         receiptDate,
@@ -348,7 +348,7 @@ export default function VendorInvoicePage() {
             <input
               type="number"
               value={shippingInsurance}
-              onChange={(event) => setShippingInsurance(Number(event.target.value))}
+              onChange={(event) => setShippingInsurance(event.target.value)}
               className="w-28 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
             />
           </div>

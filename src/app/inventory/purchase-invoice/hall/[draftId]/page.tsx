@@ -20,7 +20,7 @@ export default function HallInvoicePage() {
   const [partner, setPartner] = useState("");
   const [staff, setStaff] = useState("");
   const [remarks, setRemarks] = useState("");
-  const [shippingInsurance, setShippingInsurance] = useState(0);
+  const [shippingInsurance, setShippingInsurance] = useState<string>("");
   const [paymentDate, setPaymentDate] = useState("");
   const [warehousingDate, setWarehousingDate] = useState("");
   const [items, setItems] = useState<PurchaseInvoiceItem[]>([]);
@@ -65,7 +65,7 @@ export default function HallInvoicePage() {
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + (item.amount ?? 0), 0), [items]);
   const taxRate = 0.1;
   const tax = Math.floor(subtotal * taxRate);
-  const grandTotal = subtotal + tax + shippingInsurance;
+  const grandTotal = subtotal + tax + Number(shippingInsurance || 0);
 
   const handleItemChange = (index: number, key: keyof PurchaseInvoiceItem, value: string | number) => {
     setItems((prev) =>
@@ -130,7 +130,12 @@ export default function HallInvoicePage() {
       inventoryIds: items.map((item) => item.inventoryId),
       items,
       totalAmount: grandTotal,
-      formInput: { remarks, shippingInsurance, paymentDate, warehousingDate },
+      formInput: {
+        remarks,
+        shippingInsurance: shippingInsurance ?? "",
+        paymentDate,
+        warehousingDate,
+      },
       displayTitle: `${items[0]?.machineName ?? "伝票"}${items.length > 1 ? " 他" : ""}`,
     });
     markInventoriesWithInvoice(
@@ -336,7 +341,7 @@ export default function HallInvoicePage() {
             <input
               type="number"
               value={shippingInsurance}
-              onChange={(event) => setShippingInsurance(Number(event.target.value))}
+              onChange={(event) => setShippingInsurance(event.target.value)}
               className="w-28 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
             />
           </div>
