@@ -71,8 +71,8 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   const totalQty = trade.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
   const updatedAtLabel = formatDateTime(trade.updatedAt ?? trade.createdAt ?? new Date().toISOString());
   const status = mapTradeStatus(trade.status);
-  const sellerId = trade.seller.userId ?? "seller";
-  const buyerId = trade.buyer.userId ?? "buyer";
+  const sellerId = trade.sellerUserId ?? trade.seller.userId ?? "seller";
+  const buyerId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
   const isSeller = sellerId === viewerId;
   return {
     id: trade.id,
