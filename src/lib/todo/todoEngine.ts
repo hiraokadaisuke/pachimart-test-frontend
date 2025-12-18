@@ -4,21 +4,21 @@ import { todoUiMap } from "./todoUiMap";
 
 export function completeTodo(todos: TodoItem[], completedKind: TodoKind): TodoItem[] {
   const def = todoUiMap[completedKind];
+  const updatedTodos = todos.map((t): TodoItem =>
+    t.kind === completedKind ? { ...t, status: "done" } : t
+  );
+
   if (!def?.primaryAction?.nextTodo) {
-    return todos.map((todo) =>
-      todo.kind === completedKind ? { ...todo, status: "done" } : todo
-    );
+    return updatedTodos;
   }
 
   return [
-    ...todos.map((t) =>
-      t.kind === completedKind ? { ...t, status: "done" } : t
-    ),
+    ...updatedTodos,
     {
       kind: def.primaryAction.nextTodo,
       assignee: def.primaryAction.role,
       status: "open",
-    },
+    } satisfies TodoItem,
   ];
 }
 
