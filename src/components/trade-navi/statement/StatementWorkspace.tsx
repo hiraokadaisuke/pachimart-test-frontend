@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TradeStatusKey } from "@/components/transactions/status";
 import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
-import { getInProgressDescription } from "@/lib/trade/copy";
 import { getActorRole } from "@/lib/trade/navigation";
 import { canApprove, canCancel } from "@/lib/trade/permissions";
 import {
@@ -20,6 +19,7 @@ import {
 } from "@/lib/trade/storage";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { getTodoPresentation } from "@/lib/trade/todo";
 
 import { StatementDocument } from "./StatementDocument";
 
@@ -58,20 +58,22 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const actorRole = trade ? getActorRole(trade, currentUser.id) : "none";
   const isBuyer = actorRole === "buyer";
   const isEditable = trade ? canApprove(trade, currentUser.id) : false;
+  const todoView = trade
+    ? getTodoPresentation(trade, actorRole === "seller" ? "seller" : "buyer")
+    : null;
+  const statusKey: TradeStatusKey | null = todoView?.todoKind ?? null;
 
   const totals = useMemo(
     () => (trade ? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1) : null),
     [trade]
   );
 
-  const statusKey = trade ? mapTradeStatus(trade.status) : null;
-
   const missingFields = useMemo(
     () => requiredFields.filter((field) => !shipping[field] || (shipping[field] ?? "").toString().trim() === ""),
     [shipping]
   );
 
-  const approveDisabled = !isEditable || missingFields.length > 0;
+  const approveDisabled = !isEditable || missingFields.length > 0 || todoView?.section !== "approval";
   const cancelDisabled = !trade || !canCancel(trade, currentUser.id);
 
   const handlePrint = () => {
@@ -156,15 +158,14 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     );
   }
 
-  const defaultDescription = getInProgressDescription(actorRole === "seller" ? "sell" : "buy", trade.status);
-  const headerDescription = (description ?? defaultDescription) || undefined;
+  const headerDescription = (description ?? todoView?.description) || undefined;
 
   const cancelBanner =
     trade.status === "CANCELED"
       ? `キャンセル済（${trade.canceledBy === "seller" ? "売手" : trade.canceledBy === "buyer" ? "買手" : "不明"}）`
       : null;
 
-  const isApprovalReadOnlyForSeller = trade.status === "APPROVAL_REQUIRED" && actorRole === "seller";
+  const isApprovalReadOnlyForSeller = todoView?.section === "approval" && actorRole === "seller";
 
   return (
     <div className="space-y-4">
@@ -214,16 +215,19 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
               </button>
             )}
 
-            {isBuyer && trade.status === "APPROVAL_REQUIRED" && (
-              <button
-                type="button"
-                onClick={handleApprove}
-                disabled={approveDisabled}
-                className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                承認
-              </button>
-            )}
+            {todoView?.todoKind === "application_sent" &&
+              todoView?.primaryAction &&
+              todoView?.activeTodo &&
+              todoView.primaryAction.role === actorRole && (
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={approveDisabled}
+                  className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                >
+                  {todoView.primaryAction.label}
+                </button>
+              )}
           </div>
 
           {isEditable && approveDisabled && (
@@ -279,21 +283,4 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       )}
     </div>
   );
-}
-
-function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
-  switch (status) {
-    case "APPROVAL_REQUIRED":
-      return "requesting";
-    case "PAYMENT_REQUIRED":
-      return "waiting_payment";
-    case "CONFIRM_REQUIRED":
-      return "payment_confirmed";
-    case "COMPLETED":
-      return "completed";
-    case "CANCELED":
-      return "canceled";
-  }
-  const exhaustiveCheck: never = status;
-  return exhaustiveCheck;
 }

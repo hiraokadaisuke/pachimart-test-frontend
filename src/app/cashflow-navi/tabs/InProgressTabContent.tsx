@@ -6,11 +6,7 @@ import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable"
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import {
-  COMPLETED_STATUS_KEYS,
-  IN_PROGRESS_STATUS_KEYS,
-  type TradeStatusKey,
-} from "@/components/transactions/status";
+import { type TradeStatusKey } from "@/components/transactions/status";
 import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
@@ -19,11 +15,20 @@ import { getInProgressDescription } from "@/lib/trade/copy";
 import { getStatementPath } from "@/lib/trade/navigation";
 import {
   TRADE_STORAGE_KEY,
+  completeTodoForTrade,
   loadAllTrades,
-  markTradeCompleted,
-  markTradePaid,
 } from "@/lib/trade/storage";
 import { TradeRecord } from "@/lib/trade/types";
+import { getTodoPresentation } from "@/lib/trade/todo";
+import { todoUiMap } from "@/lib/todo/todoUiMap";
+
+const SECTION_LABELS = {
+  approval: todoUiMap["application_sent"],
+  payment: todoUiMap["application_approved"],
+  confirmation: todoUiMap["payment_confirmed"],
+  completed: todoUiMap["trade_completed"],
+  canceled: todoUiMap["trade_canceled"],
+} as const;
 
 type TradeRow = {
   id: string;
@@ -35,12 +40,15 @@ type TradeRow = {
   quantity: number;
   totalAmount: number;
   scheduledShipDate: string;
-  tradeStatus: TradeRecord["status"];
   sellerUserId: string;
   buyerUserId: string;
   sellerName: string;
   buyerName: string;
   kind: "buy" | "sell";
+  section: keyof typeof SECTION_LABELS;
+  description: string;
+  primaryActionLabel?: string;
+  isOpen: boolean;
 };
 
 function formatCurrency(amount: number) {
@@ -56,38 +64,21 @@ function formatDateTime(iso?: string) {
   return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
-  switch (status) {
-    case "APPROVAL_REQUIRED":
-      return "requesting";
-    case "PAYMENT_REQUIRED":
-      return "waiting_payment";
-    case "CONFIRM_REQUIRED":
-      return "payment_confirmed";
-    case "COMPLETED":
-      return "completed";
-    case "CANCELED":
-      return "canceled";
-  }
-  const exhaustiveCheck: never = status;
-  return exhaustiveCheck;
-}
-
 function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
   const primaryItem = trade.items[0];
   const totalQty = trade.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
-  const status = mapTradeStatus(trade.status);
   const sellerUserId = trade.sellerUserId ?? trade.seller.userId ?? "seller";
   const buyerUserId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
   const updatedAtLabel = formatDateTime(trade.updatedAt ?? trade.createdAt ?? new Date().toISOString());
   const scheduledShipDate = trade.contractDate ? trade.contractDate.slice(0, 10) : "-";
   const isSeller = sellerUserId === viewerId;
   const kind = isSeller ? ("sell" as const) : ("buy" as const);
+  const todo = getTodoPresentation(trade, kind === "buy" ? "buyer" : "seller");
 
   return {
     id: trade.id,
-    status,
+    status: todo.todoKind,
     updatedAt: updatedAtLabel,
     partnerName: isSeller ? trade.buyer.companyName : trade.seller.companyName,
     makerName: primaryItem?.maker ?? "-",
@@ -99,8 +90,11 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
     buyerUserId,
     sellerName: trade.seller.companyName,
     buyerName: trade.buyer.companyName,
-    tradeStatus: trade.status,
     kind,
+    section: todo.section,
+    description: todo.description,
+    primaryActionLabel: todo.primaryAction?.label,
+    isOpen: !!todo.activeTodo,
   };
 }
 
@@ -108,7 +102,7 @@ export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const router = useRouter();
-  const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("inProgress");
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
 
@@ -121,9 +115,9 @@ export function InProgressTabContent() {
           (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
         )
         .filter((trade) => {
-          if (statusFilter === "all") return true;
-          if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(trade.status);
-          if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(trade.status);
+          if (statusFilter === "inProgress") return trade.isOpen;
+          if (statusFilter === "completed")
+            return !trade.isOpen || trade.section === "completed" || trade.section === "canceled";
           return true;
         })
         .filter((trade) => {
@@ -141,17 +135,9 @@ export function InProgressTabContent() {
     setTrades(loadAllTrades());
   }, []);
 
-  const handleMarkPaid = useCallback(
-    (tradeId: string) => {
-      markTradePaid(tradeId, currentUser.id);
-      refreshTrades();
-    },
-    [currentUser.id, refreshTrades]
-  );
-
-  const handleMarkCompleted = useCallback(
-    (tradeId: string) => {
-      markTradeCompleted(tradeId, currentUser.id);
+  const handleCompleteTodo = useCallback(
+    (tradeId: string, todoKind: TradeStatusKey) => {
+      completeTodoForTrade(tradeId, todoKind, currentUser.id);
       refreshTrades();
     },
     [currentUser.id, refreshTrades]
@@ -178,21 +164,27 @@ export function InProgressTabContent() {
 
   const filteredTrades = useMemo(() => filterTrades(tradeRows), [filterTrades, tradeRows]);
 
-  const buyWaiting = filteredTrades.filter(
-    (trade) => trade.kind === "buy" && trade.status === "waiting_payment"
+  const buyApproval = filteredTrades.filter(
+    (trade) => trade.kind === "buy" && trade.section === "approval"
   );
-  const buyChecking = filteredTrades.filter(
-    (trade) => trade.kind === "buy" && trade.status === "payment_confirmed"
+  const buyPayment = filteredTrades.filter(
+    (trade) => trade.kind === "buy" && trade.section === "payment"
   );
-  const sellWaiting = filteredTrades.filter(
-    (trade) => trade.kind === "sell" && trade.status === "waiting_payment"
+  const buyConfirmation = filteredTrades.filter(
+    (trade) => trade.kind === "buy" && trade.section === "confirmation"
   );
-  const sellChecking = filteredTrades.filter(
-    (trade) => trade.kind === "sell" && trade.status === "payment_confirmed"
+  const sellApproval = filteredTrades.filter(
+    (trade) => trade.kind === "sell" && trade.section === "approval"
+  );
+  const sellPayment = filteredTrades.filter(
+    (trade) => trade.kind === "sell" && trade.section === "payment"
+  );
+  const sellConfirmation = filteredTrades.filter(
+    (trade) => trade.kind === "sell" && trade.section === "confirmation"
   );
 
   const getStatementDestination = (row: TradeRow) =>
-    getStatementPath(row.id, row.tradeStatus, row.kind === "buy" ? "buyer" : "seller");
+    getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller");
 
   const tradeColumnBase: NaviTableColumn[] = [
     {
@@ -273,52 +265,30 @@ export function InProgressTabContent() {
       </button>
     ),
   };
-
-  const paymentActionColumn: NaviTableColumn = {
+  const actionColumn: NaviTableColumn = {
     key: "action",
-    label: "入金",
-    width: "110px",
-    render: (row: TradeRow) => (
-      <button
-        type="button"
-        className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleMarkPaid(row.id);
-        }}
-      >
-        入金
-      </button>
-    ),
+    label: "操作",
+    width: "120px",
+    render: (row: TradeRow) =>
+      row.primaryActionLabel && row.isOpen ? (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCompleteTodo(row.id, row.status);
+          }}
+        >
+          {row.primaryActionLabel}
+        </button>
+      ) : (
+        <span className="text-[11px] text-neutral-500">-</span>
+      ),
   };
 
-  const checkingActionColumn: NaviTableColumn = {
-    key: "action",
-    label: "動作確認",
-    width: "110px",
-    render: (row: TradeRow) => (
-      <button
-        type="button"
-        className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleMarkCompleted(row.id);
-        }}
-      >
-        確認完了
-      </button>
-    ),
-  };
-
-  const tradeColumnsForPayment: NaviTableColumn[] = [
+  const tradeColumnsWithAction: NaviTableColumn[] = [
     ...tradeColumnBase,
-    paymentActionColumn,
-    messageColumn,
-  ];
-
-  const tradeColumnsForChecking: NaviTableColumn[] = [
-    ...tradeColumnBase,
-    checkingActionColumn,
+    actionColumn,
     messageColumn,
   ];
 
@@ -345,13 +315,13 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={getInProgressDescription("buy", "PAYMENT_REQUIRED")}
+            description={getInProgressDescription("buy", "application_sent")}
           >
-            入金待ち
+            {SECTION_LABELS.approval.title}
           </SectionHeader>
           <NaviTable
-            columns={tradeColumnsForPayment}
-            rows={buyWaiting}
+            columns={tradeColumnsWithAction}
+            rows={buyApproval}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
           />
@@ -360,13 +330,28 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={getInProgressDescription("buy", "CONFIRM_REQUIRED")}
+            description={getInProgressDescription("buy", "application_approved")}
           >
-            確認待ち
+            {SECTION_LABELS.payment.title}
           </SectionHeader>
           <NaviTable
-            columns={tradeColumnsForChecking}
-            rows={buyChecking}
+            columns={tradeColumnsWithAction}
+            rows={buyPayment}
+            emptyMessage="現在進行中の取引はありません。"
+            onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={getInProgressDescription("buy", "payment_confirmed")}
+          >
+            {SECTION_LABELS.confirmation.title}
+          </SectionHeader>
+          <NaviTable
+            columns={tradeColumnsWithAction}
+            rows={buyConfirmation}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
           />
@@ -381,13 +366,13 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={getInProgressDescription("sell", "PAYMENT_REQUIRED")}
+            description={getInProgressDescription("sell", "application_sent")}
           >
-            入金待ち
+            {SECTION_LABELS.approval.title}
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsWithoutAction}
-            rows={sellWaiting}
+            rows={sellApproval}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
           />
@@ -395,13 +380,27 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={getInProgressDescription("sell", "CONFIRM_REQUIRED")}
+            description={getInProgressDescription("sell", "application_approved")}
           >
-            確認待ち
+            {SECTION_LABELS.payment.title}
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsWithoutAction}
-            rows={sellChecking}
+            rows={sellPayment}
+            emptyMessage="現在進行中の取引はありません。"
+            onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
+          />
+        </div>
+        <div className="space-y-2">
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={getInProgressDescription("sell", "payment_confirmed")}
+          >
+            {SECTION_LABELS.confirmation.title}
+          </SectionHeader>
+          <NaviTable
+            columns={tradeColumnsWithoutAction}
+            rows={sellConfirmation}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
           />

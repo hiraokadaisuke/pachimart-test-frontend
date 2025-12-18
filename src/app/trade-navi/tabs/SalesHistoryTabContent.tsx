@@ -5,12 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { NaviTable, type NaviTableColumn, type SortState } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
-import {
-  COMPLETED_STATUS_KEYS,
-  IN_PROGRESS_STATUS_KEYS,
-  TRADE_STATUS_DEFINITIONS,
-  type TradeStatusKey,
-} from "@/components/transactions/status";
+import { TRADE_STATUS_DEFINITIONS, type TradeStatusKey } from "@/components/transactions/status";
 import { DocumentBadges, type DocumentStatus } from "@/components/transactions/DocumentBadges";
 import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
@@ -19,13 +14,15 @@ import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { getSalesHistoryForUser } from "@/lib/trade/storage";
 import type { TradeRecord } from "@/lib/trade/types";
+import { resolveCurrentTodoKind } from "@/lib/trade/todo";
+import { TodoUiDef, todoUiMap } from "@/lib/todo/todoUiMap";
 
 // TODO: API連携（フィルター条件でサーバーから取得）
 
 type SalesHistoryRow = {
   id: string;
   status: TradeStatusKey;
-  tradeStatus: TradeRecord["status"];
+  section: TodoUiDef["section"];
   contractDate: string;
   partner: string;
   maker: string;
@@ -101,7 +98,7 @@ export function SalesHistoryTabContent() {
   );
 
   const getStatementDestination = (row: SalesHistoryRow) =>
-    getStatementPath(row.id, row.tradeStatus, "seller");
+    getStatementPath(row.id, row.status, "seller");
 
   const columns: NaviTableColumn[] = [
     {
@@ -448,11 +445,13 @@ function mapTradeToSalesHistoryRow(trade: TradeRecord): SalesHistoryRow {
   const totalQuantity = trade.quantity ?? trade.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
   const totalAmount =
     trade.totalAmount ?? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1).total;
+  const status = resolveCurrentTodoKind(trade);
+  const section = todoUiMap[status]?.section ?? "approval";
 
   return {
     id: trade.id,
-    status: mapTradeStatusToKey(trade.status),
-    tradeStatus: trade.status,
+    status,
+    section,
     contractDate: trade.contractDate ?? trade.createdAt ?? "",
     partner: trade.buyerName ?? trade.buyer.companyName ?? "",
     maker: trade.makerName ?? primaryItem?.maker ?? "-",
@@ -462,9 +461,9 @@ function mapTradeToSalesHistoryRow(trade: TradeRecord): SalesHistoryRow {
     amount: totalAmount,
     shipmentDate: trade.shipmentDate,
     shippingMethod: trade.shippingMethod ?? trade.receiveMethod ?? "未定",
-    documentStatus: buildDocumentStatusFromTrade(trade),
+    documentStatus: buildDocumentStatusFromTrade(trade, section),
     uploadUrl: `/dealings/sales/${trade.id}/documents`,
-    paymentCompleted: Boolean(trade.paymentDate) || trade.status === "COMPLETED",
+    paymentCompleted: Boolean(trade.paymentDate) || section === "completed",
     handler: trade.handlerName ?? "",
     documentSentDate: trade.documentSentDate,
   };
@@ -477,32 +476,15 @@ function getCategoryFromTrade(trade: TradeRecord): SalesHistoryRow["category"] {
   return "others";
 }
 
-function buildDocumentStatusFromTrade(trade: TradeRecord): DocumentStatus {
-  const isCompleted = trade.status === "COMPLETED";
-  const isCanceled = trade.status === "CANCELED";
+function buildDocumentStatusFromTrade(trade: TradeRecord, section: TodoUiDef["section"]): DocumentStatus {
+  const isCompleted = section === "completed";
+  const isCanceled = trade.status === "CANCELED" || section === "canceled";
   return {
     inspection: isCompleted,
     removal: isCompleted,
     confirmation: isCompleted,
     other: isCanceled,
   };
-}
-
-function mapTradeStatusToKey(status: TradeRecord["status"]): TradeStatusKey {
-  switch (status) {
-    case "APPROVAL_REQUIRED":
-      return "requesting";
-    case "PAYMENT_REQUIRED":
-      return "waiting_payment";
-    case "CONFIRM_REQUIRED":
-      return "payment_confirmed";
-    case "COMPLETED":
-      return "completed";
-    case "CANCELED":
-      return "canceled";
-  }
-  const exhaustiveCheck: never = status;
-  return exhaustiveCheck;
 }
 
 function sortRows(rows: SalesHistoryRow[], sortState: SortState) {
@@ -553,8 +535,10 @@ function getSortableValue(row: SalesHistoryRow, key: string) {
 
 function matchStatus(filter: FilterState["status"], status: TradeStatusKey) {
   if (filter === "all") return true;
-  if (filter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(status);
-  if (filter === "completed") return COMPLETED_STATUS_KEYS.includes(status);
+  const section = todoUiMap[status]?.section;
+  if (!section) return false;
+  if (filter === "inProgress") return section !== "completed" && section !== "canceled";
+  if (filter === "completed") return section === "completed" || section === "canceled";
   return true;
 }
 

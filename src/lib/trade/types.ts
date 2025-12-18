@@ -1,3 +1,5 @@
+import { TodoItem } from "@/lib/todo/types";
+
 export type TradeStatus =
   | "APPROVAL_REQUIRED"
   | "PAYMENT_REQUIRED"
@@ -71,6 +73,7 @@ export type TradeRecord = {
   buyerShippingAddress?: ShippingInfo;
   seller: CompanyProfile;
   buyer: CompanyProfile;
+  todos: TodoItem[];
   items: StatementItem[];
   taxRate?: number;
   remarks?: string;

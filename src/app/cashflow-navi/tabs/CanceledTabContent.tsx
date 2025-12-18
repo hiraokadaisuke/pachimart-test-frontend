@@ -9,6 +9,8 @@ import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { TRADE_STORAGE_KEY, loadAllTrades } from "@/lib/trade/storage";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { TradeRecord } from "@/lib/trade/types";
+import { resolveCurrentTodoKind } from "@/lib/trade/todo";
+import { todoUiMap } from "@/lib/todo/todoUiMap";
 
 type CanceledTradeRow = {
   id: string;
@@ -47,7 +49,7 @@ export function CanceledTabContent() {
       trades
         .filter((trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id)
         .map((trade) => buildCanceledRow(trade, currentUser.id))
-        .filter((row): row is CanceledTradeRow => row.status === "canceled"),
+        .filter((row): row is CanceledTradeRow => todoUiMap[row.status]?.section === "canceled"),
     [currentUser.id, trades]
   );
 
@@ -98,25 +100,8 @@ function buildCanceledRow(trade: TradeRecord, viewerId: string): CanceledTradeRo
     itemName: trade.items[0]?.itemName ?? trade.itemName ?? "商品",
     amount: totals.total,
     reason: trade.remarks,
-    status: mapTradeStatus(trade.status),
+    status: resolveCurrentTodoKind(trade),
   };
-}
-
-function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
-  switch (status) {
-    case "APPROVAL_REQUIRED":
-      return "requesting";
-    case "PAYMENT_REQUIRED":
-      return "waiting_payment";
-    case "CONFIRM_REQUIRED":
-      return "payment_confirmed";
-    case "COMPLETED":
-      return "completed";
-    case "CANCELED":
-      return "canceled";
-  }
-  const exhaustiveCheck: never = status;
-  return exhaustiveCheck;
 }
 
 function formatDate(value?: string) {
