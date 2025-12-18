@@ -28,6 +28,7 @@ type InventoryFormRow = {
   type: "" | "本体" | "枠" | "セル";
   quantity: number;
   unitPrice: number;
+  saleUnitPrice: number;
   stockInDate: string;
   removeDate: string;
   pattern: string;
@@ -57,6 +58,7 @@ const createBlankRow = (today: string): InventoryFormRow => ({
   type: "",
   quantity: 1,
   unitPrice: 0,
+  saleUnitPrice: 0,
   stockInDate: today,
   removeDate: "",
   pattern: "",
@@ -77,6 +79,7 @@ type MachineFieldOrder =
   | "type"
   | "quantity"
   | "unitPrice"
+  | "saleUnitPrice"
   | "stockInDate"
   | "removeDate"
   | "pattern"
@@ -109,7 +112,7 @@ export default function InventoryNewPage() {
   const inputBase =
     "h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-neutral-900 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400 focus:outline-none";
   const machineGridTemplate =
-    "grid grid-cols-[48px,60px,120px,200px,100px,80px,100px,120px,120px,80px,120px,60px]";
+    "grid grid-cols-[48px,60px,120px,180px,90px,70px,90px,90px,110px,110px,70px,110px,60px]";
   const machineOrder: MachineFieldOrder[] = [
     "kind",
     "maker",
@@ -117,6 +120,7 @@ export default function InventoryNewPage() {
     "type",
     "quantity",
     "unitPrice",
+    "saleUnitPrice",
     "stockInDate",
     "removeDate",
     "pattern",
@@ -261,6 +265,7 @@ export default function InventoryNewPage() {
           type: row.type || undefined,
           quantity: row.quantity,
           unitPrice: row.unitPrice,
+          saleUnitPrice: row.saleUnitPrice,
           stockInDate,
           arrivalDate: stockInDate,
           removeDate: row.removeDate || undefined,
@@ -310,7 +315,7 @@ export default function InventoryNewPage() {
           </div>
           <div className="text-xs text-neutral-500">Enterで次フィールドにフォーカス</div>
         </div>
-        <div className="overflow-x-auto">
+        <div>
           <div className="grid grid-cols-[1.1fr,0.9fr,0.9fr,1.2fr] bg-slate-50 text-[12px] font-semibold text-slate-700">
             <div className="px-4 py-2">仕入先</div>
             <div className="px-4 py-2">在庫入力日</div>
@@ -425,6 +430,7 @@ export default function InventoryNewPage() {
             <div className="text-center">タイプ</div>
             <div className="text-center">仕入数</div>
             <div className="text-center">仕入単価</div>
+            <div className="text-center">販売単価</div>
             <div className="text-center">入庫日</div>
             <div className="text-center">撤去日</div>
             <div className="text-center">柄</div>
@@ -545,6 +551,17 @@ export default function InventoryNewPage() {
                       onChange={(event) => handleRowChange(index, "unitPrice", Number(event.target.value))}
                       onKeyDown={(event) => handleMachineEnter(event, index, "unitPrice")}
                       ref={registerFocus(focusKey(index, "unitPrice"))}
+                      className={`${inputBase} text-right`}
+                    />
+                  </div>
+                  <div className="pr-2">
+                    <input
+                      type="number"
+                      min={0}
+                      value={row.saleUnitPrice}
+                      onChange={(event) => handleRowChange(index, "saleUnitPrice", Number(event.target.value))}
+                      onKeyDown={(event) => handleMachineEnter(event, index, "saleUnitPrice")}
+                      ref={registerFocus(focusKey(index, "saleUnitPrice"))}
                       className={`${inputBase} text-right`}
                     />
                   </div>
