@@ -17,6 +17,7 @@ import {
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { TradeStatusKey } from "@/components/transactions/status";
+import { canApprove, canCancel, getActorRole } from "@/lib/trade/permissions";
 
 import { StatementDocument } from "./StatementDocument";
 
@@ -52,14 +53,19 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     setContacts(ensureContactsLoaded(record));
   }, [tradeId]);
 
-  const isBuyer = trade?.buyer.userId === currentUser.id;
-  const isEditable = trade?.status === "APPROVAL_REQUIRED" && isBuyer;
+  const actorRole = trade ? getActorRole(trade, currentUser.id) : "none";
+  const isBuyer = actorRole === "buyer";
+  const isEditable = trade ? canApprove(trade, currentUser.id) : false;
   const totals = useMemo(
     () => (trade ? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1) : null),
     [trade]
   );
 
   const statusKey = trade ? mapTradeStatus(trade.status) : null;
+  const cancelNote =
+    trade?.status === "CANCELED" && trade.canceledBy
+      ? `この取引は${trade.canceledBy === "buyer" ? "買主" : "売主"}がキャンセルしました。`
+      : null;
 
   const missingFields = useMemo(
     () => requiredFields.filter((field) => !shipping[field] || (shipping[field] ?? "").toString().trim() === ""),
@@ -67,6 +73,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   );
 
   const approveDisabled = !isEditable || missingFields.length > 0;
+  const cancelDisabled = !trade || !canCancel(trade, currentUser.id);
 
   const handlePrint = () => {
     window.print();
@@ -106,7 +113,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     }
 
     const updatedShipping = updateTradeShipping(trade.id, shipping, contacts);
-    const updated = approveTrade(trade.id);
+    const updated = approveTrade(trade.id, currentUser.id);
     if (updatedShipping) setShipping(updatedShipping.shipping);
     if (updated) {
       setTrade(updated);
@@ -118,7 +125,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
   const handleCancel = () => {
     if (!trade) return;
-    const canceled = cancelTrade(trade.id, "buyer");
+    const canceled = cancelTrade(trade.id, currentUser.id);
     if (canceled) {
       setTrade(canceled);
       setMessage("依頼をキャンセルしました。");
@@ -156,6 +163,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
             )}
           </div>
           {description && <p className="text-sm text-neutral-800">{description}</p>}
+          {cancelNote && <p className="text-xs text-red-700">{cancelNote}</p>}
         </div>
         <div className="print-hidden flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
@@ -175,22 +183,26 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleCancel}
-              disabled={!isBuyer}
-              className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              キャンセル
-            </button>
-            <button
-              type="button"
-              onClick={handleApprove}
-              disabled={approveDisabled}
-              className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-            >
-              承認
-            </button>
+            {actorRole !== "none" && (
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={cancelDisabled}
+                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                キャンセル
+              </button>
+            )}
+            {isBuyer && trade?.status === "APPROVAL_REQUIRED" && (
+              <button
+                type="button"
+                onClick={handleApprove}
+                disabled={approveDisabled}
+                className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+              >
+                承認
+              </button>
+            )}
           </div>
           {isEditable && approveDisabled && (
             <p className="w-full text-[11px] text-red-700">
