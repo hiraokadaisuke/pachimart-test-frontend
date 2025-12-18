@@ -267,10 +267,10 @@ export default function VendorInvoicePage() {
 
   return (
     <div className="space-y-4 text-sm">
-      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-neutral-900">
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex flex-wrap items-center gap-2 text-lg font-semibold text-neutral-900">
               <span>{supplierName || "仕入先"} 御中</span>
               <button
                 type="button"
@@ -280,11 +280,8 @@ export default function VendorInvoicePage() {
                 売主検索
               </button>
             </div>
-            <div className="text-xs text-neutral-700">当社規約に基づき下記の記載購入をいたします。</div>
-          </div>
-          <div className="flex flex-col items-end gap-2 text-xs text-neutral-800">
-            <label className="flex flex-col text-right">
-              <span className="text-[11px] font-semibold text-neutral-700">日付</span>
+            <label className="flex flex-col text-right text-[11px] font-semibold text-neutral-700">
+              日付
               <input
                 type="date"
                 value={issuedDate}
@@ -292,7 +289,12 @@ export default function VendorInvoicePage() {
                 className="w-32 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
               />
             </label>
-            <div className="w-64 rounded bg-orange-100 p-3 text-left text-xs font-semibold text-neutral-900">
+          </div>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="text-xs leading-snug text-neutral-700">
+              当社規約に基づき下記の記載購入をいたします。
+            </div>
+            <div className="w-full rounded bg-orange-100 p-3 text-left text-sm font-semibold leading-snug text-neutral-900 md:w-72">
               <div>{COMPANY_INFO.name}</div>
               <div>{COMPANY_INFO.address}</div>
               <div>{COMPANY_INFO.representative}</div>
@@ -527,9 +529,9 @@ export default function VendorInvoicePage() {
 
       <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
         <div className="text-xs font-semibold text-neutral-800">リアルタイムの在庫確認ができます</div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-neutral-800">受取</h3>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-3 rounded-md border border-slate-200 p-3">
+            <h3 className="text-sm font-semibold text-neutral-800">機械の受取</h3>
             <div className="grid gap-2 md:grid-cols-3">
               <label className="flex flex-col text-xs font-semibold text-neutral-800">
                 入庫予定日
@@ -571,8 +573,8 @@ export default function VendorInvoicePage() {
               <div>{COMPANY_INFO.fax}</div>
             </div>
           </div>
-          <div className="space-y-2">
-            <h3 className="text-sm font-semibold text-neutral-800">発送</h3>
+          <div className="space-y-3 rounded-md border border-slate-200 p-3">
+            <h3 className="text-sm font-semibold text-neutral-800">売契の受取</h3>
             <div className="grid gap-2 md:grid-cols-2">
               <label className="flex flex-col text-xs font-semibold text-neutral-800">
                 配送方法
