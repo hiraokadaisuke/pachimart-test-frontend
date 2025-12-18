@@ -1,9 +1,11 @@
 import React from "react";
 
+type StatusFilter = "all" | "inProgress" | "completed";
+
 type TransactionFilterBarProps = {
-  statusFilter?: "all" | "inProgress" | "completed";
+  statusFilter?: StatusFilter;
   keyword: string;
-  onStatusChange?: (value: "all" | "inProgress" | "completed") => void;
+  onStatusChange?: (value: StatusFilter) => void;
   onKeywordChange: (value: string) => void;
   hideStatusFilter?: boolean;
 };
@@ -16,6 +18,7 @@ export function TransactionFilterBar({
   hideStatusFilter = false,
 }: TransactionFilterBarProps) {
   const showStatusFilter = !hideStatusFilter;
+  const statusValue: StatusFilter = statusFilter ?? "all";
 
   return (
     <div
@@ -29,8 +32,8 @@ export function TransactionFilterBar({
         <div className="flex gap-2">
           <select
             className="rounded-md border border-slate-300 bg-white px-2 py-1 text-sm"
-            value={statusFilter ?? "all"}
-            onChange={(e) => onStatusChange?.(e.target.value as TransactionFilterBarProps["statusFilter"])}
+            value={statusValue}
+            onChange={(e) => onStatusChange?.(e.target.value as StatusFilter)}
           >
             <option value="all">すべてのステータス</option>
             <option value="inProgress">進行中</option>
