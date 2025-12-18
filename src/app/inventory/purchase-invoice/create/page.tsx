@@ -65,20 +65,8 @@ export default function PurchaseInvoiceCreatePage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-2">
-          <label htmlFor="invoice-search" className="text-sm text-neutral-700">
-            検索 / 絞り込み
-          </label>
-          <input
-            id="invoice-search"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="ID / メーカー / 機種 / 仕入先 / 担当"
-            className="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleCreateDraft("vendor")}
             className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-500"
@@ -91,6 +79,18 @@ export default function PurchaseInvoiceCreatePage() {
           >
             ホール伝票登録
           </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 md:ml-auto">
+          <label htmlFor="invoice-search" className="text-sm text-neutral-700">
+            検索 / 絞り込み
+          </label>
+          <input
+            id="invoice-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="ID / メーカー / 機種 / 仕入先 / 担当"
+            className="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+          />
         </div>
       </div>
 
