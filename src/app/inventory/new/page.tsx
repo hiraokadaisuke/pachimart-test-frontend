@@ -109,7 +109,7 @@ export default function InventoryNewPage() {
   const inputBase =
     "h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-neutral-900 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400 focus:outline-none";
   const machineGridTemplate =
-    "grid grid-cols-[64px,78px,150px,180px,110px,88px,120px,120px,100px,110px,90px,80px]";
+    "grid grid-cols-[48px,60px,120px,200px,100px,80px,100px,120px,120px,80px,120px,60px]";
   const machineOrder: MachineFieldOrder[] = [
     "kind",
     "maker",
@@ -416,8 +416,8 @@ export default function InventoryNewPage() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <div className={`${machineGridTemplate} bg-slate-50 px-3 py-2 text-[12px] font-semibold text-slate-700`}> 
+        <div className="max-w-full">
+          <div className={`${machineGridTemplate} bg-slate-50 px-2 py-2 text-[12px] font-semibold text-slate-700`}>
             <div className="text-center">行</div>
             <div className="text-center">種別</div>
             <div className="text-center">メーカー</div>
@@ -439,7 +439,7 @@ export default function InventoryNewPage() {
               return (
                 <div
                   key={`row-${index}`}
-                  className={`${machineGridTemplate} items-center bg-white px-3 py-1 text-sm text-neutral-900 transition hover:bg-sky-50 focus-within:bg-sky-50`}
+                  className={`${machineGridTemplate} items-center bg-white px-2 py-1 text-sm text-neutral-900 transition hover:bg-sky-50 focus-within:bg-sky-50`}
                 >
                   <div className="flex items-center justify-between gap-2 pr-2 text-xs text-neutral-600">
                     <span className="font-semibold text-neutral-900">{index + 1}</span>
