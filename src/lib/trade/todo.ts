@@ -154,8 +154,8 @@ export function advanceTradeTodo(
 
 export function cancelTradeTodos(trade: TradeRecord): TodoItem[] {
   const existing = ensureTradeTodos(trade);
-  const closed = existing.map((todo) =>
-    todo.status === "open" ? { ...todo, status: "done" } : todo
+  const closed: TodoItem[] = existing.map((todo): TodoItem =>
+    todo.status === "open" ? ({ ...todo, status: "done" } as TodoItem) : todo
   );
   if (closed.some((todo) => todo.kind === "trade_canceled")) {
     return closed;
