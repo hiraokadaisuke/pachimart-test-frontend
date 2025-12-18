@@ -5,6 +5,7 @@ export type InventoryRecord = {
   createdAt: string;
   status: InventoryStatusOption;
   stockStatus?: InventoryStatusOption;
+  isVisible?: boolean;
   purchaseInvoiceId?: string;
   maker?: string;
   model?: string;
@@ -66,6 +67,7 @@ const normalizeInventory = (record: InventoryRecord): InventoryRecord => {
     ...record,
     status,
     stockStatus: status,
+    isVisible: record.isVisible ?? true,
   };
 };
 
@@ -113,6 +115,13 @@ export const updateInventoryStatuses = (ids: string[], status: InventoryStatusOp
   const current = loadInventoryRecords();
   const targets = new Set(ids);
   const updated = current.map((item) => (targets.has(item.id) ? { ...item, status, stockStatus: status } : item));
+  saveInventoryRecords(updated);
+  return updated;
+};
+
+export const updateInventoryRecord = (id: string, payload: Partial<InventoryRecord>): InventoryRecord[] => {
+  const current = loadInventoryRecords();
+  const updated = current.map((item) => (item.id === id ? normalizeInventory({ ...item, ...payload }) : item));
   saveInventoryRecords(updated);
   return updated;
 };

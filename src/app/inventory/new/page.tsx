@@ -35,6 +35,7 @@ type InventoryFormRow = {
   warehouse: string;
   note: string;
   sellNow: boolean;
+  isVisible: boolean;
 };
 
 const MACHINE_CATALOG: MachineCatalogItem[] = [
@@ -65,6 +66,7 @@ const createBlankRow = (today: string): InventoryFormRow => ({
   warehouse: "",
   note: "",
   sellNow: false,
+  isVisible: true,
 });
 
 const todayString = () => new Date().toISOString().slice(0, 10);
@@ -84,6 +86,7 @@ type MachineFieldOrder =
   | "removeDate"
   | "pattern"
   | "warehouse"
+  | "isVisible"
   | "sellNow";
 
 type SupplierFieldOrder = "supplier" | "inputDate" | "buyerStaff";
@@ -112,7 +115,7 @@ export default function InventoryNewPage() {
   const inputBase =
     "h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-neutral-900 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400 focus:outline-none";
   const machineGridTemplate =
-    "grid grid-cols-[48px,60px,120px,180px,90px,70px,90px,90px,110px,110px,70px,110px,60px]";
+    "grid grid-cols-[46px,58px,116px,164px,88px,68px,86px,86px,106px,106px,68px,104px,78px,64px]";
   const machineOrder: MachineFieldOrder[] = [
     "kind",
     "maker",
@@ -125,6 +128,7 @@ export default function InventoryNewPage() {
     "removeDate",
     "pattern",
     "warehouse",
+    "isVisible",
     "sellNow",
   ];
   const supplierOrder: SupplierFieldOrder[] = ["supplier", "inputDate", "buyerStaff"];
@@ -258,6 +262,7 @@ export default function InventoryNewPage() {
           createdAt: supplierInfo.inputDate || today,
           status,
           stockStatus: status,
+          isVisible: row.isVisible,
           maker: row.maker,
           model: row.model,
           machineName: row.model,
@@ -435,6 +440,7 @@ export default function InventoryNewPage() {
             <div className="text-center">撤去日</div>
             <div className="text-center">柄</div>
             <div className="text-center">保管先</div>
+            <div className="text-center">表示</div>
             <div className="text-center">出品</div>
           </div>
 
@@ -609,6 +615,19 @@ export default function InventoryNewPage() {
                         </option>
                       ))}
                     </select>
+                  </div>
+                  <div className="flex items-center justify-center">
+                    <label className="flex h-9 w-full items-center justify-center gap-2 rounded border border-slate-300 bg-white px-2 text-sm shadow-sm">
+                      <input
+                        type="checkbox"
+                        checked={row.isVisible}
+                        onChange={(event) => handleRowChange(index, "isVisible", event.target.checked)}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "isVisible")}
+                        ref={registerFocus(focusKey(index, "isVisible"))}
+                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
+                      />
+                      <span className="text-[12px] text-neutral-700">する</span>
+                    </label>
                   </div>
                   <div className="flex items-center justify-center">
                     <label className="flex h-9 w-full items-center justify-center gap-2 rounded border border-slate-300 bg-white px-2 text-sm shadow-sm">

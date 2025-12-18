@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   loadInventoryRecords,
   resetInventoryRecords,
+  updateInventoryRecord,
   updateInventoryStatuses,
   updateInventoryStatus,
   type InventoryRecord,
@@ -17,35 +18,45 @@ type Column = {
   label: string;
   width: number;
   minWidth: number;
+  visible?: boolean;
+  order?: number;
 };
 
 const RESERVED_SELECTION_WIDTH = 48;
+const ACTIONS_COLUMN_WIDTH = 96;
+const COLUMN_SETTINGS_KEY = "inventory_table_columns_v1";
 
 const STATUS_OPTIONS: InventoryStatusOption[] = ["倉庫", "出品中", "売却済"];
 
 const INITIAL_COLUMNS: Column[] = [
-  { key: "id", label: "在庫ID", width: 120, minWidth: 80 },
-  { key: "createdAt", label: "在庫入力日", width: 120, minWidth: 80 },
-  { key: "maker", label: "メーカー名", width: 120, minWidth: 78 },
-  { key: "model", label: "機種名", width: 140, minWidth: 110 },
-  { key: "kind", label: "種別", width: 70, minWidth: 56 },
-  { key: "type", label: "タイプ", width: 80, minWidth: 60 },
-  { key: "quantity", label: "仕入数", width: 78, minWidth: 56 },
-  { key: "unitPrice", label: "仕入単価", width: 110, minWidth: 80 },
-  { key: "saleUnitPrice", label: "販売単価", width: 110, minWidth: 80 },
-  { key: "stockInDate", label: "入庫日", width: 110, minWidth: 80 },
-  { key: "removeDate", label: "撤去日", width: 110, minWidth: 80 },
-  { key: "warehouse", label: "保管先", width: 120, minWidth: 82 },
-  { key: "supplier", label: "仕入先", width: 120, minWidth: 82 },
-  { key: "staff", label: "担当者", width: 110, minWidth: 70 },
-  { key: "status", label: "状況", width: 120, minWidth: 92 },
-  { key: "note", label: "備考", width: 150, minWidth: 90 },
+  { key: "id", label: "在庫ID", width: 100, minWidth: 60, visible: true },
+  { key: "createdAt", label: "在庫入力日", width: 90, minWidth: 58, visible: true },
+  { key: "maker", label: "メーカー名", width: 104, minWidth: 70, visible: true },
+  { key: "model", label: "機種名", width: 124, minWidth: 84, visible: true },
+  { key: "kind", label: "種別", width: 56, minWidth: 44, visible: true },
+  { key: "type", label: "タイプ", width: 64, minWidth: 44, visible: true },
+  { key: "quantity", label: "仕入数", width: 66, minWidth: 48, visible: true },
+  { key: "unitPrice", label: "仕入単価", width: 86, minWidth: 60, visible: true },
+  { key: "saleUnitPrice", label: "販売単価", width: 86, minWidth: 60, visible: true },
+  { key: "stockInDate", label: "入庫日", width: 88, minWidth: 62, visible: true },
+  { key: "removeDate", label: "撤去日", width: 88, minWidth: 62, visible: true },
+  { key: "warehouse", label: "保管先", width: 98, minWidth: 70, visible: true },
+  { key: "supplier", label: "仕入先", width: 98, minWidth: 70, visible: true },
+  { key: "staff", label: "担当者", width: 82, minWidth: 58, visible: true },
+  { key: "status", label: "状況", width: 98, minWidth: 74, visible: true },
+  { key: "isVisible", label: "表示", width: 70, minWidth: 52, visible: true },
+  { key: "note", label: "備考", width: 112, minWidth: 78, visible: true },
 ];
 
 const truncateText = (text: string) => {
   if (!text) return "-";
-  if (text.length <= 12) return text;
-  return `${text.slice(0, 12)}...`;
+  if (text.length <= 10) return text;
+  return `${text.slice(0, 8)}...`;
+};
+
+const shortenId = (id: string) => {
+  if (id.length <= 10) return id;
+  return `${id.slice(0, 5)}...${id.slice(-3)}`;
 };
 
 const formatDate = (value?: string) => {
@@ -64,9 +75,36 @@ export default function InventoryPage() {
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [columnEditorOpen, setColumnEditorOpen] = useState(false);
+  const [editingRecord, setEditingRecord] = useState<InventoryRecord | null>(null);
+  const [editingForm, setEditingForm] = useState<Partial<InventoryRecord> | null>(null);
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const raw = window.localStorage.getItem(COLUMN_SETTINGS_KEY);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Column[];
+      const savedMap = new Map(saved.map((col) => [col.key, col]));
+      setColumns(() => {
+        const withSaved = INITIAL_COLUMNS.map((col, index) => {
+          const target = savedMap.get(col.key);
+          return {
+            ...col,
+            width: target?.width ?? col.width,
+            visible: target?.visible ?? col.visible ?? true,
+            order: target?.order ?? index,
+          };
+        });
+        return withSaved.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      });
+    } catch (error) {
+      console.error("列設定の読み込みに失敗しました", error);
+    }
   }, []);
 
   useEffect(() => {
@@ -82,8 +120,9 @@ export default function InventoryPage() {
   useEffect(() => {
     if (!containerWidth) return;
     setColumns((prev) => {
-      const total = prev.reduce((sum, col) => sum + col.width, 0);
-      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH, 0);
+      const visible = prev.filter((col) => col.visible !== false);
+      const total = visible.reduce((sum, col) => sum + col.width, 0);
+      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH - ACTIONS_COLUMN_WIDTH, 0);
       if (total <= availableWidth) return prev;
       const scale = availableWidth / total;
       return prev.map((col) => ({
@@ -93,7 +132,20 @@ export default function InventoryPage() {
     });
   }, [containerWidth]);
 
-  const visibleColumns = useMemo(() => columns, [columns]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const payload = columns.map((col, index) => ({
+      key: col.key,
+      label: col.label,
+      width: col.width,
+      minWidth: col.minWidth,
+      visible: col.visible ?? true,
+      order: col.order ?? index,
+    }));
+    window.localStorage.setItem(COLUMN_SETTINGS_KEY, JSON.stringify(payload));
+  }, [columns]);
+
+  const visibleColumns = useMemo(() => columns.filter((col) => col.visible !== false), [columns]);
 
   const filtered = useMemo(() => {
     const keyword = searchTerm.trim().toLowerCase();
@@ -149,6 +201,77 @@ export default function InventoryPage() {
     setSelectedIds(new Set());
   };
 
+  const handleUpdateRecord = (id: string, payload: Partial<InventoryRecord>) => {
+    const updated = updateInventoryRecord(id, payload);
+    setRecords(updated);
+  };
+
+  const handleVisibilityChange = (id: string, visible: boolean) => {
+    handleUpdateRecord(id, { isVisible: visible });
+  };
+
+  const openEditor = (record: InventoryRecord) => {
+    setEditingRecord(record);
+    setEditingForm({
+      maker: record.maker ?? "",
+      model: record.model ?? record.machineName ?? "",
+      kind: record.kind,
+      type: (record.type as InventoryRecord["type"]) ?? "",
+      quantity: record.quantity ?? 0,
+      unitPrice: record.unitPrice ?? 0,
+      saleUnitPrice: record.saleUnitPrice ?? 0,
+      stockInDate: record.stockInDate ?? record.arrivalDate ?? "",
+      removeDate: record.removeDate ?? record.removalDate ?? "",
+      warehouse: record.warehouse ?? record.storageLocation ?? "",
+      supplier: record.supplier ?? "",
+      staff: record.staff ?? record.buyerStaff ?? "",
+      status: (record.status ?? "倉庫") as InventoryStatusOption,
+      note: record.note ?? record.notes ?? "",
+      isVisible: record.isVisible ?? true,
+      pattern: record.pattern ?? "",
+    });
+  };
+
+  const closeEditor = () => {
+    setEditingRecord(null);
+    setEditingForm(null);
+  };
+
+  const handleEditSubmit = () => {
+    if (!editingRecord || !editingForm) return;
+    const payload: Partial<InventoryRecord> = {
+      maker: editingForm.maker?.trim() || undefined,
+      model: editingForm.model?.trim() || undefined,
+      machineName: editingForm.model?.trim() || undefined,
+      kind: editingForm.kind ?? undefined,
+      type: editingForm.type ?? undefined,
+      quantity: typeof editingForm.quantity === "number" ? editingForm.quantity : Number(editingForm.quantity ?? 0),
+      unitPrice:
+        typeof editingForm.unitPrice === "number" ? editingForm.unitPrice : Number(editingForm.unitPrice ?? 0),
+      saleUnitPrice:
+        typeof editingForm.saleUnitPrice === "number"
+          ? editingForm.saleUnitPrice
+          : Number(editingForm.saleUnitPrice ?? 0),
+      stockInDate: editingForm.stockInDate || undefined,
+      arrivalDate: editingForm.stockInDate || undefined,
+      removeDate: editingForm.removeDate || undefined,
+      removalDate: editingForm.removeDate || undefined,
+      pattern: editingForm.pattern?.trim() || undefined,
+      warehouse: editingForm.warehouse?.trim() || undefined,
+      storageLocation: editingForm.warehouse?.trim() || undefined,
+      supplier: editingForm.supplier?.trim() || undefined,
+      staff: editingForm.staff?.trim() || undefined,
+      buyerStaff: editingForm.staff?.trim() || undefined,
+      status: (editingForm.status ?? "倉庫") as InventoryStatusOption,
+      stockStatus: (editingForm.status ?? "倉庫") as InventoryStatusOption,
+      note: editingForm.note?.trim() || undefined,
+      notes: editingForm.note?.trim() || undefined,
+      isVisible: editingForm.isVisible ?? true,
+    };
+    handleUpdateRecord(editingRecord.id, payload);
+    closeEditor();
+  };
+
   const getCellText = (record: InventoryRecord, key: string) => {
     switch (key) {
       case "id":
@@ -181,6 +304,8 @@ export default function InventoryPage() {
         return record.supplier ?? "-";
       case "staff":
         return record.staff ?? record.buyerStaff ?? "-";
+      case "isVisible":
+        return record.isVisible === false ? "しない" : "する";
       case "note":
         return record.note ?? record.notes ?? "-";
       default:
@@ -220,6 +345,23 @@ export default function InventoryPage() {
     setDraggingKey(null);
   };
 
+  const toggleColumnVisibility = (key: Column["key"], visible: boolean) => {
+    setColumns((prev) =>
+      prev.map((col) =>
+        col.key === key
+          ? {
+              ...col,
+              visible,
+            }
+          : col,
+      ),
+    );
+  };
+
+  const handleResetColumns = () => {
+    setColumns(INITIAL_COLUMNS.map((col, index) => ({ ...col, order: index })));
+  };
+
   const handleResetData = () => {
     resetInventoryRecords();
     setRecords([]);
@@ -233,14 +375,19 @@ export default function InventoryPage() {
 
       if (!containerWidth) return next;
 
-      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH, 0);
+      const visibleIndices = next
+        .map((col, idx) => ({ idx, col }))
+        .filter(({ col }) => col.visible !== false)
+        .map(({ idx }) => idx);
 
-      let total = next.reduce((sum, col) => sum + col.width, 0);
+      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH - ACTIONS_COLUMN_WIDTH, 0);
+
+      let total = visibleIndices.reduce((sum, idx) => sum + next[idx].width, 0);
       if (total <= availableWidth) return next;
 
       let excess = total - availableWidth;
-      const adjustable = next
-        .map((col, idx) => ({ idx, room: col.width - col.minWidth }))
+      const adjustable = visibleIndices
+        .map((idx) => ({ idx, room: next[idx].width - next[idx].minWidth }))
         .filter(({ idx, room }) => idx !== index && room > 0);
 
       for (const item of adjustable) {
@@ -262,10 +409,14 @@ export default function InventoryPage() {
         next[index].width = Math.max(minWidth, next[index].width - excess);
       }
 
-      total = next.reduce((sum, col) => sum + col.width, 0);
+      total = visibleIndices.reduce((sum, idx) => sum + next[idx].width, 0);
       if (total > availableWidth) {
         const scale = availableWidth / total;
-        return next.map((col) => ({ ...col, width: Math.max(col.minWidth, Math.floor(col.width * scale)) }));
+        return next.map((col, idx) =>
+          visibleIndices.includes(idx)
+            ? { ...col, width: Math.max(col.minWidth, Math.floor(col.width * scale)) }
+            : col,
+        );
       }
 
       return next;
@@ -275,6 +426,7 @@ export default function InventoryPage() {
   const handleResizeStart = (event: React.MouseEvent, index: number) => {
     event.preventDefault();
     event.stopPropagation();
+    if (index < 0) return;
     const startX = event.clientX;
     const startWidth = columns[index].width;
 
@@ -350,6 +502,13 @@ export default function InventoryPage() {
               一括：倉庫
             </button>
           </div>
+          <button
+            type="button"
+            onClick={() => setColumnEditorOpen(true)}
+            className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+          >
+            表示項目編集
+          </button>
           <div className="flex items-center gap-2">
             <label htmlFor="inventory-search" className="text-sm text-neutral-700">
               検索 / 絞り込み
@@ -366,8 +525,8 @@ export default function InventoryPage() {
       </div>
 
       <div ref={tableRef} className="w-full rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full table-fixed border-collapse text-sm">
-          <thead className="bg-slate-50 text-left text-sm font-semibold text-slate-700">
+        <table className="min-w-full table-fixed border-collapse text-[13px]">
+          <thead className="bg-slate-50 text-left font-semibold text-slate-700">
             <tr>
               <th className="w-10 border-r border-slate-200 px-3 py-2">
                 <input
@@ -377,46 +536,52 @@ export default function InventoryPage() {
                   className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
                 />
               </th>
-              {visibleColumns.map((col) => (
-                <th
-                  key={col.key}
-                  draggable
-                  onDragStart={() => handleDragStart(String(col.key))}
-                  onDragOver={(event) => handleDragOver(event, String(col.key))}
-                  onDrop={() => handleDrop(String(col.key))}
-                  className="relative select-none border-r border-slate-200 px-3 py-2"
-                  style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
-                >
-                  <div className="flex items-center justify-between gap-2 whitespace-nowrap">
-                    <span
-                      className={`flex-1 truncate rounded px-2 py-1 ${dragOver?.key === col.key ? "bg-sky-50" : ""}`}
-                    >
-                      {col.label}
-                    </span>
-                    <span
-                      className="h-6 w-1 cursor-col-resize rounded bg-slate-300"
-                      onMouseDown={(event) => handleResizeStart(event, visibleColumns.findIndex((c) => c.key === col.key))}
-                    />
-                  </div>
-                  {dragOver && dragOver.key === col.key && (
-                    <div
-                      className={`absolute inset-y-1 ${dragOver.position === "left" ? "left-1" : "right-1"} w-0.5 bg-sky-500`}
-                    />
-                  )}
-                </th>
-              ))}
+              {visibleColumns.map((col) => {
+                const columnIndex = columns.findIndex((c) => c.key === col.key);
+                return (
+                  <th
+                    key={col.key}
+                    draggable
+                    onDragStart={() => handleDragStart(String(col.key))}
+                    onDragOver={(event) => handleDragOver(event, String(col.key))}
+                    onDrop={() => handleDrop(String(col.key))}
+                    className="relative select-none border-r border-slate-200 px-2 py-2"
+                    style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
+                  >
+                    <div className="flex items-center justify-between gap-1 whitespace-nowrap">
+                      <span
+                        className={`flex-1 truncate rounded px-2 py-1 ${dragOver?.key === col.key ? "bg-sky-50" : ""}`}
+                      >
+                        {col.label}
+                      </span>
+                      <span
+                        className="h-6 w-1 cursor-col-resize rounded bg-slate-300"
+                        onMouseDown={(event) => handleResizeStart(event, columnIndex)}
+                      />
+                    </div>
+                    {dragOver && dragOver.key === col.key && (
+                      <div
+                        className={`absolute inset-y-1 ${dragOver.position === "left" ? "left-1" : "right-1"} w-0.5 bg-sky-500`}
+                      />
+                    )}
+                  </th>
+                );
+              })}
+              <th className="border-l border-slate-200 px-3 py-2 text-center" style={{ width: `${ACTIONS_COLUMN_WIDTH}px` }}>
+                編集
+              </th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={visibleColumns.length + 1} className="px-3 py-6 text-center text-sm text-neutral-600">
+                <td colSpan={visibleColumns.length + 2} className="px-3 py-6 text-center text-sm text-neutral-600">
                   登録された在庫がありません。
                 </td>
               </tr>
             ) : (
               filtered.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100 text-sm hover:bg-sky-50">
+                <tr key={item.id} className="border-t border-slate-100 text-[13px] hover:bg-sky-50">
                   <td className="w-10 border-r border-slate-100 px-3 py-2 align-middle">
                     <input
                       type="checkbox"
@@ -428,18 +593,19 @@ export default function InventoryPage() {
                   {visibleColumns.map((col) => {
                     const fullText = getCellText(item, String(col.key));
                     const statusValue = (item.status ?? item.stockStatus ?? "倉庫") as InventoryStatusOption;
+                    const displayText = col.key === "id" ? shortenId(fullText) : truncateText(fullText);
 
                     return (
                       <td
                         key={col.key}
-                        className="whitespace-nowrap border-r border-slate-100 px-3 py-2 align-middle text-neutral-800"
+                        className="whitespace-nowrap border-r border-slate-100 px-2 py-2 align-middle text-neutral-800"
                         style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                       >
                         {col.key === "status" ? (
                           <select
                             value={statusValue}
                             onChange={(event) => handleStatusChange(item.id, event.target.value as InventoryStatusOption)}
-                            className="w-full rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                            className="w-full rounded-md border border-slate-300 px-2 py-1 text-[13px] shadow-sm focus:border-sky-500 focus:outline-none"
                           >
                             {STATUS_OPTIONS.map((option) => (
                               <option key={option} value={option}>
@@ -447,20 +613,302 @@ export default function InventoryPage() {
                               </option>
                             ))}
                           </select>
+                        ) : col.key === "isVisible" ? (
+                          <div className="flex items-center justify-center">
+                            <select
+                              value={item.isVisible === false ? "0" : "1"}
+                              onChange={(event) => handleVisibilityChange(item.id, event.target.value === "1")}
+                              className="w-[72px] rounded-md border border-slate-300 px-1 py-1 text-[13px] shadow-sm focus:border-sky-500 focus:outline-none"
+                            >
+                              <option value="1">する</option>
+                              <option value="0">しない</option>
+                            </select>
+                          </div>
                         ) : (
                           <span className="block max-w-full truncate" title={fullText}>
-                            {truncateText(fullText)}
+                            {displayText}
                           </span>
                         )}
                       </td>
                     );
                   })}
+                  <td className="border-l border-slate-100 px-3 py-2 text-center align-middle">
+                    <button
+                      type="button"
+                      onClick={() => openEditor(item)}
+                      className="inline-flex h-8 items-center justify-center rounded border border-slate-300 px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+                    >
+                      編集
+                    </button>
+                  </td>
                 </tr>
               ))
             )}
           </tbody>
         </table>
       </div>
+
+      {columnEditorOpen && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
+          <div className="w-full max-w-lg rounded-lg border border-slate-200 bg-white shadow-xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div>
+                <h3 className="text-base font-semibold text-neutral-900">表示項目を編集</h3>
+                <p className="text-xs text-neutral-600">チェックを外すと列が非表示になります。設定はブラウザに保存されます。</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleResetColumns}
+                  className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  初期化
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setColumnEditorOpen(false)}
+                  className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                >
+                  閉じる
+                </button>
+              </div>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto px-4 py-3">
+              <div className="grid grid-cols-2 gap-3">
+                {columns.map((col) => (
+                  <label
+                    key={col.key}
+                    className="flex items-center justify-between gap-3 rounded border border-slate-200 px-3 py-2 text-sm text-neutral-800 shadow-sm"
+                  >
+                    <span className="flex-1 truncate">{col.label}</span>
+                    <input
+                      type="checkbox"
+                      checked={col.visible !== false}
+                      onChange={(event) => toggleColumnVisibility(col.key, event.target.checked)}
+                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
+                    />
+                  </label>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingRecord && editingForm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-3xl rounded-lg border border-slate-200 bg-white shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+              <div>
+                <p className="text-xs font-semibold text-slate-500">{editingRecord.id}</p>
+                <h3 className="text-lg font-semibold text-neutral-900">在庫を編集</h3>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditor}
+                className="rounded border border-slate-300 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-50"
+              >
+                閉じる
+              </button>
+            </div>
+            <div className="max-h-[70vh] space-y-4 overflow-y-auto px-4 py-4 text-sm text-neutral-800">
+              <div className="grid grid-cols-3 gap-3">
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">種別</span>
+                  <select
+                    value={editingForm.kind ?? ""}
+                    onChange={(event) =>
+                      setEditingForm((prev) =>
+                        prev ? { ...prev, kind: event.target.value as InventoryRecord["kind"] } : prev,
+                      )
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  >
+                    <option value="">-</option>
+                    <option value="P">P</option>
+                    <option value="S">S</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">メーカー</span>
+                  <input
+                    value={editingForm.maker ?? ""}
+                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, maker: event.target.value } : prev))}
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">機種名</span>
+                  <input
+                    value={editingForm.model ?? ""}
+                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, model: event.target.value } : prev))}
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">タイプ</span>
+                  <input
+                    value={(editingForm.type as string) ?? ""}
+                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, type: event.target.value } : prev))}
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">仕入数</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editingForm.quantity ?? 0}
+                    onChange={(event) =>
+                      setEditingForm((prev) => (prev ? { ...prev, quantity: Number(event.target.value) } : prev))
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">仕入単価</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editingForm.unitPrice ?? 0}
+                    onChange={(event) =>
+                      setEditingForm((prev) => (prev ? { ...prev, unitPrice: Number(event.target.value) } : prev))
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">販売単価</span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={editingForm.saleUnitPrice ?? 0}
+                    onChange={(event) =>
+                      setEditingForm((prev) => (prev ? { ...prev, saleUnitPrice: Number(event.target.value) } : prev))
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">入庫日</span>
+                  <input
+                    type="date"
+                    value={editingForm.stockInDate ?? ""}
+                    onChange={(event) =>
+                      setEditingForm((prev) => (prev ? { ...prev, stockInDate: event.target.value } : prev))
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">撤去日</span>
+                  <input
+                    type="date"
+                    value={editingForm.removeDate ?? ""}
+                    onChange={(event) =>
+                      setEditingForm((prev) => (prev ? { ...prev, removeDate: event.target.value } : prev))
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">柄</span>
+                  <input
+                    value={editingForm.pattern ?? ""}
+                    onChange={(event) =>
+                      setEditingForm((prev) => (prev ? { ...prev, pattern: event.target.value } : prev))
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">保管先</span>
+                  <input
+                    value={editingForm.warehouse ?? ""}
+                    onChange={(event) =>
+                      setEditingForm((prev) => (prev ? { ...prev, warehouse: event.target.value } : prev))
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">仕入先</span>
+                  <input
+                    value={editingForm.supplier ?? ""}
+                    onChange={(event) =>
+                      setEditingForm((prev) => (prev ? { ...prev, supplier: event.target.value } : prev))
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">担当者</span>
+                  <input
+                    value={editingForm.staff ?? ""}
+                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, staff: event.target.value } : prev))}
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">状況</span>
+                  <select
+                    value={(editingForm.status as InventoryStatusOption) ?? "倉庫"}
+                    onChange={(event) =>
+                      setEditingForm((prev) =>
+                        prev ? { ...prev, status: event.target.value as InventoryStatusOption } : prev,
+                      )
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  >
+                    {STATUS_OPTIONS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">備考</span>
+                  <input
+                    value={editingForm.note ?? ""}
+                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, note: event.target.value } : prev))}
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="space-y-1">
+                  <span className="text-xs text-neutral-600">表示</span>
+                  <select
+                    value={editingForm.isVisible === false ? "0" : "1"}
+                    onChange={(event) =>
+                      setEditingForm((prev) => (prev ? { ...prev, isVisible: event.target.value === "1" } : prev))
+                    }
+                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
+                  >
+                    <option value="1">する</option>
+                    <option value="0">しない</option>
+                  </select>
+                </label>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3">
+              <button
+                type="button"
+                onClick={closeEditor}
+                className="h-9 rounded border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={handleEditSubmit}
+                className="h-9 rounded bg-sky-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
