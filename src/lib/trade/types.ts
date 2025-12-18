@@ -1,6 +1,4 @@
 export type TradeStatus =
-  | "DRAFT"
-  | "SENT"
   | "APPROVAL_REQUIRED"
   | "PAYMENT_REQUIRED"
   | "CONFIRM_REQUIRED"

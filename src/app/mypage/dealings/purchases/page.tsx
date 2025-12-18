@@ -31,7 +31,7 @@ const PURCHASE_ROWS = [
     quantity: 4,
     partnerName: "有限会社スマイル",
     totalAmount: 760000,
-    status: "shipped" as TradeStatusKey,
+    status: "waiting_payment" as TradeStatusKey,
     updatedAt: "2025/11/09 17:05",
     buyerUserId: "user-a",
     sellerUserId: "user-b",

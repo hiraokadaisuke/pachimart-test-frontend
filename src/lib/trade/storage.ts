@@ -487,7 +487,7 @@ export function createTradeFromDraft(
   const quantity = draft.conditions.quantity ?? 1;
   const totalAmount = calculateTradeTotal({
     id: draft.id,
-    status: "DRAFT",
+    status: "APPROVAL_REQUIRED",
     sellerUserId,
     buyerUserId: buyerProfile.userId ?? draft.buyerId ?? "buyer",
     sellerName: sellerProfile.companyName,

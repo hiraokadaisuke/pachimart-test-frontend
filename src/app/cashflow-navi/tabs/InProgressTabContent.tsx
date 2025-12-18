@@ -61,14 +61,14 @@ function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
     case "PAYMENT_REQUIRED":
       return "waiting_payment";
     case "CONFIRM_REQUIRED":
-      return "navi_in_progress";
+      return "payment_confirmed";
     case "COMPLETED":
       return "completed";
     case "CANCELED":
       return "canceled";
-    default:
-      return "navi_in_progress";
   }
+  const exhaustiveCheck: never = status;
+  return exhaustiveCheck;
 }
 
 function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
@@ -126,8 +126,7 @@ export function InProgressTabContent() {
         })
         .filter((trade) => {
           if (statusFilter === "all") return true;
-          if (statusFilter === "inProgress")
-            return IN_PROGRESS_STATUS_KEYS.includes(trade.status) || trade.status === "requesting";
+          if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(trade.status);
           if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(trade.status);
           return true;
         })
@@ -187,13 +186,13 @@ export function InProgressTabContent() {
     (trade) => trade.kind === "buy" && trade.status === "waiting_payment"
   );
   const buyChecking = filteredTrades.filter(
-    (trade) => trade.kind === "buy" && trade.status === "navi_in_progress"
+    (trade) => trade.kind === "buy" && trade.status === "payment_confirmed"
   );
   const sellWaiting = filteredTrades.filter(
     (trade) => trade.kind === "sell" && trade.status === "waiting_payment"
   );
   const sellChecking = filteredTrades.filter(
-    (trade) => trade.kind === "sell" && trade.status === "navi_in_progress"
+    (trade) => trade.kind === "sell" && trade.status === "payment_confirmed"
   );
 
   const tradeColumnBase: NaviTableColumn[] = [

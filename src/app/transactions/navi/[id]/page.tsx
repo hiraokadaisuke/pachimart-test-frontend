@@ -28,7 +28,7 @@ export default function TransactionDetailPage() {
 
       <section className="space-y-2 rounded-lg border border-slate-200 p-4">
         <h2 className="font-semibold">ステータス</h2>
-        <StatusBadge statusKey="navi_in_progress" />
+        <StatusBadge statusKey="payment_confirmed" />
       </section>
 
       <section className="space-y-2 rounded-lg border border-slate-200 p-4">

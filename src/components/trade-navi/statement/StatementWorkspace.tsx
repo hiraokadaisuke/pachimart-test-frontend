@@ -256,12 +256,12 @@ function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
     case "PAYMENT_REQUIRED":
       return "waiting_payment";
     case "CONFIRM_REQUIRED":
-      return "navi_in_progress";
+      return "payment_confirmed";
     case "COMPLETED":
       return "completed";
     case "CANCELED":
       return "canceled";
-    default:
-      return "navi_in_progress";
   }
+  const exhaustiveCheck: never = status;
+  return exhaustiveCheck;
 }
