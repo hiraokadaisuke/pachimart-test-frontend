@@ -16,6 +16,7 @@ import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { getStatementPath } from "@/lib/trade/navigation";
 import { getPurchaseHistoryForUser } from "@/lib/trade/storage";
 import type { TradeRecord } from "@/lib/trade/types";
 
@@ -24,6 +25,7 @@ import type { TradeRecord } from "@/lib/trade/types";
 type PurchaseHistoryRow = {
   id: string;
   status: TradeStatusKey;
+  tradeStatus: TradeRecord["status"];
   contractDate: string;
   seller: string;
   maker: string;
@@ -99,6 +101,9 @@ export function PurchaseHistoryTabContent() {
     [filteredRows, sortState]
   );
 
+  const getStatementDestination = (row: PurchaseHistoryRow) =>
+    getStatementPath(row.id, row.tradeStatus, "buyer");
+
   const columns: NaviTableColumn[] = [
   {
     key: "status",
@@ -169,7 +174,7 @@ export function PurchaseHistoryTabContent() {
         type="button"
         onClick={(e) => {
           e.stopPropagation();
-          router.push(`/dealings/purchases/${row.id}`);
+          router.push(getStatementDestination(row as PurchaseHistoryRow));
         }}
         className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
       >
@@ -432,7 +437,7 @@ export function PurchaseHistoryTabContent() {
         columns={columns}
         rows={sortedRows}
         emptyMessage="該当する取引はありません。"
-        onRowClick={(row) => row.id && router.push(`/dealings/purchases/${row.id}`)}
+        onRowClick={(row) => row.id && router.push(getStatementDestination(row as PurchaseHistoryRow))}
         sortState={sortState}
         onSortChange={handleSortChange}
       />
@@ -460,6 +465,7 @@ function mapTradeToPurchaseHistoryRow(trade: TradeRecord): PurchaseHistoryRow {
   return {
     id: trade.id,
     status: mapTradeStatusToKey(trade.status),
+    tradeStatus: trade.status,
     contractDate: trade.contractDate ?? trade.createdAt ?? "",
     seller: trade.sellerName ?? trade.seller.companyName ?? "",
     maker: trade.makerName ?? primaryItem?.maker ?? "-",

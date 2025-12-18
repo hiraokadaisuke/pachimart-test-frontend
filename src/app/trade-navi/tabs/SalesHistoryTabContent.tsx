@@ -16,6 +16,7 @@ import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { getStatementPath } from "@/lib/trade/navigation";
 import { getSalesHistoryForUser } from "@/lib/trade/storage";
 import type { TradeRecord } from "@/lib/trade/types";
 
@@ -24,6 +25,7 @@ import type { TradeRecord } from "@/lib/trade/types";
 type SalesHistoryRow = {
   id: string;
   status: TradeStatusKey;
+  tradeStatus: TradeRecord["status"];
   contractDate: string;
   partner: string;
   maker: string;
@@ -98,6 +100,9 @@ export function SalesHistoryTabContent() {
     [filteredRows, sortState]
   );
 
+  const getStatementDestination = (row: SalesHistoryRow) =>
+    getStatementPath(row.id, row.tradeStatus, "seller");
+
   const columns: NaviTableColumn[] = [
     {
       key: "status",
@@ -156,7 +161,7 @@ export function SalesHistoryTabContent() {
           type="button"
           onClick={(e) => {
             e.stopPropagation();
-            router.push(`/dealings/sales/${row.id}`);
+            router.push(getStatementDestination(row as SalesHistoryRow));
           }}
           className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
         >
@@ -415,14 +420,14 @@ export function SalesHistoryTabContent() {
         </div>
       </form>
 
-      <NaviTable
-        columns={columns}
-        rows={sortedRows}
-        emptyMessage="該当する取引はありません。"
-        onRowClick={(row) => row.id && router.push(`/dealings/sales/${row.id}`)}
-        sortState={sortState}
-        onSortChange={handleSortChange}
-      />
+        <NaviTable
+          columns={columns}
+          rows={sortedRows}
+          emptyMessage="該当する取引はありません。"
+          onRowClick={(row) => row.id && router.push(getStatementDestination(row as SalesHistoryRow))}
+          sortState={sortState}
+          onSortChange={handleSortChange}
+        />
 
       <TradeMessageModal
         open={messageTarget !== null}
@@ -447,6 +452,7 @@ function mapTradeToSalesHistoryRow(trade: TradeRecord): SalesHistoryRow {
   return {
     id: trade.id,
     status: mapTradeStatusToKey(trade.status),
+    tradeStatus: trade.status,
     contractDate: trade.contractDate ?? trade.createdAt ?? "",
     partner: trade.buyerName ?? trade.buyer.companyName ?? "",
     maker: trade.makerName ?? primaryItem?.maker ?? "-",

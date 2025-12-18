@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
+import { getInProgressDescription } from "@/lib/trade/copy";
+import { getActorRole } from "@/lib/trade/navigation";
 import {
   addBuyerContact,
   ensureContactsLoaded,
@@ -52,7 +54,8 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     setContacts(ensureContactsLoaded(record));
   }, [tradeId]);
 
-  const isBuyer = trade?.buyer.userId === currentUser.id;
+  const actorRole = trade ? getActorRole(trade, currentUser.id) : null;
+  const isBuyer = actorRole === "buyer";
   const isEditable = trade?.status === "APPROVAL_REQUIRED" && isBuyer;
   const totals = useMemo(
     () => (trade ? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1) : null),
@@ -118,12 +121,13 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
   const handleCancel = () => {
     if (!trade) return;
-    const canceled = cancelTrade(trade.id, "buyer");
+    const canceled = cancelTrade(trade.id, actorRole ?? "buyer");
     if (canceled) {
       setTrade(canceled);
       setMessage("依頼をキャンセルしました。");
       setError(null);
-      router.push("/trade-navi?tab=purchaseHistory");
+      const nextTab = (actorRole ?? "buyer") === "seller" ? "salesHistory" : "purchaseHistory";
+      router.push(`/trade-navi?tab=${nextTab}`);
     }
   };
 
@@ -143,6 +147,13 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     );
   }
 
+  const defaultDescription = trade ? getInProgressDescription(actorRole ?? "buyer", trade.status) : undefined;
+  const cancelBanner =
+    trade?.status === "CANCELED"
+      ? `キャンセル済（${trade.canceledBy === "seller" ? "売手" : trade.canceledBy === "buyer" ? "買手" : "不明"}）`
+      : null;
+  const isApprovalReadOnlyForSeller = trade?.status === "APPROVAL_REQUIRED" && actorRole === "seller";
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 border-b border-slate-200 pb-3 md:flex-row md:items-center md:justify-between">
@@ -155,7 +166,13 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
               </span>
             )}
           </div>
-          {description && <p className="text-sm text-neutral-800">{description}</p>}
+          {(description ?? defaultDescription) && (
+            <p className="text-sm text-neutral-800">{description ?? defaultDescription}</p>
+          )}
+          {isApprovalReadOnlyForSeller && (
+            <p className="text-[11px] text-neutral-600">買主のみ入力・承認できます</p>
+          )}
+          {cancelBanner && <p className="text-xs font-semibold text-red-700">{cancelBanner}</p>}
         </div>
         <div className="print-hidden flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
@@ -178,7 +195,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
             <button
               type="button"
               onClick={handleCancel}
-              disabled={!isBuyer}
+              disabled={!trade || trade.status === "COMPLETED" || trade.status === "CANCELED"}
               className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
             >
               キャンセル
