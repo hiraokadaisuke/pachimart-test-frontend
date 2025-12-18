@@ -18,3 +18,8 @@ npm run dev
 - `/` トップページ
 - `/items` アイテム一覧（`src/lib/mockData.ts` のデータを表示）
 - `/items/[id]` アイテム詳細
+
+## ドキュメント
+
+- [Todo.kind 対応表（本番基準）](docs/todo_mapping.md)
+- [Todo.kind 差分ログ（テスト拡張）](docs/todo_diff.md)
