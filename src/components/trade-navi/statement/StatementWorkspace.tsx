@@ -23,10 +23,6 @@ import { getTodoPresentation } from "@/lib/trade/todo";
 import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
 
 import { StatementDocument } from "./StatementDocument";
-import { ItemsTable } from "./ItemsTable";
-import { TotalsBox } from "./TotalsBox";
-import { EditableCellInput } from "./EditableCellInput";
-import { ContactSelector } from "./ContactSelector";
 
 type StatementWorkspaceProps = {
   tradeId: string;
@@ -52,7 +48,6 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const [contacts, setContacts] = useState<BuyerContact[]>([]);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isEditingShipping, setIsEditingShipping] = useState(false);
 
   useEffect(() => {
     const record = loadTrade(tradeId);
@@ -62,6 +57,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   }, [tradeId]);
 
   const actorRole = trade ? getActorRole(trade, currentUser.id) : "none";
+  const isBuyer = actorRole === "buyer";
   const isEditable = trade ? canApprove(trade, currentUser.id) : false;
   const todoView = trade
     ? getTodoPresentation(trade, actorRole === "seller" ? "seller" : "buyer")
@@ -77,14 +73,6 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     () => requiredFields.filter((field) => !shipping[field] || (shipping[field] ?? "").toString().trim() === ""),
     [shipping]
   );
-
-  const hasShippingDetails = missingFields.length === 0;
-
-  useEffect(() => {
-    if (!hasShippingDetails) {
-      setIsEditingShipping(true);
-    }
-  }, [hasShippingDetails]);
 
   const approveDisabled = !isEditable || missingFields.length > 0 || todoView?.section !== "approval";
   const cancelDisabled = !trade || !canCancel(trade, currentUser.id);
@@ -182,9 +170,9 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const isApprovalReadOnlyForSeller = todoView?.section === "approval" && actorRole === "seller";
 
   return (
-    <div className="space-y-4 pt-4">
-      <div className="flex flex-col gap-2 border-b border-slate-200 pb-3 md:flex-row md:items-end md:justify-between">
-        <div className="space-y-1">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-2 border-b border-slate-200 pb-3 md:flex-row md:items-center md:justify-between">
+        <div>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-slate-900">{pageTitle ?? "明細書"}</h1>
             {statusKey && (
@@ -199,7 +187,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
           {cancelBanner && <p className="text-xs font-semibold text-red-700">{cancelBanner}</p>}
         </div>
 
-        <div className="print-hidden flex flex-wrap items-center justify-end gap-2">
+        <div className="print-hidden flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -215,6 +203,9 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
             >
               戻る
             </button>
+          </div>
+
+          <div className="flex items-center gap-2">
             {actorRole !== "none" && (
               <button
                 type="button"
@@ -225,21 +216,21 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                 キャンセル
               </button>
             )}
-          </div>
 
-          {todoView?.todoKind === "application_sent" &&
-            todoView?.primaryAction &&
-            todoView?.activeTodo &&
-            todoView.primaryAction.role === actorRole && (
-              <button
-                type="button"
-                onClick={handleApprove}
-                disabled={approveDisabled}
-                className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
-              >
-                {todoView.primaryAction.label}
-              </button>
-            )}
+            {todoView?.todoKind === "application_sent" &&
+              todoView?.primaryAction &&
+              todoView?.activeTodo &&
+              todoView.primaryAction.role === actorRole && (
+                <button
+                  type="button"
+                  onClick={handleApprove}
+                  disabled={approveDisabled}
+                  className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                >
+                  {todoView.primaryAction.label}
+                </button>
+              )}
+          </div>
 
           {isEditable && approveDisabled && (
             <p className="w-full text-[11px] text-red-700">
@@ -260,175 +251,37 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
       {totals && (
         <div className="space-y-4">
-          <div className="space-y-3 print:hidden">
-            <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-              <div className="grid gap-3 text-[12px] text-neutral-900 sm:grid-cols-2 lg:grid-cols-3">
-                <SummaryTile label="買主" value={trade.buyer.companyName} />
-                <SummaryTile label="売主" value={trade.seller.companyName} />
-                <SummaryTile label="合計（税込）" value={formatYen(totals.total)} emphasize />
+          <div className="rounded border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="grid grid-cols-2 gap-3 text-[12px] text-neutral-900 md:max-w-[420px]">
+              <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-2">
+                <span className="text-neutral-700">買主</span>
+                <span className="font-semibold">{trade.buyer.companyName}</span>
+              </div>
+              <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-2">
+                <span className="text-neutral-700">売主</span>
+                <span className="font-semibold">{trade.seller.companyName}</span>
+              </div>
+              <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-2">
+                <span className="text-neutral-700">発行日</span>
+                <span className="font-semibold">{trade.contractDate ?? "-"}</span>
+              </div>
+              <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-2">
+                <span className="text-neutral-700">合計（税込）</span>
+                <span className="text-base font-bold text-indigo-700">{formatYen(totals.total)}</span>
               </div>
             </div>
-
-            <ShippingSection
-              shipping={shipping}
-              onShippingChange={setShipping}
-              isEditing={isEditingShipping}
-              onEditToggle={setIsEditingShipping}
-              onContactChange={handleContactChange}
-              contacts={contacts}
-              onAddContact={handleAddContact}
-              highlightMissing={!hasShippingDetails}
-            />
-
-            <div className="grid grid-cols-1 gap-3 lg:grid-cols-[2fr_1fr]">
-              <ItemsTable items={trade.items} taxRate={trade.taxRate} />
-              <TotalsBox totals={totals} />
-            </div>
           </div>
 
-          <div className="hidden print:block">
-            <StatementDocument
-              trade={trade}
-              editable={false}
-              shipping={shipping}
-              onShippingChange={setShipping}
-              contacts={contacts}
-              onContactChange={handleContactChange}
-              onAddContact={handleAddContact}
-            />
-          </div>
+          <StatementDocument
+            trade={trade}
+            editable={isEditable}
+            shipping={shipping}
+            onShippingChange={setShipping}
+            contacts={contacts}
+            onContactChange={handleContactChange}
+            onAddContact={handleAddContact}
+          />
         </div>
-      )}
-    </div>
-  );
-}
-
-function SummaryTile({ label, value, emphasize = false }: { label: string; value: string; emphasize?: boolean }) {
-  return (
-    <div className="rounded border border-slate-200 bg-slate-50 px-3 py-3">
-      <p className="text-[11px] font-semibold text-neutral-600">{label}</p>
-      <p className={`mt-1 truncate text-sm font-bold ${emphasize ? "text-indigo-700" : "text-neutral-900"}`}>{value}</p>
-    </div>
-  );
-}
-
-function ShippingSection({
-  shipping,
-  onShippingChange,
-  isEditing,
-  onEditToggle,
-  contacts,
-  onContactChange,
-  onAddContact,
-  highlightMissing,
-}: {
-  shipping: ShippingInfo;
-  onShippingChange: (next: ShippingInfo) => void;
-  isEditing: boolean;
-  onEditToggle: (next: boolean) => void;
-  contacts: BuyerContact[];
-  onContactChange: (name: string) => void;
-  onAddContact: (name: string) => void;
-  highlightMissing?: boolean;
-}) {
-  const handleFieldChange = <K extends keyof ShippingInfo>(key: K, value: string) => {
-    onShippingChange({
-      ...shipping,
-      [key]: value,
-    });
-  };
-
-  const actionLabel = isEditing ? "入力完了" : "編集";
-
-  return (
-    <div className="rounded border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <div>
-          <p className="text-xs font-semibold text-neutral-900">発送先・担当者</p>
-          <p className="text-[11px] text-neutral-600">入力済みの場合は確認用にテキスト表示します</p>
-          {highlightMissing && (
-            <p className="text-[11px] font-semibold text-red-700">発送先・担当者の入力が必要です</p>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={() => onEditToggle(!isEditing)}
-          className="text-[11px] font-semibold text-indigo-700 hover:underline"
-        >
-          {actionLabel}
-        </button>
-      </div>
-
-      <div className="grid gap-3 text-[12px] sm:grid-cols-2">
-        <ShippingField
-          label="会社名"
-          value={shipping.companyName}
-          placeholder="株式会社〇〇"
-          isEditing={isEditing}
-          onChange={(val) => handleFieldChange("companyName", val)}
-        />
-        <ShippingField
-          label="郵便番号"
-          value={shipping.zip}
-          placeholder="000-0000"
-          isEditing={isEditing}
-          onChange={(val) => handleFieldChange("zip", val)}
-        />
-        <ShippingField
-          label="住所"
-          value={shipping.address}
-          placeholder="住所を入力"
-          isEditing={isEditing}
-          onChange={(val) => handleFieldChange("address", val)}
-        />
-        <ShippingField
-          label="TEL"
-          value={shipping.tel}
-          placeholder="03-1234-5678"
-          isEditing={isEditing}
-          onChange={(val) => handleFieldChange("tel", val)}
-        />
-        <div className="sm:col-span-2">
-          <p className="text-[11px] font-semibold text-neutral-600">担当者</p>
-          {isEditing ? (
-            <div className="mt-1">
-              <ContactSelector
-                contacts={contacts}
-                value={shipping.personName}
-                onChange={onContactChange}
-                onAdd={onAddContact}
-                disabled={!isEditing}
-              />
-            </div>
-          ) : (
-            <p className="mt-1 rounded bg-slate-50 px-3 py-2 text-neutral-900">{shipping.personName || "-"}</p>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ShippingField({
-  label,
-  value,
-  placeholder,
-  isEditing,
-  onChange,
-}: {
-  label: string;
-  value?: string;
-  placeholder?: string;
-  isEditing: boolean;
-  onChange: (value: string) => void;
-}) {
-  return (
-    <div className="space-y-1">
-      <p className="text-[11px] font-semibold text-neutral-600">{label}</p>
-      {isEditing ? (
-        <EditableCellInput value={value ?? ""} onChange={onChange} placeholder={placeholder} />
-      ) : (
-        <p className="rounded bg-slate-50 px-3 py-2 text-neutral-900">{value || "-"}</p>
       )}
     </div>
   );
