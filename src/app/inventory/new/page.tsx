@@ -66,6 +66,9 @@ const createBlankRow = (today: string): InventoryFormRow => ({
 
 const todayString = () => new Date().toISOString().slice(0, 10);
 
+const getMakerOptions = (catalog: MachineCatalogItem[]) =>
+  Array.from(new Set(catalog.map((item) => item.maker)));
+
 export default function InventoryNewPage() {
   const router = useRouter();
   const [today, setToday] = useState<string>(todayString());
@@ -78,6 +81,7 @@ export default function InventoryNewPage() {
   });
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
   const [selectedSupplier, setSelectedSupplier] = useState<string>("");
+  const makerOptions = useMemo(() => getMakerOptions(MACHINE_CATALOG), []);
 
   useEffect(() => {
     setMasterData(loadMasterData());
@@ -170,19 +174,23 @@ export default function InventoryNewPage() {
     router.push("/inventory");
   };
 
-  const machineMatches = (keyword: string, kind?: string) =>
-    MACHINE_CATALOG.filter(
-      (item) => item.title.includes(keyword) && (!kind || item.kind === kind),
-    ).slice(0, 5);
+  const machineMatches = (keyword: string, maker?: string) => {
+    const normalized = keyword.trim();
+    return MACHINE_CATALOG.filter((item) => {
+      if (maker && item.maker !== maker) return false;
+      if (!normalized) return !!maker;
+      return item.title.includes(normalized);
+    }).slice(0, 8);
+  };
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="mx-auto max-w-screen-xl space-y-4">
+      <div className="space-y-1">
         <h1 className="text-2xl font-semibold text-neutral-900">在庫登録</h1>
         <p className="text-sm text-neutral-600">仕入先情報を入力し、仕入機種を行ごとに追加してください。</p>
       </div>
 
-      <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-neutral-900">仕入先情報</h2>
           <div className="flex items-center gap-2 text-sm text-neutral-700">
@@ -190,8 +198,8 @@ export default function InventoryNewPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="space-y-2">
+        <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+          <div className="space-y-2 md:col-span-2 xl:col-span-2">
             <label className="block text-sm font-medium text-neutral-800">仕入先</label>
             <input
               value={supplierInfo.supplier}
@@ -204,12 +212,12 @@ export default function InventoryNewPage() {
                 <option key={supplier} value={supplier} />
               ))}
             </datalist>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 md:gap-3">
               <input
                 value={selectedSupplier}
                 onChange={(event) => setSelectedSupplier(event.target.value)}
                 placeholder="候補から貼り付け"
-                className="flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                className="min-w-[180px] flex-1 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
               />
               <button
                 type="button"
@@ -220,248 +228,278 @@ export default function InventoryNewPage() {
               </button>
             </div>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 sm:items-end">
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-neutral-800">在庫入力日</label>
-              <input
-                type="date"
-                value={supplierInfo.inputDate}
-                onChange={(event) => handleSupplierChange("inputDate", event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="block text-sm font-medium text-neutral-800">仕入担当</label>
-              <select
-                value={supplierInfo.buyerStaff}
-                onChange={(event) => handleSupplierChange("buyerStaff", event.target.value)}
-                className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-              >
-                <option value="">選択してください</option>
-                {masterData.buyerStaffs.map((staff) => (
-                  <option key={staff} value={staff}>
-                    {staff}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-neutral-800">在庫入力日</label>
+            <input
+              type="date"
+              value={supplierInfo.inputDate}
+              onChange={(event) => handleSupplierChange("inputDate", event.target.value)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+            />
           </div>
-          <div className="md:col-span-2">
-            <label className="mb-2 block text-sm font-medium text-neutral-800">備考</label>
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-neutral-800">仕入担当</label>
+            <select
+              value={supplierInfo.buyerStaff}
+              onChange={(event) => handleSupplierChange("buyerStaff", event.target.value)}
+              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+            >
+              <option value="">選択してください</option>
+              {masterData.buyerStaffs.map((staff) => (
+                <option key={staff} value={staff}>
+                  {staff}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="md:col-span-3 xl:col-span-4">
+            <label className="mb-1 block text-sm font-medium text-neutral-800">備考</label>
             <textarea
               value={supplierInfo.notes}
               onChange={(event) => handleSupplierChange("notes", event.target.value)}
-              rows={3}
+              rows={2}
               className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
             />
           </div>
         </div>
       </section>
 
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm md:px-4">
         <p className="text-sm font-semibold text-neutral-800">
           集計情報：パチンコ台数：{summary.pCount}台　スロット台数：{summary.sCount}台　購入金額：
           {summary.totalAmount.toLocaleString()}円
         </p>
       </div>
 
-      <section className="space-y-4 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <section className="space-y-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:p-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-lg font-semibold text-neutral-900">仕入機種</h2>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap gap-2 text-sm">
             <button
               type="button"
               onClick={handleAddRow}
-              className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              className="rounded-md border border-slate-200 px-3 py-2 font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
             >
               空行追加
             </button>
             <button
               type="button"
               onClick={handleDuplicateRow}
-              className="rounded-md border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+              className="rounded-md border border-slate-200 px-3 py-2 font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
             >
               同一行追加
             </button>
           </div>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
-          {rows.map((row, index) => {
-            const suggestions = row.model ? machineMatches(row.model, row.kind) : [];
-            return (
-              <div key={`row-${index}`} className="space-y-3 rounded-lg border border-slate-200 bg-slate-50 p-4 shadow-inner">
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-sm font-semibold text-neutral-900">{index + 1}行目</div>
-                  <div className="flex items-center gap-3 text-xs text-neutral-600">
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={row.sellNow}
-                        onChange={(event) => handleRowChange(index, "sellNow", event.target.checked)}
-                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                      />
-                      販売する（出品中）
-                    </label>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteRow(index)}
-                      className="rounded-md border border-slate-300 px-2 py-1 font-semibold text-slate-700 shadow-sm hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
-                      disabled={rows.length <= 1}
-                    >
-                      削除
-                    </button>
-                  </div>
-                </div>
+        <div className="overflow-x-auto">
+          <div className="hidden grid-cols-12 gap-2 rounded-md bg-slate-100 px-3 py-2 text-xs font-semibold text-neutral-700 lg:grid">
+            <div className="text-center">種別</div>
+            <div className="col-span-2 text-center">メーカー名</div>
+            <div className="col-span-2 text-center">機種名</div>
+            <div className="text-center">タイプ</div>
+            <div className="text-center">仕入数</div>
+            <div className="text-center">仕入単価</div>
+            <div className="text-center">入庫日</div>
+            <div className="text-center">撤去日</div>
+            <div className="text-center">柄</div>
+            <div className="text-center">保管先</div>
+            <div className="text-center">販売する</div>
+          </div>
 
-                <div className="grid gap-3 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">種別</label>
-                    <div className="flex gap-2">
-                      {["P", "S"].map((kind) => (
-                        <button
-                          key={kind}
-                          type="button"
-                          onClick={() => handleRowChange(index, "kind", kind as InventoryFormRow["kind"])}
-                          className={`flex-1 rounded-md border px-3 py-2 text-sm font-semibold shadow-sm ${
-                            row.kind === kind
-                              ? "border-sky-500 bg-sky-50 text-sky-700"
-                              : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-                          }`}
-                        >
-                          {kind}
-                        </button>
-                      ))}
+          <div className="space-y-3">
+            {rows.map((row, index) => {
+              const suggestions = machineMatches(row.model, row.maker);
+              return (
+                <div
+                  key={`row-${index}`}
+                  className="rounded-md border border-slate-200 bg-slate-50/60 p-3 shadow-inner"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-neutral-600">
+                    <div className="flex items-center gap-2 font-semibold text-neutral-900">
+                      <span className="rounded bg-white px-2 py-1 shadow-sm">{index + 1}行目</span>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={row.sellNow}
+                          onChange={(event) => handleRowChange(index, "sellNow", event.target.checked)}
+                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        />
+                        販売する（出品中）
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteRow(index)}
+                        className="rounded-md border border-slate-300 px-2 py-1 font-semibold text-slate-700 shadow-sm hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
+                        disabled={rows.length <= 1}
+                      >
+                        削除
+                      </button>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">タイプ</label>
-                    <select
-                      value={row.type}
-                      onChange={(event) => handleRowChange(index, "type", event.target.value as InventoryFormRow["type"])}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    >
-                      <option value="">選択してください</option>
-                      {DEVICE_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">メーカー名</label>
-                    <input
-                      value={row.maker}
-                      onChange={(event) => handleRowChange(index, "maker", event.target.value)}
-                      placeholder="例：三洋"
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">機種名</label>
-                    <div className="relative">
+
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-12 lg:items-center">
+                    <div className="space-y-1 lg:col-span-1">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">種別</label>
+                      <select
+                        value={row.kind}
+                        onChange={(event) => handleRowChange(index, "kind", event.target.value as InventoryFormRow["kind"])}
+                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      >
+                        <option value="">選択</option>
+                        <option value="P">P</option>
+                        <option value="S">S</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1 lg:col-span-2">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">メーカー名</label>
+                      <select
+                        value={row.maker}
+                        onChange={(event) => handleRowChange(index, "maker", event.target.value)}
+                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      >
+                        <option value="">選択してください</option>
+                        {makerOptions.map((maker) => (
+                          <option key={maker} value={maker}>
+                            {maker}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1 lg:col-span-2">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">機種名</label>
+                      <div className="relative">
+                        <input
+                          value={row.model}
+                          onChange={(event) => handleRowChange(index, "model", event.target.value)}
+                          placeholder="機種名を入力"
+                          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                        />
+                        {suggestions.length > 0 && (
+                          <div className="absolute z-10 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
+                            {suggestions.map((machine) => (
+                              <button
+                                key={`${machine.maker}-${machine.title}`}
+                                type="button"
+                                onClick={() => {
+                                  handleRowChange(index, "model", machine.title);
+                                  handleRowChange(index, "maker", machine.maker);
+                                  handleRowChange(index, "kind", machine.kind);
+                                }}
+                                className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
+                              >
+                                <span>{machine.title}</span>
+                                <span className="text-xs text-neutral-500">{machine.maker}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">タイプ</label>
+                      <select
+                        value={row.type}
+                        onChange={(event) => handleRowChange(index, "type", event.target.value as InventoryFormRow["type"])}
+                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      >
+                        <option value="">選択</option>
+                        {DEVICE_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">仕入数</label>
                       <input
-                        value={row.model}
-                        onChange={(event) => handleRowChange(index, "model", event.target.value)}
-                        placeholder="機種名を入力"
+                        type="number"
+                        min={0}
+                        value={row.quantity}
+                        onChange={(event) => handleRowChange(index, "quantity", Number(event.target.value))}
                         className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                       />
-                      {suggestions.length > 0 && (
-                        <div className="absolute z-10 mt-1 max-h-40 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
-                          {suggestions.map((machine) => (
-                            <button
-                              key={`${machine.maker}-${machine.title}`}
-                              type="button"
-                              onClick={() => {
-                                handleRowChange(index, "model", machine.title);
-                                handleRowChange(index, "maker", machine.maker);
-                                handleRowChange(index, "kind", machine.kind);
-                              }}
-                              className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
-                            >
-                              <span>{machine.title}</span>
-                              <span className="text-xs text-neutral-500">{machine.maker}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">仕入単価</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.unitPrice}
+                        onChange={(event) => handleRowChange(index, "unitPrice", Number(event.target.value))}
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">入庫日</label>
+                      <input
+                        type="date"
+                        value={row.stockInDate}
+                        onChange={(event) => handleRowChange(index, "stockInDate", event.target.value)}
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">撤去日</label>
+                      <input
+                        type="date"
+                        value={row.removeDate}
+                        onChange={(event) => handleRowChange(index, "removeDate", event.target.value)}
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">柄</label>
+                      <input
+                        value={row.pattern}
+                        onChange={(event) => handleRowChange(index, "pattern", event.target.value)}
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">保管先</label>
+                      <select
+                        value={row.warehouse}
+                        onChange={(event) => handleRowChange(index, "warehouse", event.target.value)}
+                        className="w-full rounded-md border border-slate-300 px-2 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      >
+                        <option value="">選択してください</option>
+                        {masterData.warehouses.map((warehouse) => (
+                          <option key={warehouse} value={warehouse}>
+                            {warehouse}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1 lg:col-span-1">
+                      <label className="block text-xs font-medium text-neutral-800 lg:hidden">販売する</label>
+                      <label className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-3 py-2 shadow-sm lg:justify-center">
+                        <input
+                          type="checkbox"
+                          checked={row.sellNow}
+                          onChange={(event) => handleRowChange(index, "sellNow", event.target.checked)}
+                          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                        />
+                        <span className="text-sm">出品</span>
+                      </label>
+                    </div>
+                    <div className="lg:col-span-12">
+                      <label className="mb-1 block text-xs font-medium text-neutral-800">備考</label>
+                      <textarea
+                        value={row.note}
+                        onChange={(event) => handleRowChange(index, "note", event.target.value)}
+                        rows={2}
+                        className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">仕入数</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.quantity}
-                      onChange={(event) => handleRowChange(index, "quantity", Number(event.target.value))}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">仕入単価</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.unitPrice}
-                      onChange={(event) => handleRowChange(index, "unitPrice", Number(event.target.value))}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">入庫日</label>
-                    <input
-                      type="date"
-                      value={row.stockInDate}
-                      onChange={(event) => handleRowChange(index, "stockInDate", event.target.value)}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">撤去日</label>
-                    <input
-                      type="date"
-                      value={row.removeDate}
-                      onChange={(event) => handleRowChange(index, "removeDate", event.target.value)}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">柄</label>
-                    <input
-                      value={row.pattern}
-                      onChange={(event) => handleRowChange(index, "pattern", event.target.value)}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-neutral-800">保管先</label>
-                    <select
-                      value={row.warehouse}
-                      onChange={(event) => handleRowChange(index, "warehouse", event.target.value)}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    >
-                      <option value="">選択してください</option>
-                      {masterData.warehouses.map((warehouse) => (
-                        <option key={warehouse} value={warehouse}>
-                          {warehouse}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-neutral-800">備考</label>
-                    <textarea
-                      value={row.note}
-                      onChange={(event) => handleRowChange(index, "note", event.target.value)}
-                      rows={2}
-                      className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">
