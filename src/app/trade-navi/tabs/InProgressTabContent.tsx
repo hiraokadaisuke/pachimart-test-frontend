@@ -16,6 +16,7 @@ import {
 } from "@/components/transactions/status";
 import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { getMessagesForTrade } from "@/lib/dummyMessages";
 
 type TradeRow = {
   id: string;
