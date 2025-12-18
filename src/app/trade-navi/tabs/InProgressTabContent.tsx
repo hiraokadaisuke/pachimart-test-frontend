@@ -39,7 +39,7 @@ type TradeRow = {
 const buyingPendingResponses: TradeRow[] = [
   {
     id: "T-2025112001",
-    status: "navi_in_progress",
+    status: "requesting",
     updatedAt: "2025/11/20 09:30",
     partnerName: "株式会社オファーテック",
     makerName: "サミー",
@@ -55,7 +55,7 @@ const buyingPendingResponses: TradeRow[] = [
   },
   {
     id: "T-2025112002",
-    status: "navi_in_progress",
+    status: "requesting",
     updatedAt: "2025/11/20 12:10",
     partnerName: "株式会社ディーエル商会",
     makerName: "SANKYO",
@@ -74,7 +74,7 @@ const buyingPendingResponses: TradeRow[] = [
 const sellingNeedResponses: TradeRow[] = [
   {
     id: "T-2025112003",
-    status: "navi_in_progress",
+    status: "requesting",
     updatedAt: "2025/11/20 14:45",
     partnerName: "株式会社トレード連合",
     makerName: "ニューギン",
@@ -90,7 +90,7 @@ const sellingNeedResponses: TradeRow[] = [
   },
   {
     id: "T-2025112004",
-    status: "navi_in_progress",
+    status: "requesting",
     updatedAt: "2025/11/20 16:20",
     partnerName: "関西エンタメ商事",
     makerName: "京楽",
@@ -130,9 +130,9 @@ function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
       return "completed";
     case "CANCELED":
       return "canceled";
-    default:
-      return "navi_in_progress";
   }
+  const exhaustiveCheck: never = status;
+  return exhaustiveCheck;
 }
 
 function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
@@ -188,8 +188,7 @@ export function InProgressTabContent() {
         })
         .filter((trade) => {
           if (statusFilter === "all") return true;
-          if (statusFilter === "inProgress")
-            return IN_PROGRESS_STATUS_KEYS.includes(trade.status) || trade.status === "requesting";
+          if (statusFilter === "inProgress") return IN_PROGRESS_STATUS_KEYS.includes(trade.status);
           if (statusFilter === "completed") return COMPLETED_STATUS_KEYS.includes(trade.status);
           return true;
         })

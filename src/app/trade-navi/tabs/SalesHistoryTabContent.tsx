@@ -494,9 +494,9 @@ function mapTradeStatusToKey(status: TradeRecord["status"]): TradeStatusKey {
       return "completed";
     case "CANCELED":
       return "canceled";
-    default:
-      return "navi_in_progress";
   }
+  const exhaustiveCheck: never = status;
+  return exhaustiveCheck;
 }
 
 function sortRows(rows: SalesHistoryRow[], sortState: SortState) {

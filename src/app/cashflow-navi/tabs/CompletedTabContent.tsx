@@ -39,7 +39,7 @@ const completedTrades = [
     itemName: "P スーパー海物語 JAPAN2 L1",
     amount: 450000,
     role: "sell",
-    status: "shipped" as TradeStatusKey,
+    status: "completed" as TradeStatusKey,
     settledAt: "2025/11/14",
   },
 ];
