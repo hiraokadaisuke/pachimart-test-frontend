@@ -78,8 +78,8 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   const primaryItem = trade.items[0];
   const totalQty = trade.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
   const status = mapTradeStatus(trade.status);
-  const sellerUserId = trade.seller.userId ?? "seller";
-  const buyerUserId = trade.buyer.userId ?? "buyer";
+  const sellerUserId = trade.sellerUserId ?? trade.seller.userId ?? "seller";
+  const buyerUserId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
   const updatedAtLabel = formatDateTime(trade.updatedAt ?? trade.createdAt ?? new Date().toISOString());
   const scheduledShipDate = trade.contractDate ? trade.contractDate.slice(0, 10) : "-";
   const isSeller = sellerUserId === viewerId;
@@ -143,18 +143,18 @@ export function InProgressTabContent() {
 
   const handleMarkPaid = useCallback(
     (tradeId: string) => {
-      markTradePaid(tradeId);
+      markTradePaid(tradeId, currentUser.id);
       refreshTrades();
     },
-    [refreshTrades]
+    [currentUser.id, refreshTrades]
   );
 
   const handleMarkCompleted = useCallback(
     (tradeId: string) => {
-      markTradeCompleted(tradeId);
+      markTradeCompleted(tradeId, currentUser.id);
       refreshTrades();
     },
-    [refreshTrades]
+    [currentUser.id, refreshTrades]
   );
 
   useEffect(() => {

@@ -10,6 +10,7 @@ import {
   type TradeStatus,
 } from "./types";
 import { calculateStatementTotals } from "./calcTotals";
+import { canApprove, canCancel, canMarkCompleted, canMarkPaid, getActorRole } from "./permissions";
 
 export const TRADE_STORAGE_KEY = "trade_records_v1";
 const CONTACT_STORAGE_PREFIX = "buyerContacts:";
@@ -298,9 +299,10 @@ export function updateTradeStatus(tradeId: string, status: TradeStatus): TradeRe
   return upsertTradeInternal({ ...trade, status });
 }
 
-export function approveTrade(tradeId: string): TradeRecord | null {
+export function approveTrade(tradeId: string, actorUserId: string): TradeRecord | null {
   const trade = loadTrade(tradeId);
   if (!trade) return null;
+  if (!canApprove(trade, actorUserId)) return null;
 
   const now = new Date().toISOString();
   return upsertTradeInternal({
@@ -381,9 +383,10 @@ export function saveContactsToTrade(tradeId: string, contacts: BuyerContact[]): 
   });
 }
 
-export function markTradePaid(tradeId: string): TradeRecord | null {
+export function markTradePaid(tradeId: string, actorUserId: string): TradeRecord | null {
   const trade = loadTrade(tradeId);
   if (!trade) return null;
+  if (!canMarkPaid(trade, actorUserId)) return null;
 
   const now = new Date().toISOString();
   const totalAmount = calculateTradeTotal(trade);
@@ -397,9 +400,10 @@ export function markTradePaid(tradeId: string): TradeRecord | null {
   });
 }
 
-export function markTradeCompleted(tradeId: string): TradeRecord | null {
+export function markTradeCompleted(tradeId: string, actorUserId: string): TradeRecord | null {
   const trade = loadTrade(tradeId);
   if (!trade) return null;
+  if (!canMarkCompleted(trade, actorUserId)) return null;
 
   const now = new Date().toISOString();
   return upsertTradeInternal({
@@ -410,15 +414,21 @@ export function markTradeCompleted(tradeId: string): TradeRecord | null {
   });
 }
 
-export function cancelTrade(tradeId: string, by: "buyer" | "seller"): TradeRecord | null {
+export function cancelTrade(tradeId: string, actorUserId: string): TradeRecord | null {
   const trade = loadTrade(tradeId);
   if (!trade) return null;
+  if (!canCancel(trade, actorUserId)) return null;
 
   const now = new Date().toISOString();
+  const canceledBy = getActorRole(trade, actorUserId);
+  if (trade.status === "CANCELED" || trade.status === "COMPLETED" || canceledBy === "none") {
+    return trade;
+  }
+
   return upsertTradeInternal({
     ...trade,
     status: "CANCELED",
-    canceledBy: by,
+    canceledBy,
     canceledAt: now,
     updatedAt: now,
   });

@@ -13,23 +13,68 @@ import {
 } from "@/lib/demo-data/demoInventory";
 import type { PurchaseInvoiceItem } from "@/types/purchaseInvoices";
 
+type MachineRow = {
+  kind: "machine";
+  inventoryId: string;
+  maker: string;
+  machineName: string;
+  type: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  applicationYusho: string;
+  applicationDate: string;
+  note: string;
+};
+
+type FeeRow = {
+  kind: "fee";
+  id: string;
+  feeName: string;
+  quantity: number;
+  unitPrice: number;
+  amount: number;
+  note: string;
+};
+
+type Row = MachineRow | FeeRow;
+
+const STAFF_OPTIONS = ["デモユーザー", "上原", "田村", "佐藤"];
+const FEE_OPTIONS = ["商品名", "ダンボール代", "手数料", "保険料", "その他", "書類代"];
+const APPLICATION_YUSHO_OPTIONS = [
+  "------",
+  "北海道",
+  "東北",
+  "東日本(本部)",
+  "中部",
+  "関西",
+  "中国",
+  "四国",
+  "九州",
+  "用途設定",
+  "新台用",
+  "下取り",
+];
+const DELIVERY_METHOD_OPTIONS = ["配送", "引取", "未定"];
+
 export default function VendorInvoicePage() {
   const params = useParams<{ draftId: string }>();
   const router = useRouter();
+
   const [issuedDate, setIssuedDate] = useState<string>("");
-  const [partner, setPartner] = useState("");
-  const [staff, setStaff] = useState("");
-  const [remarks, setRemarks] = useState("");
-  const [address, setAddress] = useState("");
+  const [supplierName, setSupplierName] = useState<string>("");
+  const [staff, setStaff] = useState<string>(STAFF_OPTIONS[0]);
+  const [remarks, setRemarks] = useState<string>("");
   const [shippingInsurance, setShippingInsurance] = useState<string>("");
-  const [paymentDate, setPaymentDate] = useState("");
-  const [invoiceCategory, setInvoiceCategory] = useState("");
-  const [receiptDate, setReceiptDate] = useState("");
-  const [deliveryMethod, setDeliveryMethod] = useState("配送");
-  const [arrivalDate, setArrivalDate] = useState("");
-  const [shippingDestinationMethod, setShippingDestinationMethod] = useState("配送");
-  const [shippingDestinationArrival, setShippingDestinationArrival] = useState("");
-  const [items, setItems] = useState<PurchaseInvoiceItem[]>([]);
+  const [paymentDate, setPaymentDate] = useState<string>("");
+  const [invoiceOriginal, setInvoiceOriginal] = useState<string>("―");
+  const [salesDestination, setSalesDestination] = useState<string>("");
+  const [receiptDate, setReceiptDate] = useState<string>("");
+  const [deliveryMethod, setDeliveryMethod] = useState<string>(DELIVERY_METHOD_OPTIONS[0]);
+  const [arrivalDate, setArrivalDate] = useState<string>("");
+  const [shippingDestinationMethod, setShippingDestinationMethod] = useState<string>(DELIVERY_METHOD_OPTIONS[0]);
+  const [shippingDestinationArrival, setShippingDestinationArrival] = useState<string>("");
+  const [rows, setRows] = useState<Row[]>([]);
 
   const COMPANY_INFO = {
     name: "p-kanriclub",
@@ -46,10 +91,11 @@ export default function VendorInvoicePage() {
     const all = loadInventoryRecords();
     const targets = draft ? all.filter((inv) => draft.inventoryIds.includes(inv.id)) : [];
     setIssuedDate(new Date().toISOString().slice(0, 10));
-    const normalizedItems: PurchaseInvoiceItem[] = targets.map((inv) => {
-      const quantity = inv.quantity ?? 0;
-      const unitPrice = inv.unitPrice ?? 0;
+    const machineRows: MachineRow[] = targets.map((inv) => {
+      const quantity = Number(inv.quantity ?? 0);
+      const unitPrice = Number(inv.unitPrice ?? 0);
       return {
+        kind: "machine",
         inventoryId: inv.id,
         maker: inv.maker ?? "",
         machineName: inv.machineName ?? "",
@@ -57,108 +103,162 @@ export default function VendorInvoicePage() {
         quantity,
         unitPrice,
         amount: quantity * unitPrice,
-        extra: inv.remainingDebt != null ? { remainingDebt: inv.remainingDebt } : undefined,
+        applicationYusho: "------",
+        applicationDate: "",
         note: inv.note ?? inv.notes ?? "",
       };
     });
-    setItems(normalizedItems);
+    setRows(machineRows);
+    setSupplierName(targets[0]?.supplier ?? "仕入先");
   }, [params?.draftId]);
 
-  const machineNameOptions = useMemo(() => {
-    const all = loadInventoryRecords();
-    return Array.from(new Set(all.map((inv) => inv.machineName ?? "").filter(Boolean)));
-  }, []);
-
-  const subtotal = useMemo(() => items.reduce((sum, item) => sum + (item.amount ?? 0), 0), [items]);
+  const subtotal = useMemo(() => rows.reduce((sum, item) => sum + (item.amount ?? 0), 0), [rows]);
   const taxRate = 0.1;
   const tax = Math.floor(subtotal * taxRate);
-  const grandTotal = subtotal + tax + Number(shippingInsurance || 0);
+  const shippingInsuranceValue = Number(shippingInsurance || 0);
+  const grandTotal = subtotal + tax + shippingInsuranceValue;
 
-  const handleItemChange = (index: number, key: keyof PurchaseInvoiceItem, value: string | number) => {
-    setItems((prev) =>
-      prev.map((item, idx) => {
-        if (idx !== index) return item;
-        if (key === "quantity" || key === "unitPrice") {
-          const quantity = key === "quantity" ? Number(value) : item.quantity;
-          const unitPrice = key === "unitPrice" ? Number(value) : item.unitPrice;
-          return {
-            ...item,
-            quantity,
-            unitPrice,
-            amount: quantity * unitPrice,
-          };
-        }
-        if (key === "amount") {
-          return { ...item, amount: Number(value) };
-        }
-        return { ...item, [key]: value } as PurchaseInvoiceItem;
-      }),
-    );
+  const updateRow = (index: number, updater: (row: Row) => Row) => {
+    setRows((prev) => prev.map((row, idx) => (idx === index ? updater(row) : row)));
   };
 
-  const handleExtraChange = (
-    index: number,
-    extraKey: string,
-    value: string,
-  ) => {
-    setItems((prev) =>
-      prev.map((item, idx) =>
-        idx === index ? { ...item, extra: { ...(item.extra ?? {}), [extraKey]: value } } : item,
-      ),
-    );
+  const handleQuantityChange = (index: number, value: string) => {
+    const quantity = Number(value) || 0;
+    updateRow(index, (row) => ({
+      ...row,
+      quantity,
+      amount: quantity * row.unitPrice,
+    }));
   };
 
-  const handleAddRow = () => {
-    setItems((prev) => [
+  const handleUnitPriceChange = (index: number, value: string) => {
+    const unitPrice = Number(value) || 0;
+    updateRow(index, (row) => ({
+      ...row,
+      unitPrice,
+      amount: row.quantity * unitPrice,
+    }));
+  };
+
+  const handleAmountChange = (index: number, value: string) => {
+    const amount = Number(value) || 0;
+    updateRow(index, (row) => ({ ...row, amount }));
+  };
+
+  const handleMachineChange = (index: number, key: keyof MachineRow, value: string) => {
+    updateRow(index, (row) => {
+      if (row.kind !== "machine") return row;
+      if (key === "applicationYusho" || key === "applicationDate" || key === "note") {
+        return { ...row, [key]: value };
+      }
+      if (key === "machineName" || key === "type" || key === "maker") {
+        return { ...row, [key]: value };
+      }
+      return row;
+    });
+  };
+
+  const handleFeeChange = (index: number, key: keyof FeeRow, value: string) => {
+    updateRow(index, (row) => {
+      if (row.kind !== "fee") return row;
+      if (key === "feeName" || key === "note") {
+        return { ...row, [key]: value };
+      }
+      return row;
+    });
+  };
+
+  const handleAddFeeRow = () => {
+    setRows((prev) => [
       ...prev,
       {
-        inventoryId: `new-${Date.now()}-${prev.length}`,
-        maker: "",
-        machineName: "",
-        type: "",
-        quantity: 0,
+        kind: "fee",
+        id: `${Date.now()}-${prev.length}`,
+        feeName: "商品名",
+        quantity: 1,
         unitPrice: 0,
         amount: 0,
-        extra: {},
         note: "",
       },
     ]);
   };
 
+  const handleSupplierChange = () => {
+    if (typeof window === "undefined") return;
+    const next = window.prompt("仕入先を入力してください", supplierName);
+    if (next != null) {
+      setSupplierName(next);
+    }
+  };
+
+  const mapRowsToItems = (): PurchaseInvoiceItem[] =>
+    rows.map((row) => {
+      if (row.kind === "machine") {
+        return {
+          inventoryId: row.inventoryId,
+          maker: row.maker,
+          machineName: row.machineName,
+          type: row.type,
+          quantity: row.quantity,
+          unitPrice: row.unitPrice,
+          amount: row.amount,
+          extra: { applicationYusho: row.applicationYusho, applicationDate: row.applicationDate },
+          note: row.note,
+        };
+      }
+      return {
+        inventoryId: `fee-${row.id}`,
+        maker: "",
+        machineName: row.feeName,
+        type: "",
+        quantity: row.quantity,
+        unitPrice: row.unitPrice,
+        amount: row.amount,
+        extra: undefined,
+        note: row.note,
+      };
+    });
+
   const handleConfirm = () => {
-    if (items.length === 0) {
+    if (rows.length === 0) {
       alert("対象の在庫が見つかりませんでした");
       return;
     }
+    if (typeof window !== "undefined" && !window.confirm("登録してよろしいですか？")) {
+      return;
+    }
     const invoiceId = generateInvoiceId("vendor");
+    const mappedItems = mapRowsToItems();
+    const inventoryIds = rows
+      .filter((row): row is MachineRow => row.kind === "machine")
+      .map((row) => row.inventoryId);
     addPurchaseInvoice({
       invoiceId,
       invoiceType: "vendor",
       createdAt: new Date().toISOString(),
       issuedDate,
-      partnerName: partner,
+      partnerName: supplierName,
       staff,
-      inventoryIds: items.map((item) => item.inventoryId),
-      items,
+      inventoryIds: mappedItems.map((item) => item.inventoryId),
+      items: mappedItems,
       totalAmount: grandTotal,
       formInput: {
         remarks,
-        address,
         shippingInsurance: shippingInsurance ?? "",
         paymentDate,
-        invoiceCategory,
+        invoiceOriginal,
+        salesDestination,
         receiptDate,
         deliveryMethod,
         arrivalDate,
         shippingDestinationMethod,
         shippingDestinationArrival,
       },
-      displayTitle: `${items[0]?.machineName ?? "伝票"}${items.length > 1 ? " 他" : ""}`,
+      displayTitle: `${
+        (rows[0]?.kind === "machine" ? rows[0]?.machineName : rows[0]?.feeName) ?? "伝票"
+      }${rows.length > 1 ? " 他" : ""}`,
     });
-    markInventoriesWithInvoice(
-      items.map((item) => item.inventoryId),
-      invoiceId,
-    );
+    markInventoriesWithInvoice(inventoryIds, invoiceId);
     if (params?.draftId && !Array.isArray(params.draftId)) {
       deleteDraft(params.draftId);
     }
@@ -166,156 +266,184 @@ export default function VendorInvoicePage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+    <div className="space-y-4 text-sm">
+      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
-            <div className="flex items-center gap-3 text-lg font-semibold text-neutral-900">
-              <span>買主情報（{partner || "買主名"} 御中）</span>
-              <span className="rounded bg-orange-100 px-3 py-1 text-sm font-bold text-neutral-800">売主控用</span>
+            <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-neutral-900">
+              <span>{supplierName || "仕入先"} 御中</span>
+              <button
+                type="button"
+                onClick={handleSupplierChange}
+                className="rounded border border-sky-500 px-2 py-1 text-xs font-semibold text-sky-700 hover:bg-sky-50"
+              >
+                売主検索
+              </button>
             </div>
-            <div className="text-sm text-neutral-700">当社規約に基づき下記の記載購入をいたします。</div>
-            <div className="text-xs text-red-600">
-              ※紛失盗難機器のキャンセルは売買代金の50％を徴収していただきます。
-            </div>
+            <div className="text-xs text-neutral-700">当社規約に基づき下記の記載購入をいたします。</div>
           </div>
-          <div className="flex flex-col items-end gap-2 text-sm text-neutral-800">
+          <div className="flex flex-col items-end gap-2 text-xs text-neutral-800">
             <label className="flex flex-col text-right">
-              <span className="text-xs font-semibold text-neutral-700">日付</span>
+              <span className="text-[11px] font-semibold text-neutral-700">日付</span>
               <input
                 type="date"
                 value={issuedDate}
                 onChange={(event) => setIssuedDate(event.target.value)}
-                className="w-36 rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                className="w-32 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
               />
             </label>
-            <div className="w-64 rounded bg-orange-100 p-3 text-left text-sm font-semibold text-neutral-900">
+            <div className="w-64 rounded bg-orange-100 p-3 text-left text-xs font-semibold text-neutral-900">
               <div>{COMPANY_INFO.name}</div>
               <div>{COMPANY_INFO.address}</div>
               <div>{COMPANY_INFO.representative}</div>
               <div>{COMPANY_INFO.tel}</div>
               <div>{COMPANY_INFO.fax}</div>
+              <label className="mt-2 flex flex-col gap-1 text-[11px] font-semibold text-neutral-800">
+                担当
+                <select
+                  value={staff}
+                  onChange={(event) => setStaff(event.target.value)}
+                  className="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
+                >
+                  {STAFF_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
           </div>
         </div>
-        <div className="grid gap-3 md:grid-cols-3">
-          <label className="flex flex-col text-sm font-semibold text-neutral-800">
-            業者名
-            <input
-              value={partner}
-              onChange={(event) => setPartner(event.target.value)}
-              className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-            />
-          </label>
-          <label className="flex flex-col text-sm font-semibold text-neutral-800">
-            担当
-            <input
-              value={staff}
-              onChange={(event) => setStaff(event.target.value)}
-              className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-            />
-          </label>
-          <label className="flex flex-col text-sm font-semibold text-neutral-800">
-            住所等
-            <input
-              value={address}
-              onChange={(event) => setAddress(event.target.value)}
-              className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-            />
-          </label>
-        </div>
       </div>
 
-      <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-neutral-800">明細</h2>
           <button
             type="button"
-            onClick={handleAddRow}
-            className="rounded bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-sky-500"
+            onClick={handleAddFeeRow}
+            className="rounded bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white shadow hover:bg-sky-500"
           >
             行を追加します
           </button>
         </div>
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-700">
+          <table className="min-w-full divide-y divide-slate-200 text-xs">
+            <thead className="bg-slate-50 text-left font-semibold text-slate-700">
               <tr>
-                <th className="px-3 py-3">メーカー名</th>
-                <th className="px-3 py-3">商品名</th>
-                <th className="px-3 py-3">タイプ</th>
-                <th className="px-3 py-3 text-right">数量</th>
-                <th className="px-3 py-3 text-right">単価</th>
-                <th className="px-3 py-3 text-right">金額</th>
-                <th className="px-3 py-3 text-right">残債</th>
-                <th className="px-3 py-3">申請連絡</th>
-                <th className="px-3 py-3">申請日</th>
-                <th className="px-3 py-3">商品補足</th>
+                <th className="px-2 py-2">メーカー</th>
+                <th className="px-2 py-2">商品名</th>
+                <th className="px-2 py-2">タイプ</th>
+                <th className="px-2 py-2 text-right">数量</th>
+                <th className="px-2 py-2 text-right">単価</th>
+                <th className="px-2 py-2 text-right">金額</th>
+                <th className="px-2 py-2">申請遊商</th>
+                <th className="px-2 py-2">申請日</th>
+                <th className="px-2 py-2">商品補足（印刷書類全てに表示されます）</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {items.map((item, index) => (
-                <tr key={`${item.inventoryId}-${index}`} className="hover:bg-slate-50">
-                  <td className="px-3 py-3 text-neutral-800">{item.maker}</td>
-                  <td className="px-3 py-3 text-neutral-800">
-                    <div className="flex flex-col gap-1">
-                      <span>{item.machineName}</span>
+              {rows.map((item, index) => (
+                <tr key={(item.kind === "machine" ? item.inventoryId : item.id) ?? index} className="hover:bg-slate-50">
+                  <td className="px-2 py-2 text-neutral-800">
+                    {item.kind === "machine" ? (
+                      <span>{item.maker}</span>
+                    ) : (
+                      <span className="rounded bg-orange-50 px-2 py-1 text-[11px] font-semibold text-orange-700">付帯費用</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-neutral-800">
+                    {item.kind === "machine" ? (
+                      <span className="font-semibold">{item.machineName}</span>
+                    ) : (
                       <select
-                        value={item.machineName}
-                        onChange={(event) => handleItemChange(index, "machineName", event.target.value)}
-                        className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
+                        value={item.feeName}
+                        onChange={(event) => handleFeeChange(index, "feeName", event.target.value)}
+                        className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
                       >
-                        <option value="">選択してください</option>
-                        {machineNameOptions.map((name) => (
-                          <option key={name} value={name}>
-                            {name}
+                        {FEE_OPTIONS.map((fee) => (
+                          <option key={fee} value={fee}>
+                            {fee}
                           </option>
                         ))}
                       </select>
-                    </div>
+                    )}
                   </td>
-                  <td className="px-3 py-3 text-neutral-800">{item.type}</td>
-                  <td className="px-3 py-3 text-right">
+                  <td className="px-2 py-2 text-neutral-800">
+                    {item.kind === "machine" ? (
+                      <span>{item.type}</span>
+                    ) : (
+                      <span className="text-slate-400">―</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2 text-right">
                     <input
                       type="number"
                       value={item.quantity}
-                      onChange={(event) => handleItemChange(index, "quantity", Number(event.target.value))}
-                      className="w-20 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      onChange={(event) => handleQuantityChange(index, event.target.value)}
+                      className="w-20 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-right text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
                     />
                   </td>
-                  <td className="px-3 py-3 text-right">
+                  <td className="px-2 py-2 text-right">
                     <input
                       type="number"
                       value={item.unitPrice}
-                      onChange={(event) => handleItemChange(index, "unitPrice", Number(event.target.value))}
-                      className="w-28 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      onChange={(event) => handleUnitPriceChange(index, event.target.value)}
+                      className="w-24 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-right text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
                     />
                   </td>
-                  <td className="px-3 py-3 text-right text-neutral-800">{formatCurrency(item.amount)}</td>
-                  <td className="px-3 py-3 text-right text-neutral-800">
-                    {item.extra?.remainingDebt != null ? formatCurrency(item.extra.remainingDebt as number) : "無"}
-                  </td>
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-2 text-right text-neutral-800">
                     <input
-                      value={(item.extra as { applicationContact?: string })?.applicationContact ?? ""}
-                      onChange={(event) => handleExtraChange(index, "applicationContact", event.target.value)}
-                      className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                      type="number"
+                      value={item.amount}
+                      onChange={(event) => handleAmountChange(index, event.target.value)}
+                      className="w-28 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-right text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
                     />
                   </td>
-                  <td className="px-3 py-3">
-                    <input
-                      type="date"
-                      value={(item.extra as { applicationDate?: string })?.applicationDate ?? ""}
-                      onChange={(event) => handleExtraChange(index, "applicationDate", event.target.value)}
-                      className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
+                  <td className="px-2 py-2">
+                    {item.kind === "machine" ? (
+                      <select
+                        value={item.applicationYusho}
+                        onChange={(event) => handleMachineChange(index, "applicationYusho", event.target.value)}
+                        className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
+                      >
+                        {APPLICATION_YUSHO_OPTIONS.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-slate-400">―</span>
+                    )}
                   </td>
-                  <td className="px-3 py-3">
-                    <input
-                      value={item.note ?? ""}
-                      onChange={(event) => handleItemChange(index, "note", event.target.value)}
-                      className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
+                  <td className="px-2 py-2">
+                    {item.kind === "machine" ? (
+                      <input
+                        type="date"
+                        value={item.applicationDate}
+                        onChange={(event) => handleMachineChange(index, "applicationDate", event.target.value)}
+                        className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
+                      />
+                    ) : (
+                      <span className="text-slate-400">―</span>
+                    )}
+                  </td>
+                  <td className="px-2 py-2">
+                    {item.kind === "machine" ? (
+                      <input
+                        value={item.note}
+                        onChange={(event) => handleMachineChange(index, "note", event.target.value)}
+                        className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
+                      />
+                    ) : (
+                      <input
+                        value={item.note}
+                        onChange={(event) => handleFeeChange(index, "note", event.target.value)}
+                        className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
+                      />
+                    )}
                   </td>
                 </tr>
               ))}
@@ -324,17 +452,17 @@ export default function VendorInvoicePage() {
         </div>
       </div>
 
-      <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2">
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-2">
         <div className="space-y-2">
-          <div className="text-sm font-semibold text-neutral-800">備考</div>
+          <div className="text-sm font-semibold text-neutral-800">備考（印刷書類全てに表示されます）</div>
           <textarea
             value={remarks}
             onChange={(event) => setRemarks(event.target.value)}
-            rows={5}
-            className="w-full rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+            rows={3}
+            className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
           />
         </div>
-        <div className="space-y-2 rounded border border-slate-200 bg-slate-50 p-3 text-sm text-neutral-800">
+        <div className="space-y-2 rounded border border-slate-100 bg-slate-50 p-3 text-sm text-neutral-800">
           <div className="flex items-center justify-between font-semibold">
             <span>小計</span>
             <span>{formatCurrency(subtotal)}</span>
@@ -352,127 +480,146 @@ export default function VendorInvoicePage() {
               className="w-28 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
             />
           </div>
-          <div className="flex justify-between border-t border-slate-200 pt-2 text-base font-bold">
-            <span>合計金額</span>
+          <div className="flex items-center justify-between text-base font-semibold">
+            <span>合計</span>
             <span>{formatCurrency(grandTotal)}</span>
           </div>
         </div>
       </div>
 
-      <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2">
-        <label className="flex flex-col text-sm font-semibold text-neutral-800">
-          支払日
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-3">
+        <label className="flex flex-col text-xs font-semibold text-neutral-800">
+          支払予定日
           <input
             type="date"
             value={paymentDate}
             onChange={(event) => setPaymentDate(event.target.value)}
-            className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+            className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
           />
         </label>
-        <label className="flex flex-col text-sm font-semibold text-neutral-800">
-          請求書本体（仮）
+        <label className="flex flex-col text-xs font-semibold text-neutral-800">
+          請求書原本
           <select
-            value={invoiceCategory}
-            onChange={(event) => setInvoiceCategory(event.target.value)}
-            className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+            value={invoiceOriginal}
+            onChange={(event) => setInvoiceOriginal(event.target.value)}
+            className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
           >
-            <option value="">未設定</option>
-            <option value="請求済">請求済</option>
-            <option value="支払済">支払済</option>
+            <option value="―">―</option>
+            <option value="要">要</option>
+            <option value="不要">不要</option>
           </select>
+        </label>
+        <label className="flex flex-col text-xs font-semibold text-neutral-800">
+          販売先
+          <input
+            list="sales-destination-list"
+            value={salesDestination}
+            onChange={(event) => setSalesDestination(event.target.value)}
+            className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+          />
+          <datalist id="sales-destination-list">
+            <option value="デモホール" />
+            <option value="サンプル商事" />
+            <option value="パーラーABC" />
+          </datalist>
         </label>
       </div>
 
-      <div className="grid gap-4 rounded-lg border border-slate-200 bg-white p-4 shadow-sm md:grid-cols-2">
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-neutral-800">商品受取方法</h3>
-          <div className="grid gap-2 md:grid-cols-3">
-            <label className="flex flex-col text-sm font-semibold text-neutral-800">
-              入庫予定日
-              <input
-                type="date"
-                value={receiptDate}
-                onChange={(event) => setReceiptDate(event.target.value)}
-                className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-              />
-            </label>
-            <label className="flex flex-col text-sm font-semibold text-neutral-800">
-              配送方法
-              <select
-                value={deliveryMethod}
-                onChange={(event) => setDeliveryMethod(event.target.value)}
-                className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-              >
-                <option value="配送">配送</option>
-                <option value="持込">持込</option>
-              </select>
-            </label>
-            <label className="flex flex-col text-sm font-semibold text-neutral-800">
-              到着予定日
-              <input
-                type="date"
-                value={arrivalDate}
-                onChange={(event) => setArrivalDate(event.target.value)}
-                className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-              />
-            </label>
+      <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="text-xs font-semibold text-neutral-800">リアルタイムの在庫確認ができます</div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-neutral-800">受取</h3>
+            <div className="grid gap-2 md:grid-cols-3">
+              <label className="flex flex-col text-xs font-semibold text-neutral-800">
+                入庫予定日
+                <input
+                  type="date"
+                  value={receiptDate}
+                  onChange={(event) => setReceiptDate(event.target.value)}
+                  className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                />
+              </label>
+              <label className="flex flex-col text-xs font-semibold text-neutral-800">
+                配送方法
+                <select
+                  value={deliveryMethod}
+                  onChange={(event) => setDeliveryMethod(event.target.value)}
+                  className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                >
+                  {DELIVERY_METHOD_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col text-xs font-semibold text-neutral-800">
+                到着予定日
+                <input
+                  type="date"
+                  value={arrivalDate}
+                  onChange={(event) => setArrivalDate(event.target.value)}
+                  className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                />
+              </label>
+            </div>
+            <div className="rounded bg-orange-100 p-3 text-xs font-semibold text-neutral-900">
+              <div>{COMPANY_INFO.address}</div>
+              <div>{COMPANY_INFO.representative}</div>
+              <div>{COMPANY_INFO.tel}</div>
+              <div>{COMPANY_INFO.fax}</div>
+            </div>
           </div>
-          <div className="rounded bg-orange-100 p-3 text-sm font-semibold text-neutral-900">
-            <div>{COMPANY_INFO.address}</div>
-            <div>{COMPANY_INFO.representative}</div>
-            <div>{COMPANY_INFO.tel}</div>
-            <div>{COMPANY_INFO.fax}</div>
-          </div>
-        </div>
-        <div className="space-y-3">
-          <h3 className="text-sm font-semibold text-neutral-800">商品送先</h3>
-          <div className="grid gap-2 md:grid-cols-2">
-            <label className="flex flex-col text-sm font-semibold text-neutral-800">
-              配送方法
-              <select
-                value={shippingDestinationMethod}
-                onChange={(event) => setShippingDestinationMethod(event.target.value)}
-                className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-              >
-                <option value="配送">配送</option>
-                <option value="持込">持込</option>
-              </select>
-            </label>
-            <label className="flex flex-col text-sm font-semibold text-neutral-800">
-              到着予定日
-              <input
-                type="date"
-                value={shippingDestinationArrival}
-                onChange={(event) => setShippingDestinationArrival(event.target.value)}
-                className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-              />
-            </label>
-          </div>
-          <div className="rounded bg-orange-100 p-3 text-sm font-semibold text-neutral-900">
-            <div>{COMPANY_INFO.address}</div>
-            <div>{COMPANY_INFO.representative}</div>
-            <div>{COMPANY_INFO.tel}</div>
-            <div>{COMPANY_INFO.fax}</div>
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold text-neutral-800">発送</h3>
+            <div className="grid gap-2 md:grid-cols-2">
+              <label className="flex flex-col text-xs font-semibold text-neutral-800">
+                配送方法
+                <select
+                  value={shippingDestinationMethod}
+                  onChange={(event) => setShippingDestinationMethod(event.target.value)}
+                  className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                >
+                  {DELIVERY_METHOD_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col text-xs font-semibold text-neutral-800">
+                到着予定日
+                <input
+                  type="date"
+                  value={shippingDestinationArrival}
+                  onChange={(event) => setShippingDestinationArrival(event.target.value)}
+                  className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                />
+              </label>
+            </div>
+            <div className="rounded bg-orange-100 p-3 text-xs font-semibold text-neutral-900">
+              <div>{COMPANY_INFO.address}</div>
+              <div>{COMPANY_INFO.representative}</div>
+              <div>{COMPANY_INFO.tel}</div>
+              <div>{COMPANY_INFO.fax}</div>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-3 pb-4 pt-1">
         <button
           type="button"
-          onClick={() => {
-            if (typeof window !== "undefined" && window.confirm("よろしいですか？")) {
-              handleConfirm();
-            }
-          }}
-          className="rounded bg-yellow-300 px-6 py-3 text-sm font-bold text-neutral-900 shadow hover:bg-yellow-200"
+          onClick={handleConfirm}
+          className="rounded bg-yellow-300 px-6 py-2 text-sm font-bold text-neutral-900 shadow hover:bg-yellow-200"
         >
           登録
         </button>
         <button
           type="button"
           onClick={() => router.back()}
-          className="rounded border border-slate-300 bg-white px-6 py-3 text-sm font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+          className="rounded border border-slate-300 bg-white px-6 py-2 text-sm font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
         >
           戻る
         </button>
