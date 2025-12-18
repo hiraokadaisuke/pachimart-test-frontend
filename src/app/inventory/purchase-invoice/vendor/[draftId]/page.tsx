@@ -57,6 +57,15 @@ const APPLICATION_YUSHO_OPTIONS = [
 ];
 const DELIVERY_METHOD_OPTIONS = ["配送", "引取", "未定"];
 
+const triggerDatePicker = (input: HTMLInputElement) => {
+  const withPicker = input as HTMLInputElement & { showPicker?: () => void };
+  if (typeof withPicker.showPicker === "function") {
+    withPicker.showPicker();
+  } else {
+    input.focus();
+  }
+};
+
 export default function VendorInvoicePage() {
   const params = useParams<{ draftId: string }>();
   const router = useRouter();
@@ -266,8 +275,8 @@ export default function VendorInvoicePage() {
   };
 
   return (
-    <div className="space-y-4 text-sm">
-      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="space-y-3 text-sm">
+      <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-2 text-lg font-semibold text-neutral-900">
@@ -280,26 +289,30 @@ export default function VendorInvoicePage() {
                 売主検索
               </button>
             </div>
-            <label className="flex flex-col text-right text-[11px] font-semibold text-neutral-700">
-              日付
+            <label className="flex items-center gap-2 text-[11px] font-semibold text-neutral-700">
+              <span className="whitespace-nowrap">日付</span>
               <input
                 type="date"
                 value={issuedDate}
                 onChange={(event) => setIssuedDate(event.target.value)}
-                className="w-32 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
+                onClick={(event) => triggerDatePicker(event.currentTarget)}
+                onFocus={(event) => triggerDatePicker(event.currentTarget)}
+                className="w-28 rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-right text-xs shadow-sm focus:border-sky-500 focus:outline-none"
               />
             </label>
           </div>
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <div className="text-xs leading-snug text-neutral-700">
-              当社規約に基づき下記の記載購入をいたします。
+            <div className="flex-1 min-w-[200px] text-xs leading-snug text-neutral-700">
+              <p className="line-clamp-2 max-h-[3.2rem] overflow-hidden">
+                当社規約に基づき下記の記載購入をいたします。必要事項を入力の上、伝票を登録してください。
+              </p>
             </div>
             <div className="w-full rounded bg-orange-100 p-3 text-left text-sm font-semibold leading-snug text-neutral-900 md:w-72">
-              <div>{COMPANY_INFO.name}</div>
-              <div>{COMPANY_INFO.address}</div>
-              <div>{COMPANY_INFO.representative}</div>
-              <div>{COMPANY_INFO.tel}</div>
-              <div>{COMPANY_INFO.fax}</div>
+              <div className="text-base">{COMPANY_INFO.name}</div>
+              <div className="text-xs text-neutral-800">{COMPANY_INFO.address}</div>
+              <div className="text-xs text-neutral-800">{COMPANY_INFO.representative}</div>
+              <div className="text-xs text-neutral-800">{COMPANY_INFO.tel}</div>
+              <div className="text-xs text-neutral-800">{COMPANY_INFO.fax}</div>
               <label className="mt-2 flex flex-col gap-1 text-[11px] font-semibold text-neutral-800">
                 担当
                 <select
@@ -425,6 +438,8 @@ export default function VendorInvoicePage() {
                       <input
                         type="date"
                         value={item.applicationDate}
+                        onClick={(event) => triggerDatePicker(event.currentTarget)}
+                        onFocus={(event) => triggerDatePicker(event.currentTarget)}
                         onChange={(event) => handleMachineChange(index, "applicationDate", event.target.value)}
                         className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
                       />
@@ -495,6 +510,8 @@ export default function VendorInvoicePage() {
           <input
             type="date"
             value={paymentDate}
+            onClick={(event) => triggerDatePicker(event.currentTarget)}
+            onFocus={(event) => triggerDatePicker(event.currentTarget)}
             onChange={(event) => setPaymentDate(event.target.value)}
             className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
           />
@@ -538,6 +555,8 @@ export default function VendorInvoicePage() {
                 <input
                   type="date"
                   value={receiptDate}
+                  onClick={(event) => triggerDatePicker(event.currentTarget)}
+                  onFocus={(event) => triggerDatePicker(event.currentTarget)}
                   onChange={(event) => setReceiptDate(event.target.value)}
                   className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                 />
@@ -561,6 +580,8 @@ export default function VendorInvoicePage() {
                 <input
                   type="date"
                   value={arrivalDate}
+                  onClick={(event) => triggerDatePicker(event.currentTarget)}
+                  onFocus={(event) => triggerDatePicker(event.currentTarget)}
                   onChange={(event) => setArrivalDate(event.target.value)}
                   className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                 />
@@ -595,6 +616,8 @@ export default function VendorInvoicePage() {
                 <input
                   type="date"
                   value={shippingDestinationArrival}
+                  onClick={(event) => triggerDatePicker(event.currentTarget)}
+                  onFocus={(event) => triggerDatePicker(event.currentTarget)}
                   onChange={(event) => setShippingDestinationArrival(event.target.value)}
                   className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                 />
