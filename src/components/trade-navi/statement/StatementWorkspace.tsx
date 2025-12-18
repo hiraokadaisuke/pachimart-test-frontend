@@ -147,7 +147,9 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     );
   }
 
-  const defaultDescription = trade ? getInProgressDescription(actorRole ?? "buyer", trade.status) : undefined;
+  const defaultDescription = trade
+    ? getInProgressDescription(actorRole === "seller" ? "sell" : "buy", trade.status)
+    : undefined;
   const cancelBanner =
     trade?.status === "CANCELED"
       ? `キャンセル済（${trade.canceledBy === "seller" ? "売手" : trade.canceledBy === "buyer" ? "買手" : "不明"}）`
