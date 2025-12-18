@@ -14,6 +14,7 @@ export type InventoryRecord = {
   deviceType?: string;
   quantity?: number;
   unitPrice?: number;
+  saleUnitPrice?: number;
   remainingDebt?: number;
   stockInDate?: string;
   arrivalDate?: string;
@@ -104,6 +105,14 @@ export const addInventoryRecords = (records: InventoryRecord[]): InventoryRecord
 export const updateInventoryStatus = (id: string, status: InventoryStatusOption): InventoryRecord[] => {
   const current = loadInventoryRecords();
   const updated = current.map((item) => (item.id === id ? { ...item, status, stockStatus: status } : item));
+  saveInventoryRecords(updated);
+  return updated;
+};
+
+export const updateInventoryStatuses = (ids: string[], status: InventoryStatusOption): InventoryRecord[] => {
+  const current = loadInventoryRecords();
+  const targets = new Set(ids);
+  const updated = current.map((item) => (targets.has(item.id) ? { ...item, status, stockStatus: status } : item));
   saveInventoryRecords(updated);
   return updated;
 };

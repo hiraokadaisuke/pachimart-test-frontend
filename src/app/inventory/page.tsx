@@ -6,6 +6,7 @@ import Link from "next/link";
 import {
   loadInventoryRecords,
   resetInventoryRecords,
+  updateInventoryStatuses,
   updateInventoryStatus,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
@@ -18,24 +19,27 @@ type Column = {
   minWidth: number;
 };
 
+const RESERVED_SELECTION_WIDTH = 48;
+
 const STATUS_OPTIONS: InventoryStatusOption[] = ["倉庫", "出品中", "売却済"];
 
 const INITIAL_COLUMNS: Column[] = [
-  { key: "id", label: "在庫ID", width: 140, minWidth: 120 },
-  { key: "createdAt", label: "在庫入力日", width: 140, minWidth: 120 },
-  { key: "maker", label: "メーカー名", width: 140, minWidth: 100 },
-  { key: "model", label: "機種名", width: 160, minWidth: 120 },
-  { key: "kind", label: "種別", width: 90, minWidth: 80 },
-  { key: "type", label: "タイプ", width: 100, minWidth: 90 },
-  { key: "quantity", label: "仕入数", width: 90, minWidth: 80 },
-  { key: "unitPrice", label: "仕入単価", width: 120, minWidth: 110 },
-  { key: "stockInDate", label: "入庫日", width: 120, minWidth: 110 },
-  { key: "removeDate", label: "撤去日", width: 120, minWidth: 110 },
-  { key: "warehouse", label: "保管先", width: 140, minWidth: 110 },
-  { key: "supplier", label: "仕入先", width: 140, minWidth: 110 },
-  { key: "staff", label: "担当者", width: 120, minWidth: 100 },
-  { key: "status", label: "状況", width: 130, minWidth: 120 },
-  { key: "note", label: "備考", width: 160, minWidth: 140 },
+  { key: "id", label: "在庫ID", width: 120, minWidth: 80 },
+  { key: "createdAt", label: "在庫入力日", width: 120, minWidth: 80 },
+  { key: "maker", label: "メーカー名", width: 120, minWidth: 78 },
+  { key: "model", label: "機種名", width: 140, minWidth: 110 },
+  { key: "kind", label: "種別", width: 70, minWidth: 56 },
+  { key: "type", label: "タイプ", width: 80, minWidth: 60 },
+  { key: "quantity", label: "仕入数", width: 78, minWidth: 56 },
+  { key: "unitPrice", label: "仕入単価", width: 110, minWidth: 80 },
+  { key: "saleUnitPrice", label: "販売単価", width: 110, minWidth: 80 },
+  { key: "stockInDate", label: "入庫日", width: 110, minWidth: 80 },
+  { key: "removeDate", label: "撤去日", width: 110, minWidth: 80 },
+  { key: "warehouse", label: "保管先", width: 120, minWidth: 82 },
+  { key: "supplier", label: "仕入先", width: 120, minWidth: 82 },
+  { key: "staff", label: "担当者", width: 110, minWidth: 70 },
+  { key: "status", label: "状況", width: 120, minWidth: 92 },
+  { key: "note", label: "備考", width: 150, minWidth: 90 },
 ];
 
 const truncateText = (text: string) => {
@@ -59,6 +63,7 @@ export default function InventoryPage() {
   const [dragOver, setDragOver] = useState<{ key: string; position: "left" | "right" } | null>(null);
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
@@ -78,8 +83,9 @@ export default function InventoryPage() {
     if (!containerWidth) return;
     setColumns((prev) => {
       const total = prev.reduce((sum, col) => sum + col.width, 0);
-      if (total <= containerWidth) return prev;
-      const scale = containerWidth / total;
+      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH, 0);
+      if (total <= availableWidth) return prev;
+      const scale = availableWidth / total;
       return prev.map((col) => ({
         ...col,
         width: Math.max(col.minWidth, Math.floor(col.width * scale)),
@@ -108,6 +114,41 @@ export default function InventoryPage() {
     setRecords(updated);
   };
 
+  const handleSelectRow = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(filtered.map((item) => item.id)));
+      return;
+    }
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkUpdate = (status: InventoryStatusOption) => {
+    if (selectedIds.size === 0) {
+      alert("行を選択してください");
+      return;
+    }
+
+    const message = `${selectedIds.size}件を${status}に変更します。よろしいですか？`;
+    const confirmed = window.confirm(message);
+    if (!confirmed) return;
+
+    const updated = updateInventoryStatuses([...selectedIds], status);
+    setRecords(updated);
+    setSelectedIds(new Set());
+  };
+
   const getCellText = (record: InventoryRecord, key: string) => {
     switch (key) {
       case "id":
@@ -126,6 +167,8 @@ export default function InventoryPage() {
         return record.quantity != null ? record.quantity.toLocaleString() : "-";
       case "unitPrice":
         return record.unitPrice != null ? record.unitPrice.toLocaleString() : "-";
+      case "saleUnitPrice":
+        return record.saleUnitPrice != null ? record.saleUnitPrice.toLocaleString() : "-";
       case "stockInDate":
         return formatDate(record.stockInDate ?? record.arrivalDate);
       case "removeDate":
@@ -190,10 +233,12 @@ export default function InventoryPage() {
 
       if (!containerWidth) return next;
 
-      let total = next.reduce((sum, col) => sum + col.width, 0);
-      if (total <= containerWidth) return next;
+      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH, 0);
 
-      let excess = total - containerWidth;
+      let total = next.reduce((sum, col) => sum + col.width, 0);
+      if (total <= availableWidth) return next;
+
+      let excess = total - availableWidth;
       const adjustable = next
         .map((col, idx) => ({ idx, room: col.width - col.minWidth }))
         .filter(({ idx, room }) => idx !== index && room > 0);
@@ -218,8 +263,8 @@ export default function InventoryPage() {
       }
 
       total = next.reduce((sum, col) => sum + col.width, 0);
-      if (total > containerWidth) {
-        const scale = containerWidth / total;
+      if (total > availableWidth) {
+        const scale = availableWidth / total;
         return next.map((col) => ({ ...col, width: Math.max(col.minWidth, Math.floor(col.width * scale)) }));
       }
 
@@ -278,24 +323,60 @@ export default function InventoryPage() {
           <span className="ml-2">|</span>
           <span>右端ハンドルで列幅調整</span>
         </div>
-        <div className="flex items-center gap-2">
-          <label htmlFor="inventory-search" className="text-sm text-neutral-700">
-            検索 / 絞り込み
-          </label>
-          <input
-            id="inventory-search"
-            value={searchTerm}
-            onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="メーカー名 / 機種名 / 仕入先"
-            className="w-64 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-          />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => handleBulkUpdate("売却済")}
+              disabled={selectedIds.size === 0}
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              一括：売却済
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkUpdate("出品中")}
+              disabled={selectedIds.size === 0}
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              一括：出品中
+            </button>
+            <button
+              type="button"
+              onClick={() => handleBulkUpdate("倉庫")}
+              disabled={selectedIds.size === 0}
+              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              一括：倉庫
+            </button>
+          </div>
+          <div className="flex items-center gap-2">
+            <label htmlFor="inventory-search" className="text-sm text-neutral-700">
+              検索 / 絞り込み
+            </label>
+            <input
+              id="inventory-search"
+              value={searchTerm}
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="メーカー名 / 機種名 / 仕入先"
+              className="w-64 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+            />
+          </div>
         </div>
       </div>
 
       <div ref={tableRef} className="w-full rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full table-fixed border-collapse text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-700">
+          <thead className="bg-slate-50 text-left text-sm font-semibold text-slate-700">
             <tr>
+              <th className="w-10 border-r border-slate-200 px-3 py-2">
+                <input
+                  type="checkbox"
+                  checked={filtered.length > 0 && selectedIds.size === filtered.length}
+                  onChange={(event) => handleSelectAll(event.target.checked)}
+                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
+                />
+              </th>
               {visibleColumns.map((col) => (
                 <th
                   key={col.key}
@@ -303,7 +384,7 @@ export default function InventoryPage() {
                   onDragStart={() => handleDragStart(String(col.key))}
                   onDragOver={(event) => handleDragOver(event, String(col.key))}
                   onDrop={() => handleDrop(String(col.key))}
-                  className="relative select-none border-r border-slate-200 px-3 py-3"
+                  className="relative select-none border-r border-slate-200 px-3 py-2"
                   style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                 >
                   <div className="flex items-center justify-between gap-2 whitespace-nowrap">
@@ -329,13 +410,21 @@ export default function InventoryPage() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={visibleColumns.length} className="px-3 py-6 text-center text-sm text-neutral-600">
+                <td colSpan={visibleColumns.length + 1} className="px-3 py-6 text-center text-sm text-neutral-600">
                   登録された在庫がありません。
                 </td>
               </tr>
             ) : (
               filtered.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100 hover:bg-slate-50">
+                <tr key={item.id} className="border-t border-slate-100 text-sm hover:bg-sky-50">
+                  <td className="w-10 border-r border-slate-100 px-3 py-2 align-middle">
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(item.id)}
+                      onChange={() => handleSelectRow(item.id)}
+                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
+                    />
+                  </td>
                   {visibleColumns.map((col) => {
                     const fullText = getCellText(item, String(col.key));
                     const statusValue = (item.status ?? item.stockStatus ?? "倉庫") as InventoryStatusOption;
@@ -343,7 +432,7 @@ export default function InventoryPage() {
                     return (
                       <td
                         key={col.key}
-                        className="whitespace-nowrap border-r border-slate-100 px-3 py-3 align-top text-neutral-800"
+                        className="whitespace-nowrap border-r border-slate-100 px-3 py-2 align-middle text-neutral-800"
                         style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                       >
                         {col.key === "status" ? (
