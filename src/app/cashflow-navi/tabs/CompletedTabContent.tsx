@@ -9,6 +9,8 @@ import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { TRADE_STORAGE_KEY, loadAllTrades } from "@/lib/trade/storage";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { TradeRecord } from "@/lib/trade/types";
+import { resolveCurrentTodoKind } from "@/lib/trade/todo";
+import { todoUiMap } from "@/lib/todo/todoUiMap";
 
 const currencyFormatter = new Intl.NumberFormat("ja-JP", {
   style: "currency",
@@ -53,7 +55,7 @@ export function CompletedTabContent() {
       trades
         .filter((trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id)
         .map((trade) => buildCompletedRow(trade, currentUser.id))
-        .filter((row): row is CompletedTradeRow => row.status === "completed" || row.status === "payment_confirmed"),
+        .filter((row): row is CompletedTradeRow => todoUiMap[row.status]?.section === "completed"),
     [currentUser.id, trades]
   );
 
@@ -104,7 +106,7 @@ export function CompletedTabContent() {
 function buildCompletedRow(trade: TradeRecord, viewerId: string): CompletedTradeRow {
   const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
   const isSeller = trade.sellerUserId === viewerId;
-  const status = mapTradeStatus(trade.status);
+  const status = resolveCurrentTodoKind(trade);
 
   return {
     id: trade.id,
@@ -116,23 +118,6 @@ function buildCompletedRow(trade: TradeRecord, viewerId: string): CompletedTrade
     status,
     settledAt: formatDate(trade.completedAt ?? trade.paymentDate ?? trade.updatedAt ?? ""),
   };
-}
-
-function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
-  switch (status) {
-    case "APPROVAL_REQUIRED":
-      return "requesting";
-    case "PAYMENT_REQUIRED":
-      return "waiting_payment";
-    case "CONFIRM_REQUIRED":
-      return "payment_confirmed";
-    case "COMPLETED":
-      return "completed";
-    case "CANCELED":
-      return "canceled";
-  }
-  const exhaustiveCheck: never = status;
-  return exhaustiveCheck;
 }
 
 function formatDate(value?: string) {

@@ -11,6 +11,14 @@ import {
 } from "./types";
 import { calculateStatementTotals } from "./calcTotals";
 import { canApprove, canCancel, canMarkCompleted, canMarkPaid, getActorRole } from "./permissions";
+import {
+  advanceTradeTodo,
+  buildTodosFromStatus,
+  cancelTradeTodos,
+  deriveStatusFromTodos,
+  ensureTradeTodos,
+} from "./todo";
+import { TodoKind } from "@/lib/todo/todoKinds";
 
 export const TRADE_STORAGE_KEY = "trade_records_v1";
 const CONTACT_STORAGE_PREFIX = "buyerContacts:";
@@ -49,6 +57,7 @@ const seedTrades: TradeRecord[] = [
     paymentTerms: "請求書到着後3営業日以内に指定口座へ振込",
     seller: companyDirectory["user-b"],
     buyer: companyDirectory["user-a"],
+    todos: buildTodosFromStatus("APPROVAL_REQUIRED"),
     items: [
       {
         lineId: "line-1",
@@ -125,6 +134,7 @@ const seedTrades: TradeRecord[] = [
     paymentTerms: "請求日から5営業日以内に振込",
     seller: companyDirectory["user-a"],
     buyer: companyDirectory["user-b"],
+    todos: buildTodosFromStatus("PAYMENT_REQUIRED"),
     items: [
       {
         lineId: "line-1",
@@ -196,6 +206,8 @@ function normalizeTrade(trade: TradeRecord): TradeRecord {
   const buyerUserId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
   const sellerName = trade.sellerName ?? trade.seller.companyName ?? "売主";
   const buyerName = trade.buyerName ?? trade.buyer.companyName ?? "買主";
+  const todos = ensureTradeTodos(trade);
+  const status = deriveStatusFromTodos(todos, trade.status);
 
   return {
     ...trade,
@@ -203,6 +215,8 @@ function normalizeTrade(trade: TradeRecord): TradeRecord {
     buyerUserId,
     sellerName,
     buyerName,
+    todos,
+    status,
   };
 }
 
@@ -243,6 +257,20 @@ export function loadAllTrades(): TradeRecord[] {
 export function loadTrade(tradeId: string): TradeRecord | null {
   const trades = loadAllTrades();
   return trades.find((trade) => trade.id === tradeId) ?? null;
+}
+
+export function completeTodoForTrade(
+  tradeId: string,
+  completedKind: TodoKind,
+  actorUserId: string
+): TradeRecord | null {
+  const trade = loadTrade(tradeId);
+  if (!trade) return null;
+
+  const advanced = advanceTradeTodo(trade, completedKind, actorUserId);
+  if (!advanced) return null;
+
+  return upsertTradeInternal(advanced);
 }
 
 function calculateTradeTotal(trade: TradeRecord): number {
@@ -296,7 +324,7 @@ export function getSalesHistoryForUser(userId: string): TradeRecord[] {
 export function updateTradeStatus(tradeId: string, status: TradeStatus): TradeRecord | null {
   const trade = loadTrade(tradeId);
   if (!trade) return null;
-  return upsertTradeInternal({ ...trade, status });
+  return upsertTradeInternal({ ...trade, status, todos: buildTodosFromStatus(status) });
 }
 
 export function approveTrade(tradeId: string, actorUserId: string): TradeRecord | null {
@@ -304,13 +332,10 @@ export function approveTrade(tradeId: string, actorUserId: string): TradeRecord 
   if (!trade) return null;
   if (!canApprove(trade, actorUserId)) return null;
 
-  const now = new Date().toISOString();
-  return upsertTradeInternal({
-    ...trade,
-    status: "PAYMENT_REQUIRED",
-    contractDate: now,
-    updatedAt: now,
-  });
+  const advanced = advanceTradeTodo(trade, "application_sent", actorUserId);
+  if (!advanced) return null;
+
+  return upsertTradeInternal(advanced);
 }
 
 export function updateTradeShipping(
@@ -388,16 +413,10 @@ export function markTradePaid(tradeId: string, actorUserId: string): TradeRecord
   if (!trade) return null;
   if (!canMarkPaid(trade, actorUserId)) return null;
 
-  const now = new Date().toISOString();
-  const totalAmount = calculateTradeTotal(trade);
-  return upsertTradeInternal({
-    ...trade,
-    status: "CONFIRM_REQUIRED",
-    paymentDate: now,
-    paymentAmount: totalAmount,
-    paymentMethod: "振込（テスト）",
-    updatedAt: now,
-  });
+  const advanced = advanceTradeTodo(trade, "application_approved", actorUserId);
+  if (!advanced) return null;
+
+  return upsertTradeInternal(advanced);
 }
 
 export function markTradeCompleted(tradeId: string, actorUserId: string): TradeRecord | null {
@@ -405,13 +424,10 @@ export function markTradeCompleted(tradeId: string, actorUserId: string): TradeR
   if (!trade) return null;
   if (!canMarkCompleted(trade, actorUserId)) return null;
 
-  const now = new Date().toISOString();
-  return upsertTradeInternal({
-    ...trade,
-    status: "COMPLETED",
-    completedAt: now,
-    updatedAt: now,
-  });
+  const advanced = advanceTradeTodo(trade, "payment_confirmed", actorUserId);
+  if (!advanced) return null;
+
+  return upsertTradeInternal(advanced);
 }
 
 export function cancelTrade(tradeId: string, actorUserId: string): TradeRecord | null {
@@ -428,6 +444,7 @@ export function cancelTrade(tradeId: string, actorUserId: string): TradeRecord |
   return upsertTradeInternal({
     ...trade,
     status: "CANCELED",
+    todos: cancelTradeTodos(trade),
     canceledBy,
     canceledAt: now,
     updatedAt: now,
@@ -498,6 +515,7 @@ export function createTradeFromDraft(
   const totalAmount = calculateTradeTotal({
     id: draft.id,
     status: "APPROVAL_REQUIRED",
+    todos: buildTodosFromStatus("APPROVAL_REQUIRED"),
     sellerUserId,
     buyerUserId: buyerProfile.userId ?? draft.buyerId ?? "buyer",
     sellerName: sellerProfile.companyName,
@@ -536,6 +554,7 @@ export function createTradeFromDraft(
     seller: sellerProfile,
     buyer: buyerProfile,
     items,
+    todos: buildTodosFromStatus("APPROVAL_REQUIRED"),
     taxRate,
     remarks: draft.conditions.notes ?? draft.conditions.memo ?? undefined,
     termsText,

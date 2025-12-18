@@ -1,4 +1,7 @@
-import { TradeRecord, TradeStatus } from "./types";
+import { TodoKind } from "@/lib/todo/todoKinds";
+
+import { resolveCurrentTodoKind } from "./todo";
+import { TradeRecord } from "./types";
 
 export function getActorRole(
   trade: Pick<TradeRecord, "buyerUserId" | "sellerUserId">,
@@ -9,11 +12,19 @@ export function getActorRole(
 
 export function getStatementPath(
   tradeId: string,
-  status: TradeStatus,
+  todoKind: TodoKind | null,
   actorRole: "buyer" | "seller"
 ): string {
-  if (status === "APPROVAL_REQUIRED" && actorRole === "buyer") {
+  if (todoKind === "application_sent" && actorRole === "buyer") {
     return `/trade-navi/buyer/requests/${tradeId}`;
   }
   return `/trade-navi/${tradeId}/statement`;
+}
+
+export function getStatementPathForTrade(
+  trade: Pick<TradeRecord, "id" | "status" | "todos">,
+  actorRole: "buyer" | "seller"
+): string {
+  const todoKind = resolveCurrentTodoKind(trade);
+  return getStatementPath(trade.id, todoKind, actorRole);
 }
