@@ -200,7 +200,7 @@ export default function InventoryNewPage() {
   };
 
   const handleSupplierEnter = (event: React.KeyboardEvent<HTMLElement>, field: SupplierFieldOrder) => {
-    if (event.key !== "Enter" || event.isComposing) return;
+    if (event.key !== "Enter" || event.nativeEvent?.isComposing) return;
     event.preventDefault();
     const currentIndex = supplierOrder.indexOf(field);
     if (currentIndex < supplierOrder.length - 1) {
@@ -212,7 +212,7 @@ export default function InventoryNewPage() {
   };
 
   const handleMachineEnter = (event: React.KeyboardEvent<HTMLElement>, rowIndex: number, field: MachineFieldOrder) => {
-    if (event.key !== "Enter" || event.isComposing) return;
+    if (event.key !== "Enter" || event.nativeEvent?.isComposing) return;
     event.preventDefault();
     const currentIndex = machineOrder.indexOf(field);
     if (currentIndex < machineOrder.length - 1) {
