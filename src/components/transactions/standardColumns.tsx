@@ -3,6 +3,7 @@ import React from "react";
 import { NaviTableColumn } from "./NaviTable";
 import { StatusBadge } from "./StatusBadge";
 import { type TradeStatusKey } from "./status";
+import { resolveCurrentTodoKind } from "@/lib/trade/todo";
 
 const currencyFormatter = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" });
 
@@ -35,7 +36,12 @@ export const standardNaviColumns: NaviTableColumn[] = [
     key: "status",
     label: "状況",
     render: (row) => {
-      const value: string | undefined = row.status ?? row.state ?? row.progress;
+      const derivedFromTodos =
+        Array.isArray((row as { todos?: unknown }).todos) &&
+        (row as { status?: unknown }).status != null
+          ? resolveCurrentTodoKind(row as { status: any; todos: any[] })
+          : undefined;
+      const value: string | undefined = derivedFromTodos ?? row.status ?? row.state ?? row.progress;
       if (!value) return "-";
 
       return <StatusBadge statusKey={value as TradeStatusKey} />;

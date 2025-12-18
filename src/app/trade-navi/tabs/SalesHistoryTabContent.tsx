@@ -11,6 +11,7 @@ import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { getSalesHistoryForUser } from "@/lib/trade/storage";
 import type { TradeRecord } from "@/lib/trade/types";
@@ -446,6 +447,7 @@ function mapTradeToSalesHistoryRow(trade: TradeRecord): SalesHistoryRow {
   const totalAmount =
     trade.totalAmount ?? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1).total;
   const status = resolveCurrentTodoKind(trade);
+  const derivedStatus = deriveTradeStatusFromTodos(trade);
   const section = todoUiMap[status]?.section ?? "approval";
 
   return {
@@ -461,7 +463,7 @@ function mapTradeToSalesHistoryRow(trade: TradeRecord): SalesHistoryRow {
     amount: totalAmount,
     shipmentDate: trade.shipmentDate,
     shippingMethod: trade.shippingMethod ?? trade.receiveMethod ?? "未定",
-    documentStatus: buildDocumentStatusFromTrade(trade, section),
+    documentStatus: buildDocumentStatusFromTrade(derivedStatus, section),
     uploadUrl: `/dealings/sales/${trade.id}/documents`,
     paymentCompleted: Boolean(trade.paymentDate) || section === "completed",
     handler: trade.handlerName ?? "",
@@ -476,9 +478,12 @@ function getCategoryFromTrade(trade: TradeRecord): SalesHistoryRow["category"] {
   return "others";
 }
 
-function buildDocumentStatusFromTrade(trade: TradeRecord, section: TodoUiDef["section"]): DocumentStatus {
-  const isCompleted = section === "completed";
-  const isCanceled = trade.status === "CANCELED" || section === "canceled";
+function buildDocumentStatusFromTrade(
+  derivedStatus: TradeRecord["status"],
+  section: TodoUiDef["section"]
+): DocumentStatus {
+  const isCompleted = section === "completed" || derivedStatus === "COMPLETED";
+  const isCanceled = derivedStatus === "CANCELED" || section === "canceled";
   return {
     inspection: isCompleted,
     removal: isCompleted,

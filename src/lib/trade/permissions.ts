@@ -1,3 +1,5 @@
+import { deriveTradeStatusFromTodos } from "./deriveStatus";
+import { resolveCurrentTodoKind } from "./todo";
 import { TradeRecord } from "./types";
 
 export type TradeActorRole = "buyer" | "seller" | "none";
@@ -12,20 +14,21 @@ export function getActorRole(trade: TradeRecord, currentUserId: string): TradeAc
 }
 
 export function canApprove(trade: TradeRecord, currentUserId: string): boolean {
-  return trade.status === "APPROVAL_REQUIRED" && getActorRole(trade, currentUserId) === "buyer";
+  return resolveCurrentTodoKind(trade) === "application_sent" && getActorRole(trade, currentUserId) === "buyer";
 }
 
 export function canMarkPaid(trade: TradeRecord, currentUserId: string): boolean {
-  return trade.status === "PAYMENT_REQUIRED" && getActorRole(trade, currentUserId) === "buyer";
+  return resolveCurrentTodoKind(trade) === "application_approved" && getActorRole(trade, currentUserId) === "buyer";
 }
 
 export function canMarkCompleted(trade: TradeRecord, currentUserId: string): boolean {
-  return trade.status === "CONFIRM_REQUIRED" && getActorRole(trade, currentUserId) === "buyer";
+  return resolveCurrentTodoKind(trade) === "payment_confirmed" && getActorRole(trade, currentUserId) === "buyer";
 }
 
 export function canCancel(trade: TradeRecord, currentUserId: string): boolean {
   const role = getActorRole(trade, currentUserId);
   if (role === "none") return false;
-  if (trade.status === "CANCELED" || trade.status === "COMPLETED") return false;
+  const derivedStatus = deriveTradeStatusFromTodos(trade);
+  if (derivedStatus === "CANCELED" || derivedStatus === "COMPLETED") return false;
   return true;
 }

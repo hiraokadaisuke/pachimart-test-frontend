@@ -20,6 +20,7 @@ import {
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getTodoPresentation } from "@/lib/trade/todo";
+import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
 
 import { StatementDocument } from "./StatementDocument";
 
@@ -159,9 +160,10 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   }
 
   const headerDescription = (description ?? todoView?.description) || undefined;
+  const derivedStatus = deriveTradeStatusFromTodos(trade);
 
   const cancelBanner =
-    trade.status === "CANCELED"
+    derivedStatus === "CANCELED"
       ? `キャンセル済（${trade.canceledBy === "seller" ? "売手" : trade.canceledBy === "buyer" ? "買手" : "不明"}）`
       : null;
 
