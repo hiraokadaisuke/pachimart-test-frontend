@@ -74,4 +74,13 @@ export const todoUiMap: Record<TodoKind, TodoUiDef> = {
       seller: "この取引はキャンセルされました。",
     },
   },
+
+  x_test_shipping_address_fix: {
+    section: "approval",
+    title: "住所修正（テスト）",
+    description: {
+      buyer: "発送先住所の確認・修正をしてください。（テスト用拡張）",
+      seller: "買主様の住所修正対応をお待ちください。（テスト用拡張）",
+    },
+  },
 };
