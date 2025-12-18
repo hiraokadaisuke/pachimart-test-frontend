@@ -112,11 +112,6 @@ export default function VendorInvoicePage() {
     setSupplierName(targets[0]?.supplier ?? "仕入先");
   }, [params?.draftId]);
 
-  const machineNameOptions = useMemo(() => {
-    const all = loadInventoryRecords();
-    return Array.from(new Set(all.map((inv) => inv.machineName ?? "").filter(Boolean)));
-  }, []);
-
   const subtotal = useMemo(() => rows.reduce((sum, item) => sum + (item.amount ?? 0), 0), [rows]);
   const taxRate = 0.1;
   const tax = Math.floor(subtotal * taxRate);
@@ -276,8 +271,7 @@ export default function VendorInvoicePage() {
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2 text-base font-semibold text-neutral-900">
-              <span>売主情報（{supplierName || "仕入先"} 御中）</span>
-              <span className="rounded bg-orange-100 px-2 py-1 text-xs font-bold text-neutral-800">買主用（自社用）</span>
+              <span>{supplierName || "仕入先"} 御中</span>
               <button
                 type="button"
                 onClick={handleSupplierChange}
@@ -323,44 +317,6 @@ export default function VendorInvoicePage() {
         </div>
       </div>
 
-      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-3">
-        <label className="flex flex-col text-xs font-semibold text-neutral-800">
-          支払予定日
-          <input
-            type="date"
-            value={paymentDate}
-            onChange={(event) => setPaymentDate(event.target.value)}
-            className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-          />
-        </label>
-        <label className="flex flex-col text-xs font-semibold text-neutral-800">
-          請求書原本
-          <select
-            value={invoiceOriginal}
-            onChange={(event) => setInvoiceOriginal(event.target.value)}
-            className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-          >
-            <option value="―">―</option>
-            <option value="要">要</option>
-            <option value="不要">不要</option>
-          </select>
-        </label>
-        <label className="flex flex-col text-xs font-semibold text-neutral-800">
-          販売先
-          <input
-            list="sales-destination-list"
-            value={salesDestination}
-            onChange={(event) => setSalesDestination(event.target.value)}
-            className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-          />
-          <datalist id="sales-destination-list">
-            <option value="デモホール" />
-            <option value="サンプル商事" />
-            <option value="パーラーABC" />
-          </datalist>
-        </label>
-      </div>
-
       <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
         <div className="flex items-center justify-between">
           <h2 className="text-base font-semibold text-neutral-800">明細</h2>
@@ -399,21 +355,7 @@ export default function VendorInvoicePage() {
                   </td>
                   <td className="px-2 py-2 text-neutral-800">
                     {item.kind === "machine" ? (
-                      <div className="flex flex-col gap-1">
-                        <span className="font-semibold">{item.machineName}</span>
-                        <select
-                          value={item.machineName}
-                          onChange={(event) => handleMachineChange(index, "machineName", event.target.value)}
-                          className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-[11px] shadow-sm focus:border-sky-500 focus:outline-none"
-                        >
-                          <option value="">選択してください</option>
-                          {machineNameOptions.map((name) => (
-                            <option key={name} value={name}>
-                              {name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <span className="font-semibold">{item.machineName}</span>
                     ) : (
                       <select
                         value={item.feeName}
@@ -543,6 +485,44 @@ export default function VendorInvoicePage() {
             <span>{formatCurrency(grandTotal)}</span>
           </div>
         </div>
+      </div>
+
+      <div className="grid gap-3 rounded-lg border border-slate-200 bg-white p-3 shadow-sm md:grid-cols-3">
+        <label className="flex flex-col text-xs font-semibold text-neutral-800">
+          支払予定日
+          <input
+            type="date"
+            value={paymentDate}
+            onChange={(event) => setPaymentDate(event.target.value)}
+            className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+          />
+        </label>
+        <label className="flex flex-col text-xs font-semibold text-neutral-800">
+          請求書原本
+          <select
+            value={invoiceOriginal}
+            onChange={(event) => setInvoiceOriginal(event.target.value)}
+            className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+          >
+            <option value="―">―</option>
+            <option value="要">要</option>
+            <option value="不要">不要</option>
+          </select>
+        </label>
+        <label className="flex flex-col text-xs font-semibold text-neutral-800">
+          販売先
+          <input
+            list="sales-destination-list"
+            value={salesDestination}
+            onChange={(event) => setSalesDestination(event.target.value)}
+            className="rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+          />
+          <datalist id="sales-destination-list">
+            <option value="デモホール" />
+            <option value="サンプル商事" />
+            <option value="パーラーABC" />
+          </datalist>
+        </label>
       </div>
 
       <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
