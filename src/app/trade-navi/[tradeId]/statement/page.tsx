@@ -14,7 +14,6 @@ export default function StatementPage() {
       <StatementWorkspace
         tradeId={tradeId}
         pageTitle="明細書"
-        description="取引の締結書風 明細書です。印刷やPDF保存に対応しています。"
         backHref="/trade-navi"
       />
     </MyPageLayout>

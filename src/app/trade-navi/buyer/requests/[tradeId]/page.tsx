@@ -14,7 +14,6 @@ export default function BuyerRequestDetailPage() {
       <StatementWorkspace
         tradeId={tradeId}
         pageTitle="届いた依頼（要承認）"
-        description="売主から送られてきた依頼の明細書です。発送先と担当者を入力し、承認してください。"
         backHref="/trade-navi"
       />
     </MyPageLayout>

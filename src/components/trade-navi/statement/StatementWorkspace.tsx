@@ -4,7 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { StatusBadge } from "@/components/transactions/StatusBadge";
+import { TradeStatusKey } from "@/components/transactions/status";
 import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
+import { getInProgressDescription } from "@/lib/trade/copy";
+import { getActorRole } from "@/lib/trade/navigation";
+import { canApprove, canCancel } from "@/lib/trade/permissions";
 import {
   addBuyerContact,
   ensureContactsLoaded,
@@ -16,8 +20,6 @@ import {
 } from "@/lib/trade/storage";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { TradeStatusKey } from "@/components/transactions/status";
-import { canApprove, canCancel, getActorRole } from "@/lib/trade/permissions";
 
 import { StatementDocument } from "./StatementDocument";
 
@@ -56,16 +58,13 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const actorRole = trade ? getActorRole(trade, currentUser.id) : "none";
   const isBuyer = actorRole === "buyer";
   const isEditable = trade ? canApprove(trade, currentUser.id) : false;
+
   const totals = useMemo(
     () => (trade ? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1) : null),
     [trade]
   );
 
   const statusKey = trade ? mapTradeStatus(trade.status) : null;
-  const cancelNote =
-    trade?.status === "CANCELED" && trade.canceledBy
-      ? `この取引は${trade.canceledBy === "buyer" ? "買主" : "売主"}がキャンセルしました。`
-      : null;
 
   const missingFields = useMemo(
     () => requiredFields.filter((field) => !shipping[field] || (shipping[field] ?? "").toString().trim() === ""),
@@ -86,6 +85,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       setShipping((prev) => ({ ...prev, personName: result.contact!.name }));
       setTrade(result.trade);
       setMessage("担当者を追加しました。");
+      setError(null);
     }
   };
 
@@ -105,7 +105,8 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
   const handleApprove = () => {
     if (!trade) return;
-    const missing = requiredFields.filter((field) => !shipping[field]);
+
+    const missing = requiredFields.filter((field) => !shipping[field] || (shipping[field] ?? "").toString().trim() === "");
     if (missing.length > 0) {
       setError("発送先と担当者をすべて入力してください。");
       setMessage(null);
@@ -114,7 +115,9 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
     const updatedShipping = updateTradeShipping(trade.id, shipping, contacts);
     const updated = approveTrade(trade.id, currentUser.id);
+
     if (updatedShipping) setShipping(updatedShipping.shipping);
+
     if (updated) {
       setTrade(updated);
       setMessage("承認しました。ステータスを更新しました。");
@@ -125,12 +128,15 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
   const handleCancel = () => {
     if (!trade) return;
+
     const canceled = cancelTrade(trade.id, currentUser.id);
     if (canceled) {
       setTrade(canceled);
       setMessage("依頼をキャンセルしました。");
       setError(null);
-      router.push("/trade-navi?tab=purchaseHistory");
+
+      const nextTab = actorRole === "seller" ? "salesHistory" : "purchaseHistory";
+      router.push(`/trade-navi?tab=${nextTab}`);
     }
   };
 
@@ -150,6 +156,16 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     );
   }
 
+  const defaultDescription = getInProgressDescription(actorRole === "seller" ? "sell" : "buy", trade.status);
+  const headerDescription = (description ?? defaultDescription) || undefined;
+
+  const cancelBanner =
+    trade.status === "CANCELED"
+      ? `キャンセル済（${trade.canceledBy === "seller" ? "売手" : trade.canceledBy === "buyer" ? "買手" : "不明"}）`
+      : null;
+
+  const isApprovalReadOnlyForSeller = trade.status === "APPROVAL_REQUIRED" && actorRole === "seller";
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-2 border-b border-slate-200 pb-3 md:flex-row md:items-center md:justify-between">
@@ -162,9 +178,12 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
               </span>
             )}
           </div>
-          {description && <p className="text-sm text-neutral-800">{description}</p>}
-          {cancelNote && <p className="text-xs text-red-700">{cancelNote}</p>}
+
+          {headerDescription && <p className="text-sm text-neutral-800">{headerDescription}</p>}
+          {isApprovalReadOnlyForSeller && <p className="text-[11px] text-neutral-600">買主のみ入力・承認できます</p>}
+          {cancelBanner && <p className="text-xs font-semibold text-red-700">{cancelBanner}</p>}
         </div>
+
         <div className="print-hidden flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
             <button
@@ -182,6 +201,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
               戻る
             </button>
           </div>
+
           <div className="flex items-center gap-2">
             {actorRole !== "none" && (
               <button
@@ -193,7 +213,8 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                 キャンセル
               </button>
             )}
-            {isBuyer && trade?.status === "APPROVAL_REQUIRED" && (
+
+            {isBuyer && trade.status === "APPROVAL_REQUIRED" && (
               <button
                 type="button"
                 onClick={handleApprove}
@@ -204,6 +225,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
               </button>
             )}
           </div>
+
           {isEditable && approveDisabled && (
             <p className="w-full text-[11px] text-red-700">
               承認には {missingFields.map((field) => requiredFieldLabels[field]).join(" / ")} の入力が必要です。
@@ -218,12 +240,10 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
         </div>
       )}
       {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
-          {error}
-        </div>
+        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
       )}
 
-      {trade && totals && (
+      {totals && (
         <div className="space-y-4">
           <div className="rounded border border-slate-200 bg-white p-3 shadow-sm">
             <div className="grid grid-cols-2 gap-3 text-[12px] text-neutral-900 md:max-w-[420px]">
