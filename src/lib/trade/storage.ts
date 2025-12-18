@@ -15,10 +15,10 @@ import {
   advanceTradeTodo,
   buildTodosFromStatus,
   cancelTradeTodos,
-  deriveStatusFromTodos,
   ensureTradeTodos,
 } from "./todo";
 import { TodoKind } from "@/lib/todo/todoKinds";
+import { deriveTradeStatusFromTodos } from "./deriveStatus";
 
 export const TRADE_STORAGE_KEY = "trade_records_v1";
 const CONTACT_STORAGE_PREFIX = "buyerContacts:";
@@ -38,10 +38,13 @@ const companyDirectory: Record<string, CompanyProfile> = Object.values(DEV_USERS
   {} as Record<string, CompanyProfile>
 );
 
+const seedTodos5001 = buildTodosFromStatus("APPROVAL_REQUIRED");
+const seedTodos5002 = buildTodosFromStatus("PAYMENT_REQUIRED");
+
 const seedTrades: TradeRecord[] = [
   {
     id: "T-REQ-5001",
-    status: "APPROVAL_REQUIRED",
+    status: deriveTradeStatusFromTodos({ todos: seedTodos5001 }),
     sellerUserId: "user-b",
     buyerUserId: "user-a",
     sellerName: companyDirectory["user-b"].companyName,
@@ -57,7 +60,7 @@ const seedTrades: TradeRecord[] = [
     paymentTerms: "請求書到着後3営業日以内に指定口座へ振込",
     seller: companyDirectory["user-b"],
     buyer: companyDirectory["user-a"],
-    todos: buildTodosFromStatus("APPROVAL_REQUIRED"),
+    todos: seedTodos5001,
     items: [
       {
         lineId: "line-1",
@@ -118,7 +121,7 @@ const seedTrades: TradeRecord[] = [
   },
   {
     id: "T-REQ-5002",
-    status: "PAYMENT_REQUIRED",
+    status: deriveTradeStatusFromTodos({ todos: seedTodos5002 }),
     sellerUserId: "user-a",
     buyerUserId: "user-b",
     sellerName: companyDirectory["user-a"].companyName,
@@ -134,7 +137,7 @@ const seedTrades: TradeRecord[] = [
     paymentTerms: "請求日から5営業日以内に振込",
     seller: companyDirectory["user-a"],
     buyer: companyDirectory["user-b"],
-    todos: buildTodosFromStatus("PAYMENT_REQUIRED"),
+    todos: seedTodos5002,
     items: [
       {
         lineId: "line-1",
@@ -207,7 +210,7 @@ function normalizeTrade(trade: TradeRecord): TradeRecord {
   const sellerName = trade.sellerName ?? trade.seller.companyName ?? "売主";
   const buyerName = trade.buyerName ?? trade.buyer.companyName ?? "買主";
   const todos = ensureTradeTodos(trade);
-  const status = deriveStatusFromTodos(todos, trade.status);
+  const status = deriveTradeStatusFromTodos({ todos });
 
   return {
     ...trade,
@@ -437,14 +440,17 @@ export function cancelTrade(tradeId: string, actorUserId: string): TradeRecord |
 
   const now = new Date().toISOString();
   const canceledBy = getActorRole(trade, actorUserId);
-  if (trade.status === "CANCELED" || trade.status === "COMPLETED" || canceledBy === "none") {
+  const currentStatus = deriveTradeStatusFromTodos(trade);
+  if (currentStatus === "CANCELED" || currentStatus === "COMPLETED" || canceledBy === "none") {
     return trade;
   }
+  const canceledTodos = cancelTradeTodos(trade);
+  const derivedStatus = deriveTradeStatusFromTodos({ todos: canceledTodos });
 
   return upsertTradeInternal({
     ...trade,
-    status: "CANCELED",
-    todos: cancelTradeTodos(trade),
+    status: derivedStatus,
+    todos: canceledTodos,
     canceledBy,
     canceledAt: now,
     updatedAt: now,
@@ -512,10 +518,12 @@ export function createTradeFromDraft(
   const taxRate = draft.conditions.taxRate ?? 0.1;
   const termsText = draft.conditions.terms ?? defaults?.termsText ?? defaultTermsText;
   const quantity = draft.conditions.quantity ?? 1;
+  const initialTodos = buildTodosFromStatus("APPROVAL_REQUIRED");
+  const initialStatus = deriveTradeStatusFromTodos({ todos: initialTodos });
   const totalAmount = calculateTradeTotal({
     id: draft.id,
-    status: "APPROVAL_REQUIRED",
-    todos: buildTodosFromStatus("APPROVAL_REQUIRED"),
+    status: initialStatus,
+    todos: initialTodos,
     sellerUserId,
     buyerUserId: buyerProfile.userId ?? draft.buyerId ?? "buyer",
     sellerName: sellerProfile.companyName,
@@ -532,7 +540,7 @@ export function createTradeFromDraft(
 
   return {
     id: draft.id,
-    status: "APPROVAL_REQUIRED",
+    status: initialStatus,
     sellerUserId,
     buyerUserId: buyerProfile.userId ?? draft.buyerId ?? "buyer",
     sellerName: sellerProfile.companyName,
@@ -554,7 +562,7 @@ export function createTradeFromDraft(
     seller: sellerProfile,
     buyer: buyerProfile,
     items,
-    todos: buildTodosFromStatus("APPROVAL_REQUIRED"),
+    todos: initialTodos,
     taxRate,
     remarks: draft.conditions.notes ?? draft.conditions.memo ?? undefined,
     termsText,

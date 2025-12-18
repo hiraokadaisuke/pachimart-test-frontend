@@ -1,6 +1,7 @@
 "use client";
 
 import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
+import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 
 import { ContactSelector } from "./ContactSelector";
@@ -67,6 +68,7 @@ export function StatementDocument({
   const issueDate =
     trade.contractDate ??
     (trade.updatedAt ? trade.updatedAt.slice(0, 10) : new Date().toISOString().slice(0, 10));
+  const derivedStatus = deriveTradeStatusFromTodos(trade);
 
   const primaryItem = trade.items[0];
   const paymentTerms = trade.paymentTerms ?? trade.paymentMethod ?? "支払条件未設定";
@@ -81,7 +83,7 @@ export function StatementDocument({
           </div>
           <div className="text-right text-[12px] text-neutral-900">
             <p>発行日：{formatDateLabel(issueDate)}</p>
-            <p>状態：{trade.status}</p>
+            <p>状態：{derivedStatus}</p>
           </div>
         </div>
         <p className="text-[12px] text-neutral-800">
