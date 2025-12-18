@@ -1,57 +1,69 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { type TradeStatusKey } from "@/components/transactions/status";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { TRADE_STORAGE_KEY, loadAllTrades } from "@/lib/trade/storage";
+import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { TradeRecord } from "@/lib/trade/types";
 
 const currencyFormatter = new Intl.NumberFormat("ja-JP", {
   style: "currency",
   currency: "JPY",
 });
 
-const completedTrades = [
-  {
-    id: "CF-2025112101",
-    contractDate: "2025/11/18",
-    partner: "株式会社パチテック",
-    itemName: "P とある魔術の禁書目録",
-    amount: 1280000,
-    role: "sell",
-    status: "completed" as TradeStatusKey,
-    settledAt: "2025/11/20",
-  },
-  {
-    id: "CF-2025111904",
-    contractDate: "2025/11/15",
-    partner: "有限会社スマイル",
-    itemName: "S 押忍！番長ZERO",
-    amount: 760000,
-    role: "buy",
-    status: "payment_confirmed" as TradeStatusKey,
-    settledAt: "2025/11/19",
-  },
-  {
-    id: "CF-2025111202",
-    contractDate: "2025/11/10",
-    partner: "株式会社エス・プラン",
-    itemName: "P スーパー海物語 JAPAN2 L1",
-    amount: 450000,
-    role: "sell",
-    status: "completed" as TradeStatusKey,
-    settledAt: "2025/11/14",
-  },
-];
+type CompletedTradeRow = {
+  id: string;
+  contractDate: string;
+  partner: string;
+  itemName: string;
+  amount: number;
+  role: "buy" | "sell";
+  status: TradeStatusKey;
+  settledAt?: string;
+};
 
 export function CompletedTabContent() {
+  const currentUser = useCurrentDevUser();
+  const [trades, setTrades] = useState<TradeRecord[]>([]);
+
+  const refreshTrades = useCallback(() => {
+    setTrades(loadAllTrades());
+  }, []);
+
+  useEffect(() => {
+    refreshTrades();
+  }, [refreshTrades]);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === TRADE_STORAGE_KEY) {
+        refreshTrades();
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, [refreshTrades]);
+
+  const completedTrades = useMemo(
+    () =>
+      trades
+        .filter((trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id)
+        .map((trade) => buildCompletedRow(trade, currentUser.id))
+        .filter((row): row is CompletedTradeRow => row.status === "completed" || row.status === "payment_confirmed"),
+    [currentUser.id, trades]
+  );
+
   const columns: NaviTableColumn[] = useMemo(
     () => [
       {
         key: "status",
         label: "状況",
         width: "110px",
-        render: (row: (typeof completedTrades)[number]) => (
+        render: (row: CompletedTradeRow) => (
           <StatusBadge statusKey={row.status} context="history" />
         ),
       },
@@ -60,7 +72,7 @@ export function CompletedTabContent() {
         key: "role",
         label: "区分",
         width: "90px",
-        render: (row: (typeof completedTrades)[number]) => (row.role === "buy" ? "購入" : "売却"),
+        render: (row: CompletedTradeRow) => (row.role === "buy" ? "購入" : "売却"),
       },
       { key: "partner", label: "取引先", width: "18%" },
       { key: "itemName", label: "機種名", width: "26%" },
@@ -68,7 +80,7 @@ export function CompletedTabContent() {
         key: "amount",
         label: "合計金額（税込）",
         width: "150px",
-        render: (row: (typeof completedTrades)[number]) => currencyFormatter.format(row.amount),
+        render: (row: CompletedTradeRow) => currencyFormatter.format(row.amount),
       },
       { key: "settledAt", label: "入出金日", width: "120px" },
     ],
@@ -87,4 +99,46 @@ export function CompletedTabContent() {
       <NaviTable columns={columns} rows={completedTrades} emptyMessage="成約済みの取引はありません。" />
     </section>
   );
+}
+
+function buildCompletedRow(trade: TradeRecord, viewerId: string): CompletedTradeRow {
+  const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
+  const isSeller = trade.sellerUserId === viewerId;
+  const status = mapTradeStatus(trade.status);
+
+  return {
+    id: trade.id,
+    contractDate: formatDate(trade.contractDate ?? trade.createdAt ?? ""),
+    partner: isSeller ? trade.buyerName ?? trade.buyer.companyName ?? "" : trade.sellerName ?? trade.seller.companyName ?? "",
+    itemName: trade.items[0]?.itemName ?? trade.itemName ?? "商品",
+    amount: totals.total,
+    role: isSeller ? "sell" : "buy",
+    status,
+    settledAt: formatDate(trade.completedAt ?? trade.paymentDate ?? trade.updatedAt ?? ""),
+  };
+}
+
+function mapTradeStatus(status: TradeRecord["status"]): TradeStatusKey {
+  switch (status) {
+    case "APPROVAL_REQUIRED":
+      return "requesting";
+    case "PAYMENT_REQUIRED":
+      return "waiting_payment";
+    case "CONFIRM_REQUIRED":
+      return "payment_confirmed";
+    case "COMPLETED":
+      return "completed";
+    case "CANCELED":
+      return "canceled";
+  }
+  const exhaustiveCheck: never = status;
+  return exhaustiveCheck;
+}
+
+function formatDate(value?: string) {
+  if (!value) return "-";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return value;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())}`;
 }

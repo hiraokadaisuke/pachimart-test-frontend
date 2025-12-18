@@ -1,17 +1,41 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { PachipayInfoCard } from "@/components/pachipay/PachipayInfoCard";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { dummyTransactions } from "@/lib/dummyBalances";
+import { TRADE_STORAGE_KEY, loadAllTrades } from "@/lib/trade/storage";
+import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { TradeRecord } from "@/lib/trade/types";
+
+type CashflowTransaction = {
+  id: string;
+  date: string;
+  kind: "入金" | "出金";
+  amount: number;
+};
 
 export function HistoryTabContent() {
   const currentUser = useCurrentDevUser();
+  const [trades, setTrades] = useState<TradeRecord[]>([]);
+
+  useEffect(() => {
+    setTrades(loadAllTrades());
+  }, []);
+
+  useEffect(() => {
+    const handleStorage = (event: StorageEvent) => {
+      if (event.key === TRADE_STORAGE_KEY) {
+        setTrades(loadAllTrades());
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   const myTransactions = useMemo(
-    () => dummyTransactions.filter((tx) => tx.userId === currentUser.id),
-    [currentUser.id]
+    () => buildTransactionsFromTrades(trades, currentUser.id),
+    [currentUser.id, trades]
   );
 
   return (
@@ -50,4 +74,40 @@ export function HistoryTabContent() {
       </div>
     </div>
   );
+}
+
+function buildTransactionsFromTrades(trades: TradeRecord[], userId: string): CashflowTransaction[] {
+  const entries: Array<CashflowTransaction & { sortValue: number }> = trades
+    .filter((trade) => trade.sellerUserId === userId || trade.buyerUserId === userId)
+    .map((trade) => {
+      const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
+      const isSeller = trade.sellerUserId === userId;
+      const rawDate =
+        trade.paymentDate ??
+        trade.completedAt ??
+        trade.updatedAt ??
+        trade.contractDate ??
+        trade.createdAt ??
+        new Date().toISOString();
+      const dateObject = new Date(rawDate);
+      const sortValue = dateObject.getTime();
+
+      return {
+        id: `${trade.id}-${isSeller ? "sell" : "buy"}`,
+        date: formatDate(dateObject),
+        kind: isSeller ? "入金" : "出金",
+        amount: totals.total,
+        sortValue,
+      };
+    });
+
+  return entries
+    .sort((a, b) => (Number.isNaN(b.sortValue) ? -1 : Number.isNaN(a.sortValue) ? 1 : b.sortValue - a.sortValue))
+    .map(({ sortValue, ...rest }) => rest);
+}
+
+function formatDate(value: Date) {
+  if (Number.isNaN(value.getTime())) return "-";
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
 }

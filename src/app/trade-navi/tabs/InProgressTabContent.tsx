@@ -36,76 +36,6 @@ type TradeRow = {
   kind?: "buy" | "sell";
 };
 
-const buyingPendingResponses: TradeRow[] = [
-  {
-    id: "T-2025112001",
-    status: "requesting",
-    updatedAt: "2025/11/20 09:30",
-    partnerName: "株式会社オファーテック",
-    makerName: "サミー",
-    itemName: "P 北斗の拳 暴凶星",
-    quantity: 3,
-    totalAmount: 450000,
-    scheduledShipDate: "2025/11/29",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "株式会社オファーテック",
-    buyerName: "株式会社パチテック",
-  },
-  {
-    id: "T-2025112002",
-    status: "requesting",
-    updatedAt: "2025/11/20 12:10",
-    partnerName: "株式会社ディーエル商会",
-    makerName: "SANKYO",
-    itemName: "P フィーバー機動戦士ガンダムSEED",
-    quantity: 2,
-    totalAmount: 360000,
-    scheduledShipDate: "2025/11/30",
-    pdfUrl: "#",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: "株式会社ディーエル商会",
-    buyerName: "株式会社トレード連合",
-  },
-];
-
-const sellingNeedResponses: TradeRow[] = [
-  {
-    id: "T-2025112003",
-    status: "requesting",
-    updatedAt: "2025/11/20 14:45",
-    partnerName: "株式会社トレード連合",
-    makerName: "ニューギン",
-    itemName: "P 真・花の慶次3 黄金一閃",
-    quantity: 4,
-    totalAmount: 680000,
-    scheduledShipDate: "2025/12/02",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "株式会社パチテック",
-    buyerName: "株式会社トレード連合",
-  },
-  {
-    id: "T-2025112004",
-    status: "requesting",
-    updatedAt: "2025/11/20 16:20",
-    partnerName: "関西エンタメ商事",
-    makerName: "京楽",
-    itemName: "P とある魔術の禁書目録",
-    quantity: 5,
-    totalAmount: 850000,
-    scheduledShipDate: "2025/12/03",
-    pdfUrl: "#",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: "株式会社パチテック",
-    buyerName: "関西エンタメ商事",
-  },
-];
-
 function formatDateTime(iso: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "-";
@@ -203,16 +133,6 @@ export function InProgressTabContent() {
     [currentUser.id, keyword, statusFilter]
   );
 
-  const filteredPendingResponses = useMemo(
-    () => filterTrades(buyingPendingResponses),
-    [filterTrades]
-  );
-
-  const filteredNeedResponses = useMemo(() => filterTrades(sellingNeedResponses), [filterTrades]);
-
-  const buyPendingResponse = filteredPendingResponses.filter((trade) => trade.kind === "buy");
-  const sellNeedResponse = filteredNeedResponses.filter((trade) => trade.kind === "sell");
-
   useEffect(() => {
     setTrades(loadAllTrades());
   }, []);
@@ -238,6 +158,12 @@ export function InProgressTabContent() {
   );
   const sellerApprovalRows = filteredTradeRows.filter(
     (row) => row.kind === "sell" && row.status === "requesting"
+  );
+  const buyPendingResponse = filteredTradeRows.filter(
+    (row) => row.kind === "buy" && row.status !== "requesting"
+  );
+  const sellNeedResponse = filteredTradeRows.filter(
+    (row) => row.kind === "sell" && row.status !== "requesting"
   );
 
   const tradeColumnBase: NaviTableColumn[] = [
