@@ -86,6 +86,10 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     setShipping((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleShippingChange = (next: ShippingInfo) => {
+    setShipping(next);
+  };
+
   const handleAddContact = (name: string) => {
     const result = addBuyerContact(tradeId, name);
     if (result.trade && result.contact) {
@@ -176,7 +180,8 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const allowShippingEdit = isEditable && todoView?.section === "approval" && actorRole === "buyer";
 
   const primaryItem = trade.items[0];
-  const quantity = trade.quantity ?? trade.items.reduce((sum, item) => sum + (item.qty ?? 0), 0) || primaryItem?.qty || 1;
+  const quantity =
+    (trade.quantity ?? trade.items.reduce((sum, item) => sum + (item.qty ?? 0), 0)) || primaryItem?.qty || 1;
   const unitPrice =
     primaryItem?.unitPrice ?? (primaryItem?.amount && quantity ? Math.round(primaryItem.amount / quantity) : undefined);
 
@@ -572,7 +577,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
           trade={trade}
           editable={allowShippingEdit}
           shipping={shipping}
-          onShippingChange={handleShippingFieldChange}
+          onShippingChange={handleShippingChange}
           contacts={contacts}
           onContactChange={handleContactChange}
           onAddContact={handleAddContact}
