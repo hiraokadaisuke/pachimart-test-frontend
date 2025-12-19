@@ -188,7 +188,10 @@ export default function SerialInputPage() {
 
         <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
           {COLUMN_KEYS.map((key) => (
-            <div key={key} className="space-y-2 rounded border border-slate-200 bg-slate-50 p-3">
+            <div
+              key={key}
+              className="flex min-w-[250px] flex-1 flex-col space-y-2 rounded border border-slate-200 bg-slate-50 p-3"
+            >
               <div className="text-xs font-semibold text-neutral-800 whitespace-nowrap">{columnLabels[key]}</div>
               <div className="flex items-center gap-2 whitespace-nowrap text-xs">
                 <span className="font-medium text-neutral-700">{noRangeText}</span>
@@ -198,7 +201,7 @@ export default function SerialInputPage() {
                   onChange={(event) => handleInputChange(key, event.target.value)}
                   onClick={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
                   onFocus={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
-                  className="h-8 w-32 rounded border border-slate-300 px-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none sm:w-36 md:w-40"
+                  className="h-8 w-28 rounded border border-slate-300 px-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none sm:w-32 md:w-36"
                 />
                 {key !== "removalDate" && (
                   <button
