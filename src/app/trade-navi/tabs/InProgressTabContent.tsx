@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TradeRecord } from "@/lib/trade/types";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
@@ -17,10 +17,21 @@ import { getInProgressDescription } from "@/lib/trade/copy";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap, type TodoUiDef } from "@/lib/todo/todoUiMap";
+import {
+  loadOnlineInquiries,
+  ONLINE_INQUIRY_STORAGE_KEY,
+  type OnlineInquiryRecord,
+  updateOnlineInquiryStatus,
+} from "@/lib/trade/onlineInquiries";
 
 type TradeSection = TodoUiDef["section"];
 
 const APPROVAL_LABEL = todoUiMap["application_sent"];
+
+const ONLINE_INQUIRY_DESCRIPTION = {
+  buy: "送信したオンライン問い合わせの回答をお待ちください。不要になった場合はキャンセルできます。",
+  sell: "買主から届いたオンライン問い合わせです。内容を確認して受諾または見送りを選択してください。",
+};
 
 type TradeRow = {
   id: string;
@@ -39,6 +50,20 @@ type TradeRow = {
   kind: "buy" | "sell";
   section: TradeSection;
   isOpen: boolean;
+};
+
+type InquiryRow = {
+  id: string;
+  updatedAt: string;
+  partnerName: string;
+  makerName: string;
+  itemName: string;
+  quantity: number;
+  totalAmount: number;
+  sellerUserId: string;
+  buyerUserId: string;
+  kind: "buy" | "sell";
+  status: OnlineInquiryRecord["status"];
 };
 
 function formatDateTime(iso: string) {
@@ -83,41 +108,48 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   };
 }
 
+function buildInquiryRow(inquiry: OnlineInquiryRecord, viewerId: string): InquiryRow {
+  const updatedAtLabel = formatDateTime(inquiry.updatedAt ?? new Date().toISOString());
+  const isSeller = inquiry.sellerUserId === viewerId;
+  const kind = isSeller ? ("sell" as const) : ("buy" as const);
+
+  return {
+    id: inquiry.id,
+    updatedAt: updatedAtLabel,
+    partnerName: isSeller ? inquiry.buyerName ?? "買主" : inquiry.sellerName ?? "売主",
+    makerName: inquiry.makerName ?? "-",
+    itemName: inquiry.itemName,
+    quantity: inquiry.quantity,
+    totalAmount: inquiry.totalAmount,
+    sellerUserId: inquiry.sellerUserId,
+    buyerUserId: inquiry.buyerUserId,
+    kind,
+    status: inquiry.status,
+  };
+}
+
 export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
+  const [onlineInquiries, setOnlineInquiries] = useState<OnlineInquiryRecord[]>([]);
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
 
-  const filterTrades = useCallback(
-    (trades: TradeRow[]) => {
-      const keywordLower = keyword.toLowerCase();
-
-      return trades
-        .filter((trade) => trade.section === "approval" && trade.isOpen)
-        .filter(
-          (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
-        )
-        .filter((trade) => {
-          if (!keywordLower) return true;
-          return (
-            trade.itemName.toLowerCase().includes(keywordLower) ||
-            trade.partnerName.toLowerCase().includes(keywordLower)
-          );
-        });
-    },
-    [currentUser.id, keyword]
-  );
+  const keywordLower = keyword.toLowerCase();
 
   useEffect(() => {
     setTrades(loadAllTrades());
+    setOnlineInquiries(loadOnlineInquiries());
   }, []);
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
       if (event.key === TRADE_STORAGE_KEY) {
         setTrades(loadAllTrades());
+      }
+      if (event.key === ONLINE_INQUIRY_STORAGE_KEY) {
+        setOnlineInquiries(loadOnlineInquiries());
       }
     };
     window.addEventListener("storage", handleStorage);
@@ -129,7 +161,22 @@ export function InProgressTabContent() {
     [currentUser.id, trades]
   );
 
-  const filteredTradeRows = useMemo(() => filterTrades(mappedTradeRows), [filterTrades, mappedTradeRows]);
+  const filteredTradeRows = useMemo(
+    () =>
+      mappedTradeRows
+        .filter((trade) => trade.section === "approval" && trade.isOpen)
+        .filter(
+          (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
+        )
+        .filter((trade) => {
+          if (!keywordLower) return true;
+          return (
+            trade.itemName.toLowerCase().includes(keywordLower) ||
+            trade.partnerName.toLowerCase().includes(keywordLower)
+          );
+        }),
+    [currentUser.id, keywordLower, mappedTradeRows]
+  );
   const buyerApprovalRows = filteredTradeRows.filter(
     (row) => row.kind === "buy" && row.section === "approval"
   );
@@ -137,8 +184,58 @@ export function InProgressTabContent() {
     (row) => row.kind === "sell" && row.section === "approval"
   );
 
+  const mappedInquiryRows = useMemo(
+    () =>
+      onlineInquiries
+        .filter((inquiry) => inquiry.status === "pending")
+        .map((inquiry) => buildInquiryRow(inquiry, currentUser.id)),
+    [currentUser.id, onlineInquiries]
+  );
+
+  const filteredInquiryRows = useMemo(
+    () =>
+      mappedInquiryRows
+        .filter(
+          (inquiry) => inquiry.sellerUserId === currentUser.id || inquiry.buyerUserId === currentUser.id
+        )
+        .filter((inquiry) => {
+          if (!keywordLower) return true;
+          return (
+            inquiry.itemName.toLowerCase().includes(keywordLower) ||
+            inquiry.partnerName.toLowerCase().includes(keywordLower)
+          );
+        }),
+    [currentUser.id, keywordLower, mappedInquiryRows]
+  );
+
+  const buyerInquiryRows = filteredInquiryRows.filter((row) => row.kind === "buy");
+  const sellerInquiryRows = filteredInquiryRows.filter((row) => row.kind === "sell");
+
   const getStatementDestination = (row: TradeRow) =>
     getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller");
+
+  const inquiryStatusBadge = (
+    <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">
+      回答待ち
+    </span>
+  );
+
+  const refreshOnlineInquiries = () => setOnlineInquiries(loadOnlineInquiries());
+
+  const handleCancelInquiry = (inquiryId: string) => {
+    updateOnlineInquiryStatus(inquiryId, "canceled");
+    refreshOnlineInquiries();
+  };
+
+  const handleAcceptInquiry = (inquiryId: string) => {
+    updateOnlineInquiryStatus(inquiryId, "accepted");
+    refreshOnlineInquiries();
+  };
+
+  const handleDeclineInquiry = (inquiryId: string) => {
+    updateOnlineInquiryStatus(inquiryId, "declined");
+    refreshOnlineInquiries();
+  };
 
   const tradeColumnBase: NaviTableColumn[] = [
     {
@@ -255,6 +352,101 @@ export function InProgressTabContent() {
       : col
   );
 
+  const inquiryColumnBase: NaviTableColumn[] = [
+    {
+      key: "status",
+      label: "状況",
+      width: "110px",
+      render: () => inquiryStatusBadge,
+    },
+    {
+      key: "updatedAt",
+      label: "更新日時",
+      width: "160px",
+    },
+    {
+      key: "partnerName",
+      label: "取引先",
+      width: "18%",
+    },
+    {
+      key: "makerName",
+      label: "メーカー",
+      width: "140px",
+    },
+    {
+      key: "itemName",
+      label: "機種名",
+      width: "22%",
+    },
+    {
+      key: "quantity",
+      label: "台数",
+      width: "80px",
+      render: (row: InquiryRow) => `${row.quantity}台`,
+    },
+    {
+      key: "totalAmount",
+      label: "合計金額（税込）",
+      width: "140px",
+      render: (row: InquiryRow) => formatCurrency(row.totalAmount),
+    },
+  ];
+
+  const buyerInquiryColumns: NaviTableColumn[] = [
+    ...inquiryColumnBase,
+    {
+      key: "action",
+      label: "操作",
+      width: "120px",
+      render: (row: InquiryRow) => (
+        <button
+          type="button"
+          className="inline-flex w-full justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleCancelInquiry(row.id);
+          }}
+        >
+          キャンセル
+        </button>
+      ),
+    },
+  ];
+
+  const sellerInquiryColumns: NaviTableColumn[] = [
+    ...inquiryColumnBase,
+    {
+      key: "action",
+      label: "操作",
+      width: "180px",
+      render: (row: InquiryRow) => (
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="inline-flex flex-1 justify-center rounded bg-indigo-700 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleAcceptInquiry(row.id);
+            }}
+          >
+            受諾
+          </button>
+          <button
+            type="button"
+            className="inline-flex flex-1 justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleDeclineInquiry(row.id);
+            }}
+          >
+            見送り
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   const messageThread = getMessagesForTrade(messageTarget);
 
   return (
@@ -283,6 +475,16 @@ export function InProgressTabContent() {
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
           />
         </div>
+        <div className="space-y-2">
+          <SectionHeader className="px-3 py-2 text-xs" description={ONLINE_INQUIRY_DESCRIPTION.buy}>
+            オンライン問い合わせ
+          </SectionHeader>
+          <NaviTable
+            columns={buyerInquiryColumns}
+            rows={buyerInquiryRows}
+            emptyMessage="現在オンライン問い合わせはありません。"
+          />
+        </div>
       </section>
 
       <section className="space-y-4">
@@ -301,6 +503,16 @@ export function InProgressTabContent() {
             rows={sellerApprovalRows}
             emptyMessage="現在承認待ちの送信済み取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
+          />
+        </div>
+        <div className="space-y-2">
+          <SectionHeader className="px-3 py-2 text-xs" description={ONLINE_INQUIRY_DESCRIPTION.sell}>
+            オンライン問い合わせ
+          </SectionHeader>
+          <NaviTable
+            columns={sellerInquiryColumns}
+            rows={sellerInquiryRows}
+            emptyMessage="現在オンライン問い合わせはありません。"
           />
         </div>
       </section>
