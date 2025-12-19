@@ -10,13 +10,14 @@ import {
   saveDraft,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
+import { hasSerialInput, saveSerialOrder } from "@/lib/serialInputStorage";
 
 export default function PurchaseInvoiceCreatePage() {
   const router = useRouter();
   const [inventories, setInventories] = useState<InventoryRecord[]>([]);
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
-  const [numbers, setNumbers] = useState<Record<string, string>>({});
+  const [completed, setCompleted] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setInventories(loadInventoryRecords());
@@ -52,8 +53,20 @@ export default function PurchaseInvoiceCreatePage() {
     router.push(`/inventory/purchase-invoice/${type === "vendor" ? "vendor" : "hall"}/${draftId}`);
   };
 
-  const handleNumberClick = (id: string) => {
-    alert(`${id} の番号入力: ${numbers[id] ?? "未入力"}`);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const statusMap: Record<string, boolean> = {};
+    unassigned.forEach((item) => {
+      statusMap[item.id] = hasSerialInput(item.id);
+    });
+    setCompleted(statusMap);
+  }, [unassigned]);
+
+  const handleSerialInput = (id: string) => {
+    if (typeof window !== "undefined") {
+      saveSerialOrder(filtered.map((item) => item.id));
+    }
+    router.push(`/inventory/purchase-invoice/serial-input/${id}`);
   };
 
   return (
@@ -141,20 +154,17 @@ export default function PurchaseInvoiceCreatePage() {
                   <td className="px-3 py-3 text-neutral-800">{item.supplier}</td>
                   <td className="px-3 py-3 text-neutral-800">{item.buyerStaff}</td>
                   <td className="px-3 py-3">
-                    <div className="flex items-center gap-2">
-                      <input
-                        value={numbers[item.id] ?? ""}
-                        onChange={(event) => setNumbers((prev) => ({ ...prev, [item.id]: event.target.value }))}
-                        className="w-20 rounded-md border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => handleNumberClick(item.id)}
-                        className="rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-                      >
-                        +
-                      </button>
-                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSerialInput(item.id)}
+                      className={`flex h-9 w-full items-center justify-center rounded-md border px-3 text-xs font-semibold shadow-sm transition ${
+                        completed[item.id]
+                          ? "border-green-200 bg-green-50 text-emerald-800 hover:bg-green-100"
+                          : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                      }`}
+                    >
+                      +
+                    </button>
                   </td>
                 </tr>
               ))

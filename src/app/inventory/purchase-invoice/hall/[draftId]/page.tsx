@@ -33,6 +33,15 @@ export default function HallInvoicePage() {
     fax: "FAX 03-5389-1956",
   };
 
+  const triggerDatePicker = (input: HTMLInputElement) => {
+    const withPicker = input as HTMLInputElement & { showPicker?: () => void };
+    if (typeof withPicker.showPicker === "function") {
+      withPicker.showPicker();
+    } else {
+      input.focus();
+    }
+  };
+
   useEffect(() => {
     const draftId = params?.draftId;
     if (!draftId || Array.isArray(draftId)) return;
@@ -162,6 +171,8 @@ export default function HallInvoicePage() {
                 <input
                   type="date"
                   value={issuedDate}
+                  onClick={(event) => triggerDatePicker(event.currentTarget)}
+                  onFocus={(event) => triggerDatePicker(event.currentTarget)}
                   onChange={(event) => setIssuedDate(event.target.value)}
                   className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                 />
@@ -204,21 +215,25 @@ export default function HallInvoicePage() {
           </div>
           <label className="flex flex-col text-sm font-semibold text-neutral-800">
             支払日
-            <input
-              type="date"
-              value={paymentDate}
-              onChange={(event) => setPaymentDate(event.target.value)}
-              className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-            />
+          <input
+            type="date"
+            value={paymentDate}
+            onClick={(event) => triggerDatePicker(event.currentTarget)}
+            onFocus={(event) => triggerDatePicker(event.currentTarget)}
+            onChange={(event) => setPaymentDate(event.target.value)}
+            className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+          />
           </label>
           <label className="flex flex-col text-sm font-semibold text-neutral-800">
             入庫日
-            <input
-              type="date"
-              value={warehousingDate}
-              onChange={(event) => setWarehousingDate(event.target.value)}
-              className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-            />
+          <input
+            type="date"
+            value={warehousingDate}
+            onClick={(event) => triggerDatePicker(event.currentTarget)}
+            onFocus={(event) => triggerDatePicker(event.currentTarget)}
+            onChange={(event) => setWarehousingDate(event.target.value)}
+            className="rounded border border-slate-300 bg-yellow-100 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+          />
           </label>
         </div>
       </div>
@@ -256,6 +271,8 @@ export default function HallInvoicePage() {
                     <input
                       type="date"
                       value={(item.extra as { removalDate?: string })?.removalDate ?? ""}
+                      onClick={(event) => triggerDatePicker(event.currentTarget)}
+                      onFocus={(event) => triggerDatePicker(event.currentTarget)}
                       onChange={(event) => handleExtraChange(index, "removalDate", event.target.value)}
                       className="w-full rounded border border-slate-300 bg-yellow-100 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                     />
