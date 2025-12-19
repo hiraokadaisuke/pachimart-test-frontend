@@ -64,25 +64,17 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
   };
 
   const handleOfferClick = () => {
-    const quote = calculateQuote(quoteInput);
-    setQuoteResult(quote);
-
     const params = new URLSearchParams({
+      tab: 'new',
+      mode: 'inquiry',
       productId: String(product.id),
-      buyerId: 'dummy-buyer-id',
-      buyerCompanyName: 'テストホール株式会社',
-      buyerContactName: '担当者 名',
-      buyerTel: '03-0000-0000',
-      quantity: String(quantity),
-      unitPrice: String(quoteInput.unitPrice),
-      productName: product.name,
       makerName: product.maker,
+      productName: product.name,
+      quantity: String(quantity),
+      unitPrice: String(unitPrice),
     });
 
-    const location = warehouses.find((warehouse) => warehouse.id === deliveryWarehouseId)?.name;
-    if (location) params.set('location', location);
-
-    router.push(`/transactions/navi/${product.id}/edit?${params.toString()}`);
+    router.push(`/trade-navi?${params.toString()}`);
   };
 
   return (
@@ -247,13 +239,13 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
           <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
             <button
               type="button"
-              className="flex h-10 w-full items-center justify-center rounded-md bg-blue-600 px-3 text-[13px] font-semibold text-white shadow hover:bg-blue-700"
+            className="flex h-10 w-full items-center justify-center rounded-md bg-blue-600 px-3 text-[13px] font-semibold text-white shadow hover:bg-blue-700"
               onClick={handleOfferClick}
             >
-              オンラインでオファーする
+              オンライン問い合わせ
             </button>
             <p className="max-w-[240px] text-[12px] leading-[16px] text-neutral-700">
-              オンラインでオファーすると、売手側で取引Naviが作成され、内容が調整されたうえで送られてきます。
+              オンライン問い合わせを送ると、売手側に内容が共有され、回答を待つことができます。
             </p>
           </div>
         </div>
