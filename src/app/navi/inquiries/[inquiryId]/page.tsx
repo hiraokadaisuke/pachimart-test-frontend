@@ -84,9 +84,14 @@ function InquirySummary({ record }: { record: OnlineInquiryRecord }) {
     <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
       <div className="space-y-4">
         <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
-            <h2 className="text-base font-semibold text-slate-900">売却先</h2>
-            <span className="text-xs font-semibold text-neutral-700">{record.sellerCompanyName ?? "-"}</span>
+          <div className="flex flex-col gap-1 border-b border-slate-200 px-4 py-2">
+            <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
+            <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
+              <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
+              <span className="text-sm text-neutral-900">{record.buyerCompanyName ?? "自社"}</span>
+              <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
+              <span className="text-sm text-neutral-900">{record.sellerCompanyName ?? "-"}</span>
+            </div>
           </div>
           <div className="space-y-3 px-4 py-3 text-sm text-neutral-900">
             <div className="grid gap-3 md:grid-cols-2">
@@ -136,7 +141,7 @@ function InquirySummary({ record }: { record: OnlineInquiryRecord }) {
                 <ConditionRow label="単価" value={formatYen(record.unitPrice)} />
                 <ConditionRow label="台数" value={`${record.quantity}台`} />
                 <ConditionRow label="撤去日" value="-" />
-                <ConditionRow label="機械発送予定日" value={record.desiredShipDate || "-"} />
+                <ConditionRow label="機械発送日" value={record.desiredShipDate || "-"} />
                 <ConditionRow label="書類発送予定日" value="-" />
                 <ConditionRow label="支払日" value={record.desiredPaymentDate || "-"} />
                 <ConditionRow label="機械運賃" value="-" />
@@ -146,7 +151,7 @@ function InquirySummary({ record }: { record: OnlineInquiryRecord }) {
                 <ConditionRow label="保険" value="-" />
                 <ConditionRow label="特記事項" value="-" />
                 <ConditionRow label="取引条件（テキスト）" value="-" />
-                <ConditionRow label="メモ" value={record.memo ?? "-"} />
+                <ConditionRow label="備考" value={record.memo ?? "-"} />
                 <ConditionRow label="担当者" value={record.contactPerson || "-"} />
               </tbody>
             </table>

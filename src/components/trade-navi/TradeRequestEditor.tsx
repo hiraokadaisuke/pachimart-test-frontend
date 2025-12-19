@@ -91,7 +91,7 @@ type ValidationErrors = {
   taxRate?: string;
 };
 
-const buyerErrorMessage = "売却先が未設定です。このNaviを送信するには先に売却先を設定してください。";
+const buyerErrorMessage = "取引先が未設定です。このNaviを送信するには先に取引先を設定してください。";
 
 const validateDraft = (draft: TradeNaviDraft | null): ValidationErrors => {
   const errors: ValidationErrors = {};
@@ -386,7 +386,7 @@ function StandardTradeRequestEditor({
     const tradeRecord = createTradeFromDraft(updatedDraft, currentUser.id);
     saveTradeRecord(tradeRecord);
     setDraft(updatedDraft);
-    alert("取引Naviを売却先へ送信しました。");
+    alert("取引Naviを取引先へ送信しました。");
     router.push("/navi");
   };
 
@@ -500,21 +500,27 @@ function StandardTradeRequestEditor({
       <section className="space-y-4">
         <div className="rounded-lg border border-slate-300 bg-white p-3 shadow-sm">
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
-            <div className="flex items-center gap-2">
-              {/* カード見出しを標準文字サイズより一段階大きく */}
-              <h2 className="text-base font-semibold text-slate-900">売却先</h2>
-              <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
-              {isBuyerSet && !shouldShowBuyerSelector && (
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
-              )}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                {/* カード見出しを標準文字サイズより一段階大きく */}
+                <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
+                <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
+                {isBuyerSet && !shouldShowBuyerSelector && (
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
+                )}
+              </div>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
+                <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
+                <span className="text-sm text-neutral-900">{displayBuyer.companyName ?? "未設定"}</span>
+                <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
+                <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
+              </div>
             </div>
 
             <div className="w-full md:max-w-[420px]">
               {shouldShowBuyerSelector ? (
                 <div className="space-y-2 text-sm">
-                  <label className="block text-xs font-semibold text-neutral-800">
-                    売却先（買手）を選択してください
-                  </label>
+                  <label className="block text-xs font-semibold text-neutral-800">取引先（買手）を選択してください</label>
                   <select
                     className="w-full rounded border border-slate-300 px-3 py-2"
                     value={selectedBuyerId}
@@ -527,7 +533,7 @@ function StandardTradeRequestEditor({
                     ))}
                   </select>
                   <p className="text-xs text-neutral-600">
-                    売却先として選んだ会社に依頼が送信され、買手側の「届いた依頼」に表示されます。
+                    取引先として選んだ会社に依頼が送信され、買手側の「届いた依頼」に表示されます。
                   </p>
                   <div className="flex gap-2">
                     <button
@@ -555,7 +561,7 @@ function StandardTradeRequestEditor({
                     className="text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
                     onClick={handleResetBuyerSelection}
                   >
-                    売却先情報を変更
+                    取引先情報を変更
                   </button>
                 </div>
               )}
@@ -707,7 +713,7 @@ function StandardTradeRequestEditor({
                     />
                   </EditRow>
 
-                  <EditRow label="機械発送予定日" required>
+                  <EditRow label="機械発送日" required>
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         type="date"
@@ -856,10 +862,10 @@ function StandardTradeRequestEditor({
                     </div>
                   </EditRow>
 
-                  <EditRow label="メモ">
+                  <EditRow label="備考">
                     <textarea
                       className="h-20 w-full resize-vertical rounded border border-slate-300 px-2 py-1 text-sm"
-                      placeholder="備考など自由入力"
+                        placeholder="備考など自由入力"
                       value={editedConditions.memo ?? ""}
                       onChange={(e) => handleTextConditionChange("memo", e.target.value)}
                     />
@@ -1033,9 +1039,14 @@ function OnlineInquiryCreator({
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-4">
           <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
-              <h2 className="text-base font-semibold text-slate-900">売却先</h2>
-              <span className="text-xs font-semibold text-neutral-700">{seller.companyName}</span>
+            <div className="flex flex-col gap-1 border-b border-slate-200 px-4 py-2">
+              <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
+              <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
+                <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
+                <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
+                <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
+                <span className="text-sm text-neutral-900">{seller.companyName}</span>
+              </div>
             </div>
             <div className="space-y-3 px-4 py-3 text-sm text-neutral-900">
               <div className="grid gap-3 md:grid-cols-2">
@@ -1117,7 +1128,7 @@ function OnlineInquiryCreator({
                     <td className="px-3 py-2">-</td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械発送予定日</th>
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械発送日</th>
                     <td className="px-3 py-2">
                       <input
                         type="date"
@@ -1164,7 +1175,7 @@ function OnlineInquiryCreator({
                     <td className="px-3 py-2">-</td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">メモ</th>
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">備考</th>
                     <td className="px-3 py-2">
                       <textarea
                         className="min-h-[72px] w-full rounded border border-slate-300 px-3 py-2"
