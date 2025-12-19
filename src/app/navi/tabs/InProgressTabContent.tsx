@@ -485,6 +485,7 @@ export function InProgressTabContent() {
             columns={buyerInquiryColumns}
             rows={buyerInquiryRows}
             emptyMessage="現在オンライン問い合わせはありません。"
+            onRowClick={(row) => row.id && router.push(`/navi/inquiries/${(row as InquiryRow).id}`)}
           />
         </div>
       </section>
@@ -515,6 +516,7 @@ export function InProgressTabContent() {
             columns={sellerInquiryColumns}
             rows={sellerInquiryRows}
             emptyMessage="現在オンライン問い合わせはありません。"
+            onRowClick={(row) => row.id && router.push(`/navi/inquiries/${(row as InquiryRow).id}`)}
           />
         </div>
       </section>
