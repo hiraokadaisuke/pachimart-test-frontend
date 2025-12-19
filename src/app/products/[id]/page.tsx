@@ -74,7 +74,7 @@ export default function ProductDetailPage({ params }: ProductDetailPageProps) {
       unitPrice: String(unitPrice),
     });
 
-    router.push(`/trade-navi?${params.toString()}`);
+    router.push(`/navi?${params.toString()}`);
   };
 
   return (

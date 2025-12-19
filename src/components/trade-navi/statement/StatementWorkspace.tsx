@@ -125,7 +125,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       setTrade(updated);
       setMessage("承認しました。ステータスを更新しました。");
       setError(null);
-      router.push("/trade-navi?tab=purchaseHistory");
+      router.push("/navi?tab=purchaseHistory");
     }
   };
 
@@ -139,7 +139,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       setError(null);
 
       const nextTab = actorRole === "seller" ? "salesHistory" : "purchaseHistory";
-      router.push(`/trade-navi?tab=${nextTab}`);
+      router.push(`/navi?tab=${nextTab}`);
     }
   };
 
