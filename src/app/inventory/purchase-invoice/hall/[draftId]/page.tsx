@@ -25,6 +25,14 @@ export default function HallInvoicePage() {
   const [warehousingDate, setWarehousingDate] = useState("");
   const [items, setItems] = useState<PurchaseInvoiceItem[]>([]);
 
+  const COMPANY_INFO = {
+    name: "p-kanriclub",
+    address: "〒169-0075 東京都新宿区高田馬場4-4-17",
+    representative: "代表取締役 田村綾子",
+    tel: "TEL 03-5389-1955",
+    fax: "FAX 03-5389-1956",
+  };
+
   const FEE_OPTIONS = ["ダンボール代", "手数料", "送料", "保険料", "その他", "書類代"];
 
   const triggerDatePicker = (input: HTMLInputElement) => {
@@ -82,20 +90,6 @@ export default function HallInvoicePage() {
   const taxRate = 0.1;
   const tax = Math.floor(subtotal * taxRate);
   const grandTotal = subtotal + tax + Number(shippingInsurance || 0);
-
-  const supplierCard = useMemo(
-    () => {
-      const first = items.find((item) => item.rowType !== "fee");
-      return {
-        name: first?.supplierName || partner || "仕入先未登録",
-        postalCode: first?.supplierPostalCode || "",
-        address: first?.supplierAddress || "",
-        phone: first?.supplierPhone || "",
-        fax: first?.supplierFax || "",
-      };
-    },
-    [items, partner],
-  );
 
   const handleItemChange = (index: number, key: keyof PurchaseInvoiceItem, value: string | number) => {
     setItems((prev) =>
@@ -180,56 +174,61 @@ export default function HallInvoicePage() {
   return (
     <div className="space-y-6">
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-          <div className="space-y-3 text-sm text-neutral-800">
-            <h1 className="text-lg font-semibold leading-relaxed text-neutral-900">
-              p-kanriclub と {partner || "○○法人"} は下記の条件で売買契約を締結いたします
-            </h1>
-            <div className="grid gap-3 md:grid-cols-3">
-              <label className="flex flex-col text-xs font-semibold text-neutral-800 whitespace-nowrap">
-                日付
-                <input
-                  type="date"
-                  value={issuedDate}
-                  onClick={(event) => triggerDatePicker(event.currentTarget)}
-                  onFocus={(event) => triggerDatePicker(event.currentTarget)}
-                  onChange={(event) => setIssuedDate(event.target.value)}
-                  className="h-9 rounded border border-slate-300 bg-yellow-100 px-3 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                />
-              </label>
-              <label className="flex flex-col text-xs font-semibold text-neutral-800 whitespace-nowrap">
-                法人名
-                <input
-                  value={partner}
-                  onChange={(event) => setPartner(event.target.value)}
-                  placeholder="仕入先法人名"
-                  className="h-9 rounded border border-slate-300 bg-yellow-100 px-3 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                />
-              </label>
-              <label className="flex flex-col text-xs font-semibold text-neutral-800 whitespace-nowrap">
-                担当
-                <input
-                  value={staff}
-                  onChange={(event) => setStaff(event.target.value)}
-                  className="h-9 rounded border border-slate-300 bg-yellow-100 px-3 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                />
-              </label>
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+          <div className="flex-1 space-y-3 text-sm text-neutral-800">
+            <div className="flex flex-col gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <h1 className="flex-1 text-lg font-semibold leading-relaxed text-neutral-900">
+                  p-kanriclub と {partner || "○○法人"} は下記の条件で売買契約を締結いたします
+                </h1>
+                <label className="flex items-center gap-2 whitespace-nowrap text-xs font-semibold text-neutral-800">
+                  <span>日付</span>
+                  <input
+                    type="date"
+                    value={issuedDate}
+                    onClick={(event) => triggerDatePicker(event.currentTarget)}
+                    onFocus={(event) => triggerDatePicker(event.currentTarget)}
+                    onChange={(event) => setIssuedDate(event.target.value)}
+                    className="h-9 w-36 rounded border border-slate-300 bg-yellow-100 px-3 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+              </div>
+              <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-neutral-800">
+                <span className="rounded bg-slate-100 px-2 py-1 text-[11px] text-neutral-700">ホール仕入</span>
+                <label className="flex items-center gap-2 whitespace-nowrap">
+                  <span>法人名</span>
+                  <input
+                    value={partner}
+                    onChange={(event) => setPartner(event.target.value)}
+                    placeholder="仕入先法人名"
+                    className="h-9 w-64 rounded border border-slate-300 bg-yellow-100 px-3 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="flex items-center gap-2 whitespace-nowrap">
+                  <span>担当</span>
+                  <input
+                    value={staff}
+                    onChange={(event) => setStaff(event.target.value)}
+                    className="h-9 w-40 rounded border border-slate-300 bg-yellow-100 px-3 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+              </div>
             </div>
           </div>
-          <div className="w-full space-y-1 rounded border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-neutral-900">
+          <div className="w-full max-w-sm rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm font-semibold text-neutral-900 shadow-inner">
             <div className="flex items-center justify-between text-xs font-semibold text-neutral-800">
-              <span>仕入先</span>
-              <span className="rounded bg-slate-200 px-2 py-0.5 text-[10px] text-neutral-700">ホール</span>
+              <span>自社情報</span>
+              <span className="rounded bg-amber-200 px-2 py-0.5 text-[10px] text-neutral-700">p-kanriclub</span>
             </div>
-            <div className="text-base text-neutral-900">{supplierCard.name}</div>
-            <div className="whitespace-nowrap text-xs text-neutral-700">〒{supplierCard.postalCode || "-"}</div>
-            <div className="whitespace-nowrap text-xs text-neutral-700">{supplierCard.address || "住所未登録"}</div>
-            {(supplierCard.phone || supplierCard.fax) && (
-              <div className="flex gap-2 whitespace-nowrap text-[11px] text-neutral-700">
-                {supplierCard.phone && <span>TEL {supplierCard.phone}</span>}
-                {supplierCard.fax && <span>FAX {supplierCard.fax}</span>}
+            <div className="mt-2 space-y-1 text-neutral-900">
+              <div className="text-base">{COMPANY_INFO.name}</div>
+              <div className="whitespace-nowrap text-xs text-neutral-700">{COMPANY_INFO.address}</div>
+              <div className="whitespace-nowrap text-xs text-neutral-700">{COMPANY_INFO.representative}</div>
+              <div className="flex flex-wrap gap-3 whitespace-nowrap text-[11px] text-neutral-700">
+                <span>{COMPANY_INFO.tel}</span>
+                <span>{COMPANY_INFO.fax}</span>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

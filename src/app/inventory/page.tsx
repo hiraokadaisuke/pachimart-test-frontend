@@ -26,26 +26,37 @@ const RESERVED_SELECTION_WIDTH = 48;
 const ACTIONS_COLUMN_WIDTH = 96;
 const COLUMN_SETTINGS_KEY = "inventory_table_columns_v1";
 
+const TRUNCATE_COLUMNS: Array<Column["key"]> = [
+  "maker",
+  "model",
+  "warehouse",
+  "supplier",
+  "staff",
+  "note",
+];
+
+const NUMERIC_COLUMNS: Array<Column["key"]> = ["quantity", "unitPrice", "saleUnitPrice"];
+
 const STATUS_OPTIONS: InventoryStatusOption[] = ["倉庫", "出品中", "売却済"];
 
 const INITIAL_COLUMNS: Column[] = [
-  { key: "id", label: "在庫ID", width: 100, minWidth: 60, visible: true },
-  { key: "createdAt", label: "在庫入力日", width: 90, minWidth: 58, visible: true },
-  { key: "maker", label: "メーカー名", width: 104, minWidth: 70, visible: true },
-  { key: "model", label: "機種名", width: 124, minWidth: 84, visible: true },
-  { key: "kind", label: "種別", width: 56, minWidth: 44, visible: true },
-  { key: "type", label: "タイプ", width: 64, minWidth: 44, visible: true },
-  { key: "quantity", label: "仕入数", width: 66, minWidth: 48, visible: true },
-  { key: "unitPrice", label: "仕入単価", width: 86, minWidth: 60, visible: true },
-  { key: "saleUnitPrice", label: "販売単価", width: 86, minWidth: 60, visible: true },
-  { key: "stockInDate", label: "入庫日", width: 88, minWidth: 62, visible: true },
-  { key: "removeDate", label: "撤去日", width: 88, minWidth: 62, visible: true },
-  { key: "warehouse", label: "保管先", width: 98, minWidth: 70, visible: true },
-  { key: "supplier", label: "仕入先", width: 98, minWidth: 70, visible: true },
-  { key: "staff", label: "担当者", width: 82, minWidth: 58, visible: true },
-  { key: "status", label: "状況", width: 98, minWidth: 74, visible: true },
-  { key: "isVisible", label: "表示", width: 70, minWidth: 52, visible: true },
-  { key: "note", label: "備考", width: 112, minWidth: 78, visible: true },
+  { key: "id", label: "在庫ID", width: 96, minWidth: 68, visible: true },
+  { key: "createdAt", label: "在庫入力日", width: 96, minWidth: 70, visible: true },
+  { key: "maker", label: "メーカー名", width: 96, minWidth: 76, visible: true },
+  { key: "model", label: "機種名", width: 148, minWidth: 110, visible: true },
+  { key: "kind", label: "種別", width: 60, minWidth: 48, visible: true },
+  { key: "type", label: "タイプ", width: 68, minWidth: 50, visible: true },
+  { key: "quantity", label: "仕入数", width: 82, minWidth: 64, visible: true },
+  { key: "unitPrice", label: "仕入単価", width: 96, minWidth: 72, visible: true },
+  { key: "saleUnitPrice", label: "販売単価", width: 96, minWidth: 72, visible: true },
+  { key: "stockInDate", label: "入庫日", width: 92, minWidth: 70, visible: true },
+  { key: "removeDate", label: "撤去日", width: 92, minWidth: 70, visible: true },
+  { key: "warehouse", label: "保管先", width: 126, minWidth: 96, visible: true },
+  { key: "supplier", label: "仕入先", width: 126, minWidth: 96, visible: true },
+  { key: "staff", label: "担当者", width: 94, minWidth: 72, visible: true },
+  { key: "status", label: "状況", width: 96, minWidth: 74, visible: true },
+  { key: "isVisible", label: "表示", width: 74, minWidth: 56, visible: true },
+  { key: "note", label: "備考", width: 130, minWidth: 98, visible: true },
 ];
 
 const truncateText = (text: string) => {
@@ -596,13 +607,21 @@ export default function InventoryPage() {
                   {visibleColumns.map((col) => {
                     const fullText = getCellText(item, String(col.key));
                     const statusValue = (item.status ?? item.stockStatus ?? "倉庫") as InventoryStatusOption;
-                    const displayText = col.key === "id" ? shortenId(fullText) : truncateText(fullText);
+                    const shouldTruncate = TRUNCATE_COLUMNS.includes(col.key);
+                    const displayText =
+                      col.key === "id"
+                        ? shortenId(fullText)
+                        : shouldTruncate
+                          ? truncateText(fullText)
+                          : fullText;
+                    const numeric = NUMERIC_COLUMNS.includes(col.key);
 
                     return (
                       <td
                         key={col.key}
-                        className="border border-slate-300 px-2 py-2 align-middle text-neutral-800"
+                        className={`border border-slate-300 px-2 py-2 align-middle text-neutral-800 ${numeric ? "text-right" : ""}`}
                         style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
+                        title={shouldTruncate || col.key === "id" ? fullText : undefined}
                       >
                         {col.key === "status" ? (
                           <select
@@ -628,7 +647,9 @@ export default function InventoryPage() {
                             </select>
                           </div>
                         ) : (
-                          <span className="block max-w-full truncate" title={fullText}>
+                          <span
+                            className={`block max-w-full ${shouldTruncate ? "truncate" : ""} ${numeric ? "tabular-nums" : ""}`}
+                          >
                             {displayText}
                           </span>
                         )}
