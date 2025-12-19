@@ -18,12 +18,12 @@ import {
 const COLUMN_KEYS = ["board", "frame", "main", "removalDate"] as const;
 type ColumnKey = (typeof COLUMN_KEYS)[number];
 
-const COLUMN_LABELS: Record<ColumnKey, string> = {
-  board: "遊技盤番号等",
-  frame: "枠番号等",
+const getColumnLabels = (type: string) => ({
+  board: type === "S" ? "回胴部" : "遊技盤番号等",
+  frame: type === "S" ? "筐体部" : "枠番号等",
   main: "主基板番号等",
   removalDate: "撤去日",
-};
+});
 
 const createEmptyRow = (index: number): SerialInputRow => ({
   p: index + 1,
@@ -58,6 +58,7 @@ export default function SerialInputPage() {
   });
 
   const machineName = inventory?.machineName ?? "";
+  const columnLabels = useMemo(() => getColumnLabels(inventory?.type ?? ""), [inventory?.type]);
 
   useEffect(() => {
     if (!inventoryId) return;
@@ -150,72 +151,70 @@ export default function SerialInputPage() {
   const noRangeText = useMemo(() => `1 ～ ${units}`, [units]);
 
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h1 className="text-xl font-semibold text-neutral-900">購入機械番号入力</h1>
+    <div className="space-y-3 max-h-screen overflow-hidden">
+      <div className="space-y-1">
+        <h1 className="text-lg font-semibold text-neutral-900">購入機械番号入力</h1>
         <p className="text-sm text-neutral-700">「＊」が表示されているものは分解した商品です。</p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
         <button
           type="button"
           onClick={() => alert("確認書準備中")}
-          className="rounded border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+          className="rounded border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
         >
           確認書(旧)
         </button>
         <button
           type="button"
           onClick={() => alert("確認書準備中")}
-          className="rounded border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+          className="rounded border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
         >
           確認書(新)
         </button>
         <button
           type="button"
           onClick={() => alert("確認書準備中")}
-          className="rounded border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+          className="rounded border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
         >
           確認書
         </button>
       </div>
-
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-neutral-800">
+      <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex items-center gap-2 text-sm font-semibold text-neutral-800">
           <span>機種名</span>
           <span className="text-base font-bold text-neutral-900">{machineName || "機種名未設定"}</span>
         </div>
 
-        <div className="space-y-2">
+        <div className="grid grid-cols-4 gap-2 text-sm">
           {COLUMN_KEYS.map((key) => (
-            <div
-              key={key}
-              className="flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
-            >
-              <div className="flex items-center gap-2 font-semibold text-neutral-800">
-                <span className="text-xs text-neutral-500">{noRangeText}</span>
-                <span>{COLUMN_LABELS[key]}</span>
-              </div>
-              <div className="flex flex-1 flex-wrap items-center gap-2">
+            <div key={key} className="flex flex-col gap-1 rounded border border-slate-200 bg-slate-50 p-2">
+              <div className="text-xs font-semibold text-neutral-800">{columnLabels[key]}</div>
+              <div className="text-[11px] text-neutral-600">{noRangeText}</div>
+              <div>
                 <input
                   type={key === "removalDate" ? "date" : "text"}
                   value={inputs[key]}
                   onChange={(event) => handleInputChange(key, event.target.value)}
                   onClick={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
                   onFocus={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
-                  className="w-1/3 max-w-[180px] rounded border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                  className="w-[110px] rounded border border-slate-300 px-2 py-1 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
                 />
-                <button
-                  type="button"
-                  onClick={() => handleCopy(key)}
-                  className="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
-                >
-                  →
-                </button>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                {key !== "removalDate" && (
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(key)}
+                    className="rounded border border-slate-200 bg-white px-2 py-1 font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+                  >
+                    →
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => handleApply(key)}
-                  className="rounded border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+                  className="rounded border border-slate-200 bg-white px-3 py-1 font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
                 >
                   反映
                 </button>
@@ -227,38 +226,28 @@ export default function SerialInputPage() {
 
       <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
         <h2 className="text-sm font-semibold text-neutral-800">在庫情報</h2>
-        <div className="space-y-1 text-sm text-neutral-900">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
-            <div className="flex flex-wrap items-center gap-2 font-semibold text-neutral-800">
-              <span>機種名</span>
-              <span className="text-neutral-900">{machineName || "機種名未設定"}</span>
-            </div>
-            <div className="flex items-center gap-2 text-neutral-800">
-              <span className="font-semibold">入庫日</span>
-              <span>{inventory?.arrivalDate ?? "-"}</span>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
-            <div className="flex items-center gap-2 text-neutral-800">
-              <span className="font-semibold">仕入先</span>
-              <span className="text-neutral-900">{inventory?.supplier ?? "-"}</span>
-            </div>
-            <div className="flex flex-wrap items-center gap-4 text-neutral-800">
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">タイプ</span>
-                <span className="text-neutral-900">{inventory?.type ?? "-"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="font-semibold">台数</span>
-                <span className="text-neutral-900">{units}</span>
-              </div>
-            </div>
-          </div>
+        <div className="rounded border border-slate-200 bg-slate-50 p-2 text-sm text-neutral-900">
+          <table className="w-full text-left">
+            <tbody>
+              <tr className="align-top">
+                <td className="py-1 pr-4 font-semibold text-neutral-800">機種名</td>
+                <td className="py-1 text-neutral-900">{machineName || "機種名未設定"}</td>
+                <td className="py-1 pr-4 text-right font-semibold text-neutral-800">入庫日</td>
+                <td className="py-1 text-neutral-900">{inventory?.arrivalDate ?? "-"}</td>
+              </tr>
+              <tr className="align-top">
+                <td className="py-1 pr-4 font-semibold text-neutral-800">仕入先</td>
+                <td className="py-1 text-neutral-900">{inventory?.supplier ?? "-"}</td>
+                <td className="py-1 pr-4 text-right font-semibold text-neutral-800">タイプ {inventory?.type ?? "-"}</td>
+                <td className="py-1 text-neutral-900">台数 {units}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-sm font-semibold text-neutral-800">番号入力一覧</h2>
           <label className="flex items-center gap-2 text-sm font-semibold text-neutral-800">
             <span>台数</span>
@@ -267,48 +256,48 @@ export default function SerialInputPage() {
               min={1}
               value={units}
               onChange={(event) => setUnits(Math.max(1, Number(event.target.value) || 1))}
-              className="w-24 rounded border border-slate-300 px-2 py-1 text-right text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+              className="w-20 rounded border border-slate-300 px-2 py-1 text-right text-sm shadow-sm focus:border-sky-500 focus:outline-none"
             />
           </label>
         </div>
 
-        <div className="overflow-x-auto rounded border border-slate-200">
+        <div className="rounded border border-slate-200">
           <table className="min-w-full border-collapse text-sm">
             <thead className="bg-slate-50 text-xs font-semibold text-neutral-700">
               <tr>
-                <th className="border-b border-slate-200 px-2 py-2 text-left">P</th>
-                <th className="border-b border-slate-200 px-2 py-2 text-left">{COLUMN_LABELS.board}</th>
-                <th className="border-b border-slate-200 px-2 py-2 text-left">{COLUMN_LABELS.frame}</th>
-                <th className="border-b border-slate-200 px-2 py-2 text-left">{COLUMN_LABELS.main}</th>
-                <th className="border-b border-slate-200 px-2 py-2 text-left">{COLUMN_LABELS.removalDate}</th>
+                <th className="border-b border-slate-200 px-2 py-1 text-left">P</th>
+                <th className="border-b border-slate-200 px-2 py-1 text-left">{columnLabels.board}</th>
+                <th className="border-b border-slate-200 px-2 py-1 text-left">{columnLabels.frame}</th>
+                <th className="border-b border-slate-200 px-2 py-1 text-left">{columnLabels.main}</th>
+                <th className="border-b border-slate-200 px-2 py-1 text-left">{columnLabels.removalDate}</th>
               </tr>
             </thead>
             <tbody>
               {rows.map((row, index) => (
                 <tr key={row.p} className="odd:bg-white even:bg-slate-50">
-                  <td className="border-b border-slate-200 px-2 py-2 font-semibold text-neutral-800">{row.p}</td>
-                  <td className="border-b border-slate-200 px-2 py-2">
+                  <td className="border-b border-slate-200 px-2 py-1 font-semibold text-neutral-800">{row.p}</td>
+                  <td className="border-b border-slate-200 px-2 py-1">
                     <input
                       value={row.board}
                       onChange={(event) => updateRowValue(index, "board", event.target.value)}
                       className="w-full rounded border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                     />
                   </td>
-                  <td className="border-b border-slate-200 px-2 py-2">
+                  <td className="border-b border-slate-200 px-2 py-1">
                     <input
                       value={row.frame}
                       onChange={(event) => updateRowValue(index, "frame", event.target.value)}
                       className="w-full rounded border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                     />
                   </td>
-                  <td className="border-b border-slate-200 px-2 py-2">
+                  <td className="border-b border-slate-200 px-2 py-1">
                     <input
                       value={row.main}
                       onChange={(event) => updateRowValue(index, "main", event.target.value)}
                       className="w-full rounded border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                     />
                   </td>
-                  <td className="border-b border-slate-200 px-2 py-2">
+                  <td className="border-b border-slate-200 px-2 py-1">
                     <input
                       type="date"
                       value={row.removalDate}
@@ -325,32 +314,32 @@ export default function SerialInputPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2 text-sm">
         <button
           type="button"
           onClick={handlePrev}
-          className="rounded border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+          className="rounded border border-slate-200 bg-white px-3 py-1.5 font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
         >
           前へ
         </button>
         <button
           type="button"
           onClick={handleRegister}
-          className="rounded bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-500"
+          className="rounded bg-emerald-600 px-3 py-1.5 font-semibold text-white shadow hover:bg-emerald-500"
         >
           番号登録
         </button>
         <button
           type="button"
           onClick={handleBack}
-          className="rounded border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+          className="rounded border border-slate-200 bg-white px-3 py-1.5 font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
         >
           戻る
         </button>
         <button
           type="button"
           onClick={handleNext}
-          className="rounded bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-400"
+          className="rounded bg-amber-500 px-3 py-1.5 font-semibold text-white shadow hover:bg-amber-400"
         >
           次へ
         </button>
