@@ -33,10 +33,10 @@ export default function PurchaseInvoiceListPage() {
     return invoices.filter((invoice) => {
       const matchesId = invoice.invoiceId.toLowerCase().includes(filters.id.toLowerCase());
       const matchesMaker = invoice.items.some((item) =>
-        item.maker.toLowerCase().includes(filters.maker.toLowerCase()),
+        (item.maker ?? "").toLowerCase().includes(filters.maker.toLowerCase()),
       );
       const matchesModel = invoice.items.some((item) =>
-        item.machineName.toLowerCase().includes(filters.model.toLowerCase()),
+        (item.machineName ?? "").toLowerCase().includes(filters.model.toLowerCase()),
       );
       const matchesSupplier = (invoice.partnerName ?? "").toLowerCase().includes(filters.supplier.toLowerCase());
       const matchesIssueDate = filters.issueDate
