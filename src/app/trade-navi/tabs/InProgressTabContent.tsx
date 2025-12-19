@@ -22,6 +22,7 @@ import {
   ONLINE_INQUIRY_STORAGE_KEY,
   type OnlineInquiryRecord,
   updateOnlineInquiryStatus,
+  cancelOnlineInquiry,
 } from "@/lib/trade/onlineInquiries";
 
 type TradeSection = TodoUiDef["section"];
@@ -109,18 +110,19 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
 }
 
 function buildInquiryRow(inquiry: OnlineInquiryRecord, viewerId: string): InquiryRow {
-  const updatedAtLabel = formatDateTime(inquiry.updatedAt ?? new Date().toISOString());
+  const updatedAtLabel = formatDateTime(inquiry.updatedAt ?? inquiry.createdAt ?? new Date().toISOString());
   const isSeller = inquiry.sellerUserId === viewerId;
   const kind = isSeller ? ("sell" as const) : ("buy" as const);
+  const totalAmount = inquiry.unitPrice * inquiry.quantity;
 
   return {
     id: inquiry.id,
     updatedAt: updatedAtLabel,
-    partnerName: isSeller ? inquiry.buyerName ?? "買主" : inquiry.sellerName ?? "売主",
+    partnerName: isSeller ? inquiry.buyerCompanyName ?? "買主" : inquiry.sellerCompanyName ?? "売主",
     makerName: inquiry.makerName ?? "-",
-    itemName: inquiry.itemName,
+    itemName: inquiry.productName,
     quantity: inquiry.quantity,
-    totalAmount: inquiry.totalAmount,
+    totalAmount,
     sellerUserId: inquiry.sellerUserId,
     buyerUserId: inquiry.buyerUserId,
     kind,
@@ -187,7 +189,7 @@ export function InProgressTabContent() {
   const mappedInquiryRows = useMemo(
     () =>
       onlineInquiries
-        .filter((inquiry) => inquiry.status === "pending")
+        .filter((inquiry) => inquiry.status === "INQUIRY_RESPONSE_REQUIRED")
         .map((inquiry) => buildInquiryRow(inquiry, currentUser.id)),
     [currentUser.id, onlineInquiries]
   );
@@ -223,17 +225,17 @@ export function InProgressTabContent() {
   const refreshOnlineInquiries = () => setOnlineInquiries(loadOnlineInquiries());
 
   const handleCancelInquiry = (inquiryId: string) => {
-    updateOnlineInquiryStatus(inquiryId, "canceled");
+    cancelOnlineInquiry(inquiryId);
     refreshOnlineInquiries();
   };
 
   const handleAcceptInquiry = (inquiryId: string) => {
-    updateOnlineInquiryStatus(inquiryId, "accepted");
+    updateOnlineInquiryStatus(inquiryId, "ACCEPTED");
     refreshOnlineInquiries();
   };
 
   const handleDeclineInquiry = (inquiryId: string) => {
-    updateOnlineInquiryStatus(inquiryId, "declined");
+    updateOnlineInquiryStatus(inquiryId, "DECLINED");
     refreshOnlineInquiries();
   };
 

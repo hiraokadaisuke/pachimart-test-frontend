@@ -13,8 +13,10 @@ import {
   type DocumentShippingType,
 } from "@/lib/useDummyNavi";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { getDevUsers } from "@/lib/dev-user/users";
+import { DEV_USERS, getDevUsers, findDevUserById, type DevUser } from "@/lib/dev-user/users";
 import { createTradeFromDraft, saveTradeRecord } from "@/lib/trade/storage";
+import { products } from "@/lib/dummyData";
+import { createOnlineInquiry } from "@/lib/trade/onlineInquiries";
 
 const mapDraftConditions = (
   conditions: TradeConditions,
@@ -134,12 +136,30 @@ const validateDraft = (draft: TradeNaviDraft | null): ValidationErrors => {
 };
 
 export function TradeRequestEditor() {
-  const router = useRouter();
-  const params = useParams<{ id?: string }>();
   const searchParams = useSearchParams();
   const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
-  const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const currentUser = useCurrentDevUser();
+  const isInquiryMode = safeSearchParams.get("mode") === "inquiry";
+
+  if (isInquiryMode) {
+    return <OnlineInquiryCreator searchParams={safeSearchParams} currentUser={currentUser} />;
+  }
+
+  return <StandardTradeRequestEditor searchParams={safeSearchParams} currentUser={currentUser} />;
+}
+
+function StandardTradeRequestEditor({
+  searchParams,
+  currentUser,
+}: {
+  searchParams: URLSearchParams;
+  currentUser: DevUser;
+}) {
+  const router = useRouter();
+  const params = useParams<{ id?: string }>();
+  const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
+
+  const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
   const naviTargetId = draft?.productId ?? transactionId;
   const { buyerInfo, propertyInfo, currentConditions, updatedConditions } = useDummyNavi(naviTargetId);
@@ -946,6 +966,168 @@ export function TradeRequestEditor() {
           className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-400"
         >
           内容を確定して取引先に送信する
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function OnlineInquiryCreator({
+  searchParams,
+  currentUser,
+}: {
+  searchParams: URLSearchParams;
+  currentUser: DevUser;
+}) {
+  const router = useRouter();
+  const productId = searchParams.get("productId");
+
+  const product = useMemo(
+    () => products.find((item) => String(item.id) === String(productId)),
+    [productId]
+  );
+
+  const parseNumberParam = (value: string | null, fallback: number): number => {
+    if (!value) return fallback;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+
+  const makerName = searchParams.get("makerName") ?? product?.maker ?? "";
+  const productName = searchParams.get("productName") ?? product?.name ?? "";
+  const quantity = parseNumberParam(searchParams.get("quantity"), product?.quantity ?? 1);
+  const unitPrice = parseNumberParam(searchParams.get("unitPrice"), product?.price ?? 0);
+
+  const sellerUserId =
+    product?.ownerUserId ?? (currentUser.id === DEV_USERS.A.id ? DEV_USERS.B.id : DEV_USERS.A.id);
+  const seller = findDevUserById(sellerUserId) ?? DEV_USERS.B;
+
+  const [shippingAddress, setShippingAddress] = useState(currentUser.address);
+  const [contactPerson, setContactPerson] = useState(currentUser.contactName);
+  const [desiredShipDate, setDesiredShipDate] = useState("");
+  const [desiredPaymentDate, setDesiredPaymentDate] = useState("");
+  const [errors, setErrors] = useState<string[]>([]);
+  const formattedNumber = formatCurrency;
+
+  const totalAmount = unitPrice * quantity;
+
+  const handleSubmit = () => {
+    const missing: string[] = [];
+    if (!shippingAddress.trim()) missing.push("発送先住所を入力してください。");
+    if (!contactPerson.trim()) missing.push("担当者を入力してください。");
+    if (!desiredShipDate) missing.push("発送指定日を入力してください。");
+    if (!desiredPaymentDate) missing.push("支払日を入力してください。");
+
+    setErrors(missing);
+    if (missing.length > 0) return;
+
+    createOnlineInquiry({
+      productId: productId ?? `unknown-${Date.now()}`,
+      sellerUserId,
+      buyerUserId: currentUser.id,
+      buyerCompanyName: currentUser.companyName,
+      sellerCompanyName: seller.companyName,
+      makerName,
+      productName: productName || "商品",
+      quantity,
+      unitPrice,
+      shippingAddress,
+      contactPerson,
+      desiredShipDate,
+      desiredPaymentDate,
+    });
+
+    alert("オンライン問い合わせを送信しました。");
+    router.push("/trade-navi?tab=inProgress");
+  };
+
+  return (
+    <div className="flex flex-col gap-6 pb-10">
+      <section className="flex flex-col gap-2 border-b border-slate-300 pb-4">
+        <h1 className="text-xl font-bold text-slate-900">オンライン問い合わせ作成</h1>
+        <p className="text-sm text-neutral-700">商品の売手にオンラインで問い合わせを送信します。</p>
+        {errors.length > 0 && (
+          <ul className="list-disc space-y-1 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+            {errors.map((error) => (
+              <li key={error}>{error}</li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="space-y-3 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+        <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-base font-semibold text-slate-900">商品情報</h2>
+            <p className="text-xs text-neutral-600">売手: {seller.companyName}</p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800">問い合わせ先</span>
+        </div>
+        <div className="grid gap-2 text-sm text-neutral-900 sm:grid-cols-2 lg:grid-cols-3">
+          <BuyerInfoItem label="メーカー" value={makerName || "-"} emphasis />
+          <BuyerInfoItem label="機種名" value={productName || "-"} />
+          <BuyerInfoItem label="台数" value={`${quantity}台`} />
+          <BuyerInfoItem label="単価" value={formattedNumber(unitPrice)} />
+          <BuyerInfoItem label="合計金額" value={formattedNumber(totalAmount)} />
+          {product?.warehouseName && <BuyerInfoItem label="倉庫" value={product.warehouseName} />}
+        </div>
+      </section>
+
+      <section className="space-y-3 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold text-slate-900">問い合わせ内容</h2>
+          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
+        </div>
+        <div className="space-y-3 text-sm text-neutral-900">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-neutral-800">発送先住所</label>
+            <textarea
+              className="min-h-[72px] w-full rounded border border-slate-300 px-3 py-2"
+              value={shippingAddress}
+              onChange={(e) => setShippingAddress(e.target.value)}
+              placeholder="例：東京都〇〇市1-2-3"
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-800">担当者</label>
+              <input
+                type="text"
+                className="w-full rounded border border-slate-300 px-3 py-2"
+                value={contactPerson}
+                onChange={(e) => setContactPerson(e.target.value)}
+                placeholder="氏名を入力"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-800">発送指定日</label>
+              <input
+                type="date"
+                className="w-full rounded border border-slate-300 px-3 py-2"
+                value={desiredShipDate}
+                onChange={(e) => setDesiredShipDate(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-800">支払日</label>
+              <input
+                type="date"
+                className="w-full rounded border border-slate-300 px-3 py-2"
+                value={desiredPaymentDate}
+                onChange={(e) => setDesiredPaymentDate(e.target.value)}
+              />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="flex justify-center pt-2">
+        <button
+          type="button"
+          className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
+          onClick={handleSubmit}
+        >
+          売手に問い合わせを送信する
         </button>
       </div>
     </div>
