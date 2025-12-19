@@ -64,7 +64,7 @@ export default function SerialInputPage() {
     const all = loadInventoryRecords();
     const target = all.find((record) => record.id === inventoryId) ?? null;
     const saved = loadSerialInput(inventoryId) ?? loadSerialDraft(inventoryId);
-    const baseUnits = saved?.units ?? Number(target?.quantity ?? 1) || 1;
+    const baseUnits = (saved?.units ?? Number(target?.quantity ?? 1)) || 1;
     setInventory(target);
     setUnits(baseUnits);
     const initialRows = Array.from({ length: baseUnits }, (_, index) => {
