@@ -114,6 +114,7 @@ export function InProgressTabContent() {
         .filter(
           (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
         )
+        .filter((trade) => trade.section !== "approval")
         .filter((trade) => {
           if (statusFilter === "inProgress") return trade.isOpen;
           if (statusFilter === "completed")
@@ -164,17 +165,11 @@ export function InProgressTabContent() {
 
   const filteredTrades = useMemo(() => filterTrades(tradeRows), [filterTrades, tradeRows]);
 
-  const buyApproval = filteredTrades.filter(
-    (trade) => trade.kind === "buy" && trade.section === "approval"
-  );
   const buyPayment = filteredTrades.filter(
     (trade) => trade.kind === "buy" && trade.section === "payment"
   );
   const buyConfirmation = filteredTrades.filter(
     (trade) => trade.kind === "buy" && trade.section === "confirmation"
-  );
-  const sellApproval = filteredTrades.filter(
-    (trade) => trade.kind === "sell" && trade.section === "approval"
   );
   const sellPayment = filteredTrades.filter(
     (trade) => trade.kind === "sell" && trade.section === "payment"
@@ -315,21 +310,6 @@ export function InProgressTabContent() {
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
-            description={getInProgressDescription("buy", "application_sent")}
-          >
-            {SECTION_LABELS.approval.title}
-          </SectionHeader>
-          <NaviTable
-            columns={tradeColumnsWithAction}
-            rows={buyApproval}
-            emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
             description={getInProgressDescription("buy", "application_approved")}
           >
             {SECTION_LABELS.payment.title}
@@ -363,20 +343,6 @@ export function InProgressTabContent() {
         <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">
           売却中の商品
         </h2>
-        <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
-            description={getInProgressDescription("sell", "application_sent")}
-          >
-            {SECTION_LABELS.approval.title}
-          </SectionHeader>
-          <NaviTable
-            columns={tradeColumnsWithoutAction}
-            rows={sellApproval}
-            emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
-          />
-        </div>
         <div className="space-y-2">
           <SectionHeader
             className="px-3 py-2 text-xs"
