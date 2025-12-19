@@ -1,14 +1,26 @@
 "use client";
 
 import type React from "react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { addInventoryRecords, generateInventoryId, type InventoryRecord } from "@/lib/demo-data/demoInventory";
-import { DEFAULT_MASTER_DATA, loadMasterData, type MasterData } from "@/lib/demo-data/demoMasterData";
+import {
+  DEFAULT_MASTER_DATA,
+  loadMasterData,
+  type MasterData,
+  type SupplierCategory,
+  type SupplierCorporate,
+} from "@/lib/demo-data/demoMasterData";
 
 type SupplierInfo = {
   supplier: string;
+  supplierBranch?: string;
+  supplierCategory?: SupplierCategory;
+  supplierPostalCode?: string;
+  supplierAddress?: string;
+  supplierPhone?: string;
+  supplierFax?: string;
   inputDate: string;
   notes: string;
   buyerStaff: string;
@@ -102,7 +114,8 @@ export default function InventoryNewPage() {
     buyerStaff: "",
   });
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
-  const [selectedSupplier, setSelectedSupplier] = useState<string>("");
+  const [selectedCorporateId, setSelectedCorporateId] = useState<string>("");
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const makerOptions = useMemo(() => getMakerOptions(MACHINE_CATALOG), []);
   const makerOptionsByKind = useMemo(
     () => ({
@@ -133,13 +146,43 @@ export default function InventoryNewPage() {
   ];
   const supplierOrder: SupplierFieldOrder[] = ["supplier", "inputDate", "buyerStaff"];
 
+  const applySupplierSelection = useCallback((corporate?: SupplierCorporate, branchId?: string) => {
+    const branch = corporate?.branches.find((item) => item.id === branchId) ?? corporate?.branches[0];
+    setSupplierInfo((prev) => ({
+      ...prev,
+      supplier: corporate?.corporateName ?? "",
+      supplierBranch: branch?.name ?? "",
+      supplierCategory: corporate?.category,
+      supplierPostalCode: branch?.postalCode || corporate?.postalCode || "",
+      supplierAddress: branch?.address || corporate?.address || "",
+      supplierPhone: branch?.phone || corporate?.phone || "",
+      supplierFax: branch?.fax || corporate?.fax || "",
+    }));
+  }, []);
+
+  const selectedCorporate = useMemo(
+    () => masterData.suppliers.find((supplier) => supplier.id === selectedCorporateId),
+    [masterData.suppliers, selectedCorporateId],
+  );
+
+  const selectedBranch = useMemo(
+    () => selectedCorporate?.branches.find((branch) => branch.id === selectedBranchId),
+    [selectedCorporate?.branches, selectedBranchId],
+  );
+
   useEffect(() => {
-    setMasterData(loadMasterData());
+    const loaded = loadMasterData();
+    setMasterData(loaded);
     const todayValue = todayString();
     setToday(todayValue);
     setSupplierInfo((prev) => ({ ...prev, inputDate: todayValue }));
     setRows([createBlankRow(todayValue)]);
-  }, []);
+    const firstCorporate = loaded.suppliers[0];
+    const firstBranchId = firstCorporate?.branches[0]?.id ?? "";
+    setSelectedCorporateId(firstCorporate?.id ?? "");
+    setSelectedBranchId(firstBranchId);
+    applySupplierSelection(firstCorporate, firstBranchId);
+  }, [applySupplierSelection]);
 
   const focusKey = (rowIndex: number, field: MachineFieldOrder) => `row-${rowIndex}-${field}`;
 
@@ -201,15 +244,26 @@ export default function InventoryNewPage() {
     });
   };
 
-  const handleSupplierSelect = () => {
-    if (selectedSupplier) {
-      setSupplierInfo((prev) => ({ ...prev, supplier: selectedSupplier }));
-    }
+  const handleCorporateSelect = (value: string) => {
+    setSelectedCorporateId(value);
+    const corporate = masterData.suppliers.find((item) => item.id === value);
+    const nextBranchId = corporate?.branches[0]?.id ?? "";
+    setSelectedBranchId(nextBranchId);
+    applySupplierSelection(corporate, nextBranchId);
+  };
+
+  const handleBranchSelect = (value: string) => {
+    setSelectedBranchId(value);
+    applySupplierSelection(selectedCorporate, value);
   };
 
   const handleSupplierEnter = (event: React.KeyboardEvent<HTMLElement>, field: SupplierFieldOrder) => {
     if (event.key !== "Enter" || event.nativeEvent?.isComposing) return;
     event.preventDefault();
+    if (field === "supplier" && selectedCorporate?.category === "hall") {
+      focusTo("supplier-branch");
+      return;
+    }
     const currentIndex = supplierOrder.indexOf(field);
     if (currentIndex < supplierOrder.length - 1) {
       const nextField = supplierOrder[currentIndex + 1];
@@ -252,6 +306,16 @@ export default function InventoryNewPage() {
   }, [rows]);
 
   const handleSubmit = () => {
+    const corporate = selectedCorporate;
+    const branch = selectedBranch;
+    const supplierName = supplierInfo.supplier || corporate?.corporateName || "";
+    const branchName = supplierInfo.supplierBranch || branch?.name;
+    const supplierAddress =
+      supplierInfo.supplierAddress || branch?.address || corporate?.address || "";
+    const supplierPostalCode =
+      supplierInfo.supplierPostalCode || branch?.postalCode || corporate?.postalCode || "";
+    const supplierPhone = supplierInfo.supplierPhone || branch?.phone || corporate?.phone || "";
+    const supplierFax = supplierInfo.supplierFax || branch?.fax || corporate?.fax || "";
     const prepared: InventoryRecord[] = rows
       .filter((row) => row.maker || row.model)
       .map((row) => {
@@ -278,7 +342,14 @@ export default function InventoryNewPage() {
           pattern: row.pattern || undefined,
           warehouse: row.warehouse || undefined,
           storageLocation: row.warehouse || undefined,
-          supplier: supplierInfo.supplier || undefined,
+          supplier: supplierName || undefined,
+          supplierCorporate: corporate?.corporateName || supplierName || undefined,
+          supplierBranch: branchName || undefined,
+          supplierCategory: corporate?.category,
+          supplierAddress: supplierAddress || undefined,
+          supplierPostalCode: supplierPostalCode || undefined,
+          supplierPhone: supplierPhone || undefined,
+          supplierFax: supplierFax || undefined,
           staff: supplierInfo.buyerStaff || undefined,
           buyerStaff: supplierInfo.buyerStaff || undefined,
           note: row.note || supplierInfo.notes || undefined,
@@ -328,34 +399,78 @@ export default function InventoryNewPage() {
             <div className="px-4 py-2">備考</div>
           </div>
           <div className="grid grid-cols-[1.1fr,0.9fr,0.9fr,1.2fr] items-stretch border-t border-slate-200 text-sm text-neutral-900">
-            <div className="flex flex-col gap-1 border-r border-slate-200 px-4 py-2">
-              <input
-                value={supplierInfo.supplier}
-                onChange={(event) => handleSupplierChange("supplier", event.target.value)}
-                onKeyDown={(event) => handleSupplierEnter(event, "supplier")}
-                list="supplier-options"
-                ref={registerFocus("supplier-supplier")}
-                className={`${inputBase} shadow-none`}
-              />
-              <datalist id="supplier-options">
-                {masterData.suppliers.map((supplier) => (
-                  <option key={supplier} value={supplier} />
-                ))}
-              </datalist>
-              <div className="flex gap-2 text-[12px] text-neutral-700">
-                <input
-                  value={selectedSupplier}
-                  onChange={(event) => setSelectedSupplier(event.target.value)}
-                  placeholder="候補から貼り付け"
-                  className={`${inputBase} flex-1 shadow-none`}
-                />
-                <button
-                  type="button"
-                  onClick={handleSupplierSelect}
-                  className="h-9 rounded border border-slate-300 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+            <div className="flex flex-col gap-2 border-r border-slate-200 px-4 py-2">
+              <label className="flex items-center gap-2 text-xs font-semibold text-neutral-800">
+                <span className="whitespace-nowrap">法人</span>
+                <select
+                  value={selectedCorporateId}
+                  onChange={(event) => handleCorporateSelect(event.target.value)}
+                  onKeyDown={(event) => handleSupplierEnter(event, "supplier")}
+                  ref={registerFocus("supplier-supplier")}
+                  className={`${inputBase} shadow-none`}
                 >
-                  反映
-                </button>
+                  {masterData.suppliers.length === 0 && <option value="">仕入先を登録してください</option>}
+                  {masterData.suppliers.map((supplier) => (
+                    <option key={supplier.id} value={supplier.id}>
+                      {supplier.corporateName}（{supplier.category === "hall" ? "ホール" : "業者"}）
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedCorporate?.category === "hall" && (
+                <label className="flex items-center gap-2 text-xs font-semibold text-neutral-800">
+                  <span className="whitespace-nowrap">支店・ホール</span>
+                  <select
+                    value={selectedBranchId}
+                    onChange={(event) => handleBranchSelect(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                        event.preventDefault();
+                        focusTo("supplier-inputDate");
+                      }
+                    }}
+                    ref={registerFocus("supplier-branch")}
+                    className={`${inputBase} shadow-none`}
+                  >
+                    {(selectedCorporate?.branches ?? []).map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <div className="rounded border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-tight text-neutral-700">
+                <div className="flex items-center justify-between gap-2 whitespace-nowrap text-xs font-semibold text-neutral-800">
+                  <span>{selectedCorporate?.corporateName || "法人未選択"}</span>
+                  <span className="rounded bg-slate-200 px-2 py-0.5 text-[10px] text-neutral-700">
+                    {selectedCorporate?.category === "hall" ? "ホール" : "業者"}
+                  </span>
+                </div>
+                <div className="mt-1 whitespace-nowrap">〒{selectedCorporate?.postalCode || ""}</div>
+                <div className="whitespace-nowrap">{selectedCorporate?.address || "住所未登録"}</div>
+                {(selectedCorporate?.phone || selectedCorporate?.fax) && (
+                  <div className="flex gap-2 whitespace-nowrap">
+                    {selectedCorporate?.phone && <span>TEL {selectedCorporate.phone}</span>}
+                    {selectedCorporate?.fax && <span>FAX {selectedCorporate.fax}</span>}
+                  </div>
+                )}
+                {selectedBranch && (
+                  <div className="mt-2 space-y-0.5 rounded border border-slate-200 bg-white px-2 py-1">
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-800">
+                      <span>支店 / ホール</span>
+                      <span>{selectedBranch.name}</span>
+                    </div>
+                    <div className="whitespace-nowrap">〒{selectedBranch.postalCode}</div>
+                    <div className="whitespace-nowrap">{selectedBranch.address}</div>
+                    {(selectedBranch.phone || selectedBranch.fax) && (
+                      <div className="flex gap-2 whitespace-nowrap">
+                        {selectedBranch.phone && <span>TEL {selectedBranch.phone}</span>}
+                        {selectedBranch.fax && <span>FAX {selectedBranch.fax}</span>}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div className="border-r border-slate-200 px-4 py-2">

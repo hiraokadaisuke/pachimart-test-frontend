@@ -20,6 +20,14 @@ export type PurchaseInvoiceItem = {
   quantity: number;
   unitPrice: number;
   amount: number;
+  storeName?: string;
+  supplierName?: string;
+  supplierPostalCode?: string;
+  supplierAddress?: string;
+  supplierPhone?: string;
+  supplierFax?: string;
+  remainingDebt?: number;
+  rowType?: "machine" | "fee";
   extra?: Record<string, string | number | undefined>;
   note?: string;
 };

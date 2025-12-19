@@ -25,6 +25,13 @@ export type InventoryRecord = {
   warehouse?: string;
   storageLocation?: string;
   supplier?: string;
+  supplierCategory?: "vendor" | "hall";
+  supplierCorporate?: string;
+  supplierBranch?: string;
+  supplierPostalCode?: string;
+  supplierAddress?: string;
+  supplierPhone?: string;
+  supplierFax?: string;
   staff?: string;
   buyerStaff?: string;
   note?: string;
