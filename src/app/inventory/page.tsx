@@ -445,7 +445,7 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="-mx-4 space-y-6 px-0 sm:-mx-6">
+    <div className="space-y-6 px-0">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">在庫一覧</h1>
@@ -524,11 +524,11 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <div ref={tableRef} className="w-full rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full table-fixed border-collapse text-[13px]">
+      <div ref={tableRef} className="w-full overflow-x-auto">
+        <table className="min-w-full table-fixed border-collapse whitespace-nowrap border border-slate-300 text-[13px]">
           <thead className="bg-slate-50 text-left font-semibold text-slate-700">
             <tr>
-              <th className="w-10 border-r border-slate-200 px-3 py-2">
+              <th className="w-10 border border-slate-300 px-3 py-2">
                 <input
                   type="checkbox"
                   checked={filtered.length > 0 && selectedIds.size === filtered.length}
@@ -545,7 +545,7 @@ export default function InventoryPage() {
                     onDragStart={() => handleDragStart(String(col.key))}
                     onDragOver={(event) => handleDragOver(event, String(col.key))}
                     onDrop={() => handleDrop(String(col.key))}
-                    className="relative select-none border-r border-slate-200 px-2 py-2"
+                    className="relative select-none border border-slate-300 px-2 py-2"
                     style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                   >
                     <div className="flex items-center justify-between gap-1 whitespace-nowrap">
@@ -567,7 +567,10 @@ export default function InventoryPage() {
                   </th>
                 );
               })}
-              <th className="border-l border-slate-200 px-3 py-2 text-center" style={{ width: `${ACTIONS_COLUMN_WIDTH}px` }}>
+              <th
+                className="border border-slate-300 px-3 py-2 text-center"
+                style={{ width: `${ACTIONS_COLUMN_WIDTH}px` }}
+              >
                 編集
               </th>
             </tr>
@@ -575,14 +578,14 @@ export default function InventoryPage() {
           <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={visibleColumns.length + 2} className="px-3 py-6 text-center text-sm text-neutral-600">
+                <td colSpan={visibleColumns.length + 2} className="border border-slate-300 px-3 py-6 text-center text-sm text-neutral-600">
                   登録された在庫がありません。
                 </td>
               </tr>
             ) : (
               filtered.map((item) => (
-                <tr key={item.id} className="border-t border-slate-100 text-[13px] hover:bg-sky-50">
-                  <td className="w-10 border-r border-slate-100 px-3 py-2 align-middle">
+                <tr key={item.id} className="border-t border-slate-200 text-[13px] hover:bg-sky-50">
+                  <td className="w-10 border border-slate-300 px-3 py-2 align-middle">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(item.id)}
@@ -598,7 +601,7 @@ export default function InventoryPage() {
                     return (
                       <td
                         key={col.key}
-                        className="whitespace-nowrap border-r border-slate-100 px-2 py-2 align-middle text-neutral-800"
+                        className="border border-slate-300 px-2 py-2 align-middle text-neutral-800"
                         style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                       >
                         {col.key === "status" ? (
@@ -632,7 +635,7 @@ export default function InventoryPage() {
                       </td>
                     );
                   })}
-                  <td className="border-l border-slate-100 px-3 py-2 text-center align-middle">
+                  <td className="border border-slate-300 px-3 py-2 text-center align-middle">
                     <button
                       type="button"
                       onClick={() => openEditor(item)}
