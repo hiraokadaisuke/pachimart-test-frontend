@@ -445,7 +445,7 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="-mx-4 space-y-6 px-0 sm:-mx-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold text-neutral-900">在庫一覧</h1>

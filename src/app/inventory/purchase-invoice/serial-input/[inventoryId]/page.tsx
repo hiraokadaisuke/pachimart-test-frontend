@@ -186,27 +186,25 @@ export default function SerialInputPage() {
           <span className="text-base font-bold text-neutral-900">{machineName || "機種名未設定"}</span>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 text-sm">
+        <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
           {COLUMN_KEYS.map((key) => (
-            <div key={key} className="flex flex-col gap-1 rounded border border-slate-200 bg-slate-50 p-2">
-              <div className="text-xs font-semibold text-neutral-800">{columnLabels[key]}</div>
-              <div className="text-[11px] text-neutral-600">{noRangeText}</div>
-              <div>
+            <div key={key} className="space-y-2 rounded border border-slate-200 bg-slate-50 p-3">
+              <div className="text-xs font-semibold text-neutral-800 whitespace-nowrap">{columnLabels[key]}</div>
+              <div className="flex items-center gap-2 whitespace-nowrap text-xs">
+                <span className="font-medium text-neutral-700">{noRangeText}</span>
                 <input
                   type={key === "removalDate" ? "date" : "text"}
                   value={inputs[key]}
                   onChange={(event) => handleInputChange(key, event.target.value)}
                   onClick={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
                   onFocus={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
-                  className="w-[110px] rounded border border-slate-300 px-2 py-1 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
+                  className="h-8 w-32 rounded border border-slate-300 px-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none sm:w-36 md:w-40"
                 />
-              </div>
-              <div className="flex items-center gap-2 text-xs">
                 {key !== "removalDate" && (
                   <button
                     type="button"
                     onClick={() => handleCopy(key)}
-                    className="rounded border border-slate-200 bg-white px-2 py-1 font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+                    className="flex h-8 items-center justify-center rounded border border-slate-200 bg-white px-2 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
                   >
                     →
                   </button>
@@ -214,7 +212,7 @@ export default function SerialInputPage() {
                 <button
                   type="button"
                   onClick={() => handleApply(key)}
-                  className="rounded border border-slate-200 bg-white px-3 py-1 font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+                  className="flex h-8 items-center justify-center rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
                 >
                   反映
                 </button>
