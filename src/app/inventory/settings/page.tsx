@@ -58,7 +58,7 @@ export default function InventorySettingsPage() {
   const renderSection = (key: MasterKey) => (
     <section key={key} className="space-y-3 rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-neutral-900">{LABELS[key]}</h2>
+        <h2 className="text-lg font-semibold text-neutral-900 whitespace-nowrap">{LABELS[key]}</h2>
         <div className="flex items-center gap-2">
           <input
             value={inputs[key]}
@@ -82,7 +82,9 @@ export default function InventorySettingsPage() {
         <ul className="space-y-2">
           {masterData[key].map((item) => (
             <li key={item} className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2">
-              <span className="text-sm text-neutral-800">{item}</span>
+              <span className="overflow-hidden text-ellipsis whitespace-nowrap text-sm text-neutral-800" title={item}>
+                {item}
+              </span>
               <button
                 type="button"
                 onClick={() => handleDelete(key, item)}
