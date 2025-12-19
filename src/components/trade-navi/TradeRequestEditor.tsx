@@ -481,7 +481,7 @@ function StandardTradeRequestEditor({
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div className="flex items-center gap-3">
             {/* 大見出しをカード見出しより一段階大きく */}
-            <h1 className="text-xl font-bold text-slate-900">依頼作成</h1>
+            <h1 className="text-xl font-bold text-slate-900">ナビ作成</h1>
           </div>
           <div className="flex flex-col gap-2 md:items-end">
             {Object.values(validationErrors).some((error) => Boolean(error)) && (
@@ -665,16 +665,12 @@ function StandardTradeRequestEditor({
               <table className="min-w-full border border-slate-300 text-sm">
                 <thead>
                   <tr className="bg-slate-50 text-left text-xs text-neutral-700">
-                    <th className="w-36 px-3 py-1.5">項目</th>
-                    <th className="w-48 px-3 py-1.5">参考値</th>
+                    <th className="w-40 px-3 py-1.5">項目</th>
                     <th className="px-3 py-1.5">編集</th>
-                </tr>
+                  </tr>
                 </thead>
                 <tbody className="text-slate-900">
                   <EditRow label="単価" required>
-                    <div className="flex items-center gap-2">
-                      <span className="text-neutral-700">{formattedNumber(referenceConditions.price)}</span>
-                    </div>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -689,7 +685,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="台数" required>
-                    <span className="text-neutral-700">{referenceConditions.quantity} 台</span>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -704,7 +699,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="撤去日" required>
-                    <span className="text-neutral-700">{referenceConditions.removalDate}</span>
                     <input
                       type="date"
                       className="w-32 rounded border border-slate-300 px-2 py-1 text-sm"
@@ -714,9 +708,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="機械発送予定日" required>
-                    <span className="text-neutral-700">
-                      {referenceConditions.machineShipmentDate}（{referenceConditions.machineShipmentType}）
-                    </span>
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         type="date"
@@ -734,9 +725,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="書類発送予定日" required>
-                    <span className="text-neutral-700">
-                      {referenceConditions.documentShipmentDate}（{referenceConditions.documentShipmentType}）
-                    </span>
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         type="date"
@@ -754,7 +742,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="支払期日" required>
-                    <span className="text-neutral-700">{referenceConditions.paymentDue}</span>
                     <input
                       type="date"
                       className="w-32 rounded border border-slate-300 px-2 py-1 text-sm"
@@ -764,7 +751,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="機械運賃">
-                    <span className="text-neutral-700">{formattedNumber(referenceConditions.freightCost)}</span>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -779,7 +765,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="出庫手数料">
-                    <span className="text-neutral-700">{formattedNumber(referenceConditions.handlingFee)}</span>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -792,10 +777,8 @@ function StandardTradeRequestEditor({
                       )}
                     </div>
                   </EditRow>
+
                   <EditRow label="段ボール">
-                    <span className="text-neutral-700">
-                      {referenceConditions.cardboardFee ? formattedNumber(referenceConditions.cardboardFee.amount) : "-"}
-                    </span>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -807,9 +790,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="釘シート">
-                    <span className="text-neutral-700">
-                      {referenceConditions.nailSheetFee ? formattedNumber(referenceConditions.nailSheetFee.amount) : "-"}
-                    </span>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -821,9 +801,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="保険">
-                    <span className="text-neutral-700">
-                      {referenceConditions.insuranceFee ? formattedNumber(referenceConditions.insuranceFee.amount) : "-"}
-                    </span>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -835,9 +812,8 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="特記事項">
-                    <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.notes}</span>
                     <textarea
-                      className="w-64 rounded border border-slate-300 px-2 py-1 text-sm"
+                      className="w-full max-w-2xl rounded border border-slate-300 px-2 py-1 text-sm"
                       rows={2}
                       value={editedConditions.notes}
                       onChange={(e) => handleTextConditionChange("notes", e.target.value)}
@@ -845,7 +821,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="取引条件">
-                    <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.terms}</span>
                     <div className="flex flex-col gap-1">
                       <button
                         type="button"
@@ -882,7 +857,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="メモ">
-                    <span className="whitespace-pre-wrap text-neutral-700">{referenceConditions.memo ?? "-"}</span>
                     <textarea
                       className="h-20 w-full resize-vertical rounded border border-slate-300 px-2 py-1 text-sm"
                       placeholder="備考など自由入力"
@@ -892,7 +866,6 @@ function StandardTradeRequestEditor({
                   </EditRow>
 
                   <EditRow label="担当者">
-                    <span className="text-neutral-700">{referenceConditions.handler ?? "-"}</span>
                     <div className="flex flex-col gap-1">
                       <button
                         type="button"
@@ -1140,16 +1113,12 @@ function EditRow({
   required,
 }: {
   label: string;
-  children: [ReactNode, ReactNode] | ReactNode;
+  children: ReactNode;
   required?: boolean;
 }) {
-  const content = Array.isArray(children) ? children : [];
-  const beforeContent = Array.isArray(children) ? content[0] : null;
-  const afterContent = Array.isArray(children) ? content[1] : children;
-
   return (
     <tr className="border-t border-slate-300">
-      <th className="bg-slate-50 px-3 py-1.5 text-left text-xs font-semibold text-neutral-900 align-middle">
+      <th className="w-40 bg-slate-50 px-3 py-1.5 text-left text-xs font-semibold text-neutral-900 align-top">
         <div className="flex items-center gap-1.5">
           <span>{label}</span>
           {required && (
@@ -1157,8 +1126,7 @@ function EditRow({
           )}
         </div>
       </th>
-      <td className="bg-slate-50 px-3 py-1 align-middle text-neutral-800">{beforeContent}</td>
-      <td className="px-3 py-1 align-middle">{afterContent}</td>
+      <td className="px-3 py-2 align-top">{children}</td>
     </tr>
   );
 }

@@ -17,7 +17,7 @@ const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
     href: "/mypage/exhibits",
     matchPrefixes: ["/mypage/exhibits", "/sell"],
   },
-  { label: "取引管理", href: "/trade-navi" },
+  { label: "ナビ管理", href: "/trade-navi" },
   {
     label: "入出金管理",
     href: "/cashflow-navi",
