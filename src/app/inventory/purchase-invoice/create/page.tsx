@@ -108,21 +108,21 @@ export default function PurchaseInvoiceCreatePage() {
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <table className="min-w-full table-fixed divide-y divide-slate-200 border-collapse text-sm">
           <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-700">
             <tr>
-              <th className="px-3 py-3">選択</th>
-              <th className="px-3 py-3">在庫管理ID</th>
-              <th className="px-3 py-3">在庫入力日</th>
-              <th className="px-3 py-3">メーカー名</th>
-              <th className="px-3 py-3">機種名</th>
-              <th className="px-3 py-3">タイプ</th>
-              <th className="px-3 py-3 text-right">仕入数</th>
-              <th className="px-3 py-3 text-right">仕入単価</th>
-              <th className="px-3 py-3">入庫日</th>
-              <th className="px-3 py-3">仕入先</th>
-              <th className="px-3 py-3">仕入担当</th>
-              <th className="px-3 py-3">番号入力</th>
+              <th className="w-[80px] px-3 py-3 font-semibold text-slate-700">選択</th>
+              <th className="w-[136px] px-3 py-3 font-semibold text-slate-700">在庫管理ID</th>
+              <th className="w-[130px] px-3 py-3 font-semibold text-slate-700">在庫入力日</th>
+              <th className="w-[136px] px-3 py-3 font-semibold text-slate-700">メーカー名</th>
+              <th className="w-[196px] px-3 py-3 font-semibold text-slate-700">機種名</th>
+              <th className="w-[96px] px-3 py-3 font-semibold text-slate-700">タイプ</th>
+              <th className="w-[90px] px-3 py-3 text-right font-semibold text-slate-700">仕入数</th>
+              <th className="w-[132px] px-3 py-3 text-right font-semibold text-slate-700">仕入単価</th>
+              <th className="w-[120px] px-3 py-3 font-semibold text-slate-700">入庫日</th>
+              <th className="w-[156px] px-3 py-3 font-semibold text-slate-700">仕入先</th>
+              <th className="w-[132px] px-3 py-3 font-semibold text-slate-700">仕入担当</th>
+              <th className="w-[124px] px-3 py-3 font-semibold text-slate-700">番号入力</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
@@ -143,16 +143,54 @@ export default function PurchaseInvoiceCreatePage() {
                       className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                     />
                   </td>
-                  <td className="px-3 py-3 font-mono text-sm text-neutral-900">{item.id}</td>
-                  <td className="px-3 py-3 text-neutral-800">{formatDate(item.createdAt)}</td>
-                  <td className="px-3 py-3 text-neutral-800">{item.maker}</td>
-                  <td className="px-3 py-3 text-neutral-800">{item.machineName}</td>
-                  <td className="px-3 py-3 text-neutral-800">{item.type}</td>
-                  <td className="px-3 py-3 text-right text-neutral-800">{item.quantity}</td>
-                  <td className="px-3 py-3 text-right text-neutral-800">{formatCurrency(item.unitPrice)}</td>
-                  <td className="px-3 py-3 text-neutral-800">{formatDate(item.arrivalDate)}</td>
-                  <td className="px-3 py-3 text-neutral-800">{item.supplier}</td>
-                  <td className="px-3 py-3 text-neutral-800">{item.buyerStaff}</td>
+                  <td className="px-3 py-3 font-mono text-sm text-neutral-900 whitespace-nowrap text-ellipsis">
+                    {item.id}
+                  </td>
+                  <td className="px-3 py-3 text-neutral-800">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatDate(item.createdAt)}>
+                      {formatDate(item.createdAt)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-neutral-800">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.maker}>
+                      {item.maker}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-neutral-800">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.machineName}>
+                      {item.machineName}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-neutral-800">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.type}>
+                      {item.type}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-right text-neutral-800">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={String(item.quantity)}>
+                      {item.quantity}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-right text-neutral-800">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatCurrency(item.unitPrice)}>
+                      {formatCurrency(item.unitPrice)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-neutral-800">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatDate(item.arrivalDate)}>
+                      {formatDate(item.arrivalDate)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-neutral-800">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.supplier}>
+                      {item.supplier}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-neutral-800">
+                    <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.buyerStaff}>
+                      {item.buyerStaff}
+                    </span>
+                  </td>
                   <td className="px-3 py-3">
                     <button
                       type="button"

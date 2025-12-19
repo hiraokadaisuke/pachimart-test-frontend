@@ -63,14 +63,14 @@ export default function PurchaseInvoiceListPage() {
           <p className="text-sm text-neutral-600">伝票が未作成の在庫です。行から直接伝票登録に進めます。</p>
         </div>
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <table className="min-w-full table-fixed divide-y divide-slate-200 border-collapse text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-700">
               <tr>
-                <th className="px-3 py-3">在庫ID</th>
-                <th className="px-3 py-3">メーカー/機種</th>
-                <th className="px-3 py-3">仕入先</th>
-                <th className="px-3 py-3">状況</th>
-                <th className="px-3 py-3">操作</th>
+                <th className="w-[132px] px-3 py-3 font-semibold text-slate-700">在庫ID</th>
+                <th className="w-[220px] px-3 py-3 font-semibold text-slate-700">メーカー/機種</th>
+                <th className="w-[156px] px-3 py-3 font-semibold text-slate-700">仕入先</th>
+                <th className="w-[112px] px-3 py-3 font-semibold text-slate-700">状況</th>
+                <th className="w-[240px] px-3 py-3 font-semibold text-slate-700">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -83,26 +83,40 @@ export default function PurchaseInvoiceListPage() {
               ) : (
                 uncreated.map((inv) => (
                   <tr key={inv.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-3 font-mono text-sm text-neutral-900">{inv.id}</td>
-                    <td className="px-3 py-3 text-neutral-800">
-                      <div className="font-semibold">{inv.machineName}</div>
-                      <div className="text-xs text-slate-500">{inv.maker}</div>
+                    <td className="px-3 py-3 font-mono text-sm text-neutral-900 whitespace-nowrap text-ellipsis">
+                      {inv.id}
                     </td>
-                    <td className="px-3 py-3 text-neutral-800">{inv.supplier}</td>
-                    <td className="px-3 py-3 text-neutral-800">{inv.stockStatus}</td>
+                    <td className="px-3 py-3 text-neutral-800">
+                      <div className="overflow-hidden text-ellipsis whitespace-nowrap font-semibold" title={inv.machineName}>
+                        {inv.machineName}
+                      </div>
+                      <div className="overflow-hidden text-ellipsis whitespace-nowrap text-xs text-slate-500" title={inv.maker}>
+                        {inv.maker}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 text-neutral-800">
+                      <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={inv.supplier}>
+                        {inv.supplier}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-neutral-800">
+                      <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={inv.stockStatus}>
+                        {inv.stockStatus}
+                      </span>
+                    </td>
                     <td className="px-3 py-3">
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2 whitespace-nowrap text-xs">
                         <button
                           type="button"
                           onClick={() => handleCreateFromRow(inv.id, "vendor")}
-                          className="rounded-md bg-amber-600 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-amber-500"
+                          className="rounded-md bg-amber-600 px-3 py-1 font-semibold text-white shadow hover:bg-amber-500"
                         >
                           業者伝票登録
                         </button>
                         <button
                           type="button"
                           onClick={() => handleCreateFromRow(inv.id, "hall")}
-                          className="rounded-md bg-emerald-600 px-3 py-1 text-xs font-semibold text-white shadow hover:bg-emerald-500"
+                          className="rounded-md bg-emerald-600 px-3 py-1 font-semibold text-white shadow hover:bg-emerald-500"
                         >
                           ホール伝票登録
                         </button>
@@ -130,14 +144,14 @@ export default function PurchaseInvoiceListPage() {
           </Link>
         </div>
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <table className="min-w-full table-fixed divide-y divide-slate-200 border-collapse text-sm">
             <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-700">
               <tr>
-                <th className="px-3 py-3">伝票ID</th>
-                <th className="px-3 py-3">作成日</th>
-                <th className="px-3 py-3">機種</th>
-                <th className="px-3 py-3 text-right">合計</th>
-                <th className="px-3 py-3">詳細</th>
+                <th className="w-[132px] px-3 py-3 font-semibold text-slate-700">伝票ID</th>
+                <th className="w-[126px] px-3 py-3 font-semibold text-slate-700">作成日</th>
+                <th className="w-[220px] px-3 py-3 font-semibold text-slate-700">機種</th>
+                <th className="w-[140px] px-3 py-3 text-right font-semibold text-slate-700">合計</th>
+                <th className="w-[200px] px-3 py-3 font-semibold text-slate-700">詳細</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -150,18 +164,33 @@ export default function PurchaseInvoiceListPage() {
               ) : (
                 created.map((invoice) => (
                   <tr key={invoice.invoiceId} className="hover:bg-slate-50">
-                    <td className="px-3 py-3 font-mono text-sm text-neutral-900">{invoice.invoiceId}</td>
-                    <td className="px-3 py-3 text-neutral-800">{formatDate(invoice.createdAt)}</td>
-                    <td className="px-3 py-3 text-neutral-800">
-                      {invoice.displayTitle ?? `${invoice.items[0]?.machineName ?? "-"}${invoice.items.length > 1 ? " 他" : ""}`}
+                    <td className="px-3 py-3 font-mono text-sm text-neutral-900 whitespace-nowrap text-ellipsis">
+                      {invoice.invoiceId}
                     </td>
-                    <td className="px-3 py-3 text-right text-neutral-800">{formatCurrency(invoice.totalAmount)}</td>
+                    <td className="px-3 py-3 text-neutral-800">
+                      <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatDate(invoice.createdAt)}>
+                        {formatDate(invoice.createdAt)}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-neutral-800">
+                      <span
+                        className="block overflow-hidden text-ellipsis whitespace-nowrap"
+                        title={invoice.displayTitle ?? invoice.items[0]?.machineName}
+                      >
+                        {invoice.displayTitle ?? `${invoice.items[0]?.machineName ?? "-"}${invoice.items.length > 1 ? " 他" : ""}`}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 text-right text-neutral-800">
+                      <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatCurrency(invoice.totalAmount)}>
+                        {formatCurrency(invoice.totalAmount)}
+                      </span>
+                    </td>
                     <td className="px-3 py-3">
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-2 text-xs">
                         <button
                           type="button"
                           onClick={() => setModalInvoice(invoice)}
-                          className="rounded-md border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
+                          className="rounded-md border border-slate-200 px-3 py-1 font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
                         >
                           詳細
                         </button>
@@ -193,24 +222,44 @@ export default function PurchaseInvoiceListPage() {
               </button>
             </div>
             <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <table className="min-w-full table-fixed divide-y divide-slate-200 border-collapse text-sm">
                 <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-700">
                   <tr>
-                    <th className="px-3 py-3">メーカー</th>
-                    <th className="px-3 py-3">機種</th>
-                    <th className="px-3 py-3 text-right">数量</th>
-                    <th className="px-3 py-3 text-right">単価</th>
-                    <th className="px-3 py-3 text-right">金額</th>
+                    <th className="w-[152px] px-3 py-3 font-semibold text-slate-700">メーカー</th>
+                    <th className="w-[220px] px-3 py-3 font-semibold text-slate-700">機種</th>
+                    <th className="w-[96px] px-3 py-3 text-right font-semibold text-slate-700">数量</th>
+                    <th className="w-[128px] px-3 py-3 text-right font-semibold text-slate-700">単価</th>
+                    <th className="w-[140px] px-3 py-3 text-right font-semibold text-slate-700">金額</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
                   {modalInvoice.items.map((item) => (
                     <tr key={`${modalInvoice.invoiceId}-${item.inventoryId}`} className="hover:bg-slate-50">
-                      <td className="px-3 py-2 text-neutral-800">{item.maker}</td>
-                      <td className="px-3 py-2 text-neutral-800">{item.machineName}</td>
-                      <td className="px-3 py-2 text-right text-neutral-800">{item.quantity}</td>
-                      <td className="px-3 py-2 text-right text-neutral-800">{formatCurrency(item.unitPrice)}</td>
-                      <td className="px-3 py-2 text-right text-neutral-800">{formatCurrency(item.amount)}</td>
+                      <td className="px-3 py-2 text-neutral-800">
+                        <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.maker}>
+                          {item.maker}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-neutral-800">
+                        <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.machineName}>
+                          {item.machineName}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right text-neutral-800">
+                        <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={String(item.quantity)}>
+                          {item.quantity}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right text-neutral-800">
+                        <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatCurrency(item.unitPrice)}>
+                          {formatCurrency(item.unitPrice)}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right text-neutral-800">
+                        <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatCurrency(item.amount)}>
+                          {formatCurrency(item.amount)}
+                        </span>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
