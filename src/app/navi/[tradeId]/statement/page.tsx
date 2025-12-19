@@ -13,7 +13,7 @@ export default function StatementPage() {
     <MyPageLayout>
       <StatementWorkspace
         tradeId={tradeId}
-        pageTitle="明細書"
+        pageTitle="送ったナビ確認"
         backHref="/navi"
       />
     </MyPageLayout>

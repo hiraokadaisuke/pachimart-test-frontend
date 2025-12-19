@@ -21,6 +21,7 @@ export type OnlineInquiryRecord = {
   contactPerson: string;
   desiredShipDate: string;
   desiredPaymentDate: string;
+  memo?: string;
   status: OnlineInquiryStatus;
   createdAt: string;
   updatedAt: string;
@@ -44,6 +45,7 @@ const seedInquiries: OnlineInquiryRecord[] = [
     contactPerson: DEV_USERS.A.contactName,
     desiredShipDate: "2025-12-05",
     desiredPaymentDate: "2026-01-10",
+    memo: "納品希望日と支払予定日を共有しています。",
     createdAt: "2025-11-21T03:30:00.000Z",
     updatedAt: "2025-11-21T03:30:00.000Z",
     status: "INQUIRY_RESPONSE_REQUIRED",
@@ -63,6 +65,7 @@ const seedInquiries: OnlineInquiryRecord[] = [
     contactPerson: DEV_USERS.B.contactName,
     desiredShipDate: "2025-12-12",
     desiredPaymentDate: "2026-01-15",
+    memo: "大型案件のため発送手段は相談させてください。",
     createdAt: "2025-11-22T09:00:00.000Z",
     updatedAt: "2025-11-22T09:00:00.000Z",
     status: "INQUIRY_RESPONSE_REQUIRED",
@@ -82,6 +85,7 @@ const seedInquiries: OnlineInquiryRecord[] = [
     contactPerson: DEV_USERS.A.contactName,
     desiredShipDate: "2025-12-20",
     desiredPaymentDate: "2026-01-20",
+    memo: "設置場所の搬入時間帯が限られています。",
     createdAt: "2025-11-23T01:15:00.000Z",
     updatedAt: "2025-11-23T01:15:00.000Z",
     status: "INQUIRY_RESPONSE_REQUIRED",
@@ -131,6 +135,7 @@ function normalizeInquiry(inquiry: OnlineInquiryRecord): OnlineInquiryRecord {
     ...inquiry,
     sellerCompanyName,
     buyerCompanyName,
+    memo: inquiry.memo ?? "",
     status: inquiry.status ?? "INQUIRY_RESPONSE_REQUIRED",
   };
 }

@@ -23,6 +23,7 @@ import { getTodoPresentation } from "@/lib/trade/todo";
 import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
 
 import { StatementDocument } from "./StatementDocument";
+import { ContactSelector } from "./ContactSelector";
 
 type StatementWorkspaceProps = {
   tradeId: string;
@@ -79,6 +80,10 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
   const handlePrint = () => {
     window.print();
+  };
+
+  const handleShippingFieldChange = <K extends keyof ShippingInfo>(key: K, value: string) => {
+    setShipping((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleAddContact = (name: string) => {
@@ -168,121 +173,411 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       : null;
 
   const isApprovalReadOnlyForSeller = todoView?.section === "approval" && actorRole === "seller";
+  const allowShippingEdit = isEditable && todoView?.section === "approval" && actorRole === "buyer";
+
+  const primaryItem = trade.items[0];
+  const quantity = trade.quantity ?? trade.items.reduce((sum, item) => sum + (item.qty ?? 0), 0) || primaryItem?.qty || 1;
+  const unitPrice =
+    primaryItem?.unitPrice ?? (primaryItem?.amount && quantity ? Math.round(primaryItem.amount / quantity) : undefined);
+
+  const findAmountByCategory = (category: string, fallbackLabel?: string) => {
+    const item = trade.items.find((candidate) => candidate.category === category || candidate.itemName === fallbackLabel);
+    if (!item) return null;
+    const qty = item.qty ?? 1;
+    const amount = item.amount ?? (item.unitPrice ?? 0) * qty;
+    return { label: item.itemName ?? fallbackLabel ?? category, amount };
+  };
+
+  const findAmountByLabel = (label: string) => {
+    const item = trade.items.find((candidate) => candidate.itemName === label);
+    if (!item) return null;
+    const qty = item.qty ?? 1;
+    const amount = item.amount ?? (item.unitPrice ?? 0) * qty;
+    return { label: item.itemName ?? label, amount };
+  };
+
+  const amountOf = (item?: { amount?: number; unitPrice?: number; qty?: number | null }) => {
+    if (!item) return 0;
+    const qty = item.qty ?? 1;
+    return item.amount ?? (item.unitPrice ?? 0) * qty;
+  };
+
+  const shippingFee = findAmountByCategory("送料", "送料");
+  const handlingFee = findAmountByCategory("手数料", "出庫手数料");
+  const cardboardFee = findAmountByLabel("段ボール") ?? findAmountByCategory("資材", "段ボール");
+  const nailSheetFee = findAmountByLabel("釘シート");
+  const insuranceFee = findAmountByCategory("保険", "保険");
+
+  const productSubtotal = trade.items
+    .filter((item) => !item.category || item.category === "本体")
+    .reduce((sum, item) => sum + amountOf(item), 0);
+
+  const formatDateLabel = (value?: string) => value || "-";
+
+  const memoText = primaryItem?.note ?? "-";
+  const notesText = trade.remarks ?? "-";
+  const termsText = trade.termsText ?? "-";
+
+  const machineShipmentLabel =
+    trade.shipmentDate || trade.shippingMethod
+      ? [formatDateLabel(trade.shipmentDate), trade.shippingMethod ?? trade.receiveMethod]
+          .filter(Boolean)
+          .join(" / ")
+      : "-";
+
+  const documentShipmentLabel =
+    trade.documentSentDate || trade.documentReceivedDate
+      ? [formatDateLabel(trade.documentSentDate), trade.documentReceivedDate && `到着予定 ${trade.documentReceivedDate}`]
+          .filter(Boolean)
+          .join(" / ")
+      : "-";
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-2 border-b border-slate-200 pb-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-bold text-slate-900">{pageTitle ?? "明細書"}</h1>
-            {statusKey && (
-              <span className="text-xs">
-                <StatusBadge statusKey={statusKey} context="inProgress" />
-              </span>
-            )}
+    <div className="space-y-6">
+      <div className="print-hidden space-y-4">
+        <div className="flex flex-col gap-2 border-b border-slate-200 pb-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-slate-900">{pageTitle ?? "ナビ確認"}</h1>
+              {statusKey && (
+                <span className="text-xs">
+                  <StatusBadge statusKey={statusKey} context="inProgress" />
+                </span>
+              )}
+            </div>
+
+            {headerDescription && <p className="text-sm text-neutral-800">{headerDescription}</p>}
+            {isApprovalReadOnlyForSeller && <p className="text-[11px] text-neutral-600">買主のみ入力・承認できます</p>}
+            {cancelBanner && <p className="text-xs font-semibold text-red-700">{cancelBanner}</p>}
           </div>
 
-          {headerDescription && <p className="text-sm text-neutral-800">{headerDescription}</p>}
-          {isApprovalReadOnlyForSeller && <p className="text-[11px] text-neutral-600">買主のみ入力・承認できます</p>}
-          {cancelBanner && <p className="text-xs font-semibold text-red-700">{cancelBanner}</p>}
-        </div>
-
-        <div className="print-hidden flex flex-wrap items-center gap-2">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handlePrint}
-              className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
-            >
-              印刷 / PDF保存
-            </button>
-            <button
-              type="button"
-              onClick={handleBack}
-              className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
-            >
-              戻る
-            </button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {actorRole !== "none" && (
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-2">
               <button
                 type="button"
-                onClick={handleCancel}
-                disabled={cancelDisabled}
-                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                onClick={handlePrint}
+                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
               >
-                キャンセル
+                明細書としてPDF保存/印刷
               </button>
-            )}
+              <button
+                type="button"
+                onClick={handleBack}
+                className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
+              >
+                戻る
+              </button>
+            </div>
 
-            {todoView?.todoKind === "application_sent" &&
-              todoView?.primaryAction &&
-              todoView?.activeTodo &&
-              todoView.primaryAction.role === actorRole && (
+            <div className="flex items-center gap-2">
+              {actorRole !== "none" && (
                 <button
                   type="button"
-                  onClick={handleApprove}
-                  disabled={approveDisabled}
-                  className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  onClick={handleCancel}
+                  disabled={cancelDisabled}
+                  className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {todoView.primaryAction.label}
+                  見送り / キャンセル
                 </button>
               )}
+
+              {todoView?.todoKind === "application_sent" &&
+                todoView?.primaryAction &&
+                todoView?.activeTodo &&
+                todoView.primaryAction.role === actorRole && (
+                  <button
+                    type="button"
+                    onClick={handleApprove}
+                    disabled={approveDisabled}
+                    className="rounded bg-indigo-700 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800 disabled:cursor-not-allowed disabled:bg-slate-400"
+                  >
+                    {todoView.primaryAction.label}
+                  </button>
+                )}
+            </div>
+
+            {isEditable && approveDisabled && (
+              <p className="w-full text-[11px] text-red-700">
+                承認には {missingFields.map((field) => requiredFieldLabels[field]).join(" / ")} の入力が必要です。
+              </p>
+            )}
           </div>
-
-          {isEditable && approveDisabled && (
-            <p className="w-full text-[11px] text-red-700">
-              承認には {missingFields.map((field) => requiredFieldLabels[field]).join(" / ")} の入力が必要です。
-            </p>
-          )}
         </div>
-      </div>
 
-      {message && (
-        <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
-          {message}
-        </div>
-      )}
-      {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
-      )}
+        {message && (
+          <div className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800">
+            {message}
+          </div>
+        )}
+        {error && (
+          <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">{error}</div>
+        )}
 
-      {totals && (
-        <div className="space-y-4">
-          <div className="rounded border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="grid grid-cols-2 gap-3 text-[12px] text-neutral-900 md:max-w-[420px]">
-              <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-2">
-                <span className="text-neutral-700">買主</span>
-                <span className="font-semibold">{trade.buyer.companyName}</span>
+        {totals && (
+          <div className="space-y-6">
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
+                <p className="text-[11px] font-semibold text-neutral-500">売主</p>
+                <p className="text-sm font-semibold text-slate-900">{trade.seller.companyName}</p>
               </div>
-              <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-2">
-                <span className="text-neutral-700">売主</span>
-                <span className="font-semibold">{trade.seller.companyName}</span>
+              <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
+                <p className="text-[11px] font-semibold text-neutral-500">買主</p>
+                <p className="text-sm font-semibold text-slate-900">{trade.buyer.companyName}</p>
               </div>
-              <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-2">
-                <span className="text-neutral-700">発行日</span>
-                <span className="font-semibold">{trade.contractDate ?? "-"}</span>
+              <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
+                <p className="text-[11px] font-semibold text-neutral-500">更新日</p>
+                <p className="text-sm font-semibold text-slate-900">{formatDateLabel(trade.updatedAt)}</p>
               </div>
-              <div className="flex items-center justify-between rounded border border-slate-200 bg-slate-50 px-2 py-2">
-                <span className="text-neutral-700">合計（税込）</span>
-                <span className="text-base font-bold text-indigo-700">{formatYen(totals.total)}</span>
+              <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
+                <p className="text-[11px] font-semibold text-neutral-500">合計（税込）</p>
+                <p className="text-base font-bold text-indigo-700">{formatYen(totals.total)}</p>
+              </div>
+            </div>
+
+            <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+              <div className="space-y-4">
+                <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+                    <h2 className="text-base font-semibold text-slate-900">売却先</h2>
+                    <span className="text-xs font-semibold text-neutral-600">買手情報</span>
+                  </div>
+                  <div className="space-y-3 px-4 py-3 text-sm text-neutral-900">
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div>
+                        <p className="text-[11px] font-semibold text-neutral-600">会社名</p>
+                        <p className="font-semibold text-slate-900">{trade.buyer.companyName}</p>
+                      </div>
+                      <div>
+                        <p className="text-[11px] font-semibold text-neutral-600">電話番号</p>
+                        <p className="text-neutral-900">{shipping.tel || trade.buyer.tel || "-"}</p>
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-semibold text-neutral-600">発送先住所</p>
+                      {allowShippingEdit ? (
+                        <textarea
+                          className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                          value={shipping.address ?? ""}
+                          onChange={(e) => handleShippingFieldChange("address", e.target.value)}
+                          placeholder="住所を入力"
+                        />
+                      ) : (
+                        <p className="whitespace-pre-line text-neutral-900">{shipping.address || trade.buyer.address || "-"}</p>
+                      )}
+                    </div>
+
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-semibold text-neutral-600">担当者</p>
+                        {allowShippingEdit ? (
+                          <ContactSelector
+                            contacts={contacts}
+                            value={shipping.personName}
+                            onChange={handleContactChange}
+                            onAdd={(name) => handleAddContact(name)}
+                          />
+                        ) : (
+                          <p className="text-neutral-900">{shipping.personName || trade.buyer.contactName || "-"}</p>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-[11px] font-semibold text-neutral-600">郵便番号</p>
+                        {allowShippingEdit ? (
+                          <input
+                            type="text"
+                            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                            value={shipping.zip ?? ""}
+                            onChange={(e) => handleShippingFieldChange("zip", e.target.value)}
+                            placeholder="000-0000"
+                          />
+                        ) : (
+                          <p className="text-neutral-900">{shipping.zip || "-"}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+                    <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
+                    <span className="text-xs font-semibold text-neutral-600">商品</span>
+                  </div>
+                  <div className="grid gap-3 px-4 py-3 text-sm text-neutral-900 md:grid-cols-2">
+                    <div>
+                      <p className="text-[11px] font-semibold text-neutral-600">メーカー</p>
+                      <p className="font-semibold text-slate-900">{trade.makerName ?? primaryItem?.maker ?? "-"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-neutral-600">機種名</p>
+                      <p className="text-neutral-900">{trade.itemName ?? primaryItem?.itemName ?? "取引商品"}</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-neutral-600">台数</p>
+                      <p className="text-neutral-900">{quantity}台</p>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-neutral-600">単価</p>
+                      <p className="text-neutral-900">{unitPrice ? formatYen(unitPrice) : "-"}</p>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+                    <h2 className="text-base font-semibold text-slate-900">取引条件</h2>
+                    <span className="text-xs font-semibold text-neutral-600">ナビ作成と同じ順序</span>
+                  </div>
+                  <div className="overflow-x-auto px-2 py-3">
+                    <table className="min-w-full border border-slate-300 text-sm">
+                      <thead>
+                        <tr className="bg-slate-50 text-left text-xs text-neutral-700">
+                          <th className="w-40 px-3 py-1.5">項目</th>
+                          <th className="px-3 py-1.5">内容</th>
+                        </tr>
+                      </thead>
+                      <tbody className="text-neutral-900">
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">単価</th>
+                          <td className="px-3 py-2">{unitPrice ? formatYen(unitPrice) : "-"}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">台数</th>
+                          <td className="px-3 py-2">{quantity}台</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">撤去日</th>
+                          <td className="px-3 py-2">-</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械発送予定日</th>
+                          <td className="px-3 py-2">{machineShipmentLabel}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">書類発送予定日</th>
+                          <td className="px-3 py-2">{documentShipmentLabel}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">支払日</th>
+                          <td className="px-3 py-2">{formatDateLabel(trade.paymentDate)}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械運賃</th>
+                          <td className="px-3 py-2">{shippingFee ? formatYen(shippingFee.amount) : "-"}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">出庫手数料</th>
+                          <td className="px-3 py-2">{handlingFee ? formatYen(handlingFee.amount) : "-"}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">段ボール</th>
+                          <td className="px-3 py-2">{cardboardFee ? formatYen(cardboardFee.amount) : "-"}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">釘シート</th>
+                          <td className="px-3 py-2">{nailSheetFee ? formatYen(nailSheetFee.amount) : "-"}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">保険</th>
+                          <td className="px-3 py-2">{insuranceFee ? formatYen(insuranceFee.amount) : "-"}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">特記事項</th>
+                          <td className="px-3 py-2">{notesText}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">取引条件（テキスト）</th>
+                          <td className="px-3 py-2 whitespace-pre-line">{termsText}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">メモ</th>
+                          <td className="px-3 py-2 whitespace-pre-line">{memoText}</td>
+                        </tr>
+                        <tr className="border-t border-slate-300">
+                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">担当者</th>
+                          <td className="px-3 py-2">{shipping.personName || trade.handlerName || "-"}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </div>
+
+              <div className="space-y-4">
+                <section className="rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <h3 className="text-base font-semibold text-slate-900">ステータス</h3>
+                    {statusKey && <StatusBadge statusKey={statusKey} context="inProgress" />}
+                  </div>
+                  <p className="mt-2 text-sm text-neutral-800">
+                    {headerDescription ?? "取引内容を確認し、必要に応じて承認や見送りを行ってください。"}
+                  </p>
+                </section>
+
+                <section className="space-y-3 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-base font-semibold text-slate-900">金額内訳</h3>
+                    <span className="text-xs font-semibold text-neutral-700">自動計算</span>
+                  </div>
+                  <div className="space-y-2 text-sm text-slate-800">
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800">商品代金</span>
+                      <span className="font-semibold text-slate-900">{formatYen(productSubtotal)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800">送料</span>
+                      <span className="font-semibold text-slate-900">{shippingFee ? formatYen(shippingFee.amount) : "-"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800">出庫手数料</span>
+                      <span className="font-semibold text-slate-900">{handlingFee ? formatYen(handlingFee.amount) : "-"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800">段ボール</span>
+                      <span className="font-semibold text-slate-900">{cardboardFee ? formatYen(cardboardFee.amount) : "-"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800">釘シート</span>
+                      <span className="font-semibold text-slate-900">{nailSheetFee ? formatYen(nailSheetFee.amount) : "-"}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800">保険</span>
+                      <span className="font-semibold text-slate-900">{insuranceFee ? formatYen(insuranceFee.amount) : "-"}</span>
+                    </div>
+                    <div className="h-px bg-slate-300" aria-hidden />
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800">小計</span>
+                      <span className="font-semibold text-slate-900">{formatYen(totals.totalWithoutTax)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800">消費税</span>
+                      <span className="font-semibold text-slate-900">{formatYen(totals.tax)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-neutral-800">合計</span>
+                      <span className="text-base font-bold text-sky-700">{formatYen(totals.total)}</span>
+                    </div>
+                  </div>
+                </section>
               </div>
             </div>
           </div>
+        )}
+      </div>
 
-          <StatementDocument
-            trade={trade}
-            editable={isEditable}
-            shipping={shipping}
-            onShippingChange={setShipping}
-            contacts={contacts}
-            onContactChange={handleContactChange}
-            onAddContact={handleAddContact}
-          />
-        </div>
-      )}
+      <div className="print-only">
+        <StatementDocument
+          trade={trade}
+          editable={allowShippingEdit}
+          shipping={shipping}
+          onShippingChange={handleShippingFieldChange}
+          contacts={contacts}
+          onContactChange={handleContactChange}
+          onAddContact={handleAddContact}
+        />
+      </div>
     </div>
   );
 }

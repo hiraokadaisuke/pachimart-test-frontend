@@ -13,7 +13,7 @@ export default function BuyerRequestDetailPage() {
     <MyPageLayout>
       <StatementWorkspace
         tradeId={tradeId}
-        pageTitle="届いた依頼（要承認）"
+        pageTitle="届いたナビ確認（要承認）"
         backHref="/navi"
       />
     </MyPageLayout>

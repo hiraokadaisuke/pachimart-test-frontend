@@ -979,6 +979,7 @@ function OnlineInquiryCreator({
   const [contactPerson, setContactPerson] = useState(currentUser.contactName);
   const [desiredShipDate, setDesiredShipDate] = useState("");
   const [desiredPaymentDate, setDesiredPaymentDate] = useState("");
+  const [memo, setMemo] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
   const formattedNumber = formatCurrency;
 
@@ -1008,6 +1009,7 @@ function OnlineInquiryCreator({
       contactPerson,
       desiredShipDate,
       desiredPaymentDate,
+      memo,
     });
 
     alert("オンライン問い合わせを送信しました。");
@@ -1018,7 +1020,7 @@ function OnlineInquiryCreator({
     <div className="flex flex-col gap-6 pb-10">
       <section className="flex flex-col gap-2 border-b border-slate-300 pb-4">
         <h1 className="text-xl font-bold text-slate-900">オンライン問い合わせ作成</h1>
-        <p className="text-sm text-neutral-700">商品の売手にオンラインで問い合わせを送信します。</p>
+        <p className="text-sm text-neutral-700">ナビ作成と同じ構成で、売手へ問い合わせを送信します。</p>
         {errors.length > 0 && (
           <ul className="list-disc space-y-1 rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
             {errors.map((error) => (
@@ -1028,71 +1030,168 @@ function OnlineInquiryCreator({
         )}
       </section>
 
-      <section className="space-y-3 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-base font-semibold text-slate-900">商品情報</h2>
-            <p className="text-xs text-neutral-600">売手: {seller.companyName}</p>
-          </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800">問い合わせ先</span>
-        </div>
-        <div className="grid gap-2 text-sm text-neutral-900 sm:grid-cols-2 lg:grid-cols-3">
-          <BuyerInfoItem label="メーカー" value={makerName || "-"} emphasis />
-          <BuyerInfoItem label="機種名" value={productName || "-"} />
-          <BuyerInfoItem label="台数" value={`${quantity}台`} />
-          <BuyerInfoItem label="単価" value={formattedNumber(unitPrice)} />
-          <BuyerInfoItem label="合計金額" value={formattedNumber(totalAmount)} />
-          {product?.warehouseName && <BuyerInfoItem label="倉庫" value={product.warehouseName} />}
-        </div>
-      </section>
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-4">
+          <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+              <h2 className="text-base font-semibold text-slate-900">売却先</h2>
+              <span className="text-xs font-semibold text-neutral-700">{seller.companyName}</span>
+            </div>
+            <div className="space-y-3 px-4 py-3 text-sm text-neutral-900">
+              <div className="grid gap-3 md:grid-cols-2">
+                <BuyerInfoItem label="メーカー" value={makerName || "-"} emphasis />
+                <BuyerInfoItem label="機種名" value={productName || "-"} />
+                <BuyerInfoItem label="台数" value={`${quantity}台`} />
+                <BuyerInfoItem label="単価" value={formattedNumber(unitPrice)} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-neutral-800">発送先住所</label>
+                <textarea
+                  className="min-h-[72px] w-full rounded border border-slate-300 px-3 py-2"
+                  value={shippingAddress}
+                  onChange={(e) => setShippingAddress(e.target.value)}
+                  placeholder="例：東京都〇〇市1-2-3"
+                />
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-neutral-800">担当者</label>
+                  <input
+                    type="text"
+                    className="w-full rounded border border-slate-300 px-3 py-2"
+                    value={contactPerson}
+                    onChange={(e) => setContactPerson(e.target.value)}
+                    placeholder="氏名を入力"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-neutral-800">支払予定日</label>
+                  <input
+                    type="date"
+                    className="w-full rounded border border-slate-300 px-3 py-2"
+                    value={desiredPaymentDate}
+                    onChange={(e) => setDesiredPaymentDate(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
 
-      <section className="space-y-3 rounded-lg border border-slate-300 bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-2">
-          <h2 className="text-base font-semibold text-slate-900">問い合わせ内容</h2>
-          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
+          <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+              <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
+              <span className="text-xs font-semibold text-neutral-700">問い合わせ対象</span>
+            </div>
+            <div className="grid gap-3 px-4 py-3 text-sm text-neutral-900 md:grid-cols-2">
+              <BuyerInfoItem label="合計金額" value={formattedNumber(totalAmount)} />
+              {product?.warehouseName && <BuyerInfoItem label="倉庫" value={product.warehouseName} />}
+              <BuyerInfoItem label="発送指定日" value={desiredShipDate ? desiredShipDate : "未入力"} />
+              <BuyerInfoItem label="問い合わせ先" value={seller.companyName} />
+            </div>
+          </section>
+
+          <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+              <h2 className="text-base font-semibold text-slate-900">取引条件</h2>
+              <span className="text-xs font-semibold text-neutral-600">ナビ作成の順序に準拠</span>
+            </div>
+            <div className="overflow-x-auto px-2 py-3">
+              <table className="min-w-full border border-slate-300 text-sm">
+                <thead>
+                  <tr className="bg-slate-50 text-left text-xs text-neutral-700">
+                    <th className="w-40 px-3 py-1.5">項目</th>
+                    <th className="px-3 py-1.5">内容</th>
+                  </tr>
+                </thead>
+                <tbody className="text-neutral-900">
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">単価</th>
+                    <td className="px-3 py-2">{formattedNumber(unitPrice)}</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">台数</th>
+                    <td className="px-3 py-2">{quantity}台</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">撤去日</th>
+                    <td className="px-3 py-2">-</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械発送予定日</th>
+                    <td className="px-3 py-2">
+                      <input
+                        type="date"
+                        className="w-full rounded border border-slate-300 px-3 py-2"
+                        value={desiredShipDate}
+                        onChange={(e) => setDesiredShipDate(e.target.value)}
+                      />
+                    </td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">書類発送予定日</th>
+                    <td className="px-3 py-2">-</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">支払日</th>
+                    <td className="px-3 py-2">{desiredPaymentDate || "未入力"}</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械運賃</th>
+                    <td className="px-3 py-2">-</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">出庫手数料</th>
+                    <td className="px-3 py-2">-</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">段ボール</th>
+                    <td className="px-3 py-2">-</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">釘シート</th>
+                    <td className="px-3 py-2">-</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">保険</th>
+                    <td className="px-3 py-2">-</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">特記事項</th>
+                    <td className="px-3 py-2">-</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">取引条件（テキスト）</th>
+                    <td className="px-3 py-2">-</td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">メモ</th>
+                    <td className="px-3 py-2">
+                      <textarea
+                        className="min-h-[72px] w-full rounded border border-slate-300 px-3 py-2"
+                        value={memo}
+                        onChange={(e) => setMemo(e.target.value)}
+                        placeholder="問い合わせ内容を入力"
+                      />
+                    </td>
+                  </tr>
+                  <tr className="border-t border-slate-300">
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">担当者</th>
+                    <td className="px-3 py-2">{contactPerson || "未入力"}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </section>
         </div>
-        <div className="space-y-3 text-sm text-neutral-900">
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-neutral-800">発送先住所</label>
-            <textarea
-              className="min-h-[72px] w-full rounded border border-slate-300 px-3 py-2"
-              value={shippingAddress}
-              onChange={(e) => setShippingAddress(e.target.value)}
-              placeholder="例：東京都〇〇市1-2-3"
-            />
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-800">担当者</label>
-              <input
-                type="text"
-                className="w-full rounded border border-slate-300 px-3 py-2"
-                value={contactPerson}
-                onChange={(e) => setContactPerson(e.target.value)}
-                placeholder="氏名を入力"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-800">発送指定日</label>
-              <input
-                type="date"
-                className="w-full rounded border border-slate-300 px-3 py-2"
-                value={desiredShipDate}
-                onChange={(e) => setDesiredShipDate(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-neutral-800">支払日</label>
-              <input
-                type="date"
-                className="w-full rounded border border-slate-300 px-3 py-2"
-                value={desiredPaymentDate}
-                onChange={(e) => setDesiredPaymentDate(e.target.value)}
-              />
-            </div>
-          </div>
+
+        <div className="space-y-4">
+          <section className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-neutral-800">
+            <p className="font-semibold text-slate-900">金額内訳</p>
+            <p className="mt-1 text-neutral-700">問い合わせでは金額内訳は表示のみです。ナビ確定後に自動計算されます。</p>
+            <p className="mt-2 font-semibold text-slate-900">合計（目安）：{formattedNumber(totalAmount)}</p>
+          </section>
         </div>
-      </section>
+      </div>
 
       <div className="flex justify-center pt-2">
         <button

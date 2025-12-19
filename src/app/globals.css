@@ -48,6 +48,10 @@ a {
   font-size: 12px;
 }
 
+.print-only {
+  display: none;
+}
+
 @media print {
   body {
     background: #fff;
@@ -55,6 +59,10 @@ a {
 
   .print-hidden {
     display: none !important;
+  }
+
+  .print-only {
+    display: block;
   }
 
   .statement-sheet {
