@@ -42,7 +42,7 @@ function TradeNaviContent() {
     const params = new URLSearchParams(searchParams ? searchParams.toString() : "");
     params.set("tab", next);
     const query = params.toString();
-    router.replace(query ? `/trade-navi?${query}` : "/trade-navi", { scroll: false });
+    router.replace(query ? `/navi?${query}` : "/navi", { scroll: false });
   };
 
   return (

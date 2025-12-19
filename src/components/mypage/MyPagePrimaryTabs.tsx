@@ -30,9 +30,9 @@ export const MY_PAGE_SECTIONS: MyPageSection[] = [
   {
     key: "trade",
     label: "取引",
-    href: "/trade-navi",
+    href: "/navi",
     matchPatterns: [
-      "/trade-navi",
+      "/navi",
       "/mypage/dealings",
       "/mypage/todo-list",
       "/mypage/inquiry-messages",

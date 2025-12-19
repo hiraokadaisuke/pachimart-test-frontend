@@ -16,9 +16,9 @@ export function getStatementPath(
   actorRole: "buyer" | "seller"
 ): string {
   if (todoKind === "application_sent" && actorRole === "buyer") {
-    return `/trade-navi/buyer/requests/${tradeId}`;
+    return `/navi/buyer/requests/${tradeId}`;
   }
-  return `/trade-navi/${tradeId}/statement`;
+  return `/navi/${tradeId}/statement`;
 }
 
 export function getStatementPathForTrade(

@@ -387,7 +387,7 @@ function StandardTradeRequestEditor({
     saveTradeRecord(tradeRecord);
     setDraft(updatedDraft);
     alert("取引Naviを売却先へ送信しました。");
-    router.push("/trade-navi");
+    router.push("/navi");
   };
 
   const renderRadioGroup = <T extends string>(
@@ -1011,7 +1011,7 @@ function OnlineInquiryCreator({
     });
 
     alert("オンライン問い合わせを送信しました。");
-    router.push("/trade-navi?tab=inProgress");
+    router.push("/navi?tab=inProgress");
   };
 
   return (
