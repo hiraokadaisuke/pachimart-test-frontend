@@ -17,13 +17,6 @@ import { getInProgressDescription } from "@/lib/trade/copy";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap, type TodoUiDef } from "@/lib/todo/todoUiMap";
-import {
-  acceptOnlineInquiry,
-  ONLINE_INQUIRY_STORAGE_KEY,
-  dismissOnlineInquiry,
-  loadOnlineInquiries,
-  type OnlineInquiryRecord,
-} from "@/lib/trade/onlineInquiries";
 
 type TradeSection = TodoUiDef["section"];
 
@@ -46,18 +39,6 @@ type TradeRow = {
   kind: "buy" | "sell";
   section: TradeSection;
   isOpen: boolean;
-};
-
-type OnlineInquiryRow = {
-  id: string;
-  updatedAt: string;
-  partnerName: string;
-  makerName: string;
-  itemName: string;
-  quantity: number;
-  totalAmount: number;
-  scheduledShipDate: string;
-  paymentDate?: string;
 };
 
 function formatDateTime(iso: string) {
@@ -105,7 +86,6 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
 export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
-  const [onlineInquiries, setOnlineInquiries] = useState<OnlineInquiryRecord[]>([]);
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -132,15 +112,12 @@ export function InProgressTabContent() {
 
   useEffect(() => {
     setTrades(loadAllTrades());
-    setOnlineInquiries(loadOnlineInquiries());
   }, []);
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
       if (event.key === TRADE_STORAGE_KEY) {
         setTrades(loadAllTrades());
-      } else if (event.key === ONLINE_INQUIRY_STORAGE_KEY) {
-        setOnlineInquiries(loadOnlineInquiries());
       }
     };
     window.addEventListener("storage", handleStorage);
@@ -153,46 +130,12 @@ export function InProgressTabContent() {
   );
 
   const filteredTradeRows = useMemo(() => filterTrades(mappedTradeRows), [filterTrades, mappedTradeRows]);
+  const buyerApprovalRows = filteredTradeRows.filter(
+    (row) => row.kind === "buy" && row.section === "approval"
+  );
   const sellerApprovalRows = filteredTradeRows.filter(
     (row) => row.kind === "sell" && row.section === "approval"
   );
-
-  const onlineInquiryRows: OnlineInquiryRow[] = useMemo(
-    () =>
-      onlineInquiries
-        .filter((inquiry) => inquiry.status === "pending")
-        .filter((inquiry) => inquiry.sellerUserId === currentUser.id)
-        .map((inquiry) => ({
-          id: inquiry.id,
-          updatedAt: formatDateTime(inquiry.updatedAt),
-          partnerName: inquiry.buyerName,
-          makerName: inquiry.makerName,
-          itemName: inquiry.itemName,
-          quantity: inquiry.quantity,
-          totalAmount: inquiry.totalAmount,
-          scheduledShipDate: inquiry.scheduledShipDate,
-          paymentDate: inquiry.paymentDate,
-        }))
-        .filter((inquiry) => {
-          const keywordLower = keyword.toLowerCase();
-          if (!keywordLower) return true;
-          return (
-            inquiry.itemName.toLowerCase().includes(keywordLower) ||
-            inquiry.partnerName.toLowerCase().includes(keywordLower)
-          );
-        }),
-    [currentUser.id, keyword, onlineInquiries]
-  );
-
-  const handleAcceptInquiry = (inquiryId: string) => {
-    acceptOnlineInquiry(inquiryId);
-    setOnlineInquiries(loadOnlineInquiries());
-  };
-
-  const handleDismissInquiry = (inquiryId: string) => {
-    dismissOnlineInquiry(inquiryId);
-    setOnlineInquiries(loadOnlineInquiries());
-  };
 
   const getStatementDestination = (row: TradeRow) =>
     getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller");
@@ -288,6 +231,30 @@ export function InProgressTabContent() {
     messageColumn,
   ];
 
+  const buyerApprovalColumns: NaviTableColumn[] = tradeColumnsWithoutAction.map((col) =>
+    col.key === "document"
+      ? {
+          ...col,
+          label: "発送先入力",
+          render: (row: TradeRow) => {
+            const statementPath = getStatementDestination(row);
+            return (
+              <button
+                type="button"
+                className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  router.push(statementPath);
+                }}
+              >
+                入力
+              </button>
+            );
+          },
+        }
+      : col
+  );
+
   const messageThread = getMessagesForTrade(messageTarget);
 
   return (
@@ -297,6 +264,26 @@ export function InProgressTabContent() {
         onKeywordChange={setKeyword}
         hideStatusFilter
       />
+
+      <section className="space-y-4">
+        <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">
+          購入中の商品
+        </h2>
+        <div className="space-y-2">
+          <SectionHeader
+            className="px-3 py-2 text-xs"
+            description={getInProgressDescription("buy", "application_sent")}
+          >
+            {APPROVAL_LABEL.title}
+          </SectionHeader>
+          <NaviTable
+            columns={buyerApprovalColumns}
+            rows={buyerApprovalRows}
+            emptyMessage="現在承認待ちの取引はありません。"
+            onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
+          />
+        </div>
+      </section>
 
       <section className="space-y-4">
         <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">
@@ -314,75 +301,6 @@ export function InProgressTabContent() {
             rows={sellerApprovalRows}
             emptyMessage="現在承認待ちの送信済み取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <SectionHeader className="px-3 py-2 text-xs" description="オンラインで届いた問い合わせへの回答をお待ちください。">
-            オンライン問い合わせ
-          </SectionHeader>
-          <NaviTable
-            columns={[
-              {
-                key: "status",
-                label: "状況",
-                width: "110px",
-                render: () => (
-                  <span className="inline-flex rounded bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800">
-                    回答待ち
-                  </span>
-                ),
-              },
-              { key: "updatedAt", label: "更新日時", width: "160px" },
-              { key: "partnerName", label: "取引先（買手）", width: "18%" },
-              { key: "makerName", label: "メーカー", width: "140px" },
-              { key: "itemName", label: "機種名", width: "22%" },
-              {
-                key: "quantity",
-                label: "台数",
-                width: "80px",
-                render: (row: OnlineInquiryRow) => `${row.quantity}台`,
-              },
-              {
-                key: "totalAmount",
-                label: "合計金額（税込）",
-                width: "140px",
-                render: (row: OnlineInquiryRow) => formatCurrency(row.totalAmount),
-              },
-              { key: "scheduledShipDate", label: "発送指定日", width: "140px" },
-              { key: "paymentDate", label: "支払日", width: "140px" },
-              {
-                key: "action",
-                label: "操作",
-                width: "180px",
-                render: (row: OnlineInquiryRow) => (
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className="inline-flex flex-1 items-center justify-center rounded bg-indigo-700 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAcceptInquiry(row.id);
-                      }}
-                    >
-                      受諾
-                    </button>
-                    <button
-                      type="button"
-                      className="inline-flex flex-1 items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDismissInquiry(row.id);
-                      }}
-                    >
-                      見送り
-                    </button>
-                  </div>
-                ),
-              },
-            ]}
-            rows={onlineInquiryRows}
-            emptyMessage="現在オンライン問い合わせはありません。"
           />
         </div>
       </section>
