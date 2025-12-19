@@ -58,7 +58,11 @@ export default function SerialInputPage() {
   });
 
   const machineName = inventory?.machineName ?? "";
-  const columnLabels = useMemo(() => getColumnLabels(inventory?.type ?? ""), [inventory?.type]);
+  const machineKind = useMemo(() => {
+    const rawKind = (inventory?.kind ?? inventory?.type ?? "P").toString().toUpperCase();
+    return rawKind === "S" ? "S" : "P";
+  }, [inventory?.kind, inventory?.type]);
+  const columnLabels = useMemo(() => getColumnLabels(machineKind), [machineKind]);
 
   useEffect(() => {
     if (!inventoryId) return;
@@ -234,13 +238,21 @@ export default function SerialInputPage() {
                 <td className="py-1 pr-4 font-semibold text-neutral-800">機種名</td>
                 <td className="py-1 text-neutral-900">{machineName || "機種名未設定"}</td>
                 <td className="py-1 pr-4 text-right font-semibold text-neutral-800">入庫日</td>
-                <td className="py-1 text-neutral-900">{inventory?.arrivalDate ?? "-"}</td>
+                <td className="py-1 text-neutral-900 whitespace-nowrap">
+                  {inventory?.stockInDate ?? inventory?.arrivalDate ?? "-"}
+                </td>
               </tr>
               <tr className="align-top">
                 <td className="py-1 pr-4 font-semibold text-neutral-800">仕入先</td>
                 <td className="py-1 text-neutral-900">{inventory?.supplier ?? "-"}</td>
-                <td className="py-1 pr-4 text-right font-semibold text-neutral-800">タイプ {inventory?.type ?? "-"}</td>
-                <td className="py-1 text-neutral-900">台数 {units}</td>
+                <td className="py-1 pr-4 text-right font-semibold text-neutral-800">種別</td>
+                <td className="py-1 text-neutral-900">{machineKind}</td>
+              </tr>
+              <tr className="align-top">
+                <td className="py-1 pr-4 font-semibold text-neutral-800">タイプ</td>
+                <td className="py-1 text-neutral-900">{inventory?.type ?? "-"}</td>
+                <td className="py-1 pr-4 text-right font-semibold text-neutral-800">台数</td>
+                <td className="py-1 text-neutral-900">{units}</td>
               </tr>
             </tbody>
           </table>

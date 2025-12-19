@@ -118,7 +118,7 @@ export default function VendorInvoicePage() {
       };
     });
     setRows(machineRows);
-    setSupplierName(targets[0]?.supplier ?? "仕入先");
+    setSupplierName(targets[0]?.supplierCorporate || targets[0]?.supplier || "仕入先");
   }, [params?.draftId]);
 
   const subtotal = useMemo(() => rows.reduce((sum, item) => sum + (item.amount ?? 0), 0), [rows]);

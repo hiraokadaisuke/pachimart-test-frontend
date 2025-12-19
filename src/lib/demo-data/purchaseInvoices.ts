@@ -29,6 +29,15 @@ export const addPurchaseInvoice = (invoice: PurchaseInvoice): void => {
   savePurchaseInvoices([invoice, ...current]);
 };
 
+export const deletePurchaseInvoices = (invoiceIds: string[]): PurchaseInvoice[] => {
+  const current = loadPurchaseInvoices();
+  if (invoiceIds.length === 0) return current;
+  const targets = new Set(invoiceIds);
+  const remaining = current.filter((invoice) => !targets.has(invoice.invoiceId));
+  savePurchaseInvoices(remaining);
+  return remaining;
+};
+
 export const generateInvoiceId = (type: PurchaseInvoice["invoiceType"]): string => {
   const prefix = type === "vendor" ? "V" : "H";
   return `${prefix}-${Date.now()}`;

@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
-import { formatCurrency, formatDate } from "@/lib/demo-data/demoInventory";
+import { deletePurchaseInvoices, loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
+import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
+import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
 
 const greenHeaderClass = "bg-emerald-700 text-white";
@@ -12,6 +13,7 @@ const borderCell = "border border-emerald-200";
 
 export default function PurchaseInvoiceListPage() {
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
+  const [inventories, setInventories] = useState<InventoryRecord[]>([]);
   const [filters, setFilters] = useState({
     id: "",
     issueDate: "",
@@ -24,10 +26,24 @@ export default function PurchaseInvoiceListPage() {
   });
 
   const [selectedInvoice, setSelectedInvoice] = useState<PurchaseInvoice | null>(null);
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     setInvoices(loadPurchaseInvoices());
+    setInventories(loadInventoryRecords());
   }, []);
+
+  useEffect(() => {
+    setSelectedInvoiceIds((prev) => {
+      const next = new Set<string>();
+      invoices.forEach((invoice) => {
+        if (prev.has(invoice.invoiceId)) {
+          next.add(invoice.invoiceId);
+        }
+      });
+      return next;
+    });
+  }, [invoices]);
 
   const filteredInvoices = useMemo(() => {
     return invoices.filter((invoice) => {
@@ -80,6 +96,40 @@ export default function PurchaseInvoiceListPage() {
       staff: "",
       supplier: "",
     });
+  };
+
+  const inventoryMap = useMemo(() => {
+    return new Map(inventories.map((inventory) => [inventory.id, inventory]));
+  }, [inventories]);
+
+  const getPrimaryInventory = (invoice: PurchaseInvoice) => {
+    const firstInventory = invoice.inventoryIds
+      .map((id) => inventoryMap.get(id))
+      .find((inventory) => Boolean(inventory));
+    return firstInventory ?? null;
+  };
+
+  const handleToggleSelect = (invoiceId: string, checked: boolean) => {
+    setSelectedInvoiceIds((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(invoiceId);
+      } else {
+        next.delete(invoiceId);
+      }
+      return next;
+    });
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedInvoiceIds.size === 0) {
+      alert("削除する伝票を選択してください。");
+      return;
+    }
+    if (!window.confirm("選択した伝票を削除します。よろしいですか？")) return;
+    const updated = deletePurchaseInvoices([...selectedInvoiceIds]);
+    setInvoices(updated);
+    setSelectedInvoiceIds(new Set());
   };
 
   return (
@@ -231,9 +281,21 @@ export default function PurchaseInvoiceListPage() {
       </div>
 
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="h-10 w-2 rounded-full bg-emerald-700" aria-hidden />
-          <h2 className="text-xl font-semibold text-emerald-800">購入伝票リスト</h2>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-2 rounded-full bg-emerald-700" aria-hidden />
+            <h2 className="text-xl font-semibold text-emerald-800">購入伝票リスト</h2>
+          </div>
+          <div className="ml-auto flex items-center gap-2 text-sm">
+            <button
+              type="button"
+              onClick={handleDeleteSelected}
+              disabled={selectedInvoiceIds.size === 0}
+              className="rounded border border-emerald-300 bg-white px-3 py-2 font-semibold text-emerald-800 shadow hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              選択を削除
+            </button>
+          </div>
         </div>
 
         <div className="overflow-x-auto rounded-lg border border-emerald-800 bg-white shadow">
@@ -258,42 +320,60 @@ export default function PurchaseInvoiceListPage() {
                   </td>
                 </tr>
               ) : (
-                limitedInvoices.map((invoice, index) => (
-                  <tr
-                    key={invoice.invoiceId}
-                    className={`${index % 2 === 0 ? "bg-amber-50" : "bg-white"} border border-emerald-200 hover:bg-amber-100`}
-                  >
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 font-mono">{invoice.invoiceId}</td>
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">{formatDate(invoice.createdAt)}</td>
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">
-                      {invoice.items[0]?.maker ?? "-"}
-                    </td>
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">
-                      {invoice.displayTitle ?? invoice.items[0]?.machineName ?? "-"}
-                    </td>
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">
-                      {invoice.partnerName ?? "-"}
-                    </td>
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">-</td>
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">-</td>
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-right font-semibold">
-                      {formatCurrency(invoice.totalAmount)}
-                    </td>
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-center">
-                      <input type="checkbox" className="h-4 w-4 accent-emerald-600" />
-                    </td>
-                    <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => setSelectedInvoice(invoice)}
-                        className="h-8 w-8 rounded-full border border-amber-500 bg-amber-400 text-lg font-bold text-amber-900 shadow hover:bg-amber-300"
-                        aria-label="詳細"
-                      >
-                        +
-                      </button>
-                    </td>
-                  </tr>
-                ))
+                limitedInvoices.map((invoice, index) => {
+                  const primaryInventory = getPrimaryInventory(invoice);
+                  const supplierName =
+                    primaryInventory?.supplierCorporate ||
+                    invoice.partnerName ||
+                    primaryInventory?.supplier ||
+                    "-";
+                  const stockInRaw =
+                    invoice.formInput?.warehousingDate ||
+                    primaryInventory?.stockInDate ||
+                    primaryInventory?.arrivalDate;
+                  const stockIn = formatDate(stockInRaw);
+                  const staffName = invoice.staff ?? primaryInventory?.staff ?? primaryInventory?.buyerStaff ?? "-";
+
+                  return (
+                    <tr
+                      key={invoice.invoiceId}
+                      className={`${index % 2 === 0 ? "bg-amber-50" : "bg-white"} border border-emerald-200 hover:bg-amber-100`}
+                    >
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 font-mono">{invoice.invoiceId}</td>
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">{formatDate(invoice.createdAt)}</td>
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">
+                        {invoice.items[0]?.maker ?? "-"}
+                      </td>
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">
+                        {invoice.displayTitle ?? invoice.items[0]?.machineName ?? "-"}
+                      </td>
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">{supplierName}</td>
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">{stockIn}</td>
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">{staffName}</td>
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-right font-semibold">
+                        {formatCurrency(invoice.totalAmount)}
+                      </td>
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedInvoiceIds.has(invoice.invoiceId)}
+                          onChange={(event) => handleToggleSelect(invoice.invoiceId, event.target.checked)}
+                          className="h-4 w-4 accent-emerald-600"
+                        />
+                      </td>
+                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedInvoice(invoice)}
+                          className="h-8 w-8 rounded-full border border-amber-500 bg-amber-400 text-lg font-bold text-amber-900 shadow hover:bg-amber-300"
+                          aria-label="詳細"
+                        >
+                          +
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

@@ -68,11 +68,13 @@ export default function HallInvoicePage() {
         rowType: "machine",
       };
     });
-    const hallName =
-      targets[0]?.supplierBranch || targets[0]?.supplier || targets[0]?.supplierCorporate || "";
-    if (hallName) {
-      setPartner(hallName);
+    const hallCorporate = targets[0]?.supplierCorporate || targets[0]?.supplier || "";
+    const hallBranch = targets[0]?.supplierBranch || targets[0]?.supplier || "";
+    const defaultPartner = hallCorporate || hallBranch;
+    if (defaultPartner) {
+      setPartner(defaultPartner);
     }
+    setStaff(targets[0]?.staff ?? targets[0]?.buyerStaff ?? "");
     setItems(normalizedItems);
   }, [params?.draftId]);
 
@@ -177,13 +179,13 @@ export default function HallInvoicePage() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="flex-1 min-w-[280px] space-y-3 text-sm text-neutral-800">
-            <h1 className="text-lg font-semibold text-neutral-900">
-              p-kanriclub と {partner || "○○ホール"} は下記の条件で売買契約を締結いたします
+      <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+          <div className="space-y-3 text-sm text-neutral-800">
+            <h1 className="text-lg font-semibold leading-relaxed text-neutral-900">
+              p-kanriclub と {partner || "○○法人"} は下記の条件で売買契約を締結いたします
             </h1>
-            <div className="grid gap-2 md:grid-cols-3">
+            <div className="grid gap-3 md:grid-cols-3">
               <label className="flex flex-col text-xs font-semibold text-neutral-800 whitespace-nowrap">
                 日付
                 <input
@@ -196,10 +198,11 @@ export default function HallInvoicePage() {
                 />
               </label>
               <label className="flex flex-col text-xs font-semibold text-neutral-800 whitespace-nowrap">
-                ホール名
+                法人名
                 <input
                   value={partner}
                   onChange={(event) => setPartner(event.target.value)}
+                  placeholder="仕入先法人名"
                   className="h-9 rounded border border-slate-300 bg-yellow-100 px-3 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
                 />
               </label>
@@ -213,7 +216,7 @@ export default function HallInvoicePage() {
               </label>
             </div>
           </div>
-          <div className="w-full max-w-sm space-y-1 rounded border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-neutral-900">
+          <div className="w-full space-y-1 rounded border border-slate-200 bg-slate-50 p-3 text-sm font-semibold text-neutral-900">
             <div className="flex items-center justify-between text-xs font-semibold text-neutral-800">
               <span>仕入先</span>
               <span className="rounded bg-slate-200 px-2 py-0.5 text-[10px] text-neutral-700">ホール</span>
@@ -292,25 +295,25 @@ export default function HallInvoicePage() {
             <tbody>
               {items.map((item, index) => (
                 <tr key={`${item.inventoryId}-${index}`} className="whitespace-nowrap odd:bg-white even:bg-slate-50">
-                  <td className="border border-slate-300 px-2 py-1">
+                  <td className="border border-slate-300 px-2 py-1 align-middle">
                     <input
                       type="date"
                       value={(item.extra as { removalDate?: string })?.removalDate ?? ""}
                       onClick={(event) => triggerDatePicker(event.currentTarget)}
                       onFocus={(event) => triggerDatePicker(event.currentTarget)}
                       onChange={(event) => handleExtraChange(index, "removalDate", event.target.value)}
-                      className="h-8 w-28 rounded border border-slate-300 bg-yellow-100 px-2 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
+                      className="h-8 w-full min-w-[120px] rounded border border-slate-300 bg-yellow-100 px-2 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
                     />
                   </td>
-                  <td className="border border-slate-300 px-2 py-1">
-                    <input
-                      value={item.storeName ?? (item.extra as { storeName?: string })?.storeName ?? ""}
-                      readOnly
-                      className="h-8 w-40 rounded border border-slate-200 bg-slate-100 px-2 text-xs text-neutral-800 shadow-inner"
-                    />
+                  <td className="border border-slate-300 px-2 py-1 align-middle">
+                    <div className="flex h-8 w-full min-w-[150px] items-center rounded border border-slate-200 bg-slate-100 px-2 text-xs text-neutral-800 shadow-inner">
+                      <span className="truncate">{item.storeName ?? (item.extra as { storeName?: string })?.storeName ?? ""}</span>
+                    </div>
                   </td>
-                  <td className="border border-slate-300 px-2 py-1 text-sm text-neutral-800">{item.maker}</td>
-                  <td className="border border-slate-300 px-2 py-1">
+                  <td className="border border-slate-300 px-2 py-1 text-sm text-neutral-800 align-middle">
+                    <div className="min-w-[110px] truncate">{item.maker}</div>
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1 align-middle">
                     {item.rowType === "fee" ? (
                       <select
                         value={item.machineName}
@@ -327,11 +330,13 @@ export default function HallInvoicePage() {
                       <div className="px-1 text-sm font-semibold text-neutral-900">{item.machineName}</div>
                     )}
                   </td>
-                  <td className="border border-slate-300 px-2 py-1 text-sm text-neutral-800">{item.type}</td>
-                  <td className="border border-slate-300 px-2 py-1 text-right text-sm text-neutral-900">
+                  <td className="border border-slate-300 px-2 py-1 text-sm text-neutral-800 align-middle">
+                    <div className="min-w-[70px] truncate">{item.type}</div>
+                  </td>
+                  <td className="border border-slate-300 px-2 py-1 text-right text-sm text-neutral-900 align-middle">
                     {item.remainingDebt != null ? item.remainingDebt.toLocaleString() : "―"}
                   </td>
-                  <td className="border border-slate-300 px-2 py-1 text-right">
+                  <td className="border border-slate-300 px-2 py-1 text-right align-middle">
                     <input
                       type="number"
                       value={item.quantity}
@@ -339,7 +344,7 @@ export default function HallInvoicePage() {
                       className="h-8 w-16 rounded border border-slate-300 bg-yellow-100 px-2 text-right text-xs shadow-sm focus:border-sky-500 focus:outline-none"
                     />
                   </td>
-                  <td className="border border-slate-300 px-2 py-1 text-right">
+                  <td className="border border-slate-300 px-2 py-1 text-right align-middle">
                     <input
                       type="number"
                       value={item.unitPrice}
@@ -347,10 +352,10 @@ export default function HallInvoicePage() {
                       className="h-8 w-20 rounded border border-slate-300 bg-yellow-100 px-2 text-right text-xs shadow-sm focus:border-sky-500 focus:outline-none"
                     />
                   </td>
-                  <td className="border border-slate-300 px-2 py-1 text-right text-sm font-semibold text-neutral-900">
+                  <td className="border border-slate-300 px-2 py-1 text-right text-sm font-semibold text-neutral-900 align-middle">
                     {formatCurrency(item.amount)}
                   </td>
-                  <td className="border border-slate-300 px-2 py-1">
+                  <td className="border border-slate-300 px-2 py-1 align-middle">
                     <input
                       value={item.note ?? ""}
                       onChange={(event) => handleItemChange(index, "note", event.target.value)}
