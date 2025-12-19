@@ -108,10 +108,6 @@ export default function SerialInputPage() {
     setRows((prev) => prev.map((row) => ({ ...row, [key]: inputs[key] })));
   };
 
-  const handleFullApply = (key: ColumnKey) => {
-    handleApply(key);
-  };
-
   const updateRowValue = (index: number, key: ColumnKey, value: string) => {
     setRows((prev) => prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: value } : row)));
   };
@@ -185,96 +181,80 @@ export default function SerialInputPage() {
       </div>
 
       <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="text-sm font-semibold text-neutral-800">機種名</div>
-          <div className="text-lg font-semibold text-neutral-900">{machineName || "機種名未設定"}</div>
+        <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-neutral-800">
+          <span>機種名</span>
+          <span className="text-base font-bold text-neutral-900">{machineName || "機種名未設定"}</span>
         </div>
 
-        <div className="overflow-x-auto rounded border border-slate-200">
-          <table className="min-w-full border-collapse text-sm">
-            <thead className="bg-slate-50 text-xs font-semibold text-neutral-700">
-              <tr>
-                <th className="border-b border-slate-200 px-2 py-2 text-left">項目</th>
-                <th className="border-b border-slate-200 px-2 py-2 text-left">No範囲</th>
-                <th className="border-b border-slate-200 px-2 py-2 text-left">入力</th>
-                <th className="border-b border-slate-200 px-2 py-2 text-center">→</th>
-                <th className="border-b border-slate-200 px-2 py-2 text-center">反映</th>
-                <th className="border-b border-slate-200 px-2 py-2 text-center">全反映</th>
-              </tr>
-            </thead>
-            <tbody>
-              {COLUMN_KEYS.map((key) => (
-                <tr key={key} className="odd:bg-white even:bg-slate-50">
-                  <td className="border-b border-slate-200 px-2 py-2 font-semibold text-neutral-800">{COLUMN_LABELS[key]}</td>
-                  <td className="border-b border-slate-200 px-2 py-2 text-neutral-700">{noRangeText}</td>
-                  <td className="border-b border-slate-200 px-2 py-2">
-                    <input
-                      type={key === "removalDate" ? "date" : "text"}
-                      value={inputs[key]}
-                      onChange={(event) => handleInputChange(key, event.target.value)}
-                      onClick={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
-                      onFocus={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
-                      className="w-full rounded border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-                    />
-                  </td>
-                  <td className="border-b border-slate-200 px-2 py-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleCopy(key)}
-                      className="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
-                    >
-                      →
-                    </button>
-                  </td>
-                  <td className="border-b border-slate-200 px-2 py-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleApply(key)}
-                      className="rounded border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
-                    >
-                      反映
-                    </button>
-                  </td>
-                  <td className="border-b border-slate-200 px-2 py-2 text-center">
-                    <button
-                      type="button"
-                      onClick={() => handleFullApply(key)}
-                      className="rounded border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
-                    >
-                      全反映
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="space-y-2">
+          {COLUMN_KEYS.map((key) => (
+            <div
+              key={key}
+              className="flex flex-wrap items-center gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+            >
+              <div className="flex items-center gap-2 font-semibold text-neutral-800">
+                <span className="text-xs text-neutral-500">{noRangeText}</span>
+                <span>{COLUMN_LABELS[key]}</span>
+              </div>
+              <div className="flex flex-1 flex-wrap items-center gap-2">
+                <input
+                  type={key === "removalDate" ? "date" : "text"}
+                  value={inputs[key]}
+                  onChange={(event) => handleInputChange(key, event.target.value)}
+                  onClick={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
+                  onFocus={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
+                  className="w-1/3 max-w-[180px] rounded border border-slate-300 px-2 py-1 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleCopy(key)}
+                  className="rounded border border-slate-200 bg-white px-2 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+                >
+                  →
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleApply(key)}
+                  className="rounded border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-neutral-800 shadow-sm hover:bg-slate-50"
+                >
+                  反映
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-        <h2 className="mb-3 text-sm font-semibold text-neutral-800">在庫情報</h2>
-        <table className="min-w-full border-collapse text-sm">
-          <tbody>
-            <tr className="border-b border-slate-200">
-              <th className="bg-slate-50 px-3 py-2 text-left font-semibold text-neutral-700">在庫管理ID</th>
-              <td className="px-3 py-2 text-neutral-900">{inventory?.id ?? "-"}</td>
-              <th className="bg-slate-50 px-3 py-2 text-left font-semibold text-neutral-700">仕入先</th>
-              <td className="px-3 py-2 text-neutral-900">{inventory?.supplier ?? "-"}</td>
-            </tr>
-            <tr className="border-b border-slate-200">
-              <th className="bg-slate-50 px-3 py-2 text-left font-semibold text-neutral-700">タイプ</th>
-              <td className="px-3 py-2 text-neutral-900">{inventory?.type ?? "-"}</td>
-              <th className="bg-slate-50 px-3 py-2 text-left font-semibold text-neutral-700">台数</th>
-              <td className="px-3 py-2 text-neutral-900">{units}</td>
-            </tr>
-            <tr>
-              <th className="bg-slate-50 px-3 py-2 text-left font-semibold text-neutral-700">入庫日</th>
-              <td className="px-3 py-2 text-neutral-900">{inventory?.arrivalDate ?? "-"}</td>
-              <th className="bg-slate-50 px-3 py-2 text-left font-semibold text-neutral-700">仕入担当</th>
-              <td className="px-3 py-2 text-neutral-900">{inventory?.buyerStaff ?? "-"}</td>
-            </tr>
-          </tbody>
-        </table>
+      <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+        <h2 className="text-sm font-semibold text-neutral-800">在庫情報</h2>
+        <div className="space-y-1 text-sm text-neutral-900">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="flex flex-wrap items-center gap-2 font-semibold text-neutral-800">
+              <span>機種名</span>
+              <span className="text-neutral-900">{machineName || "機種名未設定"}</span>
+            </div>
+            <div className="flex items-center gap-2 text-neutral-800">
+              <span className="font-semibold">入庫日</span>
+              <span>{inventory?.arrivalDate ?? "-"}</span>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
+            <div className="flex items-center gap-2 text-neutral-800">
+              <span className="font-semibold">仕入先</span>
+              <span className="text-neutral-900">{inventory?.supplier ?? "-"}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-4 text-neutral-800">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">タイプ</span>
+                <span className="text-neutral-900">{inventory?.type ?? "-"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">台数</span>
+                <span className="text-neutral-900">{units}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-3 rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
