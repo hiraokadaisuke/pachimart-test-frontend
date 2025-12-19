@@ -19,9 +19,9 @@ const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
   },
   { label: "ナビ管理", href: "/navi" },
   {
-    label: "入出金管理",
-    href: "/cashflow-navi",
-    matchPrefixes: ["/cashflow-navi"],
+    label: "決済管理",
+    href: "/payments",
+    matchPrefixes: ["/payments"],
   },
   { label: "通知", href: "/mypage/notices", matchPrefixes: ["/mypage/notices", "/mypage/pachi-notice"] },
   { label: "設定", href: "/mypage/settings", matchPrefixes: ["/mypage/user", "/mypage/company", "/mypage/machine-storage-locations", "/mypage/pachi-notification-settings", "/mypage/settings"] },
