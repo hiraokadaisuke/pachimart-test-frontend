@@ -104,3 +104,18 @@ export async function fetchTradeRecordById(tradeId: string): Promise<TradeRecord
   const trade = await fetchTradeNaviById(tradeId);
   return trade ? mapTradeNaviToTradeRecord(trade) : null;
 }
+
+export async function updateTradeStatus(tradeId: string, status: "APPROVED" | "REJECTED") {
+  const response = await fetch(`/api/trades/${tradeId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ status }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Failed to update trade ${tradeId}: ${response.status} ${detail}`);
+  }
+}
