@@ -46,6 +46,7 @@ model TradeNavi {
   ownerUser User @relation("TradeNaviOwner", fields: [ownerUserId], references: [id])
   buyerUser User? @relation("TradeNaviBuyer", fields: [buyerUserId], references: [id])
   trade     Trade?
+  messages  Message[]
 }
 
 model Trade {
