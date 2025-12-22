@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -89,7 +89,7 @@ const defaultForm: FormState = {
 const formatNumber = (value: number) =>
   value.toLocaleString("ja-JP", { style: "currency", currency: "JPY", maximumFractionDigits: 0 });
 
-export default function VendorSalesInvoiceCreatePage() {
+function VendorSalesInvoiceCreateContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [records, setRecords] = useState<InventoryRecord[]>([]);
@@ -696,5 +696,13 @@ export default function VendorSalesInvoiceCreatePage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function VendorSalesInvoiceCreatePage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-slate-700">読み込み中...</div>}>
+      <VendorSalesInvoiceCreateContent />
+    </Suspense>
   );
 }

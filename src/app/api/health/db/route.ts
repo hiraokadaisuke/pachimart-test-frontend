@@ -3,6 +3,13 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 
 export async function GET() {
+  if (!process.env.PRISMA_DATABASE_URL) {
+    return NextResponse.json(
+      { ok: false, error: "PRISMA_DATABASE_URL is not configured" },
+      { status: 503 },
+    );
+  }
+
   try {
     await prisma.$queryRaw`SELECT 1`;
     return NextResponse.json({ ok: true });
