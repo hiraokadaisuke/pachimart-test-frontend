@@ -1,4 +1,4 @@
-import { Prisma, TradeNavi, TradeNaviStatus } from "@prisma/client";
+import { Prisma, TradeNaviStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -12,6 +12,16 @@ type TradeNaviDto = {
   payload: Prisma.JsonValue | null;
   createdAt: string;
   updatedAt: string;
+};
+
+type TradeNaviRecord = {
+  id: number;
+  status: TradeNaviStatus;
+  ownerUserId: string;
+  buyerUserId: string | null;
+  payload: Prisma.JsonValue | null;
+  createdAt: Date;
+  updatedAt: Date;
 };
 
 const jsonValueSchema: z.ZodType<Prisma.JsonValue> = z.lazy(() =>
@@ -32,7 +42,7 @@ const createTradeSchema = z.object({
   payload: jsonValueSchema.optional(),
 });
 
-const toDto = (trade: TradeNavi): TradeNaviDto => ({
+const toDto = (trade: TradeNaviRecord): TradeNaviDto => ({
   id: trade.id,
   status: trade.status,
   ownerUserId: trade.ownerUserId,

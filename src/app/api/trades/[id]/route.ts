@@ -1,4 +1,4 @@
-import { Prisma, TradeNavi, TradeNaviStatus } from "@prisma/client";
+import { Prisma, TradeNaviStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -10,7 +10,17 @@ const updateTradeSchema = z.object({
   }),
 });
 
-const toDto = (trade: TradeNavi) => ({
+type TradeNaviRecord = {
+  id: number;
+  status: TradeNaviStatus;
+  ownerUserId: string;
+  buyerUserId: string | null;
+  payload: Prisma.JsonValue | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+const toDto = (trade: TradeNaviRecord) => ({
   id: trade.id,
   status: trade.status,
   ownerUserId: trade.ownerUserId,
