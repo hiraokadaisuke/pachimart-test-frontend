@@ -76,3 +76,31 @@ export async function fetchTradeRecordsFromApi(): Promise<TradeRecord[]> {
     .map((trade) => mapTradeNaviToTradeRecord(trade))
     .filter((trade): trade is TradeRecord => Boolean(trade));
 }
+
+export async function fetchTradeNaviById(tradeId: string): Promise<TradeNaviDto | null> {
+  const response = await fetch(`/api/trades/${tradeId}`);
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Failed to fetch trade ${tradeId}: ${response.status} ${detail}`);
+  }
+
+  const json = (await response.json()) as unknown;
+  const parsed = tradeNaviSchema.safeParse(json);
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.message);
+  }
+
+  return {
+    ...parsed.data,
+    payload: (parsed.data.payload as Prisma.JsonValue | null) ?? null,
+  } satisfies TradeNaviDto;
+}
+
+export async function fetchTradeRecordById(tradeId: string): Promise<TradeRecord | null> {
+  const trade = await fetchTradeNaviById(tradeId);
+  return trade ? mapTradeNaviToTradeRecord(trade) : null;
+}

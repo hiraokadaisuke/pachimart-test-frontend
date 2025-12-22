@@ -11,13 +11,12 @@ import { canApprove, canCancel } from "@/lib/trade/permissions";
 import {
   addBuyerContact,
   ensureContactsLoaded,
-  loadTrade,
   approveTrade,
   saveContactsToTrade,
   cancelTrade,
   updateTradeShipping,
 } from "@/lib/trade/storage";
-import { loadTradeById } from "@/lib/trade/dataSources";
+import { fetchTradeRecordById } from "@/lib/trade/api";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getTodoPresentation } from "@/lib/trade/todo";
@@ -52,20 +51,42 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const record = loadTrade(tradeId);
-    setTrade(record);
-    setShipping(record?.buyerShippingAddress ?? record?.shipping ?? {});
-    setContacts(ensureContactsLoaded(record));
-    loadTradeById(tradeId)
+    let canceled = false;
+
+    fetchTradeRecordById(tradeId)
       .then((remote) => {
-        if (remote) {
-          setTrade(remote);
-          setShipping(remote?.buyerShippingAddress ?? remote?.shipping ?? {});
-          setContacts(ensureContactsLoaded(remote));
+        if (canceled) return;
+        if (!remote) {
+          setTrade(null);
+          setShipping({});
+          setContacts([]);
+          return;
         }
+
+        if (remote.sellerUserId !== currentUser.id) {
+          console.error("Trade not found or access denied", tradeId);
+          setTrade(null);
+          setShipping({});
+          setContacts([]);
+          return;
+        }
+
+        setTrade(remote);
+        setShipping(remote?.buyerShippingAddress ?? remote?.shipping ?? {});
+        setContacts(ensureContactsLoaded(remote));
       })
-      .catch((loadError) => console.error("Failed to load trade", loadError));
-  }, [tradeId]);
+      .catch((loadError) => {
+        if (canceled) return;
+        console.error("Failed to load trade", loadError);
+        setTrade(null);
+        setShipping({});
+        setContacts([]);
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [currentUser.id, tradeId]);
 
   const actorRole = trade ? getActorRole(trade, currentUser.id) : "none";
   const isBuyer = actorRole === "buyer";
