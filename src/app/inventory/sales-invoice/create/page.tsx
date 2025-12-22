@@ -212,14 +212,16 @@ export default function SalesInvoiceCreatePage() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <Link
-              href="/inventory/sales-invoice/vendor/create"
-              className="inline-flex items-center rounded-sm border border-amber-600 bg-amber-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-amber-300"
+              href={`/inventory/sales-invoice/vendor/create${selectedIds.size > 0 ? `?ids=${Array.from(selectedIds).join(",")}` : ""}`}
+              aria-disabled={selectedIds.size === 0}
+              className={`inline-flex items-center rounded-sm border border-amber-600 bg-amber-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-amber-300 ${selectedIds.size === 0 ? "pointer-events-none opacity-60" : ""}`}
             >
               業者伝票登録
             </Link>
             <Link
-              href="/inventory/sales-invoice/hall/create"
-              className="inline-flex items-center rounded-sm border border-emerald-700 bg-emerald-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-emerald-300"
+              href={`/inventory/sales-invoice/hall/create${selectedIds.size > 0 ? `?ids=${Array.from(selectedIds).join(",")}` : ""}`}
+              aria-disabled={selectedIds.size === 0}
+              className={`inline-flex items-center rounded-sm border border-emerald-700 bg-emerald-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-emerald-300 ${selectedIds.size === 0 ? "pointer-events-none opacity-60" : ""}`}
             >
               ホール伝票登録
             </Link>
