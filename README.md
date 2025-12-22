@@ -23,4 +23,21 @@ npm run dev
 
 - [Todo.kind 対応表（本番基準）](docs/todo_mapping.md)
 - [Todo.kind 差分ログ（テスト拡張）](docs/todo_diff.md)
+
+## API 叩き方
+
+Prisma と PostgreSQL を利用した取引(TradeNavi) API が app router で提供されています。
+
+- `GET /api/health/db` : DB へ簡易クエリを実行し、`{ ok: true }` を返却
+- `GET /api/trades` : 取引一覧を作成日時の降順で返却
+- `POST /api/trades` : 取引を作成（最低限 `ownerUserId` が必須。`status` 未指定時は `DRAFT`）
+- `GET /api/trades/[id]` : 単一取引の詳細取得
+- `PATCH /api/trades/[id]` : `status` を enum で更新
+
+レスポンスは DTO 形式で返し、日時は ISO8601 文字列です。
+
+## DB 運用 (migrate/seed)
+
+ローカルでは DB に接続せず、マイグレーションは GitHub Actions の運用を維持します。
+- `prisma/schema.prisma` への変更はコミットに含め、`prisma migrate` は実行しません。
 - GitHub Actions Secrets に `PRISMA_DATABASE_URL` を設定し、Actions の “DB Init” ワークフローを手動実行するとDBを初期化できます。
