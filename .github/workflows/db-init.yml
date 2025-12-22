@@ -26,5 +26,6 @@ jobs:
       - name: Run migrations
         run: npx prisma migrate deploy --schema prisma/schema.prisma
 
-      - name: Seed database
+      - name: Seed database (temporarily disabled)
+        if: false
         run: npx prisma db seed --schema prisma/schema.prisma
