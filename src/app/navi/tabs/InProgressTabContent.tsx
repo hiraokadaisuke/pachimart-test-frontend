@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { TradeNaviStatus } from "@prisma/client";
+
 import { TradeRecord } from "@/lib/trade/types";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
@@ -25,6 +27,7 @@ import {
   updateOnlineInquiryStatus,
   cancelOnlineInquiry,
 } from "@/lib/trade/onlineInquiries";
+import { fetchTradeNavis, mapTradeNaviToTradeRecord } from "@/lib/trade/api";
 
 type TradeSection = TodoUiDef["section"];
 
@@ -135,6 +138,7 @@ export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [onlineInquiries, setOnlineInquiries] = useState<OnlineInquiryRecord[]>([]);
+  const [sellerApprovalRows, setSellerApprovalRows] = useState<TradeRow[]>([]);
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -146,6 +150,30 @@ export function InProgressTabContent() {
     loadAllTradesWithApi().then(setTrades).catch((error) => console.error(error));
     setOnlineInquiries(loadOnlineInquiries());
   }, []);
+
+  useEffect(() => {
+    const fetchSellerApprovalRows = async () => {
+      try {
+        const apiTrades = await fetchTradeNavis();
+        const rows = apiTrades
+          .filter(
+            (trade) =>
+              trade.ownerUserId === currentUser.id && trade.status === TradeNaviStatus.SENT
+          )
+          .map((trade) => mapTradeNaviToTradeRecord(trade))
+          .filter((trade): trade is TradeRecord => Boolean(trade))
+          .map((trade) => buildTradeRow(trade, currentUser.id))
+          .filter((row) => row.section === "approval" && row.isOpen && row.kind === "sell");
+
+        setSellerApprovalRows(rows);
+      } catch (error) {
+        console.error(error);
+        setSellerApprovalRows([]);
+      }
+    };
+
+    fetchSellerApprovalRows();
+  }, [currentUser.id]);
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
@@ -185,8 +213,17 @@ export function InProgressTabContent() {
   const buyerApprovalRows = filteredTradeRows.filter(
     (row) => row.kind === "buy" && row.section === "approval"
   );
-  const sellerApprovalRows = filteredTradeRows.filter(
-    (row) => row.kind === "sell" && row.section === "approval"
+
+  const filteredSellerApprovalRows = useMemo(
+    () =>
+      sellerApprovalRows.filter((trade) => {
+        if (!keywordLower) return true;
+        return (
+          trade.itemName.toLowerCase().includes(keywordLower) ||
+          trade.partnerName.toLowerCase().includes(keywordLower)
+        );
+      }),
+    [keywordLower, sellerApprovalRows]
   );
 
   const mappedInquiryRows = useMemo(
@@ -506,7 +543,7 @@ export function InProgressTabContent() {
           </SectionHeader>
           <NaviTable
             columns={tradeColumnsWithoutAction}
-            rows={sellerApprovalRows}
+            rows={filteredSellerApprovalRows}
             emptyMessage="現在承認待ちの送信済み取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
           />
