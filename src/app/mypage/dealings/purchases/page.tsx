@@ -11,7 +11,11 @@ import {
   IN_PROGRESS_STATUS_KEYS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
+import { DEV_USER_IDS } from "@/lib/dev-user/users";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+
+const USER_A_ID = DEV_USER_IDS.A;
+const USER_B_ID = DEV_USER_IDS.B;
 
 const PURCHASE_ROWS = [
   {
@@ -22,8 +26,8 @@ const PURCHASE_ROWS = [
     totalAmount: 1180000,
     status: "payment_confirmed" as TradeStatusKey, // 状況
     updatedAt: "2025/11/15 09:20", // 更新日時
-    buyerUserId: "user-a",
-    sellerUserId: "user-b",
+    buyerUserId: USER_A_ID,
+    sellerUserId: USER_B_ID,
   },
   {
     id: "P-2025110802",
@@ -33,8 +37,8 @@ const PURCHASE_ROWS = [
     totalAmount: 760000,
     status: "application_approved" as TradeStatusKey,
     updatedAt: "2025/11/09 17:05",
-    buyerUserId: "user-a",
-    sellerUserId: "user-b",
+    buyerUserId: USER_A_ID,
+    sellerUserId: USER_B_ID,
   },
   {
     id: "P-2025103011",
@@ -44,8 +48,8 @@ const PURCHASE_ROWS = [
     totalAmount: 840000,
     status: "trade_completed" as TradeStatusKey,
     updatedAt: "2025/10/31 10:45",
-    buyerUserId: "user-b",
-    sellerUserId: "user-a",
+    buyerUserId: USER_B_ID,
+    sellerUserId: USER_A_ID,
   },
 ];
 

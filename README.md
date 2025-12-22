@@ -41,3 +41,31 @@ Prisma と PostgreSQL を利用した取引(TradeNavi) API が app router で提
 ローカルでは DB に接続せず、マイグレーションは GitHub Actions の運用を維持します。
 - `prisma/schema.prisma` への変更はコミットに含め、`prisma migrate` は実行しません。
 - GitHub Actions Secrets に `PRISMA_DATABASE_URL` を設定し、Actions の “DB Init” ワークフローを手動実行するとDBを初期化できます。
+
+### Seed ポリシーと実行手順
+
+- seed では開発用の固定 ID ユーザーを **5 名 upsert** します（冪等）。
+- 本番事故を防ぐため、`SEED_MODE` が `preview` または `dev` のときのみ投入します（未設定時は何もしません）。
+- ローカルで seed を叩く導線は作りません。DB への適用は GitHub Actions 経由でのみ実行します。
+- 手動実行手順: GitHub の Actions タブ → `DB Init` ワークフロー → `Run workflow` を押下（`PRISMA_DATABASE_URL` が設定されたリポジトリにおいて、ワークフロー内で `SEED_MODE=preview` が渡されます）。
+
+#### 開発用ユーザー ID 一覧（ownerUserId 等で利用できます）
+
+- `dev_user_1` / 株式会社あいおえお
+- `dev_user_2` / 株式会社かきくけこ
+- `dev_user_3` / 株式会社さしすせそ
+- `dev_user_4` / 株式会社たちつてと
+- `dev_user_5` / 株式会社なにぬねの
+
+API への POST 例（Trade 作成）:
+
+```bash
+curl -X POST "https://<your-domain>/api/trades" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "ownerUserId": "dev_user_1",
+    "sellerUserId": "dev_user_2",
+    "buyerUserId": "dev_user_1",
+    "status": "IN_PROGRESS"
+  }'
+```

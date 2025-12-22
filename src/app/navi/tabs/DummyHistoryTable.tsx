@@ -11,6 +11,7 @@ import {
   IN_PROGRESS_STATUS_KEYS,
   type TradeStatusKey,
 } from "@/components/transactions/status";
+import { DEV_USER_IDS } from "@/lib/dev-user/users";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 
 type DummyHistoryKind = "sales" | "purchases";
@@ -30,6 +31,9 @@ type DummyHistoryRow = {
   buyerName: string;
 };
 
+const USER_A_ID = DEV_USER_IDS.A;
+const USER_B_ID = DEV_USER_IDS.B;
+
 const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
   sales: [
     {
@@ -41,8 +45,8 @@ const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
       totalAmount: 980000,
       status: "trade_completed",
       updatedAt: "2025/11/02 12:10",
-      sellerUserId: "user-a",
-      buyerUserId: "user-b",
+      sellerUserId: USER_A_ID,
+      buyerUserId: USER_B_ID,
       sellerName: "株式会社アミューズ流通",
       buyerName: "関東レジャー販売",
     },
@@ -55,8 +59,8 @@ const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
       totalAmount: 720000,
       status: "trade_completed",
       updatedAt: "2025/10/29 09:30",
-      sellerUserId: "user-b",
-      buyerUserId: "user-a",
+      sellerUserId: USER_B_ID,
+      buyerUserId: USER_A_ID,
       sellerName: "有限会社スマイル",
       buyerName: "関東レジャー販売",
     },
@@ -71,8 +75,8 @@ const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
       totalAmount: 1250000,
       status: "trade_completed",
       updatedAt: "2025/11/06 17:50",
-      sellerUserId: "user-b",
-      buyerUserId: "user-a",
+      sellerUserId: USER_B_ID,
+      buyerUserId: USER_A_ID,
       sellerName: "株式会社パチテック",
       buyerName: "株式会社トレード連合",
     },
@@ -85,8 +89,8 @@ const HISTORY_DATA: Record<DummyHistoryKind, DummyHistoryRow[]> = {
       totalAmount: 840000,
       status: "trade_completed",
       updatedAt: "2025/10/31 10:45",
-      sellerUserId: "user-a",
-      buyerUserId: "user-b",
+      sellerUserId: USER_A_ID,
+      buyerUserId: USER_B_ID,
       sellerName: "株式会社ミドルウェーブ",
       buyerName: "九州エンタメ産業",
     },

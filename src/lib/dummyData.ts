@@ -1,4 +1,8 @@
-import type { Product } from '@/types/product';
+import { DEV_USER_IDS } from "@/lib/dev-user/users";
+import type { Product } from "@/types/product";
+
+const USER_A_ID = DEV_USER_IDS.A;
+const USER_B_ID = DEV_USER_IDS.B;
 
 export const products: Product[] = [
   {
@@ -24,7 +28,7 @@ export const products: Product[] = [
     removalStatus: '未撤去',
     shippingSpecifyDate: '即時手配可',
     warehouseName: '大阪北倉庫',
-    ownerUserId: 'user-a',
+    ownerUserId: USER_A_ID,
   },
   {
     id: 102,
@@ -49,7 +53,7 @@ export const products: Product[] = [
     removalStatus: '撤去済',
     shippingSpecifyDate: '2/20以降',
     warehouseName: '湘南ロジスティクス',
-    ownerUserId: 'user-b',
+    ownerUserId: USER_B_ID,
   },
   {
     id: 103,
@@ -73,7 +77,7 @@ export const products: Product[] = [
     removalStatus: '撤去済',
     shippingSpecifyDate: '応相談',
     warehouseName: '都内第1倉庫',
-    ownerUserId: 'user-a',
+    ownerUserId: USER_A_ID,
   },
   {
     id: 104,
@@ -98,7 +102,7 @@ export const products: Product[] = [
     removalStatus: '未撤去',
     shippingSpecifyDate: '2/5出荷目安',
     warehouseName: '札幌ハブ倉庫',
-    ownerUserId: 'user-b',
+    ownerUserId: USER_B_ID,
   },
   {
     id: 105,
@@ -123,7 +127,7 @@ export const products: Product[] = [
     removalStatus: '未撤去',
     shippingSpecifyDate: '3/3指定可',
     warehouseName: '中部物流センター',
-    ownerUserId: 'user-a',
+    ownerUserId: USER_A_ID,
   },
   {
     id: 106,
@@ -147,7 +151,7 @@ export const products: Product[] = [
     removalStatus: '撤去済',
     shippingSpecifyDate: '1/30以降',
     warehouseName: '九州第2倉庫',
-    ownerUserId: 'user-b',
+    ownerUserId: USER_B_ID,
   },
   {
     id: 107,
@@ -172,7 +176,7 @@ export const products: Product[] = [
     removalStatus: '未撤去',
     shippingSpecifyDate: '応相談',
     warehouseName: '東京湾岸倉庫',
-    ownerUserId: 'user-a',
+    ownerUserId: USER_A_ID,
   },
   {
     id: 108,
@@ -197,7 +201,7 @@ export const products: Product[] = [
     removalStatus: '撤去済',
     shippingSpecifyDate: '即時手配可',
     warehouseName: '阪神ロジステーション',
-    ownerUserId: 'user-a',
+    ownerUserId: USER_A_ID,
   },
   {
     id: 109,
@@ -222,7 +226,7 @@ export const products: Product[] = [
     removalStatus: '未撤去',
     shippingSpecifyDate: '調整中',
     warehouseName: '札幌中央倉庫',
-    ownerUserId: 'user-a',
+    ownerUserId: USER_A_ID,
   },
   {
     id: 110,
@@ -247,6 +251,6 @@ export const products: Product[] = [
     removalStatus: '未撤去',
     shippingSpecifyDate: '3/15出荷目安',
     warehouseName: '中部第2倉庫',
-    ownerUserId: 'user-a',
+    ownerUserId: USER_A_ID,
   },
 ];
