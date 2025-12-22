@@ -23,3 +23,4 @@ npm run dev
 
 - [Todo.kind 対応表（本番基準）](docs/todo_mapping.md)
 - [Todo.kind 差分ログ（テスト拡張）](docs/todo_diff.md)
+- GitHub Actions Secrets に `PRISMA_DATABASE_URL` を設定し、Actions の “DB Init” ワークフローを手動実行するとDBを初期化できます。
