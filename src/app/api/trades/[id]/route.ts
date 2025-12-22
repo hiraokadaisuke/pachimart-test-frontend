@@ -49,7 +49,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   }
 
   try {
-    const trade = await prisma.tradeNavi.findUnique({ where: { id } });
+    // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
+    const trade = await prisma.tradeNavi.findUnique({ where: { id } as any });
 
     if (!trade) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
@@ -93,8 +94,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   try {
+    // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
     const updated = await prisma.tradeNavi.update({
-      where: { id },
+      where: { id } as any,
       data: { status: parsed.data.status },
     });
 
