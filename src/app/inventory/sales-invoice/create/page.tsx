@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
@@ -204,9 +205,25 @@ export default function SalesInvoiceCreatePage() {
       </div>
 
       <div className="space-y-2">
-        <div className="flex items-center gap-2 rounded-sm border border-gray-400 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800">
-          <span className="h-4 w-1 bg-slate-700" aria-hidden />
-          <span>販売物件リスト</span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 rounded-sm border border-gray-400 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800">
+            <span className="h-4 w-1 bg-slate-700" aria-hidden />
+            <span>販売物件リスト</span>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href="/inventory/sales-invoice/vendor/create"
+              className="inline-flex items-center rounded-sm border border-amber-600 bg-amber-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-amber-300"
+            >
+              業者伝票登録
+            </Link>
+            <Link
+              href="/inventory/sales-invoice/hall/create"
+              className="inline-flex items-center rounded-sm border border-emerald-700 bg-emerald-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-emerald-300"
+            >
+              ホール伝票登録
+            </Link>
+          </div>
         </div>
         <div className="overflow-x-auto border border-gray-400">
           <table className="min-w-full border-collapse text-xs text-slate-900">
