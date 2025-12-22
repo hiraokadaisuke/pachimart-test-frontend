@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import { deletePurchaseInvoices, loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
@@ -12,6 +13,7 @@ const greenLabelCell = "bg-emerald-100 text-emerald-900";
 const borderCell = "border border-emerald-200";
 
 export default function PurchaseInvoiceListPage() {
+  const router = useRouter();
   const [invoices, setInvoices] = useState<PurchaseInvoice[]>([]);
   const [inventories, setInventories] = useState<InventoryRecord[]>([]);
   const [filters, setFilters] = useState({
@@ -24,8 +26,6 @@ export default function PurchaseInvoiceListPage() {
     staff: "",
     supplier: "",
   });
-
-  const [selectedInvoice, setSelectedInvoice] = useState<PurchaseInvoice | null>(null);
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -364,7 +364,13 @@ export default function PurchaseInvoiceListPage() {
                       <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-center">
                         <button
                           type="button"
-                          onClick={() => setSelectedInvoice(invoice)}
+                          onClick={() =>
+                            router.push(
+                              `/inventory/purchase-invoice/${
+                                invoice.invoiceType === "vendor" ? "vendor" : "hall"
+                              }/${invoice.invoiceId}`,
+                            )
+                          }
                           className="h-8 w-8 rounded-full border border-amber-500 bg-amber-400 text-lg font-bold text-amber-900 shadow hover:bg-amber-300"
                           aria-label="詳細"
                         >
@@ -379,57 +385,6 @@ export default function PurchaseInvoiceListPage() {
           </table>
         </div>
       </div>
-
-      {selectedInvoice && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-4xl rounded-lg border border-emerald-800 bg-white shadow-lg">
-            <div className={`${greenHeaderClass} flex items-center justify-between px-5 py-3`}>
-              <div>
-                <div className="text-lg font-semibold">{selectedInvoice.invoiceId}</div>
-                <div className="text-sm opacity-90">{selectedInvoice.partnerName ?? selectedInvoice.invoiceType.toUpperCase()}</div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedInvoice(null)}
-                className="rounded border border-white/50 bg-white/20 px-3 py-1 text-sm font-semibold text-white hover:bg-white/30"
-              >
-                閉じる
-              </button>
-            </div>
-
-            <div className="overflow-x-auto bg-emerald-50 p-4">
-              <table className="min-w-full table-fixed border-collapse text-sm text-neutral-800">
-                <thead>
-                  <tr className={`${greenHeaderClass} text-left text-xs font-semibold uppercase tracking-wide`}>
-                    {[
-                      "メーカー",
-                      "機種",
-                      "数量",
-                      "単価",
-                      "金額",
-                    ].map((label) => (
-                      <th key={label} className="border border-emerald-800 px-3 py-2 whitespace-nowrap">
-                        {label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedInvoice.items.map((item) => (
-                    <tr key={`${selectedInvoice.invoiceId}-${item.inventoryId}`} className="bg-white">
-                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">{item.maker}</td>
-                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2">{item.machineName}</td>
-                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-right">{item.quantity}</td>
-                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-right">{formatCurrency(item.unitPrice)}</td>
-                      <td className="whitespace-nowrap border border-emerald-200 px-3 py-2 text-right">{formatCurrency(item.amount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
