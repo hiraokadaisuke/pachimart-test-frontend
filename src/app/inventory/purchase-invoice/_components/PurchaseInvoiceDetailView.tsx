@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { formatCurrency, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
+import { BUYER_OPTIONS, findBuyerById } from "@/lib/demo-data/buyers";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
@@ -53,6 +54,9 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   const [invoice, setInvoice] = useState<PurchaseInvoice | null>(null);
   const [inventories, setInventories] = useState<Map<string, InventoryRecord>>(new Map());
   const [attemptedLoad, setAttemptedLoad] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [selectedPrintLabel, setSelectedPrintLabel] = useState<string | null>(null);
+  const [selectedBuyerId, setSelectedBuyerId] = useState<string>(BUYER_OPTIONS[0].id);
 
   useEffect(() => {
     const invoices = loadPurchaseInvoices();
@@ -65,6 +69,12 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
     const records = loadInventoryRecords();
     setInventories(new Map(records.map((record) => [record.id, record])));
   }, []);
+
+  useEffect(() => {
+    setIsPrintModalOpen(false);
+    setSelectedPrintLabel(null);
+    setSelectedBuyerId(BUYER_OPTIONS[0].id);
+  }, [invoiceId]);
 
   const items = useMemo(() => invoice?.items ?? [], [invoice]);
 
@@ -121,7 +131,26 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   };
 
   const handlePrintMenu = (label: string) => {
-    alert(`${label}の印刷は準備中です`);
+    if (label === "書類一括") {
+      alert("書類一括の印刷は準備中です");
+      return;
+    }
+    setSelectedPrintLabel(label);
+    setIsPrintModalOpen(true);
+  };
+
+  const handlePrint = () => {
+    if (!invoice || !selectedPrintLabel) return;
+    const buyer = findBuyerById(selectedBuyerId);
+    const path =
+      selectedPrintLabel === "売買契約書"
+        ? "sales-contract"
+        : selectedPrintLabel === "支払依頼書"
+          ? "payment-request"
+          : "inspection-pickup";
+    const url = `/inventory/purchase-invoice/print/${path}/${invoice.invoiceId}?buyerId=${encodeURIComponent(buyer.id)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    setIsPrintModalOpen(false);
   };
 
   const handleEdit = () => {
@@ -185,6 +214,44 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
 
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-8 text-[13px] text-neutral-800">
+      {isPrintModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-[360px] border border-neutral-500 bg-white px-6 py-5 text-neutral-900 shadow-md">
+            <div className="mb-4 text-base font-semibold">・買主入力</div>
+            <div className="space-y-2 text-sm">
+              <label className="block text-xs text-neutral-700">自社選択</label>
+              <select
+                value={selectedBuyerId}
+                onChange={(event) => setSelectedBuyerId(event.target.value)}
+                className="w-full border border-neutral-500 bg-white px-2 py-2 text-sm"
+              >
+                {BUYER_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mt-6 flex justify-end gap-2 text-sm font-semibold">
+              <button
+                type="button"
+                onClick={() => setIsPrintModalOpen(false)}
+                className="border border-neutral-500 bg-slate-200 px-5 py-2 text-neutral-800"
+              >
+                戻る
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="border border-yellow-600 bg-yellow-300 px-5 py-2 text-neutral-900"
+              >
+                印刷
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-6xl space-y-4">
         <div className="border-b border-slate-400 pb-2">
           <div className="flex items-center gap-2 text-xl font-semibold text-neutral-900">
