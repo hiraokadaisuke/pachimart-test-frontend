@@ -38,6 +38,9 @@ const companyDirectory: Record<string, CompanyProfile> = Object.values(DEV_USERS
   {} as Record<string, CompanyProfile>
 );
 
+const USER_A_ID = DEV_USERS.A.id;
+const USER_B_ID = DEV_USERS.B.id;
+
 const seedTodos5001 = buildTodosFromStatus("APPROVAL_REQUIRED");
 const seedTodos5002 = buildTodosFromStatus("PAYMENT_REQUIRED");
 
@@ -45,10 +48,10 @@ const seedTrades: TradeRecord[] = [
   {
     id: "T-REQ-5001",
     status: deriveTradeStatusFromTodos({ todos: seedTodos5001 }),
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
-    sellerName: companyDirectory["user-b"].companyName,
-    buyerName: companyDirectory["user-a"].companyName,
+    sellerUserId: USER_B_ID,
+    buyerUserId: USER_A_ID,
+    sellerName: companyDirectory[USER_B_ID].companyName,
+    buyerName: companyDirectory[USER_A_ID].companyName,
     createdAt: "2025-11-20T09:30:00.000Z",
     updatedAt: "2025-11-20T09:30:00.000Z",
     contractDate: "2025-11-21",
@@ -58,8 +61,8 @@ const seedTrades: TradeRecord[] = [
     handlerName: "川田",
     paymentMethod: "銀行振込（請求後3営業日以内）",
     paymentTerms: "請求書到着後3営業日以内に指定口座へ振込",
-    seller: companyDirectory["user-b"],
-    buyer: companyDirectory["user-a"],
+    seller: companyDirectory[USER_B_ID],
+    buyer: companyDirectory[USER_A_ID],
     todos: seedTodos5001,
     items: [
       {
@@ -100,7 +103,7 @@ const seedTrades: TradeRecord[] = [
     remarks: "搬出時に立ち会いが必要です。",
     termsText: "納品後7日以内の初期不良のみ対応いたします。キャンセルは原則不可です。",
     shipping: {
-      companyName: companyDirectory["user-a"].companyName,
+      companyName: companyDirectory[USER_A_ID].companyName,
       zip: "100-0005",
       address: "東京都千代田区丸の内1-1-1 パチマートビル 10F",
       tel: "03-1234-5678",
@@ -108,7 +111,7 @@ const seedTrades: TradeRecord[] = [
     },
     buyerContactName: "田中 太郎",
     buyerShippingAddress: {
-      companyName: companyDirectory["user-a"].companyName,
+      companyName: companyDirectory[USER_A_ID].companyName,
       zip: "100-0005",
       address: "東京都千代田区丸の内1-1-1 パチマートビル 10F",
       tel: "03-1234-5678",
@@ -122,10 +125,10 @@ const seedTrades: TradeRecord[] = [
   {
     id: "T-REQ-5002",
     status: deriveTradeStatusFromTodos({ todos: seedTodos5002 }),
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
-    sellerName: companyDirectory["user-a"].companyName,
-    buyerName: companyDirectory["user-b"].companyName,
+    sellerUserId: USER_A_ID,
+    buyerUserId: USER_B_ID,
+    sellerName: companyDirectory[USER_A_ID].companyName,
+    buyerName: companyDirectory[USER_B_ID].companyName,
     createdAt: "2025-11-18T12:00:00.000Z",
     updatedAt: "2025-11-19T08:00:00.000Z",
     contractDate: "2025-11-19",
@@ -135,8 +138,8 @@ const seedTrades: TradeRecord[] = [
     handlerName: "佐藤",
     paymentMethod: "銀行振込（即日）",
     paymentTerms: "請求日から5営業日以内に振込",
-    seller: companyDirectory["user-a"],
-    buyer: companyDirectory["user-b"],
+    seller: companyDirectory[USER_A_ID],
+    buyer: companyDirectory[USER_B_ID],
     todos: seedTodos5002,
     items: [
       {
@@ -161,7 +164,7 @@ const seedTrades: TradeRecord[] = [
     remarks: "梱包材は売主にて手配します。",
     termsText: "支払期日は請求日から5営業日以内。キャンセルは協議の上で判断します。",
     shipping: {
-      companyName: companyDirectory["user-b"].companyName,
+      companyName: companyDirectory[USER_B_ID].companyName,
       zip: "530-0001",
       address: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
       tel: "06-9876-5432",
@@ -169,7 +172,7 @@ const seedTrades: TradeRecord[] = [
     },
     buyerContactName: "佐藤 花子",
     buyerShippingAddress: {
-      companyName: companyDirectory["user-b"].companyName,
+      companyName: companyDirectory[USER_B_ID].companyName,
       zip: "530-0001",
       address: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
       tel: "06-9876-5432",

@@ -1,5 +1,8 @@
 import { DEV_USERS } from "@/lib/dev-user/users";
 
+const USER_A_ID = DEV_USERS.A.id;
+const USER_B_ID = DEV_USERS.B.id;
+
 export type OnlineInquiryStatus =
   | "INQUIRY_RESPONSE_REQUIRED"
   | "ACCEPTED"
@@ -33,8 +36,8 @@ const seedInquiries: OnlineInquiryRecord[] = [
   {
     id: "OI-7001",
     productId: "101",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
+    sellerUserId: USER_B_ID,
+    buyerUserId: USER_A_ID,
     sellerCompanyName: DEV_USERS.B.companyName,
     buyerCompanyName: DEV_USERS.A.companyName,
     makerName: "SANKYO",
@@ -53,8 +56,8 @@ const seedInquiries: OnlineInquiryRecord[] = [
   {
     id: "OI-7002",
     productId: "102",
-    sellerUserId: "user-a",
-    buyerUserId: "user-b",
+    sellerUserId: USER_A_ID,
+    buyerUserId: USER_B_ID,
     sellerCompanyName: DEV_USERS.A.companyName,
     buyerCompanyName: DEV_USERS.B.companyName,
     makerName: "ニューギン",
@@ -73,8 +76,8 @@ const seedInquiries: OnlineInquiryRecord[] = [
   {
     id: "OI-7003",
     productId: "103",
-    sellerUserId: "user-b",
-    buyerUserId: "user-a",
+    sellerUserId: USER_B_ID,
+    buyerUserId: USER_A_ID,
     sellerCompanyName: DEV_USERS.B.companyName,
     buyerCompanyName: DEV_USERS.A.companyName,
     makerName: "Sansei",
