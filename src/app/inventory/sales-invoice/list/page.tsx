@@ -1,7 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+
+import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 
 interface SalesInvoiceRow {
   id: string;
@@ -129,6 +131,21 @@ export default function SalesInvoiceListPage() {
     const limit = Number(appliedFilters.displayCount) || filtered.length;
     return filtered.slice(0, limit);
   }, [appliedFilters, invoices]);
+
+  useEffect(() => {
+    const stored = loadSalesInvoices();
+    const mapped: SalesInvoiceRow[] = stored.map((invoice) => ({
+      id: invoice.invoiceId,
+      type: invoice.invoiceType,
+      issueDate: (invoice.issuedDate ?? "").replaceAll("/", "-") || invoice.createdAt.slice(0, 10),
+      maker: invoice.items[0]?.maker ?? "",
+      model: invoice.items[0]?.productName ?? "",
+      customer: invoice.vendorName ?? "",
+      staff: invoice.staff ?? "",
+      totalAmount: invoice.totalAmount ?? invoice.subtotal ?? 0,
+    }));
+    setInvoices([...mapped, ...initialInvoices]);
+  }, []);
 
   const toggleSelect = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {

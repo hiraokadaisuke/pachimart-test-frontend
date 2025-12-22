@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
@@ -16,6 +17,7 @@ const getSaleDate = (record: InventoryRecord): string | undefined => {
 };
 
 export default function SalesInvoiceCreatePage() {
+  const router = useRouter();
   const [records, setRecords] = useState<InventoryRecord[]>([]);
   const [filters, setFilters] = useState({
     id: "",
@@ -86,6 +88,15 @@ export default function SalesInvoiceCreatePage() {
       }
       return next;
     });
+  };
+
+  const navigateToVendorInvoice = () => {
+    if (selectedIds.size === 0) {
+      alert("販売伝票対象の在庫を選択してください");
+      return;
+    }
+    const query = Array.from(selectedIds).join(",");
+    router.push(`/inventory/sales-invoice/vendor/create?ids=${encodeURIComponent(query)}`);
   };
 
   return (
@@ -211,12 +222,13 @@ export default function SalesInvoiceCreatePage() {
             <span>販売物件リスト</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href="/inventory/sales-invoice/vendor/create"
+            <button
+              type="button"
+              onClick={navigateToVendorInvoice}
               className="inline-flex items-center rounded-sm border border-amber-600 bg-amber-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-amber-300"
             >
               業者伝票登録
-            </Link>
+            </button>
             <Link
               href="/inventory/sales-invoice/hall/create"
               className="inline-flex items-center rounded-sm border border-emerald-700 bg-emerald-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-emerald-300"
