@@ -36,6 +36,17 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
   }
 
   const candidate = trade as Record<string, unknown>;
+  const toDate = (value: unknown, fallback?: Date): Date => {
+    if (value instanceof Date) return value;
+    if (typeof value === "string" || typeof value === "number") {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+    if (fallback instanceof Date) return fallback;
+    return new Date();
+  };
 
   return {
     id: Number(candidate.id),
@@ -43,8 +54,8 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
     ownerUserId: String(candidate.ownerUserId),
     buyerUserId: (candidate.buyerUserId as string | null) ?? null,
     payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
-    createdAt: new Date((candidate.createdAt as string | Date | undefined) ?? Date.now()),
-    updatedAt: new Date((candidate.updatedAt as string | Date | undefined) ?? candidate.createdAt ?? Date.now()),
+    createdAt: toDate(candidate.createdAt),
+    updatedAt: toDate(candidate.updatedAt, toDate(candidate.createdAt)),
   };
 };
 
