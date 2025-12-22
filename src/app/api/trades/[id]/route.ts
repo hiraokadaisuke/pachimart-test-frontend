@@ -30,6 +30,24 @@ const toDto = (trade: TradeNaviRecord) => ({
   updatedAt: trade.updatedAt.toISOString(),
 });
 
+const toRecord = (trade: unknown): TradeNaviRecord => {
+  if (!trade || typeof trade !== "object") {
+    throw new Error("Trade result was not an object");
+  }
+
+  const candidate = trade as Record<string, unknown>;
+
+  return {
+    id: Number(candidate.id),
+    status: candidate.status as TradeNaviStatus,
+    ownerUserId: String(candidate.ownerUserId),
+    buyerUserId: (candidate.buyerUserId as string | null) ?? null,
+    payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
+    createdAt: new Date((candidate.createdAt as string | Date | undefined) ?? Date.now()),
+    updatedAt: new Date((candidate.updatedAt as string | Date | undefined) ?? candidate.createdAt ?? Date.now()),
+  };
+};
+
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
@@ -56,7 +74,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
 
-    return NextResponse.json(toDto(trade as TradeNaviRecord));
+    return NextResponse.json(toDto(toRecord(trade)));
   } catch (error) {
     console.error("Failed to fetch trade", error);
     return NextResponse.json(
@@ -100,7 +118,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       data: { status: parsed.data.status },
     });
 
-    return NextResponse.json(toDto(updated as TradeNaviRecord));
+    return NextResponse.json(toDto(toRecord(updated)));
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
