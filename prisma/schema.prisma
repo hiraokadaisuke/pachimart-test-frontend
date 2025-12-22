@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("PRISMA_DATABASE_URL")
+}
+
+enum TradeNaviStatus {
+  DRAFT
+  SENT
+  APPROVED
+  REJECTED
+}
+
+enum TradeStatus {
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+model User {
+  id             String     @id
+  companyName    String
+  contactName    String?
+  address        String?
+  tel            String?
+  tradeNavisOwned TradeNavi[] @relation("TradeNaviOwner")
+  tradeNavisBought TradeNavi[] @relation("TradeNaviBuyer")
+  tradesAsSeller Trade[]   @relation("TradeSeller")
+  tradesAsBuyer  Trade[]   @relation("TradeBuyer")
+  messagesSent   Message[] @relation("Sender")
+  messagesReceived Message[] @relation("Receiver")
+}
+
+model TradeNavi {
+  id          Int             @id @default(autoincrement())
+  status      TradeNaviStatus
+  ownerUserId String
+  buyerUserId String?
+  payload     Json?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  ownerUser User @relation("TradeNaviOwner", fields: [ownerUserId], references: [id])
+  buyerUser User? @relation("TradeNaviBuyer", fields: [buyerUserId], references: [id])
+  trade     Trade?
+}
+
+model Trade {
+  id            Int          @id @default(autoincrement())
+  sellerUserId  String
+  buyerUserId   String
+  status        TradeStatus
+  payload       Json?
+  naviId        Int?         @unique
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  sellerUser User   @relation("TradeSeller", fields: [sellerUserId], references: [id])
+  buyerUser  User   @relation("TradeBuyer", fields: [buyerUserId], references: [id])
+  navi       TradeNavi? @relation(fields: [naviId], references: [id])
+}
+
+model Message {
+  id             Int       @id @default(autoincrement())
+  senderUserId   String
+  receiverUserId String
+  naviId         Int?
+  body           String
+  createdAt      DateTime  @default(now())
+
+  senderUser   User      @relation("Sender", fields: [senderUserId], references: [id])
+  receiverUser User      @relation("Receiver", fields: [receiverUserId], references: [id])
+  navi         TradeNavi? @relation(fields: [naviId], references: [id])
+}
