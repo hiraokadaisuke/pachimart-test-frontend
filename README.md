@@ -36,6 +36,11 @@ Prisma と PostgreSQL を利用した取引(TradeNavi) API が app router で提
 
 レスポンスは DTO 形式で返し、日時は ISO8601 文字列です。
 
+### 取引Navi 保存ポリシー
+
+- 未送信の下書きはブラウザの `sessionStorage` のみで管理し、DB には保存しません。
+- ナビの「送信」操作時にのみ `/api/trades` へ POST し、`TradeNavi` レコードを作成します。
+
 ## DB 運用 (migrate/seed)
 
 ローカルでは DB に接続せず、マイグレーションは GitHub Actions の運用を維持します。

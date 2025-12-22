@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { NaviTable, type NaviTableColumn, type SortState } from "@/components/transactions/NaviTable";
@@ -11,9 +11,9 @@ import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { loadSalesHistoryForUser } from "@/lib/trade/dataSources";
 import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
 import { getStatementPath } from "@/lib/trade/navigation";
-import { getSalesHistoryForUser } from "@/lib/trade/storage";
 import type { TradeRecord } from "@/lib/trade/types";
 import { resolveCurrentTodoKind } from "@/lib/trade/todo";
 import { TodoUiDef, todoUiMap } from "@/lib/todo/todoUiMap";
@@ -76,8 +76,13 @@ export function SalesHistoryTabContent() {
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [sortState, setSortState] = useState<SortState>(null);
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
+  const [rows, setRows] = useState<SalesHistoryRow[]>([]);
 
-  const rows = useMemo(() => buildSalesRows(currentUser.id), [currentUser.id]);
+  useEffect(() => {
+    loadSalesHistoryForUser(currentUser.id)
+      .then((trades) => setRows(trades.map(mapTradeToSalesHistoryRow)))
+      .catch((error) => console.error("Failed to load sales history", error));
+  }, [currentUser.id]);
 
   const handlerOptions = useMemo(() => {
     const handlers = Array.from(new Set(rows.map((row) => row.handler).filter(Boolean)));
@@ -109,39 +114,39 @@ export function SalesHistoryTabContent() {
       sortable: true,
       render: (row) => <StatusBadge statusKey={row.status} context="history" />,
     },
-{
-  key: "contractDate",
-  label: "成約日",
-  width: "120px",
-  sortable: true,
-  render: (row) => formatDate(row.contractDate),
-},
-{
-  key: "partner",
-  label: "取引先",
-  width: "180px",
-  sortable: true,
-},
-{
-  key: "maker",
-  label: "メーカー",
-  width: "140px",
-  sortable: true,
-},
-{
-  key: "itemName",
-  label: "機種名", // ← 物件名 → 機種名 に統一
-  width: "200px",
-  sortable: true,
-},
+    {
+      key: "contractDate",
+      label: "成約日",
+      width: "120px",
+      sortable: true,
+      render: (row) => formatDate(row.contractDate),
+    },
+    {
+      key: "partner",
+      label: "取引先",
+      width: "180px",
+      sortable: true,
+    },
+    {
+      key: "maker",
+      label: "メーカー",
+      width: "140px",
+      sortable: true,
+    },
+    {
+      key: "itemName",
+      label: "機種名", // ← 物件名 → 機種名 に統一
+      width: "200px",
+      sortable: true,
+    },
     { key: "quantity", label: "数量", width: "80px" },
     {
       key: "amount",
-  label: "金額",
-  width: "140px",
-  sortable: true,
-  render: (row) => <span className="whitespace-nowrap">{currencyFormatter.format(row.amount)}</span>,
-},
+      label: "金額",
+      width: "140px",
+      sortable: true,
+      render: (row) => <span className="whitespace-nowrap">{currencyFormatter.format(row.amount)}</span>,
+    },
     {
       key: "shipmentDate",
       label: "機械発送日",
@@ -422,10 +427,10 @@ export function SalesHistoryTabContent() {
           columns={columns}
           rows={sortedRows}
           emptyMessage="該当する取引はありません。"
-          onRowClick={(row) => row.id && router.push(getStatementDestination(row as SalesHistoryRow))}
-          sortState={sortState}
-          onSortChange={handleSortChange}
-        />
+        onRowClick={(row) => row.id && router.push(getStatementDestination(row as SalesHistoryRow))}
+        sortState={sortState}
+        onSortChange={handleSortChange}
+      />
 
       <TradeMessageModal
         open={messageTarget !== null}
@@ -435,10 +440,6 @@ export function SalesHistoryTabContent() {
       />
     </section>
   );
-}
-
-function buildSalesRows(userId: string): SalesHistoryRow[] {
-  return getSalesHistoryForUser(userId).map(mapTradeToSalesHistoryRow);
 }
 
 function mapTradeToSalesHistoryRow(trade: TradeRecord): SalesHistoryRow {

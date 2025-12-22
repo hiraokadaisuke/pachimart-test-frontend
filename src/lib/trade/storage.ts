@@ -303,28 +303,28 @@ export function saveTradeRecord(trade: TradeRecord): TradeRecord {
   return upsertTradeInternal(trade);
 }
 
-export function getAllTrades(): TradeRecord[] {
-  return loadAllTrades();
+export function getAllTrades(trades?: TradeRecord[]): TradeRecord[] {
+  return trades ?? loadAllTrades();
 }
 
-export function getTradesForUser(userId: string): TradeRecord[] {
-  return getAllTrades().filter(
+export function getTradesForUser(userId: string, trades?: TradeRecord[]): TradeRecord[] {
+  return getAllTrades(trades).filter(
     (trade) => trade.sellerUserId === userId || trade.buyerUserId === userId
   );
 }
 
-export function getHistoryTradesForUser(userId: string): TradeRecord[] {
-  return getTradesForUser(userId).filter((trade) =>
+export function getHistoryTradesForUser(userId: string, trades?: TradeRecord[]): TradeRecord[] {
+  return getTradesForUser(userId, trades).filter((trade) =>
     ["PAYMENT_REQUIRED", "CONFIRM_REQUIRED", "COMPLETED", "CANCELED"].includes(trade.status)
   );
 }
 
-export function getPurchaseHistoryForUser(userId: string): TradeRecord[] {
-  return getHistoryTradesForUser(userId).filter((trade) => trade.buyerUserId === userId);
+export function getPurchaseHistoryForUser(userId: string, trades?: TradeRecord[]): TradeRecord[] {
+  return getHistoryTradesForUser(userId, trades).filter((trade) => trade.buyerUserId === userId);
 }
 
-export function getSalesHistoryForUser(userId: string): TradeRecord[] {
-  return getHistoryTradesForUser(userId).filter((trade) => trade.sellerUserId === userId);
+export function getSalesHistoryForUser(userId: string, trades?: TradeRecord[]): TradeRecord[] {
+  return getHistoryTradesForUser(userId, trades).filter((trade) => trade.sellerUserId === userId);
 }
 
 export function updateTradeStatus(tradeId: string, status: TradeStatus): TradeRecord | null {

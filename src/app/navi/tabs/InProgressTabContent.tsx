@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { TradeRecord } from "@/lib/trade/types";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
 import { loadAllTrades, TRADE_STORAGE_KEY } from "@/lib/trade/storage";
 import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
@@ -142,6 +143,7 @@ export function InProgressTabContent() {
 
   useEffect(() => {
     setTrades(loadAllTrades());
+    loadAllTradesWithApi().then(setTrades).catch((error) => console.error(error));
     setOnlineInquiries(loadOnlineInquiries());
   }, []);
 
@@ -149,6 +151,7 @@ export function InProgressTabContent() {
     const handleStorage = (event: StorageEvent) => {
       if (event.key === TRADE_STORAGE_KEY) {
         setTrades(loadAllTrades());
+        loadAllTradesWithApi().then(setTrades).catch((error) => console.error(error));
       }
       if (event.key === ONLINE_INQUIRY_STORAGE_KEY) {
         setOnlineInquiries(loadOnlineInquiries());
