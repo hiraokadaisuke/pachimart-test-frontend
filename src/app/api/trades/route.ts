@@ -52,16 +52,46 @@ const toDto = (trade: TradeNaviRecord): TradeNaviDto => ({
   updatedAt: trade.updatedAt.toISOString(),
 });
 
+const toRecord = (trade: unknown): TradeNaviRecord => {
+  if (!trade || typeof trade !== "object") {
+    throw new Error("Trade result was not an object");
+  }
+
+  const candidate = trade as Record<string, unknown>;
+  const toDate = (value: unknown, fallback?: Date): Date => {
+    if (value instanceof Date) return value;
+    if (typeof value === "string" || typeof value === "number") {
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) {
+        return parsed;
+      }
+    }
+    if (fallback instanceof Date) return fallback;
+    return new Date();
+  };
+
+  return {
+    id: Number(candidate.id),
+    status: candidate.status as TradeNaviStatus,
+    ownerUserId: String(candidate.ownerUserId),
+    buyerUserId: (candidate.buyerUserId as string | null) ?? null,
+    payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
+    createdAt: toDate(candidate.createdAt),
+    updatedAt: toDate(candidate.updatedAt, toDate(candidate.createdAt)),
+  };
+};
+
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
 export async function GET() {
   try {
     const trades = await prisma.tradeNavi.findMany({
-      orderBy: { createdAt: "desc" },
+      // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
+      orderBy: { createdAt: "desc" } as any,
     });
 
-    return NextResponse.json(trades.map(toDto));
+    return NextResponse.json(trades.map(toRecord).map(toDto));
   } catch (error) {
     console.error("Failed to fetch trades", error);
     return NextResponse.json(
@@ -104,7 +134,7 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(toDto(created), { status: 201 });
+    return NextResponse.json(toDto(toRecord(created)), { status: 201 });
   } catch (error) {
     console.error("Failed to create trade", error);
     return NextResponse.json(
