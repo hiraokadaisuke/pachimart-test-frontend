@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { NaviTable, type NaviTableColumn, type SortState } from "@/components/transactions/NaviTable";
@@ -11,9 +11,9 @@ import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { getMessagesForTrade } from "@/lib/dummyMessages";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
+import { loadPurchaseHistoryForUser } from "@/lib/trade/dataSources";
 import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
 import { getStatementPath } from "@/lib/trade/navigation";
-import { getPurchaseHistoryForUser } from "@/lib/trade/storage";
 import type { TradeRecord } from "@/lib/trade/types";
 import { resolveCurrentTodoKind } from "@/lib/trade/todo";
 import { TodoUiDef, todoUiMap } from "@/lib/todo/todoUiMap";
@@ -77,8 +77,13 @@ export function PurchaseHistoryTabContent() {
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [sortState, setSortState] = useState<SortState>(null);
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
+  const [rows, setRows] = useState<PurchaseHistoryRow[]>([]);
 
-  const rows = useMemo(() => buildPurchaseRows(currentUser.id), [currentUser.id]);
+  useEffect(() => {
+    loadPurchaseHistoryForUser(currentUser.id)
+      .then((trades) => setRows(trades.map(mapTradeToPurchaseHistoryRow)))
+      .catch((error) => console.error("Failed to load purchase history", error));
+  }, [currentUser.id]);
 
   const handlerOptions = useMemo(() => {
     const handlers = Array.from(new Set(rows.map((row) => row.handler).filter(Boolean)));
@@ -448,10 +453,6 @@ export function PurchaseHistoryTabContent() {
       />
     </section>
   );
-}
-
-function buildPurchaseRows(userId: string): PurchaseHistoryRow[] {
-  return getPurchaseHistoryForUser(userId).map(mapTradeToPurchaseHistoryRow);
 }
 
 function mapTradeToPurchaseHistoryRow(trade: TradeRecord): PurchaseHistoryRow {

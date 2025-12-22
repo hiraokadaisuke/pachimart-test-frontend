@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
-import { createEmptyNaviDraft, loadNaviDraft, saveNavi } from "@/lib/navi/storage";
+import { deleteNaviDraft, createEmptyNaviDraft, loadNaviDraft } from "@/lib/navi/storage";
 import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
 import {
   formatCurrency,
@@ -14,7 +14,6 @@ import {
 } from "@/lib/useDummyNavi";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { DEV_USERS, getDevUsers, findDevUserById, type DevUser } from "@/lib/dev-user/users";
-import { createTradeFromDraft, saveTradeRecord } from "@/lib/trade/storage";
 import { products } from "@/lib/dummyData";
 import { createOnlineInquiry } from "@/lib/trade/onlineInquiries";
 
@@ -184,6 +183,7 @@ function StandardTradeRequestEditor({
   const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [showTermPresets, setShowTermPresets] = useState(false);
   const [showHandlerPresets, setShowHandlerPresets] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const formattedNumber = formatCurrency;
 
   useEffect(() => {
@@ -366,7 +366,7 @@ function StandardTradeRequestEditor({
     return calculateQuote(quoteInput);
   }, [draft]);
 
-  const handleSendToBuyer = () => {
+  const handleSendToBuyer = async () => {
     const errors = validateDraft(draft);
     setValidationErrors(errors);
     const hasErrors = Object.values(errors).some((error) => Boolean(error));
@@ -382,12 +382,37 @@ function StandardTradeRequestEditor({
       updatedAt: now,
     };
 
-    saveNavi(currentUser.id, updatedDraft);
-    const tradeRecord = createTradeFromDraft(updatedDraft, currentUser.id);
-    saveTradeRecord(tradeRecord);
-    setDraft(updatedDraft);
-    alert("取引Naviを取引先へ送信しました。");
-    router.push("/navi");
+    setIsSending(true);
+
+    try {
+      const response = await fetch("/api/trades", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ownerUserId: currentUser.id,
+          buyerUserId: updatedDraft.buyerId ?? undefined,
+          status: "SENT",
+          payload: updatedDraft,
+        }),
+      });
+
+      if (!response.ok) {
+        const detail = await response.text();
+        console.error("Failed to send trade navi", detail);
+        alert("送信に失敗しました。時間をおいて再度お試しください。");
+        return;
+      }
+
+      deleteNaviDraft(currentUser.id, updatedDraft.id);
+      setDraft(updatedDraft);
+      alert("取引Naviを取引先へ送信しました。");
+      router.push("/navi");
+    } catch (error) {
+      console.error("Failed to send trade navi", error);
+      alert("送信中にエラーが発生しました。再度お試しください。");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const renderRadioGroup = <T extends string>(
@@ -941,10 +966,10 @@ function StandardTradeRequestEditor({
         <button
           type="button"
           onClick={handleSendToBuyer}
-          disabled={draft?.buyerPending || !isBuyerSet}
+          disabled={draft?.buyerPending || !isBuyerSet || isSending}
           className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700 disabled:cursor-not-allowed disabled:bg-slate-400"
         >
-          内容を確定して取引先に送信する
+          {isSending ? "送信しています..." : "内容を確定して取引先に送信する"}
         </button>
       </div>
     </div>

@@ -6,6 +6,12 @@ function getStorageKey(userId: string, draftId: string) {
   return `${STORAGE_KEY_PREFIX}${userId}_${draftId}`;
 }
 
+export function deleteNaviDraft(userId: string, draftId: string) {
+  if (typeof window === "undefined") return;
+  const key = getStorageKey(userId, draftId);
+  window.sessionStorage.removeItem(key);
+}
+
 export function saveNaviDraft(userId: string, draft: TradeNaviDraft) {
   if (typeof window === "undefined") return;
   if (!draft.status) return;
