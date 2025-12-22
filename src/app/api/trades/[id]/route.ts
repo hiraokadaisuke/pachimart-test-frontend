@@ -56,7 +56,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
 
-    return NextResponse.json(toDto(trade));
+    return NextResponse.json(toDto(trade as TradeNaviRecord));
   } catch (error) {
     console.error("Failed to fetch trade", error);
     return NextResponse.json(
@@ -100,7 +100,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       data: { status: parsed.data.status },
     });
 
-    return NextResponse.json(toDto(updated));
+    return NextResponse.json(toDto(updated as TradeNaviRecord));
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
