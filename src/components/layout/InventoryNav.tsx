@@ -8,6 +8,8 @@ const NAV_ITEMS = [
   { href: "/inventory", label: "在庫一覧" },
   { href: "/inventory/purchase-invoice/create", label: "購入伝票作成" },
   { href: "/inventory/purchase-invoice/list", label: "購入伝票一覧" },
+  { href: "/inventory/sales-invoice/create", label: "販売伝票作成" },
+  { href: "/inventory/sales-invoice/list", label: "販売伝票一覧" },
   { href: "/inventory/settings", label: "詳細設定" },
 ];
 
