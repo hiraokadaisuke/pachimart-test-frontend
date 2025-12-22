@@ -36,7 +36,7 @@ model User {
 
 model TradeNavi {
   id          Int             @id @default(autoincrement())
-  status      TradeNaviStatus
+  status      TradeNaviStatus @default(DRAFT)
   ownerUserId String
   buyerUserId String?
   payload     Json?
