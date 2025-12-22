@@ -8,15 +8,8 @@ import { TradeStatusKey } from "@/components/transactions/status";
 import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
 import { getActorRole } from "@/lib/trade/navigation";
 import { canApprove, canCancel } from "@/lib/trade/permissions";
-import {
-  addBuyerContact,
-  ensureContactsLoaded,
-  approveTrade,
-  saveContactsToTrade,
-  cancelTrade,
-  updateTradeShipping,
-} from "@/lib/trade/storage";
-import { fetchTradeRecordById } from "@/lib/trade/api";
+import { addBuyerContact, ensureContactsLoaded, saveContactsToTrade, updateTradeShipping } from "@/lib/trade/storage";
+import { fetchTradeRecordById, updateTradeStatus } from "@/lib/trade/api";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getTodoPresentation } from "@/lib/trade/todo";
@@ -63,7 +56,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
           return;
         }
 
-        if (remote.sellerUserId !== currentUser.id) {
+        if (remote.sellerUserId !== currentUser.id && remote.buyerUserId !== currentUser.id) {
           console.error("Trade not found or access denied", tradeId);
           setTrade(null);
           setShipping({});
@@ -146,8 +139,32 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     }
   };
 
-  const handleApprove = () => {
+  const refreshTrade = async () => {
+    try {
+      const latest = await fetchTradeRecordById(tradeId);
+      if (!latest) {
+        setTrade(null);
+        setShipping({});
+        setContacts([]);
+        return null;
+      }
+
+      setTrade(latest);
+      setShipping(latest.buyerShippingAddress ?? latest.shipping ?? {});
+      setContacts(ensureContactsLoaded(latest));
+      return latest;
+    } catch (refreshError) {
+      console.error("Failed to refresh trade", refreshError);
+      return null;
+    }
+  };
+
+  const handleApprove = async () => {
     if (!trade) return;
+    if (!isBuyer) {
+      console.error("Only buyers can approve trades");
+      return;
+    }
 
     const missing = requiredFields.filter((field) => !shipping[field] || (shipping[field] ?? "").toString().trim() === "");
     if (missing.length > 0) {
@@ -157,29 +174,39 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     }
 
     const updatedShipping = updateTradeShipping(trade.id, shipping, contacts);
-    const updated = approveTrade(trade.id, currentUser.id);
-
     if (updatedShipping) setShipping(updatedShipping.shipping);
 
-    if (updated) {
-      setTrade(updated);
-      setMessage("承認しました。ステータスを更新しました。");
-      setError(null);
-      router.push("/navi?tab=purchaseHistory");
+    try {
+      await updateTradeStatus(trade.id, "APPROVED");
+      const latest = await refreshTrade();
+      if (latest) {
+        setMessage("承認しました。ステータスを更新しました。");
+        setError(null);
+        router.push("/navi?tab=purchaseHistory");
+      }
+    } catch (approveError) {
+      console.error("Failed to approve trade", approveError);
     }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
     if (!trade) return;
+    if (!isBuyer) {
+      console.error("Only buyers can reject trades");
+      return;
+    }
 
-    const canceled = cancelTrade(trade.id, currentUser.id);
-    if (canceled) {
-      setTrade(canceled);
-      setMessage("依頼をキャンセルしました。");
-      setError(null);
+    try {
+      await updateTradeStatus(trade.id, "REJECTED");
+      const latest = await refreshTrade();
+      if (latest) {
+        setMessage("依頼をキャンセルしました。");
+        setError(null);
 
-      const nextTab = actorRole === "seller" ? "salesHistory" : "purchaseHistory";
-      router.push(`/navi?tab=${nextTab}`);
+        router.push("/navi?tab=purchaseHistory");
+      }
+    } catch (cancelError) {
+      console.error("Failed to cancel trade", cancelError);
     }
   };
 
