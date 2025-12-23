@@ -162,7 +162,8 @@ export async function PATCH(request: Request, { params }: { params: { id: string
         data: { status: parsed.data.status },
       });
 
-      let createdTrade: { id: number } | null = null;
+      let createdTrade: Prisma.TradeGetPayload<{ select: { id: true } }> | null =
+        null;
 
       if (
         parsed.data.status === TradeNaviStatus.APPROVED &&
@@ -184,6 +185,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             naviId: updatedNavi.id,
           },
           update: {},
+          select: { id: true },
         });
       }
 
