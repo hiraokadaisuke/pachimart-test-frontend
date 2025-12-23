@@ -18,6 +18,9 @@ export type SalesInvoice = {
   createdAt: string;
   issuedDate?: string;
   paymentDueDate?: string;
+  paymentMethod?: string;
+  paymentDate?: string;
+  paymentAmount?: number;
   invoiceOriginalRequired?: boolean;
   vendorName?: string;
   buyerName?: string;
@@ -29,5 +32,10 @@ export type SalesInvoice = {
   tax?: number;
   insurance?: number;
   totalAmount?: number;
+  introductionStore?: string;
+  installationDate?: string;
+  openingDate?: string;
+  documentArrivalDate?: string;
+  storageLocation?: string;
   remarks?: string;
 };
