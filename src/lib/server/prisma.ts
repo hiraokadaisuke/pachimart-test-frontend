@@ -112,7 +112,7 @@ type InMemoryPrisma = {
       where,
       orderBy,
     }?: {
-      where?: { sellerUserId?: string; status?: ListingStatus; isVisible?: boolean };
+      where?: { sellerUserId?: string; status?: ListingStatus | { in: ListingStatus[] }; isVisible?: boolean };
       orderBy?: { updatedAt?: "asc" | "desc" };
     }) => Promise<InMemoryListing[]>;
     findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryListing | null>;
@@ -294,12 +294,18 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         where,
         orderBy,
       }: {
-        where?: { sellerUserId?: string; status?: ListingStatus; isVisible?: boolean };
+        where?: { sellerUserId?: string; status?: ListingStatus | { in: ListingStatus[] }; isVisible?: boolean };
         orderBy?: { updatedAt?: "asc" | "desc" };
       } = {}) => {
         const filtered = listings.filter((listing) => {
           const matchesSeller = where?.sellerUserId ? listing.sellerUserId === where.sellerUserId : true;
-          const matchesStatus = where?.status ? listing.status === where.status : true;
+          const matchesStatus = (() => {
+            if (!where?.status) return true;
+            if (typeof where.status === "object" && "in" in where.status) {
+              return where.status.in?.includes(listing.status) ?? false;
+            }
+            return listing.status === where.status;
+          })();
           const matchesVisibility =
             where?.isVisible === undefined ? true : listing.isVisible === where.isVisible;
           return matchesSeller && matchesStatus && matchesVisibility;
