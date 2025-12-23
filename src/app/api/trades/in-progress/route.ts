@@ -62,7 +62,6 @@ export async function GET() {
   try {
     const trades = await prisma.trade.findMany({
       where: { status: TradeStatus.IN_PROGRESS },
-      orderBy: [{ createdAt: "desc" }],
     });
 
     return NextResponse.json(trades.map((trade) => toDto(toRecord(trade))));
