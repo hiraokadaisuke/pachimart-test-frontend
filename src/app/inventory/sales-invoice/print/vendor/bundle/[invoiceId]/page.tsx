@@ -3,8 +3,8 @@
 import { useMemo } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 
-import { PrintScaffold } from "../../_components/PrintScaffold";
-import { useSalesInvoicePrintData } from "../../_components/useSalesInvoicePrintData";
+import { PrintScaffold } from "../../../_components/PrintScaffold";
+import { useSalesInvoicePrintData } from "../../../_components/useSalesInvoicePrintData";
 import { renderVendorSheet } from "@/app/inventory/sales-invoice/_components/SalesInvoiceDetailView";
 import { findBuyerById } from "@/lib/demo-data/buyers";
 

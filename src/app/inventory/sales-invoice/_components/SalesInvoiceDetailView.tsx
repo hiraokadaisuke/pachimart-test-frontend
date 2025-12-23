@@ -503,6 +503,8 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
                   shippingInsurance,
                   grandTotal,
                   issuedDateLabel,
+                  paymentDueDateLabel,
+                  invoiceOriginalRequiredLabel,
                   paymentDateLabel,
                   warehousingDateLabel,
                 })}
@@ -574,6 +576,7 @@ export const renderVendorSheet = ({
   issuedDateLabel,
   paymentDueDateLabel,
   invoiceOriginalRequiredLabel,
+  sellerInfo,
 }: VendorSheetProps) => {
   const sellerDisplay = sellerInfo
     ? {
