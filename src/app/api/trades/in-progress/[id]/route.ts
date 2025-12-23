@@ -111,7 +111,7 @@ export async function GET(
 
   try {
     const trade = await prisma.trade.findFirst({
-      where: { id, status: TradeStatus.IN_PROGRESS },
+      where: { id: { equals: id }, status: TradeStatus.IN_PROGRESS },
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
