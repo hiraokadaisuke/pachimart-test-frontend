@@ -1,6 +1,6 @@
 import React from "react";
 
-import type { TradeMessage } from "@/lib/dummyMessages";
+import type { TradeMessage } from "@/lib/messages/transform";
 
 type Props = {
   open: boolean;
