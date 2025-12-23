@@ -1,4 +1,4 @@
-import { Prisma, TradeNaviStatus } from "@prisma/client";
+import { Prisma, TradeNaviStatus, TradeStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -20,7 +20,7 @@ type TradeNaviRecord = {
   updatedAt: Date;
 };
 
-const toDto = (trade: TradeNaviRecord) => ({
+const toDto = (trade: TradeNaviRecord, tradeId?: number) => ({
   id: trade.id,
   status: trade.status,
   ownerUserId: trade.ownerUserId,
@@ -28,6 +28,7 @@ const toDto = (trade: TradeNaviRecord) => ({
   payload: (trade.payload as Prisma.JsonValue | null) ?? null,
   createdAt: trade.createdAt.toISOString(),
   updatedAt: trade.updatedAt.toISOString(),
+  tradeId,
 });
 
 const toRecord = (trade: unknown): TradeNaviRecord => {
@@ -68,6 +69,31 @@ const parseId = (id: string) => {
     return null;
   }
   return parsed;
+};
+
+class BuyerRequiredError extends Error {
+  constructor() {
+    super("buyerUserId is required to approve");
+  }
+}
+
+class TradeNotFoundError extends Error {}
+
+const resolveBuyerUserId = (trade: TradeNaviRecord): string | null => {
+  if (trade.buyerUserId) return trade.buyerUserId;
+
+  if (
+    trade.payload &&
+    typeof trade.payload === "object" &&
+    !Array.isArray(trade.payload)
+  ) {
+    const buyerId = (trade.payload as Record<string, unknown>).buyerId;
+    if (typeof buyerId === "string" && buyerId.trim().length > 0) {
+      return buyerId;
+    }
+  }
+
+  return null;
 };
 
 export async function GET(_request: Request, { params }: { params: { id: string } }) {
@@ -123,19 +149,66 @@ export async function PATCH(request: Request, { params }: { params: { id: string
   }
 
   try {
-    // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
-    const updated = await prisma.tradeNavi.update({
-      where: { id } as any,
-      data: { status: parsed.data.status },
+    const { updated, trade } = await prisma.$transaction(async (tx) => {
+      // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
+      const existing = await tx.tradeNavi.findUnique({ where: { id } as any });
+
+      if (!existing) {
+        throw new TradeNotFoundError();
+      }
+
+      const updatedNavi = await tx.tradeNavi.update({
+        where: { id } as any,
+        data: { status: parsed.data.status },
+      });
+
+      let createdTrade: Prisma.TradeGetPayload<{ select: { id: true } }> | null =
+        null;
+
+      if (
+        parsed.data.status === TradeNaviStatus.APPROVED &&
+        existing.status !== TradeNaviStatus.APPROVED
+      ) {
+        const buyerUserId = resolveBuyerUserId(toRecord(updatedNavi));
+
+        if (!buyerUserId) {
+          throw new BuyerRequiredError();
+        }
+
+        createdTrade = await tx.trade.upsert({
+          where: { naviId: updatedNavi.id } as any,
+          create: {
+            sellerUserId: updatedNavi.ownerUserId,
+            buyerUserId,
+            status: TradeStatus.IN_PROGRESS,
+            payload: updatedNavi.payload ?? Prisma.JsonNull,
+            naviId: updatedNavi.id,
+          },
+          update: {},
+          select: { id: true },
+        });
+      }
+
+      return { updated: toRecord(updatedNavi), trade: createdTrade };
     });
 
-    return NextResponse.json(toDto(toRecord(updated)));
+    const tradeId = trade ? Number(trade.id) : undefined;
+
+    return NextResponse.json(toDto(updated, tradeId));
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
       (error.code === "P2025" || error.code === "P2015")
     ) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
+    }
+
+    if (error instanceof TradeNotFoundError) {
+      return NextResponse.json({ error: "Trade not found" }, { status: 404 });
+    }
+
+    if (error instanceof BuyerRequiredError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
     console.error("Failed to update trade", error);
