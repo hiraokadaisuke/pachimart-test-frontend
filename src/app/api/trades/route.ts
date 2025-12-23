@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
 
+const tradeNaviClient = prisma.tradeNavi;
+
 type TradeNaviDto = {
   id: number;
   status: TradeNaviStatus;
@@ -86,7 +88,7 @@ const handleUnknownError = (error: unknown) =>
 
 export async function GET() {
   try {
-    const trades = await prisma.tradeNavi.findMany({
+    const trades = await tradeNaviClient.findMany({
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,
     });
@@ -125,7 +127,7 @@ export async function POST(request: Request) {
   const { ownerUserId, buyerUserId, status, payload } = parsed.data;
 
   try {
-    const created = await prisma.tradeNavi.create({
+    const created = await tradeNaviClient.create({
       data: {
         ownerUserId,
         buyerUserId: buyerUserId ?? null,
