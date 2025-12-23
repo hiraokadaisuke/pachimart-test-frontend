@@ -7,7 +7,6 @@ import { TradeNaviStatus } from "@prisma/client";
 import { TradeRecord } from "@/lib/trade/types";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
-import { loadAllTrades, TRADE_STORAGE_KEY } from "@/lib/trade/storage";
 import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
@@ -118,14 +117,14 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
 
 function buildInquiryRow(inquiry: OnlineInquiryRecord, viewerId: string): InquiryRow {
   const updatedAtLabel = formatDateTime(inquiry.updatedAt ?? inquiry.createdAt ?? new Date().toISOString());
-  const isSeller = inquiry.sellerUserId === viewerId;
-  const kind = isSeller ? ("sell" as const) : ("buy" as const);
+  const isBuyer = inquiry.buyerUserId === viewerId;
+  const kind = isBuyer ? ("buy" as const) : ("sell" as const);
   const totalAmount = inquiry.unitPrice * inquiry.quantity;
 
   return {
     id: inquiry.id,
     updatedAt: updatedAtLabel,
-    partnerName: isSeller ? inquiry.buyerCompanyName ?? "買主" : inquiry.sellerCompanyName ?? "売主",
+    partnerName: isBuyer ? inquiry.sellerCompanyName ?? "売主" : inquiry.buyerCompanyName ?? "買主",
     makerName: inquiry.makerName ?? "-",
     itemName: inquiry.productName,
     quantity: inquiry.quantity,
@@ -151,7 +150,6 @@ export function InProgressTabContent() {
   const keywordLower = keyword.toLowerCase();
 
   useEffect(() => {
-    setTrades(loadAllTrades());
     loadAllTradesWithApi().then(setTrades).catch((error) => console.error(error));
     setOnlineInquiries(loadOnlineInquiries());
   }, []);
@@ -182,10 +180,6 @@ export function InProgressTabContent() {
 
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
-      if (event.key === TRADE_STORAGE_KEY) {
-        setTrades(loadAllTrades());
-        loadAllTradesWithApi().then(setTrades).catch((error) => console.error(error));
-      }
       if (event.key === ONLINE_INQUIRY_STORAGE_KEY) {
         setOnlineInquiries(loadOnlineInquiries());
       }

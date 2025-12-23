@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PachipayInfoCard } from "@/components/pachipay/PachipayInfoCard";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { TRADE_STORAGE_KEY, loadAllTrades } from "@/lib/trade/storage";
+import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { TradeRecord } from "@/lib/trade/types";
 
@@ -20,17 +20,7 @@ export function HistoryTabContent() {
   const [trades, setTrades] = useState<TradeRecord[]>([]);
 
   useEffect(() => {
-    setTrades(loadAllTrades());
-  }, []);
-
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === TRADE_STORAGE_KEY) {
-        setTrades(loadAllTrades());
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
+    loadAllTradesWithApi().then(setTrades).catch((error) => console.error(error));
   }, []);
 
   const myTransactions = useMemo(

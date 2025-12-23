@@ -17,7 +17,7 @@ import { getStatementPath } from "@/lib/trade/navigation";
 import { TradeRecord } from "@/lib/trade/types";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
-import { InProgressTradeDto, transformInProgressTrade } from "@/lib/trade/transform";
+import { TradeDto, transformTrade } from "@/lib/trade/transform";
 
 const SECTION_LABELS = {
   approval: todoUiMap["application_sent"],
@@ -140,11 +140,11 @@ export function InProgressTabContent() {
         throw new Error(`Failed to fetch trades: ${response.status}`);
       }
 
-      const data: InProgressTradeDto[] = await response.json();
+      const data: TradeDto[] = await response.json();
       const ownedTrades = data.filter(
         (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
       );
-      setTrades(ownedTrades.map(transformInProgressTrade));
+      setTrades(ownedTrades.map(transformTrade));
     } catch (error) {
       console.error("Failed to load trades", error);
       setTrades([]);

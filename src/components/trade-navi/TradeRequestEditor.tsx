@@ -378,6 +378,7 @@ function StandardTradeRequestEditor({
       ...draft,
       status: "sent_to_buyer",
       buyerPending: false,
+      ownerUserId: currentUser.id,
       createdAt: draft.createdAt ?? now,
       updatedAt: now,
     };
@@ -1002,9 +1003,10 @@ function OnlineInquiryCreator({
   const quantity = parseNumberParam(searchParams.get("quantity"), product?.quantity ?? 1);
   const unitPrice = parseNumberParam(searchParams.get("unitPrice"), product?.price ?? 0);
 
+  const devUsers = useMemo(() => getDevUsers(), []);
   const sellerUserId =
-    product?.ownerUserId ?? (currentUser.id === DEV_USERS.A.id ? DEV_USERS.B.id : DEV_USERS.A.id);
-  const seller = findDevUserById(sellerUserId) ?? DEV_USERS.B;
+    product?.ownerUserId ?? devUsers.find((user) => user.id !== currentUser.id)?.id ?? currentUser.id;
+  const seller = findDevUserById(sellerUserId) ?? devUsers.find((user) => user.id !== currentUser.id) ?? currentUser;
 
   const [shippingAddress, setShippingAddress] = useState(currentUser.address);
   const [contactPerson, setContactPerson] = useState(currentUser.contactName);
