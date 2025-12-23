@@ -22,7 +22,7 @@ import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap, type TodoUiDef } from "@/lib/todo/todoUiMap";
 import { fetchTradeNavis, mapTradeNaviToTradeRecord, updateTradeStatus } from "@/lib/trade/api";
 
-type TradeSection = TodoUiDef["section"];
+type TradeSectionWithInquiry = TodoUiDef["section"] | "onlineInquiry";
 
 const APPROVAL_LABEL = todoUiMap["application_sent"];
 
@@ -34,6 +34,7 @@ const ONLINE_INQUIRY_DESCRIPTION = {
 type TradeRow = {
   id: string;
   naviId?: number;
+  naviType?: TradeNaviType;
   status: TradeStatusKey;
   updatedAt: string;
   partnerName: string;
@@ -47,7 +48,7 @@ type TradeRow = {
   sellerName: string;
   buyerName: string;
   kind: "buy" | "sell";
-  section: TradeSection;
+  section: TradeSectionWithInquiry;
   isOpen: boolean;
 };
 
@@ -78,6 +79,12 @@ function formatCurrency(amount: number) {
   return formatter.format(amount);
 }
 
+const toNumericNaviId = (value: string | number | undefined): number | null => {
+  if (typeof value === "number" && Number.isInteger(value)) return value;
+  const parsed = Number(value);
+  return Number.isInteger(parsed) ? parsed : null;
+};
+
 function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
   const primaryItem = trade.items[0];
@@ -88,11 +95,15 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   const isSeller = sellerId === viewerId;
   const kind = isSeller ? ("sell" as const) : ("buy" as const);
   const todo = getTodoPresentation(trade, kind === "buy" ? "buyer" : "seller");
+  const section: TradeSectionWithInquiry =
+    trade.naviType === TradeNaviType.ONLINE_INQUIRY ? "onlineInquiry" : todo.section;
+
   return {
     id: trade.id,
     naviId: trade.naviId,
+    naviType: trade.naviType,
     status: todo.todoKind,
-    section: todo.section,
+    section,
     updatedAt: updatedAtLabel,
     partnerName: isSeller ? trade.buyer.companyName : trade.seller.companyName,
     makerName: primaryItem?.maker ?? "-",
@@ -195,6 +206,16 @@ export function InProgressTabContent() {
     [currentUser.id, trades]
   );
 
+  const tradeNaviIds = useMemo(
+    () =>
+      new Set(
+        mappedTradeRows
+          .map((row) => toNumericNaviId(row.naviId))
+          .filter((id): id is number => id !== null)
+      ),
+    [mappedTradeRows]
+  );
+
   const filteredTradeRows = useMemo(
     () =>
       mappedTradeRows
@@ -268,7 +289,15 @@ export function InProgressTabContent() {
     return rows;
   }, [buyerApprovalRowsFromTrades, filteredBuyerNaviApprovalRows]);
 
-  const mappedInquiryRows = useMemo(() => onlineInquiryRows, [onlineInquiryRows]);
+  const mappedInquiryRows = useMemo(
+    () =>
+      onlineInquiryRows.filter((inquiry) => {
+        const naviId = toNumericNaviId(inquiry.naviId ?? inquiry.id);
+        if (naviId === null) return true;
+        return !tradeNaviIds.has(naviId);
+      }),
+    [onlineInquiryRows, tradeNaviIds]
+  );
 
   const filteredInquiryRows = useMemo(
     () =>
@@ -299,9 +328,8 @@ export function InProgressTabContent() {
   );
 
   const resolveNaviId = (rowId: string | number | undefined) => {
-    if (typeof rowId === "number" && Number.isInteger(rowId)) return String(rowId);
-    const parsed = Number(rowId);
-    return Number.isInteger(parsed) ? String(parsed) : null;
+    const parsed = toNumericNaviId(rowId);
+    return parsed === null ? null : String(parsed);
   };
 
   const handleCancelInquiry = async (inquiryId: string | number | undefined) => {
@@ -558,14 +586,9 @@ export function InProgressTabContent() {
   const handleOpenMessage = (row: TradeRow) => {
     setMessageTarget(row.id);
 
-    if (typeof row.naviId === "number" && Number.isInteger(row.naviId)) {
-      setMessageNaviId(row.naviId);
-      return;
-    }
-
-    const parsedId = Number(row.id);
-    if (Number.isInteger(parsedId)) {
-      setMessageNaviId(parsedId);
+    const naviId = toNumericNaviId(row.naviId ?? row.id);
+    if (naviId !== null) {
+      setMessageNaviId(naviId);
       return;
     }
 
