@@ -133,7 +133,7 @@ export async function POST(
         senderUserId: parsed.data.senderUserId,
         receiverUserId: parsed.data.receiverUserId,
         body: parsed.data.body,
-      },
+      } as any,
     });
 
     const dto = toDto(normalizeMessage(created));
