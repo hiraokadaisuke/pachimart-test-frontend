@@ -52,6 +52,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const [remarks, setRemarks] = useState("");
   const [applicationDate, setApplicationDate] = useState("");
   const [applicationFlag, setApplicationFlag] = useState("-");
+  const [transportInsurance, setTransportInsurance] = useState(0);
 
   useEffect(() => {
     const defaults = inventories.map<BaseRow>((item) => ({
@@ -166,6 +167,296 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const totalLabel = totalAmount.toLocaleString("ja-JP");
   const taxAmount = Math.floor(totalAmount * 0.1);
   const supplierName = inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? "";
+
+  if (type === "hall") {
+    return (
+      <div className="min-h-screen bg-gray-200 px-3 py-6 text-[13px] text-neutral-900">
+        <div className="mx-auto max-w-6xl">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-lg font-bold text-neutral-900">
+                <span className="inline-block h-4 w-4 rounded-full bg-green-600" />
+                <span>購入伝票登録（ホール）</span>
+              </div>
+              <div className="border-b border-dashed border-neutral-400" />
+              <div className="flex items-center gap-2 border border-green-700 bg-cyan-50 px-3 py-1 shadow-inner">
+                <span className="h-4 w-1 bg-green-700" />
+                <span className="text-[13px] font-bold">新規登録</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 self-start">
+              <button type="button" onClick={handleSubmit} className={primaryButton}>
+                確認
+              </button>
+              <button type="button" onClick={() => router.back()} className={secondaryButton}>
+                戻る
+              </button>
+            </div>
+          </div>
+
+          <div className="mt-4 border-[10px] border-cyan-700 bg-cyan-100 p-3 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
+            <div className="space-y-4 border-4 border-black bg-white p-4">
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-[2fr_1fr]">
+                <div className="space-y-2 border border-black bg-white p-3">
+                  <div className="text-lg font-bold leading-relaxed text-neutral-900">
+                    <span className="bg-orange-200 px-2 text-orange-900">
+                      {supplierName || "○○ホール○○店 株式会社○○○○"}
+                    </span>
+                    <span className="ml-2">御中</span>
+                  </div>
+                  <div className="text-xs italic text-neutral-700">
+                    * p-kanriclubと{supplierName || "○○ホール○○店 株式会社○○○○"}
+                    は下記の条件にて売買契約を締結いたします
+                  </div>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-end gap-2 text-sm font-semibold">
+                    <span className="text-neutral-700">伝票日付</span>
+                    <div className="flex items-stretch border border-black">
+                      <input
+                        type="date"
+                        value={issuedDate}
+                        onChange={(e) => setIssuedDate(e.target.value)}
+                        className={`${yellowInput} w-36 rounded-none border-0 text-center`}
+                      />
+                      <span className="border-l border-black bg-neutral-100 px-2 py-1 text-[11px]">📅</span>
+                    </div>
+                  </div>
+                  <div className="border border-orange-500 bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-900">
+                    <div className="flex items-center justify-between">
+                      <span>担当</span>
+                      <select
+                        value={staff}
+                        onChange={(e) => setStaff(e.target.value)}
+                        className={`${yellowInput} w-36 rounded-none border border-orange-500 text-center font-semibold text-orange-900`}
+                      >
+                        {["担当A", "担当B", "担当C"].map((name) => (
+                          <option key={name} value={name}>
+                            {name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  <div className="border border-black bg-white text-[12px] leading-5">
+                    <div className="border-b border-black bg-neutral-100 px-2 py-1 font-semibold">【買主】</div>
+                    <div className="space-y-1 px-2 py-2">
+                      <div>〒541-0047 大阪府大阪市中央区淡路町3丁目6-3 御堂筋MTRビル2階</div>
+                      <div>株式会社PACHI MANAGEMENT</div>
+                      <div>代表者名：齋藤 克也</div>
+                      <div>
+                        TEL 06-4708-8285 <span className="ml-4">FAX 06-4708-8286</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 text-sm font-semibold md:grid-cols-3" style={{ borderCollapse: "collapse" }}>
+                <div className="border border-black bg-white px-4 py-3 text-center">
+                  <div className="text-[12px]">合計金額</div>
+                  <div className="text-lg">{totalLabel}円</div>
+                </div>
+                <div className="border border-black bg-white px-4 py-3 text-center">
+                  <div className="text-[12px]">支払日</div>
+                  <input
+                    type="date"
+                    value={paymentDate}
+                    onChange={(e) => setPaymentDate(e.target.value)}
+                    className={`${yellowInput} mt-1 w-40 rounded-none text-center`}
+                  />
+                </div>
+                <div className="border border-black bg-white px-4 py-3 text-center">
+                  <div className="text-[12px]">入庫日</div>
+                  <input
+                    type="date"
+                    value={warehousingDate}
+                    onChange={(e) => setWarehousingDate(e.target.value)}
+                    className={`${yellowInput} mt-1 w-40 rounded-none text-center`}
+                  />
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-between gap-2 border border-black bg-cyan-50 px-3 py-2 text-sm font-semibold">
+                <div className="flex items-center gap-2 text-[12px] text-neutral-800">
+                  <span>行を追加します</span>
+                  <button
+                    type="button"
+                    onClick={handleAddRow}
+                    className="rounded-none border-2 border-amber-600 bg-amber-200 px-3 py-1 text-sm font-semibold shadow-[2px_2px_0_rgba(0,0,0,0.35)]"
+                  >
+                    行追加
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button type="button" onClick={handleSubmit} className={primaryButton}>
+                    確認
+                  </button>
+                  <button type="button" onClick={() => router.back()} className={secondaryButton}>
+                    戻る
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-black text-center text-[12px]" style={{ borderCollapse: "collapse" }}>
+                  <thead className="bg-cyan-50 text-[12px] font-semibold">
+                    <tr>
+                      <th className="border border-black px-2 py-2">撤去日</th>
+                      <th className="border border-black px-2 py-2">店舗名</th>
+                      <th className="border border-black px-2 py-2">メーカー名</th>
+                      <th className="border border-black px-2 py-2">商品名</th>
+                      <th className="border border-black px-2 py-2">タイプ</th>
+                      <th className="border border-black px-2 py-2">数量</th>
+                      <th className="border border-black px-2 py-2">単価</th>
+                      <th className="border border-black px-2 py-2">金額</th>
+                      <th className="border border-black px-2 py-2">残債</th>
+                      <th className="border border-black px-2 py-2">商品補足</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((row, index) => (
+                      <tr key={`${row.inventoryId}-${index}`} className="bg-white">
+                        <td className="border border-black px-1 py-1">
+                          <input
+                            type="date"
+                            value={row.removalDate ?? ""}
+                            onChange={(e) => handleChange(index, "removalDate", e.target.value)}
+                            className={`${yellowInput} rounded-none text-center`}
+                          />
+                        </td>
+                        <td className="border border-black px-1 py-1">
+                          <input
+                            type="text"
+                            value={row.storeName ?? ""}
+                            onChange={(e) => handleChange(index, "storeName", e.target.value)}
+                            className={`${yellowInput} rounded-none`}
+                          />
+                        </td>
+                        <td className="border border-black px-1 py-1">
+                          <input
+                            type="text"
+                            value={row.maker}
+                            onChange={(e) => handleChange(index, "maker", e.target.value)}
+                            className={`${yellowInput} rounded-none`}
+                          />
+                        </td>
+                        <td className="border border-black px-1 py-1">
+                          <input
+                            type="text"
+                            value={row.machineName}
+                            onChange={(e) => handleChange(index, "machineName", e.target.value)}
+                            className={`${yellowInput} rounded-none`}
+                          />
+                        </td>
+                        <td className="border border-black px-1 py-1">
+                          <input
+                            type="text"
+                            value={row.type}
+                            onChange={(e) => handleChange(index, "type", e.target.value)}
+                            className={`${yellowInput} rounded-none`}
+                          />
+                        </td>
+                        <td className="border border-black px-1 py-1">
+                          <input
+                            type="number"
+                            value={row.quantity}
+                            onChange={(e) => handleChange(index, "quantity", e.target.value)}
+                            className={`${yellowInput} rounded-none text-right`}
+                          />
+                        </td>
+                        <td className="border border-black px-1 py-1">
+                          <input
+                            type="number"
+                            value={row.unitPrice}
+                            onChange={(e) => handleChange(index, "unitPrice", e.target.value)}
+                            className={`${yellowInput} rounded-none text-right`}
+                          />
+                        </td>
+                        <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
+                          {row.amount.toLocaleString("ja-JP")}
+                        </td>
+                        <td className="border border-black px-1 py-1">
+                          <input
+                            type="number"
+                            value={row.remainingDebt ?? 0}
+                            onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
+                            className={`${yellowInput} rounded-none text-right`}
+                          />
+                        </td>
+                        <td className="border border-black px-1 py-1">
+                          <input
+                            type="text"
+                            value={row.note ?? ""}
+                            onChange={(e) => handleChange(index, "note", e.target.value)}
+                            placeholder="(印刷時に表示されます)"
+                            className={`${yellowInput} rounded-none`}
+                          />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_300px]">
+                <div className="border border-black bg-white">
+                  <div className="border-b border-black bg-cyan-50 px-3 py-2 text-sm font-bold">
+                    備考（入庫検品依頼書に表示されます）
+                  </div>
+                  <textarea
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    className="h-40 w-full border-none bg-amber-100 p-3 text-[13px] leading-tight focus:outline-none"
+                  />
+                </div>
+                <div className="border border-black bg-white">
+                  <table className="w-full text-[12px]" style={{ borderCollapse: "collapse" }}>
+                    <tbody>
+                      <tr>
+                        <th className="w-32 border border-black bg-cyan-50 px-2 py-2 text-left">小計</th>
+                        <td className="border border-black px-2 py-2 text-right">¥{totalLabel}</td>
+                      </tr>
+                      <tr>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">消費税（10%）</th>
+                        <td className="border border-black px-2 py-2 text-right">¥{taxAmount.toLocaleString("ja-JP")}</td>
+                      </tr>
+                      <tr>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送保険（税込）</th>
+                        <td className="border border-black px-2 py-2 text-right">
+                          <input
+                            type="number"
+                            value={transportInsurance}
+                            onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
+                            className={`${yellowInput} w-full rounded-none text-right`}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">合計金額</th>
+                        <td className="border border-black px-2 py-2 text-right text-base font-bold">
+                          ¥{(totalAmount + taxAmount + transportInsurance).toLocaleString("ja-JP")}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-center gap-4">
+            <button type="button" onClick={handleSubmit} className={primaryButton}>
+              確認
+            </button>
+            <button type="button" onClick={() => router.back()} className={secondaryButton}>
+              戻る
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-200 px-3 py-6 text-[13px] text-neutral-900">
@@ -292,8 +583,6 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
             <table className="min-w-full border border-black text-center text-[12px]" style={{ borderCollapse: "collapse" }}>
               <thead className="bg-cyan-50 text-[12px] font-semibold">
                 <tr>
-                  {type === "hall" && <th className="border border-black px-2 py-2">撤去日</th>}
-                  {type === "hall" && <th className="border border-black px-2 py-2">店舗名</th>}
                   <th className="border border-black px-2 py-2">メーカー名</th>
                   <th className="border border-black px-2 py-2">商品名</th>
                   <th className="border border-black px-2 py-2">タイプ</th>
@@ -309,26 +598,6 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               <tbody>
                 {rows.map((row, index) => (
                   <tr key={`${row.inventoryId}-${index}`} className="bg-white">
-                    {type === "hall" && (
-                      <td className="border border-black px-1 py-1">
-                        <input
-                          type="date"
-                          value={row.removalDate ?? ""}
-                          onChange={(e) => handleChange(index, "removalDate", e.target.value)}
-                          className={`${yellowInput} rounded-none text-center`}
-                        />
-                      </td>
-                    )}
-                    {type === "hall" && (
-                      <td className="border border-black px-1 py-1">
-                        <input
-                          type="text"
-                          value={row.storeName ?? ""}
-                          onChange={(e) => handleChange(index, "storeName", e.target.value)}
-                          className={`${yellowInput} rounded-none`}
-                        />
-                      </td>
-                    )}
                     <td className="border border-black px-1 py-1">
                       <input
                         type="text"
