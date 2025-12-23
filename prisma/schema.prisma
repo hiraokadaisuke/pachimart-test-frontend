@@ -20,6 +20,12 @@ enum TradeStatus {
   CANCELED
 }
 
+enum ListingStatus {
+  DRAFT
+  PUBLISHED
+  SOLD
+}
+
 model User {
   id             String     @id
   companyName    String
@@ -75,4 +81,29 @@ model Message {
   senderUser   User      @relation("Sender", fields: [senderUserId], references: [id])
   receiverUser User      @relation("Receiver", fields: [receiverUserId], references: [id])
   navi         TradeNavi? @relation(fields: [naviId], references: [id])
+}
+
+model Listing {
+  id               String         @id @default(cuid())
+  sellerUserId     String
+  status           ListingStatus  @default(DRAFT)
+  isVisible        Boolean        @default(true)
+  kind             String
+  maker            String?
+  machineName      String?
+  quantity         Int
+  unitPriceExclTax Int?
+  isNegotiable     Boolean        @default(false)
+  storageLocation  String
+  shippingFeeCount Int
+  handlingFeeCount Int
+  allowPartial     Boolean
+  note             String?
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([sellerUserId])
+  @@index([status])
+  @@index([isVisible])
+  @@index([updatedAt])
 }
