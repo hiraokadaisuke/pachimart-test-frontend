@@ -229,7 +229,7 @@ function StandardTradeRequestEditor({
       return;
     }
 
-    const parseNumberParam = (value: string | null, fallback?: number | null) => {
+    const parseNumberParam = (value: string | null, fallback?: number) => {
       if (!value) return fallback;
       const parsed = Number(value);
       return Number.isFinite(parsed) ? parsed : fallback;
@@ -238,7 +238,7 @@ function StandardTradeRequestEditor({
     const listingUnitPrice = linkedListing ? linkedListing.unitPriceExclTax : undefined;
     const initialUnitPrice =
       listingUnitPrice === null
-        ? null
+        ? undefined
         : parseNumberParam(safeSearchParams.get("unitPrice"), listingUnitPrice ?? undefined);
 
     const initialDraft = createEmptyNaviDraft({

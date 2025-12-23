@@ -96,7 +96,7 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
 const toListingSnapshot = (listing: Record<string, unknown>): Prisma.JsonObject => ({
   id: String(listing.id ?? ""),
   sellerUserId: String(listing.sellerUserId ?? ""),
-  status: listing.status,
+  status: String(listing.status ?? ""),
   isVisible: Boolean(listing.isVisible),
   kind: String(listing.kind ?? ""),
   maker: (listing.maker as string | null) ?? null,
@@ -171,13 +171,15 @@ export async function POST(request: Request) {
     listingSnapshot = toListingSnapshot(listing as Record<string, unknown>);
   }
 
+  const listingSnapshotInput = listingSnapshot ?? undefined;
+
   try {
     const created = await tradeNaviClient.create({
       data: {
         ownerUserId,
         buyerUserId: buyerUserId ?? null,
         listingId: listingId ?? null,
-        listingSnapshot,
+        listingSnapshot: listingSnapshotInput as any,
         status: status ?? TradeNaviStatus.DRAFT,
         payload: (payload ?? null) as any,
       },
