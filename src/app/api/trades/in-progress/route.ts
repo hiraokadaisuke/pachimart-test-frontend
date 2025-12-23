@@ -109,7 +109,7 @@ export async function GET() {
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
-    return NextResponse.json(trades.map((trade) => toDto(toRecord(trade))));
+    return NextResponse.json(trades.map((trade: unknown) => toDto(toRecord(trade))));
   } catch (error) {
     console.error("Failed to fetch in-progress trades", error);
     return NextResponse.json(
