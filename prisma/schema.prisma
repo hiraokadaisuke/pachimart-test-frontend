@@ -45,6 +45,8 @@ model TradeNavi {
   status      TradeNaviStatus @default(DRAFT)
   ownerUserId String
   buyerUserId String?
+  listingId   String?
+  listingSnapshot Json?
   payload     Json?
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt

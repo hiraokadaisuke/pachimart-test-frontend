@@ -13,6 +13,8 @@ type InMemoryTradeNavi = {
   status: TradeNaviStatus;
   ownerUserId: string;
   buyerUserId: string | null;
+  listingId: string | null;
+  listingSnapshot: Prisma.JsonValue | null;
   payload: Prisma.JsonValue | null;
   createdAt: Date;
   updatedAt: Date;
@@ -189,6 +191,8 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           status: (data.status as TradeNaviStatus) ?? TradeNaviStatus.DRAFT,
           ownerUserId: String(data.ownerUserId ?? ""),
           buyerUserId: (data.buyerUserId as string | null) ?? null,
+          listingId: (data.listingId as string | null | undefined) ?? null,
+          listingSnapshot: (data.listingSnapshot as Prisma.JsonValue | null | undefined) ?? null,
           payload: (data.payload as Prisma.JsonValue | null) ?? null,
           createdAt: now(),
           updatedAt: now(),
@@ -215,6 +219,9 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           ...data,
           status: (data.status as TradeNaviStatus | undefined) ?? tradeNavis[idx].status,
           buyerUserId: (data.buyerUserId as string | null | undefined) ?? tradeNavis[idx].buyerUserId,
+          listingId: (data.listingId as string | null | undefined) ?? tradeNavis[idx].listingId,
+          listingSnapshot:
+            (data.listingSnapshot as Prisma.JsonValue | null | undefined) ?? tradeNavis[idx].listingSnapshot,
           payload: (data.payload as Prisma.JsonValue | null | undefined) ?? tradeNavis[idx].payload,
           updatedAt: now(),
         };
