@@ -216,7 +216,7 @@ export default function SalesInvoiceCreatePage() {
       </div>
 
       <div className="space-y-2">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 rounded-sm border border-gray-400 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800">
             <span className="h-4 w-1 bg-slate-700" aria-hidden />
             <span>販売物件リスト</span>
