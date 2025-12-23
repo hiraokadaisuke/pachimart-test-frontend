@@ -141,6 +141,7 @@ export function InProgressTabContent() {
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const [onlineInquiries, setOnlineInquiries] = useState<OnlineInquiryRecord[]>([]);
   const [sellerApprovalRows, setSellerApprovalRows] = useState<TradeRow[]>([]);
+  const [buyerNaviApprovalRows, setBuyerNaviApprovalRows] = useState<TradeRow[]>([]);
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -155,27 +156,30 @@ export function InProgressTabContent() {
   }, []);
 
   useEffect(() => {
-    const fetchSellerApprovalRows = async () => {
+    const fetchApprovalRows = async () => {
       try {
         const apiTrades = await fetchTradeNavis();
         const rows = apiTrades
           .filter(
             (trade) =>
-              trade.ownerUserId === currentUser.id && trade.status === TradeNaviStatus.SENT
+              trade.status === TradeNaviStatus.SENT &&
+              (trade.ownerUserId === currentUser.id || trade.buyerUserId === currentUser.id)
           )
           .map((trade) => mapTradeNaviToTradeRecord(trade))
           .filter((trade): trade is TradeRecord => Boolean(trade))
           .map((trade) => buildTradeRow(trade, currentUser.id))
-          .filter((row) => row.section === "approval" && row.isOpen && row.kind === "sell");
+          .filter((row) => row.section === "approval" && row.isOpen);
 
-        setSellerApprovalRows(rows);
+        setSellerApprovalRows(rows.filter((row) => row.kind === "sell"));
+        setBuyerNaviApprovalRows(rows.filter((row) => row.kind === "buy"));
       } catch (error) {
         console.error(error);
         setSellerApprovalRows([]);
+        setBuyerNaviApprovalRows([]);
       }
     };
 
-    fetchSellerApprovalRows();
+    fetchApprovalRows();
   }, [currentUser.id]);
 
   useEffect(() => {
@@ -209,7 +213,7 @@ export function InProgressTabContent() {
         }),
     [currentUser.id, keywordLower, mappedTradeRows]
   );
-  const buyerApprovalRows = filteredTradeRows.filter(
+  const buyerApprovalRowsFromTrades = filteredTradeRows.filter(
     (row) => row.kind === "buy" && row.section === "approval"
   );
 
@@ -224,6 +228,47 @@ export function InProgressTabContent() {
       }),
     [keywordLower, sellerApprovalRows]
   );
+
+  const filteredBuyerNaviApprovalRows = useMemo(
+    () =>
+      buyerNaviApprovalRows.filter((trade) => {
+        if (!keywordLower) return true;
+        return (
+          trade.itemName.toLowerCase().includes(keywordLower) ||
+          trade.partnerName.toLowerCase().includes(keywordLower)
+        );
+      }),
+    [keywordLower, buyerNaviApprovalRows]
+  );
+
+  const buyerApprovalRows = useMemo(() => {
+    const rows: TradeRow[] = [];
+    const naviIds = new Set<number>();
+    const ids = new Set<string>();
+
+    buyerApprovalRowsFromTrades.forEach((row) => {
+      rows.push(row);
+      if (typeof row.naviId === "number") {
+        naviIds.add(row.naviId);
+      }
+      ids.add(row.id);
+    });
+
+    filteredBuyerNaviApprovalRows.forEach((row) => {
+      const hasNaviId = typeof row.naviId === "number";
+      if (hasNaviId) {
+        const naviId = row.naviId as number;
+        if (naviIds.has(naviId)) return;
+        naviIds.add(naviId);
+      } else {
+        if (ids.has(row.id)) return;
+        ids.add(row.id);
+      }
+      rows.push(row);
+    });
+
+    return rows;
+  }, [buyerApprovalRowsFromTrades, filteredBuyerNaviApprovalRows]);
 
   const mappedInquiryRows = useMemo(
     () =>
