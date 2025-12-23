@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
 
+const tradeNaviClient = prisma.tradeNavi;
+
 const updateTradeSchema = z.object({
   status: z.nativeEnum(TradeNaviStatus, {
     errorMap: () => ({ message: "status must be a valid TradeNaviStatus" }),
@@ -105,7 +107,7 @@ export async function GET(_request: Request, { params }: { params: { naviId: str
 
   try {
     // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
-    const trade = await prisma.tradeNavi.findUnique({ where: { id } as any });
+    const trade = await tradeNaviClient.findUnique({ where: { id } as any });
 
     if (!trade) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
@@ -162,8 +164,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         data: { status: parsed.data.status },
       });
 
-      let createdTrade: Prisma.TradeGetPayload<{ select: { id: true } }> | null =
-        null;
+      let createdTrade: { id: unknown } | null = null;
 
       if (
         parsed.data.status === TradeNaviStatus.APPROVED &&

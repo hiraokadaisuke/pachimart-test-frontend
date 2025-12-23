@@ -4,6 +4,8 @@ import { z } from "zod";
 import { normalizeMessageRecord, toMessageDto } from "@/lib/messages/transform";
 import { prisma } from "@/lib/server/prisma";
 
+const messageClient = prisma.message;
+
 const createMessageInput = z.object({
   senderUserId: z.string().min(1),
   receiverUserId: z.string().min(1),
@@ -30,7 +32,7 @@ export async function GET(
   }
 
   try {
-    const results = await prisma.message.findMany({
+    const results = await messageClient.findMany({
       where: { naviId } as any,
       orderBy: { createdAt: "asc" },
     });
@@ -65,7 +67,7 @@ export async function POST(
   }
 
   try {
-    const created = await prisma.message.create({
+    const created = await messageClient.create({
       data: {
         naviId,
         senderUserId: parsed.data.senderUserId,
