@@ -185,7 +185,7 @@ export async function GET(request: Request) {
     }
 
     if (!status && !sellerUserId) {
-      where.status = ListingStatus.PUBLISHED;
+      where.status = { in: [ListingStatus.PUBLISHED, ListingStatus.SOLD] } as any;
     }
 
     const listings = await listingClient.findMany({

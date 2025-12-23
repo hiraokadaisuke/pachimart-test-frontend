@@ -1,4 +1,10 @@
-import { Prisma, TradeNaviStatus, TradeNaviType, TradeStatus } from "@prisma/client";
+import {
+  ListingStatus,
+  Prisma,
+  TradeNaviStatus,
+  TradeNaviType,
+  TradeStatus,
+} from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -197,6 +203,23 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
           update: {},
           select: { id: true },
         });
+
+        if (updatedNavi.listingId) {
+          await tx.listing
+            .update({
+              where: { id: updatedNavi.listingId } as any,
+              data: { status: ListingStatus.SOLD },
+            })
+            .catch((error: unknown) => {
+              console.warn(
+                "Failed to update listing status after trade approval",
+                {
+                  listingId: updatedNavi.listingId,
+                  error,
+                }
+              );
+            });
+        }
       }
 
       return { updated: toRecord(updatedNavi), trade: createdTrade };
