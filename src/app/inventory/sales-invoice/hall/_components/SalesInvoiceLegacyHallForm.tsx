@@ -74,9 +74,9 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
         unitPrice,
         amount: quantity * unitPrice,
         remainingDebt: item.remainingDebt ?? 0,
-        applicationPrefecture: item.applicationPrefecture ?? "",
-        applicationDate: item.applicationDate ?? "",
-        note: item.note ?? item.notes ?? "",
+        applicationPrefecture: item.customFields?.applicationPrefecture ?? "",
+        applicationDate: item.customFields?.applicationDate ?? "",
+        note: item.note ?? item.notes ?? item.customFields?.note ?? "",
       };
     });
   }, []);
