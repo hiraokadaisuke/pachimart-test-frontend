@@ -106,7 +106,7 @@ export async function GET() {
       where: { status: TradeStatus.IN_PROGRESS },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,
-      include: { navi: true, sellerUser: true, buyerUser: true },
+      include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
     return NextResponse.json(trades.map((trade) => toDto(toRecord(trade))));
