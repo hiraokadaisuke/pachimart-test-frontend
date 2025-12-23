@@ -33,13 +33,14 @@ type BaseRow = {
 
 type Props = {
   inventories?: InventoryRecord[];
+  selectedIds?: string[];
 };
 
-export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
+export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState<BaseRow[]>([]);
   const [vendorName, setVendorName] = useState("株式会社ピーコム");
-  const [contactName, setContactName] = useState("御中");
+  const [contactName] = useState("御中");
   const [vendorTel, setVendorTel] = useState("03-1234-5678");
   const [vendorFax, setVendorFax] = useState("03-1234-5679");
   const [issuedDate, setIssuedDate] = useState(toDateInputValue());
@@ -47,7 +48,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
   const [manager, setManager] = useState("担当者A");
   const [subtotal, setSubtotal] = useState(0);
   const [insurance, setInsurance] = useState(0);
-  const [bankNote, setBankNote] = useState("三井住友銀行 渋谷支店 普通 1234567 株式会社ピーコム");
+  const [bankNote] = useState("三井住友銀行 渋谷支店 普通 1234567 株式会社ピーコム");
   const [paymentDate, setPaymentDate] = useState("");
   const [invoiceOriginal, setInvoiceOriginal] = useState("不要");
   const [deliveryMethod, setDeliveryMethod] = useState("持参");
@@ -56,16 +57,40 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
   const [tradeMethod, setTradeMethod] = useState("直送");
   const [tradeDate, setTradeDate] = useState("");
   const [tradeTime, setTradeTime] = useState("AM");
-  const [deliveryAddress, setDeliveryAddress] = useState("東京都渋谷区桜丘町26-1 セルリアンタワー15F");
-  const [tradeAddress, setTradeAddress] = useState("東京都渋谷区桜丘町26-1 セルリアンタワー15F");
+  const [deliveryAddress] = useState("東京都渋谷区桜丘町26-1 セルリアンタワー15F");
+  const [tradeAddress] = useState("東京都渋谷区桜丘町26-1 セルリアンタワー15F");
   const [remarks, setRemarks] = useState("リアルタイムの在庫確認ができます");
-  const [noteUrl, setNoteUrl] = useState("https://pachimart.jp");
-  const [noteMail, setNoteMail] = useState("info@pachimart.jp");
+  const [noteUrl] = useState("https://pachimart.jp");
+  const [noteMail] = useState("info@pachimart.jp");
+
+  const inventoryKey = useMemo(
+    () =>
+      selectedIds && selectedIds.length > 0
+        ? selectedIds.join("_")
+        : inventories && inventories.length > 0
+          ? inventories.map((item) => item.id).join("_")
+          : "",
+    [inventories, selectedIds],
+  );
 
   useEffect(() => {
-    if (rows.length > 0) return;
-    const preferred = inventories && inventories.length > 0 ? inventories : loadInventoryRecords().filter((i) => i.status === "売却済");
-    if (preferred.length > 0) {
+    const fromSelectedIds = () => {
+      if (!selectedIds || selectedIds.length === 0) return null;
+      const available = loadInventoryRecords();
+      const lookup = new Map(available.map((item) => [item.id, item]));
+      return selectedIds.map((id) => lookup.get(id)).filter(Boolean) as InventoryRecord[];
+    };
+
+    const preferred =
+      fromSelectedIds() ??
+      (inventories && inventories.length > 0
+        ? inventories
+        : loadInventoryRecords()
+            .filter((i) => i.status === "売却済")
+            .sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+            .slice(0, 3));
+
+    if (preferred && preferred.length > 0) {
       const mapped = preferred.map<BaseRow>((item) => ({
         inventoryId: item.id,
         maker: item.maker ?? "",
@@ -79,7 +104,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
       }));
       setRows(mapped.length > 0 ? mapped : []);
     }
-    if (preferred.length === 0) {
+    if (!preferred || preferred.length === 0) {
       setRows([
         {
           quantity: 1,
@@ -88,7 +113,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
         },
       ]);
     }
-  }, [inventories, rows.length]);
+  }, [inventories, inventoryKey, selectedIds]);
 
   useEffect(() => {
     const total = rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0);
@@ -97,6 +122,10 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
 
   const tax = useMemo(() => Math.floor(subtotal * 0.1), [subtotal]);
   const totalAmount = useMemo(() => subtotal + tax + (Number(insurance) || 0), [subtotal, tax, insurance]);
+  const invoiceInventoryIds = useMemo(
+    () => (selectedIds && selectedIds.length > 0 ? selectedIds : inventories?.map((item) => item.id) ?? []),
+    [inventories, selectedIds],
+  );
 
   const handleChange = (index: number, key: keyof BaseRow, value: string) => {
     setRows((prev) =>
@@ -164,7 +193,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
       buyerName: "株式会社ピーコム",
       staff,
       manager,
-      inventoryIds: inventories?.map((item) => item.id) ?? [],
+      inventoryIds: invoiceInventoryIds,
       items,
       subtotal,
       tax,
@@ -185,7 +214,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
 
   return (
     <div className="min-h-screen bg-[#dfe8f5] px-3 py-6 text-[13px] text-neutral-900">
-      <div className="mx-auto max-w-7xl border-[6px] border-cyan-700 bg-white p-4 shadow-[5px_5px_0_rgba(0,0,0,0.35)]">
+      <div className="mx-auto max-w-[1100px] border-[6px] border-cyan-700 bg-white p-4 shadow-[5px_5px_0_rgba(0,0,0,0.35)]">
         <div className="flex items-center gap-2 text-lg font-bold text-emerald-900">
           <span className="text-green-600">●</span>
           <span>販売伝票登録（業者）</span>
@@ -216,9 +245,9 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
 
         <div className="border-[4px] border-cyan-700 bg-white p-4">
           <div className="border-2 border-black bg-white p-3">
-            <div className="flex items-start justify-between gap-4 border-b-2 border-black pb-3">
-              <div className="flex-1 border-r-2 border-black pr-4">
-                <div className="mb-2 flex items-center gap-2 text-[15px] font-bold">
+            <div className="grid min-h-[160px] grid-cols-[1.05fr_0.95fr] gap-3 border-b-2 border-black pb-3">
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap items-center gap-2 text-[15px] font-bold">
                   <input
                     type="text"
                     value={vendorName}
@@ -227,33 +256,33 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
                   />
                   <span className="text-sm font-semibold">{contactName}</span>
                 </div>
-                <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+                <div className="flex flex-wrap items-center gap-2 text-sm">
                   <span>FAX</span>
                   <input
                     type="text"
                     value={vendorFax}
                     onChange={(e) => setVendorFax(e.target.value)}
-                    className={`${yellowInput} w-40`}
+                    className={`${yellowInput} w-36`}
                   />
                   <span>TEL</span>
                   <input
                     type="text"
                     value={vendorTel}
                     onChange={(e) => setVendorTel(e.target.value)}
-                    className={`${yellowInput} w-40`}
+                    className={`${yellowInput} w-36`}
                   />
                 </div>
-                <div className="text-[12px] leading-relaxed">
-                  <div className="font-semibold">当社の規約に基づき下記の通り売買いたします</div>
-                  <ul className="list-disc space-y-1 pl-5 text-[12px]">
-                    <li>当日取引成立後のキャンセルは売買代金の50%を賠償していただきます。</li>
-                    <li>商品到着3営業日以内に検品、連絡をお願いします。欠品・故障等は3営業日以内にご連絡ください。</li>
-                    <li>指定場所に車両の手配をお願い致します。</li>
+                <div className="rounded-sm border border-black bg-amber-50 px-3 py-2 text-[12px] leading-tight">
+                  <div className="text-sm font-semibold">当社規約に基づき売買いたします</div>
+                  <ul className="list-disc space-y-1 pl-4">
+                    <li>成立後キャンセルは売買代金の50%をご請求します。</li>
+                    <li>商品到着後3営業日以内に検品・ご連絡ください。</li>
+                    <li>搬出入車両は指定場所への手配をお願いします。</li>
                   </ul>
                 </div>
               </div>
 
-              <div className="w-[380px] space-y-2">
+              <div className="flex flex-col gap-2">
                 <div className="flex justify-end">
                   <div className="flex items-center gap-2 border border-black bg-white px-2 py-1 text-sm font-semibold">
                     <span>日付</span>
@@ -267,7 +296,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
                 </div>
                 <div className="border border-black">
                   <div className="border-b border-black bg-slate-100 px-2 py-1 text-sm font-bold">【売主】</div>
-                  <div className="space-y-1 px-2 py-2 text-[12px]">
+                  <div className="space-y-1 px-2 py-2 text-[12px] leading-tight">
                     <div className="flex items-center gap-2">
                       <span className="w-16">郵便番号</span>
                       <span className="border border-black px-2 py-1">150-8512</span>
@@ -329,126 +358,128 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
                   行追加
                 </button>
               </div>
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-2 border-black text-center text-[12px]" style={{ borderCollapse: "collapse" }}>
-                  <thead className="bg-slate-100 text-[12px] font-semibold">
-                    <tr>
-                      <th className="border border-black px-2 py-2">メーカー名</th>
-                      <th className="border border-black px-2 py-2">商品名</th>
-                      <th className="border border-black px-2 py-2">タイプ</th>
-                      <th className="border border-black px-2 py-2">数量</th>
-                      <th className="border border-black px-2 py-2">単価</th>
-                      <th className="border border-black px-2 py-2">金額</th>
-                      <th className="border border-black px-2 py-2">残債</th>
-                      <th className="border border-black px-2 py-2">申請適用</th>
-                      <th className="border border-black px-2 py-2">申請日</th>
-                      <th className="border border-black px-2 py-2">商品補足</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={`${row.inventoryId ?? "row"}-${index}`} className="bg-white">
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.maker ?? ""}
-                            onChange={(e) => handleChange(index, "maker", e.target.value)}
-                            className={yellowInput}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <div className="flex items-center">
+              <div className="overflow-hidden rounded-sm border-2 border-black">
+                <div className="max-h-[220px] overflow-y-auto">
+                  <table className="min-w-full text-center text-[12px]" style={{ borderCollapse: "collapse" }}>
+                    <thead className="bg-slate-100 text-[12px] font-semibold">
+                      <tr>
+                        <th className="border border-black px-2 py-2">メーカー名</th>
+                        <th className="border border-black px-2 py-2">商品名</th>
+                        <th className="border border-black px-2 py-2">タイプ</th>
+                        <th className="border border-black px-2 py-2">数量</th>
+                        <th className="border border-black px-2 py-2">単価</th>
+                        <th className="border border-black px-2 py-2">額</th>
+                        <th className="border border-black px-2 py-2">残債</th>
+                        <th className="border border-black px-2 py-2">申請適用</th>
+                        <th className="border border-black px-2 py-2">申請日</th>
+                        <th className="border border-black px-2 py-2">商品補足</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rows.map((row, index) => (
+                        <tr key={`${row.inventoryId ?? "row"}-${index}`} className="bg-white">
+                          <td className="border border-black px-1 py-1">
                             <input
                               type="text"
-                              value={row.productName ?? ""}
-                              onChange={(e) => handleChange(index, "productName", e.target.value)}
-                              className={`${yellowInput} flex-1`}
+                              value={row.maker ?? ""}
+                              onChange={(e) => handleChange(index, "maker", e.target.value)}
+                              className={yellowInput}
                             />
-                            <span className="border border-black bg-slate-100 px-2 py-1 text-xs">▼</span>
-                          </div>
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.type ?? ""}
-                            onChange={(e) => handleChange(index, "type", e.target.value)}
-                            className={yellowInput}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="number"
-                            value={row.quantity}
-                            onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                            className={`${yellowInput} text-right`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="number"
-                            value={row.unitPrice}
-                            onChange={(e) => handleChange(index, "unitPrice", e.target.value)}
-                            className={`${yellowInput} text-right`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
-                          {moneyDisplay(row.amount)}
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="number"
-                            value={row.remainingDebt ?? 0}
-                            onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
-                            className={`${yellowInput} text-right`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.applicationPrefecture ?? ""}
-                            onChange={(e) => handleChange(index, "applicationPrefecture", e.target.value)}
-                            className={orangeInput}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="date"
-                            value={row.applicationDate ?? ""}
-                            onChange={(e) => handleChange(index, "applicationDate", e.target.value)}
-                            className={`${yellowInput} text-center`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.note ?? ""}
-                            onChange={(e) => handleChange(index, "note", e.target.value)}
-                            className={yellowInput}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          </td>
+                          <td className="border border-black px-1 py-1">
+                            <div className="flex items-center">
+                              <input
+                                type="text"
+                                value={row.productName ?? ""}
+                                onChange={(e) => handleChange(index, "productName", e.target.value)}
+                                className={`${yellowInput} flex-1`}
+                              />
+                              <span className="border border-black bg-slate-100 px-2 py-1 text-xs">▼</span>
+                            </div>
+                          </td>
+                          <td className="border border-black px-1 py-1">
+                            <input
+                              type="text"
+                              value={row.type ?? ""}
+                              onChange={(e) => handleChange(index, "type", e.target.value)}
+                              className={yellowInput}
+                            />
+                          </td>
+                          <td className="border border-black px-1 py-1">
+                            <input
+                              type="number"
+                              value={row.quantity}
+                              onChange={(e) => handleChange(index, "quantity", e.target.value)}
+                              className={`${yellowInput} text-right`}
+                            />
+                          </td>
+                          <td className="border border-black px-1 py-1">
+                            <input
+                              type="number"
+                              value={row.unitPrice}
+                              onChange={(e) => handleChange(index, "unitPrice", e.target.value)}
+                              className={`${yellowInput} text-right`}
+                            />
+                          </td>
+                          <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
+                            {moneyDisplay(row.amount)}
+                          </td>
+                          <td className="border border-black px-1 py-1">
+                            <input
+                              type="number"
+                              value={row.remainingDebt ?? 0}
+                              onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
+                              className={`${yellowInput} text-right`}
+                            />
+                          </td>
+                          <td className="border border-black px-1 py-1">
+                            <input
+                              type="text"
+                              value={row.applicationPrefecture ?? ""}
+                              onChange={(e) => handleChange(index, "applicationPrefecture", e.target.value)}
+                              className={orangeInput}
+                            />
+                          </td>
+                          <td className="border border-black px-1 py-1">
+                            <input
+                              type="date"
+                              value={row.applicationDate ?? ""}
+                              onChange={(e) => handleChange(index, "applicationDate", e.target.value)}
+                              className={`${yellowInput} text-center`}
+                            />
+                          </td>
+                          <td className="border border-black px-1 py-1">
+                            <input
+                              type="text"
+                              value={row.note ?? ""}
+                              onChange={(e) => handleChange(index, "note", e.target.value)}
+                              className={yellowInput}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               <div className="mt-1 text-right text-[12px] text-neutral-600">商品補足（印刷料金で表示されます）</div>
             </div>
 
-            <div className="mt-4 grid grid-cols-12 gap-4 text-sm">
-              <div className="col-span-5">
+            <div className="mt-3 grid grid-cols-12 gap-3 text-sm">
+              <div className="col-span-7">
                 <div className="border border-black">
                   <div className="border-b border-black bg-slate-100 px-2 py-1 text-sm font-semibold">備考（印刷料金で表示されます）</div>
                   <textarea
                     value={remarks}
                     onChange={(e) => setRemarks(e.target.value)}
-                    className={`${yellowInput} h-32 w-full resize-none border-0`}
+                    className={`${yellowInput} h-[60px] w-full resize-none border-0 bg-amber-50`}
                   />
                 </div>
               </div>
-              <div className="col-span-3">
+              <div className="col-span-5 space-y-2">
                 <div className="border border-black">
                   <div className="border-b border-black bg-slate-100 px-2 py-1 text-sm font-semibold">金額集計</div>
-                  <div className="space-y-2 px-3 py-2">
+                  <div className="space-y-2 px-3 py-2 text-[12px]">
                     <div className="flex items-center justify-between">
                       <span>小計</span>
                       <span className="border border-black bg-white px-2 py-1 text-right font-semibold">{moneyDisplay(subtotal)}</span>
@@ -472,16 +503,14 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="col-span-4">
                 <div className="border border-black">
                   <div className="flex items-stretch divide-x divide-black border-b border-black bg-slate-100 text-sm font-semibold">
                     <div className="flex-1 px-2 py-1">お振込先</div>
                     <div className="w-[140px] px-2 py-1">支払期日</div>
                     <div className="w-[120px] px-2 py-1">請求書原本</div>
                   </div>
-                  <div className="flex divide-x divide-black">
-                    <div className="flex-1 bg-white px-2 py-2 text-[12px] leading-relaxed">{bankNote}</div>
+                  <div className="flex divide-x divide-black text-[12px] leading-tight">
+                    <div className="flex-1 bg-white px-2 py-2">{bankNote}</div>
                     <div className="flex w-[140px] items-center justify-center px-2 py-2">
                       <input
                         type="date"
@@ -505,118 +534,101 @@ export function SalesInvoiceLegacyVendorForm({ inventories }: Props) {
               </div>
             </div>
 
-            <div className="mt-4 grid grid-cols-12 gap-4">
-              <div className="col-span-7">
-                <table className="w-full border-2 border-black text-[12px]" style={{ borderCollapse: "collapse" }}>
-                  <tbody>
-                    <tr>
-                      <th className="w-32 border border-black bg-slate-100 px-2 py-1 text-left">保管先</th>
-                      <td className="border border-black px-2 py-1">{deliveryAddress}</td>
-                    </tr>
-                    <tr>
-                      <th className="border border-black bg-orange-100 px-2 py-1 text-left" colSpan={2}>
-                        商品配送先
-                      </th>
-                    </tr>
-                    <tr>
-                      <th className="border border-black bg-slate-100 px-2 py-1 text-left">商品引き渡し方法</th>
-                      <td className="border border-black px-2 py-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <select
-                            value={deliveryMethod}
-                            onChange={(e) => setDeliveryMethod(e.target.value)}
-                            className={`${orangeInput} w-40`}
-                          >
-                            <option value="持参">持参</option>
-                            <option value="配送">配送</option>
-                          </select>
-                          <span className="ml-auto">直送日</span>
-                          <input
-                            type="date"
-                            value={deliveryDate}
-                            onChange={(e) => setDeliveryDate(e.target.value)}
-                            className={`${yellowInput} w-40 text-center`}
-                          />
-                          <select
-                            value={deliveryTime}
-                            onChange={(e) => setDeliveryTime(e.target.value)}
-                            className={`${yellowInput} w-20`}
-                          >
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                          </select>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th className="border border-black bg-orange-100 px-2 py-1 text-left" colSpan={2}>
-                        売契→先
-                      </th>
-                    </tr>
-                    <tr>
-                      <th className="border border-black bg-slate-100 px-2 py-1 text-left">売契引き渡し方法</th>
-                      <td className="border border-black px-2 py-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <select
-                            value={tradeMethod}
-                            onChange={(e) => setTradeMethod(e.target.value)}
-                            className={`${orangeInput} w-40`}
-                          >
-                            <option value="口座振込">直送</option>
-                            <option value="現金">--</option>
-                          </select>
-                          <span className="ml-auto">直送日</span>
-                          <input
-                            type="date"
-                            value={tradeDate}
-                            onChange={(e) => setTradeDate(e.target.value)}
-                            className={`${yellowInput} w-40 text-center`}
-                          />
-                          <select
-                            value={tradeTime}
-                            onChange={(e) => setTradeTime(e.target.value)}
-                            className={`${yellowInput} w-20`}
-                          >
-                            <option value="AM">AM</option>
-                            <option value="PM">PM</option>
-                          </select>
-                        </div>
-                      </td>
-                    </tr>
-                    <tr>
-                      <td colSpan={2} className="h-16 border border-black px-2 py-2" />
-                    </tr>
-                  </tbody>
-                </table>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <div className="min-h-[260px] space-y-2 rounded-sm border-2 border-black bg-white p-3">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <span className="border border-black bg-slate-100 px-2 py-1">配送 / 引渡し</span>
+                </div>
+                <div className="grid gap-2 text-[12px]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-24 border border-black bg-slate-100 px-2 py-1 text-left font-semibold">保管先</span>
+                    <span className="flex-1 border border-black px-2 py-1">{deliveryAddress}</span>
+                  </div>
+                  <div className="rounded-sm border border-black bg-orange-100 px-2 py-2">
+                    <div className="text-sm font-semibold">商品配送先</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <select
+                        value={deliveryMethod}
+                        onChange={(e) => setDeliveryMethod(e.target.value)}
+                        className={`${orangeInput} w-36`}
+                      >
+                        <option value="持参">持参</option>
+                        <option value="配送">配送</option>
+                      </select>
+                      <span className="ml-auto">直送日</span>
+                      <input
+                        type="date"
+                        value={deliveryDate}
+                        onChange={(e) => setDeliveryDate(e.target.value)}
+                        className={`${yellowInput} w-32 text-center`}
+                      />
+                      <select
+                        value={deliveryTime}
+                        onChange={(e) => setDeliveryTime(e.target.value)}
+                        className={`${yellowInput} w-16`}
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="rounded-sm border border-black bg-orange-100 px-2 py-2">
+                    <div className="text-sm font-semibold">売契→先</div>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <select
+                        value={tradeMethod}
+                        onChange={(e) => setTradeMethod(e.target.value)}
+                        className={`${orangeInput} w-36`}
+                      >
+                        <option value="口座振込">直送</option>
+                        <option value="現金">--</option>
+                      </select>
+                      <span className="ml-auto">直送日</span>
+                      <input
+                        type="date"
+                        value={tradeDate}
+                        onChange={(e) => setTradeDate(e.target.value)}
+                        className={`${yellowInput} w-32 text-center`}
+                      />
+                      <select
+                        value={tradeTime}
+                        onChange={(e) => setTradeTime(e.target.value)}
+                        className={`${yellowInput} w-16`}
+                      >
+                        <option value="AM">AM</option>
+                        <option value="PM">PM</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="h-10 border border-dashed border-black bg-white" />
+                </div>
               </div>
 
-              <div className="col-span-5">
-                <div className="border-2 border-black">
-                  <div className="flex items-center justify-between border-b-2 border-black bg-slate-100 px-3 py-2 text-sm font-semibold">
-                    <span>買主様 捺印欄</span>
-                    <span className="border border-black px-4 py-1">印</span>
+              <div className="min-h-[260px] rounded-sm border-2 border-black bg-white">
+                <div className="flex items-center justify-between border-b-2 border-black bg-slate-100 px-3 py-2 text-sm font-semibold">
+                  <span>買主様 捺印欄</span>
+                  <span className="border border-black px-4 py-1">印</span>
+                </div>
+                <div className="space-y-2 px-3 py-2 text-[12px]">
+                  <div className="flex items-center gap-2">
+                    <span className="w-20">住所</span>
+                    <span className="flex-1 border border-black px-2 py-1">{tradeAddress}</span>
                   </div>
-                  <div className="space-y-2 px-3 py-2 text-[12px]">
-                    <div className="flex items-center gap-2">
-                      <span className="w-20">住所</span>
-                      <span className="flex-1 border border-black px-2 py-1">{tradeAddress}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-20">会社名</span>
-                      <span className="flex-1 border border-black px-2 py-1">{vendorName}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="w-20">電話番号</span>
-                      <span className="flex-1 border border-black px-2 py-1">{vendorTel}</span>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20">会社名</span>
+                    <span className="flex-1 border border-black px-2 py-1">{vendorName}</span>
                   </div>
-                  <div className="border-t-2 border-black bg-white px-3 py-2 text-[12px] leading-relaxed">
-                    <div className="font-semibold text-red-700">リアルタイムの在庫確認ができます</div>
-                    <div>URL: {noteUrl}</div>
-                    <div>Email: {noteMail}</div>
-                    <div>FAX: 03-1234-5679</div>
-                    <div className="mt-1 text-center text-xl text-slate-600">↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓</div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20">電話番号</span>
+                    <span className="flex-1 border border-black px-2 py-1">{vendorTel}</span>
                   </div>
+                </div>
+                <div className="border-t-2 border-black bg-white px-3 py-2 text-[12px] leading-snug">
+                  <div className="font-semibold text-red-700">リアルタイムの在庫確認ができます</div>
+                  <div>URL: {noteUrl}</div>
+                  <div>Email: {noteMail}</div>
+                  <div>FAX: 03-1234-5679</div>
+                  <div className="mt-1 text-center text-lg text-slate-600">↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓</div>
                 </div>
               </div>
             </div>
