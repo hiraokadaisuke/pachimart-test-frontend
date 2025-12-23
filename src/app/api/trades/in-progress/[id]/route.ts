@@ -110,12 +110,12 @@ export async function GET(
   }
 
   try {
-    const trade = await prisma.trade.findFirst({
-      where: { id: { equals: id }, status: TradeStatus.IN_PROGRESS },
+    const trade = await prisma.trade.findUnique({
+      where: { id },
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
-    if (!trade) {
+    if (!trade || trade.status !== TradeStatus.IN_PROGRESS) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
 
