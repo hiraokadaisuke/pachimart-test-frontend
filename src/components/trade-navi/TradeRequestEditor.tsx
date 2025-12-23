@@ -16,6 +16,7 @@ import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { DEV_USERS, getDevUsers, findDevUserById, type DevUser } from "@/lib/dev-user/users";
 import { products } from "@/lib/dummyData";
 import { createOnlineInquiry } from "@/lib/trade/onlineInquiries";
+import type { Listing } from "@/lib/listings/types";
 
 const mapDraftConditions = (
   conditions: TradeConditions,
@@ -157,11 +158,14 @@ function StandardTradeRequestEditor({
   const router = useRouter();
   const params = useParams<{ id?: string }>();
   const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
+  const listingId = safeSearchParams.get("listingId");
 
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
   const naviTargetId = draft?.productId ?? transactionId;
   const { buyerInfo, propertyInfo, currentConditions, updatedConditions } = useDummyNavi(naviTargetId);
+  const [linkedListing, setLinkedListing] = useState<Listing | null>(null);
+  const [isLoadingListing, setIsLoadingListing] = useState(false);
   const [isEditingBuyer, setIsEditingBuyer] = useState(false);
   const buyerCandidates = useMemo(
     () => getDevUsers().filter((user) => user.id !== currentUser.id),
@@ -187,7 +191,37 @@ function StandardTradeRequestEditor({
   const formattedNumber = formatCurrency;
 
   useEffect(() => {
-    if (!transactionId) return;
+    if (!listingId) {
+      setLinkedListing(null);
+      return;
+    }
+
+    let isMounted = true;
+    setIsLoadingListing(true);
+
+    fetch(`/api/listings/${listingId}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: Listing | null) => {
+        if (!isMounted) return;
+        setLinkedListing(data);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setLinkedListing(null);
+      })
+      .finally(() => {
+        if (!isMounted) return;
+        setIsLoadingListing(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [listingId]);
+
+  useEffect(() => {
+    if (!transactionId || draft) return;
+    if (listingId && isLoadingListing) return;
 
     const storedDraft = loadNaviDraft(currentUser.id, transactionId);
     if (storedDraft) {
@@ -195,16 +229,16 @@ function StandardTradeRequestEditor({
       return;
     }
 
-    const parseNumberParam = (value: string | null) => {
-      if (!value) return undefined;
+    const parseNumberParam = (value: string | null, fallback?: number) => {
+      if (!value) return fallback;
       const parsed = Number(value);
-      return Number.isFinite(parsed) ? parsed : undefined;
+      return Number.isFinite(parsed) ? parsed : fallback;
     };
 
     const initialDraft = createEmptyNaviDraft({
       id: transactionId,
       ownerUserId: currentUser.id,
-      productId: safeSearchParams.get("productId") ?? transactionId,
+      productId: safeSearchParams.get("productId") ?? linkedListing?.id ?? transactionId,
       buyerId: safeSearchParams.get("buyerId"),
       buyerCompanyName: safeSearchParams.get("buyerCompanyName"),
       buyerContactName: safeSearchParams.get("buyerContactName"),
@@ -213,19 +247,20 @@ function StandardTradeRequestEditor({
       buyerNote: safeSearchParams.get("buyerNote"),
       buyerPending: safeSearchParams.has("buyerId") ? false : undefined,
       conditions: {
-        quantity: parseNumberParam(safeSearchParams.get("quantity")) ?? 1,
-        unitPrice: parseNumberParam(safeSearchParams.get("unitPrice")) ?? 0,
+        quantity: parseNumberParam(safeSearchParams.get("quantity"), linkedListing?.quantity ?? 1) ?? 1,
+        unitPrice:
+          parseNumberParam(safeSearchParams.get("unitPrice"), linkedListing?.unitPriceExclTax ?? 0) ?? 0,
         shippingFee: 0,
         handlingFee: 0,
         taxRate: 0.1,
-        productName: safeSearchParams.get("productName"),
-        makerName: safeSearchParams.get("makerName"),
-        location: safeSearchParams.get("location"),
+        productName: safeSearchParams.get("productName") ?? linkedListing?.machineName ?? undefined,
+        makerName: safeSearchParams.get("makerName") ?? linkedListing?.maker ?? undefined,
+        location: safeSearchParams.get("location") ?? linkedListing?.storageLocation ?? undefined,
       },
     });
 
     setDraft(initialDraft);
-  }, [currentUser.id, safeSearchParams, transactionId]);
+  }, [currentUser.id, draft, isLoadingListing, linkedListing, listingId, safeSearchParams, transactionId]);
 
   useEffect(() => {
     setEditedConditions(initialEditedConditions);
@@ -460,15 +495,33 @@ function StandardTradeRequestEditor({
     location: draft?.conditions.location ?? "",
   };
 
-  const propertyPrevLocation = useMemo(() => {
-    const locationParts = [propertyInfo.prefecture, propertyInfo.hallName].filter(Boolean);
-    if (locationParts.length) return locationParts.join(" ");
-    return propertyInfo.storageLocation;
-  }, [propertyInfo.hallName, propertyInfo.prefecture, propertyInfo.storageLocation]);
+  const displayPropertyInfo = useMemo(() => {
+    if (!linkedListing) return propertyInfo;
 
-  const propertySalesPriceLabel = formattedNumber(propertyInfo.salesPrice);
-  const propertyRemovalDateLabel = propertyInfo.removalDate.replace(/-/g, "/");
-  const propertyNote = propertyInfo.note ?? "-";
+    return {
+      ...propertyInfo,
+      modelName: linkedListing.machineName ?? propertyInfo.modelName,
+      maker: linkedListing.maker ?? propertyInfo.maker,
+      quantity: linkedListing.quantity,
+      storageLocation: linkedListing.storageLocation,
+      salesPrice: linkedListing.unitPriceExclTax ?? propertyInfo.salesPrice,
+      note: linkedListing.note ?? propertyInfo.note,
+    };
+  }, [linkedListing, propertyInfo]);
+
+  const propertyPrevLocation = useMemo(() => {
+    const locationParts = [displayPropertyInfo.prefecture, displayPropertyInfo.hallName].filter(Boolean);
+    if (locationParts.length) return locationParts.join(" ");
+    return displayPropertyInfo.storageLocation;
+  }, [displayPropertyInfo.hallName, displayPropertyInfo.prefecture, displayPropertyInfo.storageLocation]);
+
+  const propertySalesPriceLabel = linkedListing
+    ? linkedListing.unitPriceExclTax !== null
+      ? formattedNumber(linkedListing.unitPriceExclTax)
+      : "応相談"
+    : formattedNumber(displayPropertyInfo.salesPrice);
+  const propertyRemovalDateLabel = displayPropertyInfo.removalDate.replace(/-/g, "/");
+  const propertyNote = displayPropertyInfo.note ?? "-";
 
   const handleNumberConditionChange = (field: keyof TransactionConditions, value: number) => {
     syncEditedConditions((prev) => ({ ...prev, [field]: value } as TransactionConditions));
@@ -633,9 +686,9 @@ function StandardTradeRequestEditor({
                 <tbody>
                   <tr className="border-t border-slate-300 text-slate-900">
                     <td className="whitespace-nowrap px-4 py-2">{propertyPrevLocation}</td>
-                    <td className="whitespace-nowrap px-4 py-2">{propertyInfo.maker}</td>
-                    <td className="whitespace-nowrap px-4 py-2">{propertyInfo.modelName}</td>
-                    <td className="whitespace-nowrap px-4 py-2">{propertyInfo.quantity}台</td>
+                    <td className="whitespace-nowrap px-4 py-2">{displayPropertyInfo.maker}</td>
+                    <td className="whitespace-nowrap px-4 py-2">{displayPropertyInfo.modelName}</td>
+                    <td className="whitespace-nowrap px-4 py-2">{displayPropertyInfo.quantity}台</td>
                     <td className="whitespace-nowrap px-4 py-2">{propertySalesPriceLabel}</td>
                     <td className="whitespace-nowrap px-4 py-2">{propertyRemovalDateLabel}</td>
                     <td className="px-4 py-2">{propertyNote}</td>
@@ -986,11 +1039,37 @@ function OnlineInquiryCreator({
 }) {
   const router = useRouter();
   const productId = searchParams.get("productId");
+  const listingId = searchParams.get("listingId");
+  const [linkedListing, setLinkedListing] = useState<Listing | null>(null);
 
   const product = useMemo(
     () => products.find((item) => String(item.id) === String(productId)),
     [productId]
   );
+
+  useEffect(() => {
+    if (!listingId) {
+      setLinkedListing(null);
+      return;
+    }
+
+    let isMounted = true;
+
+    fetch(`/api/listings/${listingId}`)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: Listing | null) => {
+        if (!isMounted) return;
+        setLinkedListing(data);
+      })
+      .catch(() => {
+        if (!isMounted) return;
+        setLinkedListing(null);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [listingId]);
 
   const parseNumberParam = (value: string | null, fallback: number): number => {
     if (!value) return fallback;
@@ -998,14 +1077,23 @@ function OnlineInquiryCreator({
     return Number.isFinite(parsed) ? parsed : fallback;
   };
 
-  const makerName = searchParams.get("makerName") ?? product?.maker ?? "";
-  const productName = searchParams.get("productName") ?? product?.name ?? "";
-  const quantity = parseNumberParam(searchParams.get("quantity"), product?.quantity ?? 1);
-  const unitPrice = parseNumberParam(searchParams.get("unitPrice"), product?.price ?? 0);
+  const makerName = searchParams.get("makerName") ?? linkedListing?.maker ?? product?.maker ?? "";
+  const productName = searchParams.get("productName") ?? linkedListing?.machineName ?? product?.name ?? "";
+  const quantity = parseNumberParam(
+    searchParams.get("quantity"),
+    linkedListing?.quantity ?? product?.quantity ?? 1
+  );
+  const unitPrice = parseNumberParam(
+    searchParams.get("unitPrice"),
+    linkedListing?.unitPriceExclTax ?? product?.price ?? 0
+  );
 
   const devUsers = useMemo(() => getDevUsers(), []);
   const sellerUserId =
-    product?.ownerUserId ?? devUsers.find((user) => user.id !== currentUser.id)?.id ?? currentUser.id;
+    linkedListing?.sellerUserId ??
+    product?.ownerUserId ??
+    devUsers.find((user) => user.id !== currentUser.id)?.id ??
+    currentUser.id;
   const seller = findDevUserById(sellerUserId) ?? devUsers.find((user) => user.id !== currentUser.id) ?? currentUser;
 
   const [shippingAddress, setShippingAddress] = useState(currentUser.address);
@@ -1029,7 +1117,7 @@ function OnlineInquiryCreator({
     if (missing.length > 0) return;
 
     createOnlineInquiry({
-      productId: productId ?? `unknown-${Date.now()}`,
+      productId: productId ?? listingId ?? `unknown-${Date.now()}`,
       sellerUserId,
       buyerUserId: currentUser.id,
       buyerCompanyName: currentUser.companyName,
