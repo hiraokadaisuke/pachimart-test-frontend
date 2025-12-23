@@ -65,7 +65,7 @@ export default function ProductListPage() {
           <div className="flex items-center gap-2">
             <span>{row.machineName ?? "機種名未設定"}</span>
             {row.status === "SOLD" && (
-              <Badge variant="secondary" className="bg-slate-200 text-neutral-600">
+              <Badge variant="outline" className="bg-slate-100 text-neutral-600 border-slate-200">
                 成約済み
               </Badge>
             )}
