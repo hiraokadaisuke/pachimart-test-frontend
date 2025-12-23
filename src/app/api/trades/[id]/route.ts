@@ -192,7 +192,9 @@ export async function PATCH(request: Request, { params }: { params: { id: string
       return { updated: toRecord(updatedNavi), trade: createdTrade };
     });
 
-    return NextResponse.json(toDto(updated, trade?.id));
+    const tradeId = trade ? Number(trade.id) : undefined;
+
+    return NextResponse.json(toDto(updated, tradeId));
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
