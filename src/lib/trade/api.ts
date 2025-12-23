@@ -41,6 +41,7 @@ export function mapTradeNaviToTradeRecord(trade: TradeNaviDto): TradeRecord | nu
 
   return {
     ...record,
+    naviId: trade.id,
     id: draft.id,
     buyerUserId: draft.buyerId ?? trade.buyerUserId ?? record.buyerUserId,
     createdAt: draft.createdAt ?? trade.createdAt,

@@ -1,5 +1,16 @@
 import { z } from "zod";
 
+export const messageRecordSchema = z.object({
+  id: z.number(),
+  naviId: z.number(),
+  senderUserId: z.string(),
+  receiverUserId: z.string(),
+  body: z.string(),
+  createdAt: z.date(),
+});
+
+export type MessageRecord = z.infer<typeof messageRecordSchema>;
+
 export const messageDtoSchema = z.object({
   id: z.number(),
   naviId: z.number(),
@@ -25,6 +36,47 @@ const formatDateLabel = (value: string) => {
     date.getMinutes()
   )}`;
 };
+
+const toDate = (value: unknown): Date => {
+  if (value instanceof Date) return value;
+  if (typeof value === "string" || typeof value === "number") {
+    const parsed = new Date(value);
+    if (!Number.isNaN(parsed.getTime())) return parsed;
+  }
+  return new Date();
+};
+
+export const normalizeMessageRecord = (message: unknown): MessageRecord => {
+  if (!message || typeof message !== "object") {
+    throw new Error("Message must be an object");
+  }
+
+  const candidate = message as Record<string, unknown>;
+
+  const parsed = messageRecordSchema.safeParse({
+    id: Number(candidate.id),
+    naviId: Number(candidate.naviId),
+    senderUserId: String(candidate.senderUserId ?? ""),
+    receiverUserId: String(candidate.receiverUserId ?? ""),
+    body: String(candidate.body ?? ""),
+    createdAt: toDate(candidate.createdAt),
+  });
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.message);
+  }
+
+  return parsed.data;
+};
+
+export const toMessageDto = (message: MessageRecord): MessageDto => ({
+  id: message.id,
+  naviId: message.naviId,
+  senderUserId: message.senderUserId,
+  receiverUserId: message.receiverUserId,
+  body: message.body,
+  createdAt: message.createdAt.toISOString(),
+});
 
 export const mapMessageDtoToTradeMessage = (dto: MessageDto): TradeMessage => ({
   sender: dto.senderUserId,

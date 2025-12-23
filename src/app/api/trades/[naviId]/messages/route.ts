@@ -1,34 +1,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { normalizeMessageRecord, toMessageDto } from "@/lib/messages/transform";
 import { prisma } from "@/lib/server/prisma";
-
-const messageSchema = z.object({
-  senderUserId: z.string(),
-  receiverUserId: z.string(),
-  body: z.string(),
-  naviId: z.number(),
-  id: z.number(),
-  createdAt: z.date(),
-});
-
-type MessageRecord = z.infer<typeof messageSchema>;
-
-const messageDto = z.object({
-  id: z.number(),
-  naviId: z.number(),
-  senderUserId: z.string(),
-  receiverUserId: z.string(),
-  body: z.string(),
-  createdAt: z.string(),
-});
-
-type MessageDto = z.infer<typeof messageDto>;
 
 const createMessageInput = z.object({
   senderUserId: z.string().min(1),
   receiverUserId: z.string().min(1),
-  body: z.string().min(1).max(2000),
+  body: z.string().trim().min(1).max(2000),
 });
 
 const parseNaviId = (naviId: string) => {
@@ -37,55 +16,14 @@ const parseNaviId = (naviId: string) => {
   return parsed;
 };
 
-const normalizeMessage = (message: unknown): MessageRecord => {
-  if (!message || typeof message !== "object") {
-    throw new Error("Message must be an object");
-  }
-
-  const candidate = message as Record<string, unknown>;
-
-  const toDate = (value: unknown) => {
-    if (value instanceof Date) return value;
-    if (typeof value === "string" || typeof value === "number") {
-      const parsed = new Date(value);
-      if (!Number.isNaN(parsed.getTime())) return parsed;
-    }
-    return new Date();
-  };
-
-  const parsed = messageSchema.safeParse({
-    id: Number(candidate.id),
-    naviId: Number(candidate.naviId),
-    senderUserId: String(candidate.senderUserId ?? ""),
-    receiverUserId: String(candidate.receiverUserId ?? ""),
-    body: String(candidate.body ?? ""),
-    createdAt: toDate(candidate.createdAt),
-  });
-
-  if (!parsed.success) {
-    throw new Error(parsed.error.message);
-  }
-
-  return parsed.data;
-};
-
-const toDto = (message: MessageRecord): MessageDto => ({
-  id: message.id,
-  naviId: message.naviId,
-  senderUserId: message.senderUserId,
-  receiverUserId: message.receiverUserId,
-  body: message.body,
-  createdAt: message.createdAt.toISOString(),
-});
-
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { naviId: string } }
 ) {
-  const naviId = parseNaviId(params.id);
+  const naviId = parseNaviId(params.naviId);
 
   if (!naviId) {
     return NextResponse.json({ error: "Invalid naviId parameter" }, { status: 400 });
@@ -97,7 +35,7 @@ export async function GET(
       orderBy: { createdAt: "asc" },
     });
 
-    const normalized = results.map(normalizeMessage).map(toDto);
+    const normalized = results.map(normalizeMessageRecord).map(toMessageDto);
 
     return NextResponse.json(normalized);
   } catch (error) {
@@ -111,9 +49,9 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: { naviId: string } }
 ) {
-  const naviId = parseNaviId(params.id);
+  const naviId = parseNaviId(params.naviId);
 
   if (!naviId) {
     return NextResponse.json({ error: "Invalid naviId parameter" }, { status: 400 });
@@ -136,7 +74,7 @@ export async function POST(
       } as any,
     });
 
-    const dto = toDto(normalizeMessage(created));
+    const dto = toMessageDto(normalizeMessageRecord(created));
 
     return NextResponse.json(dto, { status: 201 });
   } catch (error) {

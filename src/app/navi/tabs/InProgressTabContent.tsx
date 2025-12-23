@@ -41,6 +41,7 @@ const ONLINE_INQUIRY_DESCRIPTION = {
 
 type TradeRow = {
   id: string;
+  naviId?: number;
   status: TradeStatusKey;
   updatedAt: string;
   partnerName: string;
@@ -96,6 +97,7 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   const todo = getTodoPresentation(trade, kind === "buy" ? "buyer" : "seller");
   return {
     id: trade.id,
+    naviId: trade.naviId,
     status: todo.todoKind,
     section: todo.section,
     updatedAt: updatedAtLabel,
@@ -143,6 +145,7 @@ export function InProgressTabContent() {
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
+  const [messageNaviId, setMessageNaviId] = useState<number | null>(null);
   const [messages, setMessages] = useState<TradeMessage[]>([]);
 
   const keywordLower = keyword.toLowerCase();
@@ -359,7 +362,7 @@ export function InProgressTabContent() {
         className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
         onClick={(e) => {
           e.stopPropagation();
-          setMessageTarget(row.id);
+          handleOpenMessage(row);
         }}
       >
         メッセージ
@@ -492,25 +495,42 @@ export function InProgressTabContent() {
   ];
 
   useEffect(() => {
-    if (!messageTarget) {
+    if (messageNaviId === null) {
       setMessages([]);
       return;
     }
 
-    const parsedId = Number(messageTarget);
-    if (!Number.isInteger(parsedId)) {
+    if (!Number.isInteger(messageNaviId)) {
       console.error("Invalid navi id for messages", messageTarget);
       setMessages([]);
       return;
     }
 
-    fetchMessagesByNaviId(parsedId)
+    fetchMessagesByNaviId(messageNaviId)
       .then(setMessages)
       .catch((error) => {
         console.error(error);
         setMessages([]);
       });
-  }, [messageTarget]);
+  }, [messageNaviId, messageTarget]);
+
+  const handleOpenMessage = (row: TradeRow) => {
+    setMessageTarget(row.id);
+
+    if (typeof row.naviId === "number" && Number.isInteger(row.naviId)) {
+      setMessageNaviId(row.naviId);
+      return;
+    }
+
+    const parsedId = Number(row.id);
+    if (Number.isInteger(parsedId)) {
+      setMessageNaviId(parsedId);
+      return;
+    }
+
+    console.error("Invalid navi id for messages", row.id);
+    setMessageNaviId(null);
+  };
 
   const messageThread = messages;
 
@@ -588,7 +608,10 @@ export function InProgressTabContent() {
         open={messageTarget !== null}
         tradeId={messageTarget}
         messages={messageThread}
-        onClose={() => setMessageTarget(null)}
+        onClose={() => {
+          setMessageTarget(null);
+          setMessageNaviId(null);
+        }}
       />
     </section>
   );
