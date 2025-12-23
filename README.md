@@ -33,8 +33,29 @@ Prisma と PostgreSQL を利用した取引(TradeNavi) API が app router で提
 - `POST /api/trades` : 取引を作成（最低限 `ownerUserId` が必須。`status` 未指定時は `DRAFT`）
 - `GET /api/trades/[id]` : 単一取引の詳細取得
 - `PATCH /api/trades/[id]` : `status` を enum で更新
+- `GET /api/trades/in-progress/[id]` : `Trade.id` を指定して IN_PROGRESS 取引の詳細を取得（`navi`、`sellerUser`、`buyerUser` を含む）
 
 レスポンスは DTO 形式で返し、日時は ISO8601 文字列です。
+
+`GET /api/trades/in-progress/[id]` の例:
+
+```bash
+curl "https://<your-domain>/api/trades/in-progress/1"
+# =>
+# {
+#   "id": 1,
+#   "sellerUserId": "dev_user_2",
+#   "buyerUserId": "dev_user_1",
+#   "status": "IN_PROGRESS",
+#   "payload": { ... },
+#   "naviId": 10,
+#   "createdAt": "2024-04-01T00:00:00.000Z",
+#   "updatedAt": "2024-04-01T01:23:45.000Z",
+#   "navi": { "id": 10, "ownerUserId": "dev_user_2", ... },
+#   "sellerUser": { "id": "dev_user_2", "companyName": "株式会社かきくけこ" },
+#   "buyerUser": { "id": "dev_user_1", "companyName": "株式会社あいおえお" }
+# }
+```
 
 ### 取引Navi 保存ポリシー
 
