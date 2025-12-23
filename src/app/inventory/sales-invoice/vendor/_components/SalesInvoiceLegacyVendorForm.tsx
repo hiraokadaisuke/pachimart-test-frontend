@@ -26,8 +26,8 @@ type Props = {
   selectedIds?: string[];
 };
 
-const A4_WIDTH = 1120;
-const A4_HEIGHT = 760;
+const PAPER_WIDTH = 1200;
+const PAPER_MIN_HEIGHT = 760;
 
 const yellowInput =
   "w-full bg-amber-100 border border-black px-2 py-1 text-[12px] leading-tight focus:outline-none";
@@ -40,8 +40,6 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
   const [rows, setRows] = useState<BaseRow[]>([]);
   const [inventoryRecords, setInventoryRecords] = useState<InventoryRecord[]>([]);
   const [error, setError] = useState<string>("");
-  const [scale, setScale] = useState(1);
-
   const [vendorName, setVendorName] = useState("株式会社ピーコム");
   const [contactName] = useState("御中");
   const [vendorTel, setVendorTel] = useState("03-1234-5678");
@@ -131,19 +129,6 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
       setVendorName(firstVendor);
     }
   }, [idsKey, inventories, selectedIds]);
-
-  useEffect(() => {
-    const calculateScale = () => {
-      const availableHeight = window.innerHeight - 24;
-      const availableWidth = window.innerWidth - 24;
-      const nextScale = Math.min(1, availableWidth / A4_WIDTH, availableHeight / A4_HEIGHT);
-      setScale(nextScale > 1 ? 1 : nextScale);
-    };
-
-    calculateScale();
-    window.addEventListener("resize", calculateScale);
-    return () => window.removeEventListener("resize", calculateScale);
-  }, []);
 
   const subtotal = useMemo(
     () => rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0),
@@ -248,20 +233,22 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
 
   return (
     <div
-      className="flex min-h-screen items-start justify-center overflow-hidden bg-[#dfe8f5] px-2 py-3 text-[12px] text-neutral-900"
-      style={{ fontFamily: '"MS UI Gothic", "Yu Gothic", sans-serif' }}
+      className="flex w-full justify-center bg-[#dfe8f5] px-4 py-6 text-[12px] text-neutral-900"
+      style={{
+        minHeight: "100vh",
+        height: "auto",
+        overflowX: "auto",
+        overflowY: "visible",
+        paddingBottom: "80px",
+        fontFamily: '"MS UI Gothic", "Yu Gothic", sans-serif',
+      }}
     >
-      <div
-        className="overflow-hidden"
-        style={{ width: `${A4_WIDTH * scale}px`, height: `${A4_HEIGHT * scale}px` }}
-      >
+      <div className="flex justify-center">
         <div
-          className="h-full border-[6px] border-cyan-700 bg-white p-3 shadow-[4px_4px_0_rgba(0,0,0,0.35)]"
+          className="border-[6px] border-cyan-700 bg-white p-3 shadow-[4px_4px_0_rgba(0,0,0,0.35)]"
           style={{
-            width: `${A4_WIDTH}px`,
-            height: `${A4_HEIGHT}px`,
-            transform: `scale(${scale})`,
-            transformOrigin: "top center",
+            width: `${PAPER_WIDTH}px`,
+            minHeight: `${PAPER_MIN_HEIGHT}px`,
           }}
         >
           <div className="flex items-center gap-2 text-lg font-bold text-emerald-900">
@@ -301,8 +288,11 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
             </div>
           </div>
 
-          <div className="h-[696px] border-[4px] border-cyan-700 bg-white p-2">
-            <div className="grid h-full grid-cols-2 gap-2 border-2 border-black bg-white p-2">
+          <div
+            className="border-[4px] border-cyan-700 bg-white p-2"
+            style={{ minHeight: "696px" }}
+          >
+            <div className="grid grid-cols-2 gap-2 border-2 border-black bg-white p-2">
               <div className="col-span-2 grid grid-cols-[1.05fr_0.95fr] gap-2 border-b-2 border-black pb-2">
                 <div className="flex flex-col gap-1.5">
                   <div className="flex items-center gap-2 text-[15px] font-bold">
