@@ -1,7 +1,8 @@
-import { DEV_USERS } from "@/lib/dev-user/users";
+import { DEV_USER_IDS, DEV_USERS } from "@/lib/dev-user/users";
 
-const USER_A_ID = DEV_USERS.A.id;
-const USER_B_ID = DEV_USERS.B.id;
+const devUserList = Object.values(DEV_USERS);
+const USER_A_ID = devUserList[0]?.id ?? DEV_USER_IDS.A;
+const USER_B_ID = devUserList[1]?.id ?? DEV_USER_IDS.B;
 
 export type OnlineInquiryStatus =
   | "INQUIRY_RESPONSE_REQUIRED"

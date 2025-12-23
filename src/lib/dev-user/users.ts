@@ -7,8 +7,8 @@ export const DEV_USER_IDS = {
 } as const;
 
 export type DevUser = {
-  key: "A" | "B";
-  id: (typeof DEV_USER_IDS)["A"] | (typeof DEV_USER_IDS)["B"];
+  key: keyof typeof DEV_USER_IDS;
+  id: (typeof DEV_USER_IDS)[keyof typeof DEV_USER_IDS];
   label: string;
   companyName: string;
   address: string;
@@ -19,7 +19,7 @@ export type DevUser = {
 
 export const DEV_USERS: Record<DevUser["key"], DevUser> = {
   A: {
-  key: "A",
+    key: "A",
     id: DEV_USER_IDS.A,
     label: "株式会社あいおえお",
     companyName: "株式会社あいおえお",
@@ -29,7 +29,7 @@ export const DEV_USERS: Record<DevUser["key"], DevUser> = {
     contactName: "田中 太郎",
   },
   B: {
-  key: "B",
+    key: "B",
     id: DEV_USER_IDS.B,
     label: "株式会社かきくけこ",
     companyName: "株式会社かきくけこ",
@@ -37,6 +37,33 @@ export const DEV_USERS: Record<DevUser["key"], DevUser> = {
     tel: "06-9876-5432",
     fax: "06-9876-5433",
     contactName: "佐藤 花子",
+  },
+  C: {
+    key: "C",
+    id: DEV_USER_IDS.C,
+    label: "株式会社さしすせそ",
+    companyName: "株式会社さしすせそ",
+    address: "福岡県福岡市中央区天神2-4-5 開発センター 3F",
+    tel: "092-123-4567",
+    contactName: "鈴木 次郎",
+  },
+  D: {
+    key: "D",
+    id: DEV_USER_IDS.D,
+    label: "株式会社たちつてと",
+    companyName: "株式会社たちつてと",
+    address: "愛知県名古屋市中村区名駅3-5-7 シードビル 8F",
+    tel: "052-765-4321",
+    contactName: "高橋 三郎",
+  },
+  E: {
+    key: "E",
+    id: DEV_USER_IDS.E,
+    label: "株式会社なにぬねの",
+    companyName: "株式会社なにぬねの",
+    address: "北海道札幌市中央区大通西1-1-1 プレビュータワー 12F",
+    tel: "011-234-5678",
+    contactName: "山本 四季",
   },
 };
 

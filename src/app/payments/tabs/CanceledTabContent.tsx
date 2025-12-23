@@ -6,7 +6,7 @@ import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviT
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import type { TradeStatusKey } from "@/components/transactions/status";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { TRADE_STORAGE_KEY, loadAllTrades } from "@/lib/trade/storage";
+import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { TradeRecord } from "@/lib/trade/types";
 import { resolveCurrentTodoKind } from "@/lib/trade/todo";
@@ -27,21 +27,11 @@ export function CanceledTabContent() {
   const [trades, setTrades] = useState<TradeRecord[]>([]);
 
   const refreshTrades = useCallback(() => {
-    setTrades(loadAllTrades());
+    loadAllTradesWithApi().then(setTrades).catch((error) => console.error(error));
   }, []);
 
   useEffect(() => {
     refreshTrades();
-  }, [refreshTrades]);
-
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === TRADE_STORAGE_KEY) {
-        refreshTrades();
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
   }, [refreshTrades]);
 
   const canceledTrades = useMemo(

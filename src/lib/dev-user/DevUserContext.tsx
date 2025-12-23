@@ -10,10 +10,7 @@ type DevUserContextValue = {
   setCurrent: (userType: DevUserType) => void;
 };
 
-const DevUserContext = createContext<DevUserContextValue>({
-  current: "A",
-  setCurrent: () => {},
-});
+const DevUserContext = createContext<DevUserContextValue>({ current: "A", setCurrent: () => {} });
 
 const STORAGE_KEY = "dev_user_type";
 
@@ -23,8 +20,8 @@ export function DevUserProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined") return;
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved === "A" || saved === "B") {
-      setCurrentState(saved);
+    if (saved && saved in DEV_USERS) {
+      setCurrentState(saved as DevUserType);
     }
   }, []);
 

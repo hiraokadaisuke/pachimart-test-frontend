@@ -6,7 +6,7 @@ import {
   type TradeRecord,
 } from "@/lib/trade/types";
 
-export type InProgressTradeDto = {
+export type TradeDto = {
   id: number;
   sellerUserId: string;
   buyerUserId: string;
@@ -153,7 +153,13 @@ function buildShippingInfo(payload: TradePayload): ShippingInfo {
   };
 }
 
-export function transformInProgressTrade(dto: InProgressTradeDto): TradeRecord {
+const DB_STATUS_TO_TRADE_STATUS: Record<TradeDto["status"], TradeRecord["status"]> = {
+  IN_PROGRESS: "PAYMENT_REQUIRED",
+  COMPLETED: "COMPLETED",
+  CANCELED: "CANCELED",
+};
+
+export function transformTrade(dto: TradeDto): TradeRecord {
   const payload = (dto.payload ?? dto.navi?.payload ?? {}) as TradePayload;
   const conditions: TradeConditions = payload.conditions ?? {};
 
@@ -174,11 +180,12 @@ export function transformInProgressTrade(dto: InProgressTradeDto): TradeRecord {
     userId: dto.sellerUserId,
   };
 
-  const todos = buildTodosFromStatus("PAYMENT_REQUIRED");
+  const tradeStatus = DB_STATUS_TO_TRADE_STATUS[dto.status] ?? "PAYMENT_REQUIRED";
+  const todos = buildTodosFromStatus(tradeStatus);
 
   return {
     id: String(dto.id),
-    status: "PAYMENT_REQUIRED",
+    status: tradeStatus,
     sellerUserId: dto.sellerUserId,
     buyerUserId: dto.buyerUserId,
     sellerName: seller.companyName,
