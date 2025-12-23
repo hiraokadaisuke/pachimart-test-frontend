@@ -12,6 +12,16 @@ type TradeRecord = {
   naviId: number | null;
   createdAt: Date;
   updatedAt: Date;
+  navi: {
+    id: number;
+    ownerUserId: string;
+    buyerUserId: string | null;
+    payload: Prisma.JsonValue | null;
+    createdAt: Date;
+    updatedAt: Date;
+  } | null;
+  sellerUser: { id: string; companyName: string } | null;
+  buyerUser: { id: string; companyName: string } | null;
 };
 
 const toDto = (trade: TradeRecord) => ({
@@ -23,6 +33,18 @@ const toDto = (trade: TradeRecord) => ({
   naviId: trade.naviId,
   createdAt: trade.createdAt.toISOString(),
   updatedAt: trade.updatedAt.toISOString(),
+  navi: trade.navi
+    ? {
+        id: trade.navi.id,
+        ownerUserId: trade.navi.ownerUserId,
+        buyerUserId: trade.navi.buyerUserId,
+        payload: (trade.navi.payload as Prisma.JsonValue | null) ?? null,
+        createdAt: trade.navi.createdAt.toISOString(),
+        updatedAt: trade.navi.updatedAt.toISOString(),
+      }
+    : null,
+  sellerUser: trade.sellerUser,
+  buyerUser: trade.buyerUser,
 });
 
 const toRecord = (trade: unknown): TradeRecord => {
@@ -43,6 +65,10 @@ const toRecord = (trade: unknown): TradeRecord => {
     return new Date();
   };
 
+  const naviCandidate = candidate.navi as Record<string, unknown> | null;
+  const sellerCandidate = candidate.sellerUser as Record<string, unknown> | null;
+  const buyerCandidate = candidate.buyerUser as Record<string, unknown> | null;
+
   return {
     id: Number(candidate.id),
     sellerUserId: String(candidate.sellerUserId),
@@ -52,6 +78,22 @@ const toRecord = (trade: unknown): TradeRecord => {
     naviId: (candidate.naviId as number | null) ?? null,
     createdAt: toDate(candidate.createdAt),
     updatedAt: toDate(candidate.updatedAt, toDate(candidate.createdAt)),
+    navi: naviCandidate
+      ? {
+          id: Number(naviCandidate.id),
+          ownerUserId: String(naviCandidate.ownerUserId),
+          buyerUserId: (naviCandidate.buyerUserId as string | null) ?? null,
+          payload: (naviCandidate.payload as Prisma.JsonValue | null) ?? null,
+          createdAt: toDate(naviCandidate.createdAt),
+          updatedAt: toDate(naviCandidate.updatedAt, toDate(naviCandidate.createdAt)),
+        }
+      : null,
+    sellerUser: sellerCandidate
+      ? { id: String(sellerCandidate.id), companyName: String(sellerCandidate.companyName) }
+      : null,
+    buyerUser: buyerCandidate
+      ? { id: String(buyerCandidate.id), companyName: String(buyerCandidate.companyName) }
+      : null,
   };
 };
 
@@ -62,6 +104,9 @@ export async function GET() {
   try {
     const trades = await prisma.trade.findMany({
       where: { status: TradeStatus.IN_PROGRESS },
+      // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
+      orderBy: { createdAt: "desc" } as any,
+      include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
     return NextResponse.json(trades.map((trade) => toDto(toRecord(trade))));

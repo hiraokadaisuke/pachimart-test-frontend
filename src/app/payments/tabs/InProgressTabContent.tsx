@@ -13,14 +13,10 @@ import { getMessagesForTrade } from "@/lib/dummyMessages";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { getInProgressDescription } from "@/lib/trade/copy";
 import { getStatementPath } from "@/lib/trade/navigation";
-import {
-  TRADE_STORAGE_KEY,
-  completeTodoForTrade,
-  loadAllTrades,
-} from "@/lib/trade/storage";
 import { TradeRecord } from "@/lib/trade/types";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
+import { InProgressTradeDto, transformInProgressTrade } from "@/lib/trade/transform";
 
 const SECTION_LABELS = {
   approval: todoUiMap["application_sent"],
@@ -132,31 +128,35 @@ export function InProgressTabContent() {
     [currentUser.id, keyword, statusFilter]
   );
 
-  const refreshTrades = useCallback(() => {
-    setTrades(loadAllTrades());
-  }, []);
+  const refreshTrades = useCallback(async () => {
+    try {
+      const response = await fetch("/api/trades/in-progress");
+      if (!response.ok) {
+        throw new Error(`Failed to fetch trades: ${response.status}`);
+      }
+
+      const data: InProgressTradeDto[] = await response.json();
+      const ownedTrades = data.filter(
+        (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
+      );
+      setTrades(ownedTrades.map(transformInProgressTrade));
+    } catch (error) {
+      console.error("Failed to load trades", error);
+      setTrades([]);
+    }
+  }, [currentUser.id]);
 
   const handleCompleteTodo = useCallback(
     (tradeId: string, todoKind: TradeStatusKey) => {
-      completeTodoForTrade(tradeId, todoKind, currentUser.id);
+      console.warn("Todo completion is not supported for fetched trades", { tradeId, todoKind });
       refreshTrades();
     },
-    [currentUser.id, refreshTrades]
+    [refreshTrades]
   );
 
   useEffect(() => {
-    setTrades(loadAllTrades());
-  }, []);
-
-  useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === TRADE_STORAGE_KEY) {
-        setTrades(loadAllTrades());
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+    refreshTrades();
+  }, [refreshTrades]);
 
   const tradeRows = useMemo(
     () => trades.map((trade) => buildTradeRow(trade, currentUser.id)),
