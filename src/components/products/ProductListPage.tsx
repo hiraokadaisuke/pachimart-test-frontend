@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 
 import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviTable";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
+import { Badge } from "@/components/ui/badge";
 import type { Listing } from "@/lib/listings/types";
 
 function formatPrice(listing: Listing) {
@@ -56,7 +57,21 @@ export default function ProductListPage() {
     () => [
       { key: "kind", label: "種別", width: "90px" },
       { key: "maker", label: "メーカー", width: "140px" },
-      { key: "machineName", label: "機種名", width: "220px" },
+      {
+        key: "machineName",
+        label: "機種名",
+        width: "220px",
+        render: (row: Listing) => (
+          <div className="flex items-center gap-2">
+            <span>{row.machineName ?? "機種名未設定"}</span>
+            {row.status === "SOLD" && (
+              <Badge variant="outline" className="bg-slate-100 text-neutral-600 border-slate-200">
+                成約済み
+              </Badge>
+            )}
+          </div>
+        ),
+      },
       {
         key: "quantity",
         label: "台数",
@@ -120,6 +135,7 @@ export default function ProductListPage() {
           rows={filteredListings}
           onRowClick={(row) => router.push(`/products/${row.id}`)}
           emptyMessage="出品がありません"
+          getRowClassName={(row: Listing) => (row.status === "SOLD" ? "opacity-60" : "")}
         />
       </div>
     </div>

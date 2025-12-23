@@ -44,6 +44,12 @@ type ListingDto = {
   updatedAt: string;
 };
 
+type ListingQueryWhere = {
+  sellerUserId?: string;
+  status?: ListingStatus | { in: ListingStatus[] };
+  isVisible?: boolean;
+};
+
 const listingClient = prisma.listing;
 
 const createListingSchema = z
@@ -166,7 +172,7 @@ export async function GET(request: Request) {
       );
     }
 
-    const where: Record<string, unknown> = {};
+    const where: ListingQueryWhere = {};
 
     if (sellerUserId) {
       where.sellerUserId = sellerUserId;
@@ -185,12 +191,12 @@ export async function GET(request: Request) {
     }
 
     if (!status && !sellerUserId) {
-      where.status = ListingStatus.PUBLISHED;
+      where.status = { in: [ListingStatus.PUBLISHED, ListingStatus.SOLD] };
     }
 
     const listings = await listingClient.findMany({
-      where: where as any,
-      orderBy: { updatedAt: "desc" } as any,
+      where,
+      orderBy: { updatedAt: "desc" },
     });
 
     return NextResponse.json(listings.map(toRecord).map(toDto));

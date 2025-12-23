@@ -28,6 +28,10 @@ const formatPrice = (listing: Listing) => {
 };
 
 const resolveInquiryStatus = (listing: Listing) => {
+  if (listing.status === "SOLD") {
+    return { available: false as const, reason: "成約済みのため受付できません" };
+  }
+
   const isAvailable =
     !listing.isNegotiable &&
     listing.unitPriceExclTax !== null &&
@@ -53,6 +57,7 @@ export default async function ProductDetailPage({ params }: { params: { listingI
   }
 
   const inquiryStatus = resolveInquiryStatus(listing);
+  const isSold = listing.status === "SOLD";
   const naviCreateHref = `/navi?tab=new&listingId=${listing.id}`;
   const inquiryHref = `/navi?tab=new&mode=inquiry&listingId=${listing.id}`;
 
@@ -98,10 +103,18 @@ export default async function ProductDetailPage({ params }: { params: { listingI
             </div>
             <Link
               href={naviCreateHref}
-              className="flex h-10 w-full items-center justify-center rounded-md bg-blue-600 px-3 text-[13px] font-semibold text-white shadow hover:bg-blue-700"
+              aria-disabled={isSold}
+              className={`flex h-10 w-full items-center justify-center rounded-md px-3 text-[13px] font-semibold shadow ${
+                isSold
+                  ? "cursor-not-allowed bg-slate-200 text-neutral-500"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
+              } ${isSold ? "pointer-events-none" : ""}`}
             >
               ナビ作成
             </Link>
+            {isSold && (
+              <p className="text-[12px] leading-[16px] text-neutral-700">成約済みのため受付できません</p>
+            )}
           </div>
 
           <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
@@ -116,7 +129,7 @@ export default async function ProductDetailPage({ params }: { params: { listingI
                 inquiryStatus.available
                   ? "bg-blue-600 text-white hover:bg-blue-700"
                   : "cursor-not-allowed bg-slate-200 text-neutral-500"
-              }`}
+              } ${!inquiryStatus.available ? "pointer-events-none" : ""}`}
             >
               オンライン問い合わせ
             </Link>

@@ -17,6 +17,7 @@ type Props = {
   rows: any[];
   emptyMessage?: string;
   getRowKey?: (row: any, index: number) => string | number;
+  getRowClassName?: (row: any) => string | undefined;
   onRowClick?: (row: any) => void;
   sortState?: SortState;
   onSortChange?: (key: string) => void;
@@ -27,6 +28,7 @@ export function NaviTable({
   rows,
   emptyMessage,
   getRowKey,
+  getRowClassName,
   onRowClick,
   sortState,
   onSortChange,
@@ -80,7 +82,9 @@ export function NaviTable({
             rows.map((row, index) => (
               <tr
                 key={getRowKey?.(row, index) ?? row.id ?? index}
-                className={`divide-x divide-slate-200 transition hover:bg-slate-50 ${onRowClick ? "cursor-pointer" : ""}`}
+                className={`divide-x divide-slate-200 transition hover:bg-slate-50 ${
+                  onRowClick ? "cursor-pointer" : ""
+                } ${getRowClassName?.(row) ?? ""}`}
                 onClick={() => onRowClick?.(row)}
               >
                 {columns.map((column) => (
