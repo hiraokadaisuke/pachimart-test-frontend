@@ -1,14 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
-import { loadInventoryRecords, type InventoryRecord } from "@/lib/demo-data/demoInventory";
+import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
 const yellowInput =
-  "w-full bg-amber-100 border border-black px-2 py-1 text-[13px] leading-tight focus:outline-none";
+  "w-full bg-[#fff6cc] border border-[#333] px-2 py-[6px] text-[13px] leading-tight focus:outline-none";
+
+const grayInput =
+  "w-full bg-[#f4f0e6] border border-[#333] px-2 py-[6px] text-[13px] leading-tight focus:outline-none";
 
 const toDateInputValue = (value?: string) => {
   if (value) return value;
@@ -49,6 +52,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   const [paymentMethod, setPaymentMethod] = useState("口座振込");
   const [paymentDate, setPaymentDate] = useState("");
   const [paymentAmount, setPaymentAmount] = useState(0);
+  const [startDate, setStartDate] = useState("");
   const [introductionStore, setIntroductionStore] = useState("-");
   const [installationDate, setInstallationDate] = useState("");
   const [openingDate, setOpeningDate] = useState("");
@@ -56,33 +60,55 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   const [storageLocation, setStorageLocation] = useState("倉庫A");
   const [remarks, setRemarks] = useState("特記事項があれば入力してください");
 
-  useEffect(() => {
-    if (rows.length > 0) return;
-    const preferred = inventories && inventories.length > 0 ? inventories : loadInventoryRecords().filter((i) => i.status === "売却済");
-    if (preferred.length > 0) {
-      const mapped = preferred.map<BaseRow>((item) => ({
+  const buildRowsFromInventory = useCallback((items: InventoryRecord[] | undefined) => {
+    if (!items || items.length === 0) return [] as BaseRow[];
+    return items.map<BaseRow>((item) => {
+      const quantity = item.quantity ?? 1;
+      const unitPrice = item.saleUnitPrice ?? item.unitPrice ?? 0;
+      return {
         inventoryId: item.id,
         maker: item.maker ?? "",
         productName: item.model ?? item.machineName ?? "",
         type: item.type ?? item.deviceType ?? "",
-        quantity: item.quantity ?? 1,
-        unitPrice: item.saleUnitPrice ?? item.unitPrice ?? 0,
-        amount: (item.quantity ?? 1) * (item.saleUnitPrice ?? item.unitPrice ?? 0),
+        quantity,
+        unitPrice,
+        amount: quantity * unitPrice,
         remainingDebt: item.remainingDebt ?? 0,
+        applicationPrefecture: item.applicationPrefecture ?? "",
+        applicationDate: item.applicationDate ?? "",
         note: item.note ?? item.notes ?? "",
-      }));
-      setRows(mapped.length > 0 ? mapped : []);
-    }
-    if (preferred.length === 0) {
-      setRows([
-        {
-          quantity: 1,
-          unitPrice: 0,
-          amount: 0,
-        },
-      ]);
-    }
-  }, [inventories, rows.length]);
+      };
+    });
+  }, []);
+
+  const resetForm = useCallback(() => {
+    const mapped = buildRowsFromInventory(inventories);
+    setRows(mapped.length > 0 ? mapped : [{ quantity: 1, unitPrice: 0, amount: 0 }]);
+    setHallName("ダミーホール");
+    setContactName("御中");
+    setHallTel("03-0000-0000");
+    setHallFax("03-0000-0001");
+    setIssuedDate(toDateInputValue());
+    setStaff("デモユーザー");
+    setManager("担当者A");
+    setSubtotal(0);
+    setInsurance(0);
+    setBankNote("三井住友銀行 渋谷支店 普通 1234567 株式会社ピーコム");
+    setPaymentMethod("口座振込");
+    setPaymentDate("");
+    setPaymentAmount(0);
+    setStartDate("");
+    setIntroductionStore("-");
+    setInstallationDate("");
+    setOpeningDate("");
+    setDocumentArrivalDate("");
+    setStorageLocation("倉庫A");
+    setRemarks("特記事項があれば入力してください");
+  }, [buildRowsFromInventory, inventories]);
+
+  useEffect(() => {
+    resetForm();
+  }, [resetForm]);
 
   useEffect(() => {
     const total = rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0);
@@ -153,6 +179,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       paymentMethod ? `支払方法: ${paymentMethod}` : undefined,
       paymentDate ? `支払日: ${paymentDate}` : undefined,
       paymentAmount ? `支払金額: ${paymentAmount.toLocaleString("ja-JP")}` : undefined,
+      startDate ? `開始日: ${startDate}` : undefined,
       introductionStore ? `導入店舗: ${introductionStore}` : undefined,
       installationDate ? `設置日: ${installationDate}` : undefined,
       openingDate ? `開店日: ${openingDate}` : undefined,
@@ -178,6 +205,14 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       tax,
       insurance: Number(insurance) || 0,
       totalAmount,
+      paymentMethod,
+      paymentDate,
+      paymentAmount,
+      introductionStore,
+      installationDate,
+      openingDate,
+      documentArrivalDate,
+      storageLocation,
       remarks: memoLines,
     });
 
@@ -192,122 +227,117 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-[#e7edf7] px-3 py-6 text-[13px] text-neutral-900">
-      <div className="mx-auto max-w-6xl border border-black bg-white p-4 shadow-sm">
-        <div className="flex items-center gap-2 text-lg font-bold text-emerald-900">
-          <span className="text-green-600">●</span>
-          <span>販売伝票登録（ホール）</span>
-        </div>
-        <div className="my-2 border-b border-black" />
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="h-6 w-1 bg-emerald-700" aria-hidden />
-            <span className="bg-slate-100 px-3 py-1 text-sm font-semibold">新規登録</span>
+    <div className="flex justify-center bg-[#e5e5e5] py-4 text-[13px] text-[#222]">
+      <div className="w-[1200px] border-[1.5px] border-[#333] bg-white px-4 py-3">
+        <div className="mb-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 text-[14px] font-bold text-[#0f5132]">
+            <span className="inline-block h-3.5 w-3.5 rounded-full bg-green-600" aria-hidden />
+            <span>販売伝票登録（ホール）</span>
           </div>
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="border border-amber-600 bg-amber-300 px-4 py-2 shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
-            >
-              確認
-            </button>
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="border border-neutral-600 bg-neutral-200 px-4 py-2 shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
-            >
-              戻る
-            </button>
+          <div className="flex items-center gap-2 text-[13px] font-semibold">
+            <span>日付</span>
+            <input
+              type="date"
+              value={issuedDate}
+              onChange={(e) => setIssuedDate(e.target.value)}
+              className={`${yellowInput} w-[140px] text-center`}
+            />
           </div>
         </div>
 
-        <div className="border border-black bg-white p-3">
-          <div className="flex justify-end pb-2">
-            <div className="flex items-center gap-2 border border-black px-2 py-1 text-sm font-semibold">
-              <span>日付</span>
-              <input
-                type="date"
-                value={issuedDate}
-                onChange={(e) => setIssuedDate(e.target.value)}
-                className={`${yellowInput} w-36 text-center`}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-7 border border-black p-2">
-              <div className="mb-1 text-sm font-semibold">販売先（ホール）</div>
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-center gap-2">
+        <div className="border border-[#333] px-3 py-2">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="border border-[#333]">
+              <div className="border-b border-[#333] bg-[#f5f5f5] px-2 py-1 text-[13px] font-semibold">販売先（ホール）</div>
+              <div className="space-y-1 px-2 py-2">
+                <div className="flex items-center gap-2">
+                  <span className="w-16">ホール名</span>
                   <input
                     type="text"
                     value={hallName}
                     onChange={(e) => setHallName(e.target.value)}
-                    className={`${yellowInput} text-lg font-bold`}
+                    className={`${yellowInput} flex-1`}
                   />
-                  <span className="text-sm font-semibold">{contactName}</span>
-                  <button className="border border-gray-600 bg-white px-3 py-1 text-xs font-semibold shadow-inner" type="button">
-                    宛名検索
+                  <button
+                    type="button"
+                    className="border border-[#333] bg-[#f3f3f3] px-3 py-1 text-[12px]"
+                  >
+                    売主検索
                   </button>
                 </div>
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span>TEL</span>
+                <div className="flex items-center gap-2">
+                  <span className="w-16">TEL</span>
                   <input
                     type="text"
                     value={hallTel}
                     onChange={(e) => setHallTel(e.target.value)}
-                    className={`${yellowInput} w-36`}
+                    className={`${yellowInput} flex-1`}
                   />
-                  <span>FAX</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-16">FAX</span>
                   <input
                     type="text"
                     value={hallFax}
                     onChange={(e) => setHallFax(e.target.value)}
-                    className={`${yellowInput} w-36`}
+                    className={`${yellowInput} flex-1`}
                   />
                 </div>
               </div>
             </div>
 
-            <div className="col-span-5 border border-black p-2 text-sm">
-              <div className="mb-2 flex items-center justify-between">
-                <span className="font-semibold">[売主] 株式会社ピーコム</span>
-                <div className="flex items-center gap-2">
-                  <span className="font-semibold">担当</span>
-                  <select
-                    value={staff}
-                    onChange={(e) => setStaff(e.target.value)}
-                    className={`${yellowInput} w-28`}
-                  >
-                    {["デモユーザー", "担当A", "担当B"].map((name) => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </select>
+            <div className="border border-[#333]">
+              <div className="border-b border-[#333] bg-[#f5f5f5] px-2 py-1 text-[13px] font-semibold">【売主】 株式会社ピーコム</div>
+              <div className="space-y-1 px-2 py-2 text-[12px]">
+                <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                  <span className="text-right">郵便番号</span>
+                  <input type="text" value="150-0031" readOnly className={`${grayInput} w-40`} />
                 </div>
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="w-16">管理担当</span>
-                  <input
-                    type="text"
-                    value={manager}
-                    onChange={(e) => setManager(e.target.value)}
-                    className={`${yellowInput} w-32`}
-                  />
-                  <span className="border border-black px-3 py-1">印</span>
+                <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                  <span className="text-right">住所</span>
+                  <input type="text" value="東京都渋谷区桜丘町26-1 セルリアンタワー15F" readOnly className={grayInput} />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-16">所在地</span>
-                  <span className="border border-black px-2 py-1">東京都渋谷区桜丘町26-1 セルリアンタワー15F</span>
+                <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                  <span className="text-right">会社名</span>
+                  <input type="text" value="株式会社ピーコム" readOnly className={grayInput} />
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-16">TEL</span>
-                  <span className="border border-black px-2 py-1">03-1234-5678</span>
-                  <span className="w-12 text-right">FAX</span>
-                  <span className="border border-black px-2 py-1">03-1234-5679</span>
+                <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                  <span className="text-right">代表者</span>
+                  <input type="text" value="代表取締役 A" readOnly className={`${grayInput} w-56`} />
+                </div>
+                <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                  <span className="text-right">TEL</span>
+                  <input type="text" value="03-1234-5678" readOnly className={`${grayInput} w-44`} />
+                  <span className="text-right">FAX</span>
+                  <input type="text" value="03-1234-5679" readOnly className={`${grayInput} w-44`} />
+                </div>
+                <div className="flex items-center justify-between pt-1 text-[13px]">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold">担当</span>
+                    <select
+                      value={staff}
+                      onChange={(e) => setStaff(e.target.value)}
+                      className={`${yellowInput} w-28`}
+                    >
+                      {["デモユーザー", "担当A", "担当B"].map((name) => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-16 text-right">管理担当</span>
+                    <input
+                      type="text"
+                      value={manager}
+                      onChange={(e) => setManager(e.target.value)}
+                      className={`${yellowInput} w-32`}
+                    />
+                    <button type="button" className="border border-[#333] bg-[#f3f3f3] px-3 py-1 text-[12px] font-semibold">
+                      印
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -316,25 +346,25 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
           <div className="mt-3 text-right text-[12px] text-neutral-700">行を追加します →</div>
 
           <div className="overflow-x-auto">
-            <table className="min-w-full border-2 border-black text-center text-[12px]">
-              <thead className="bg-slate-100 text-[12px] font-semibold">
+            <table className="min-w-full border-2 border-[#333] text-center text-[12px]">
+              <thead className="bg-[#efefef] text-[12px] font-semibold">
                 <tr>
-                  <th className="border border-black px-2 py-2">メーカー名</th>
-                  <th className="border border-black px-2 py-2">商品名</th>
-                  <th className="border border-black px-2 py-2">タイプ</th>
-                  <th className="border border-black px-2 py-2">数量</th>
-                  <th className="border border-black px-2 py-2">単価</th>
-                  <th className="border border-black px-2 py-2">金額</th>
-                  <th className="border border-black px-2 py-2">残債</th>
-                  <th className="border border-black px-2 py-2">申請道府</th>
-                  <th className="border border-black px-2 py-2">申請日</th>
-                  <th className="border border-black px-2 py-2">商品補足</th>
+                  <th className="border border-[#333] px-2 py-2">メーカー名</th>
+                  <th className="border border-[#333] px-2 py-2">商品名</th>
+                  <th className="border border-[#333] px-2 py-2">タイプ</th>
+                  <th className="border border-[#333] px-2 py-2">数量</th>
+                  <th className="border border-[#333] px-2 py-2">単価</th>
+                  <th className="border border-[#333] px-2 py-2">金額</th>
+                  <th className="border border-[#333] px-2 py-2">残債</th>
+                  <th className="border border-[#333] px-2 py-2">申請適用</th>
+                  <th className="border border-[#333] px-2 py-2">申請日</th>
+                  <th className="border border-[#333] px-2 py-2">商品補足</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row, index) => (
                   <tr key={`${row.inventoryId ?? "row"}-${index}`} className="bg-white">
-                    <td className="border border-black px-1 py-1">
+                    <td className="border border-[#333] px-1 py-1">
                       <input
                         type="text"
                         value={row.maker ?? ""}
@@ -342,7 +372,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                         className={yellowInput}
                       />
                     </td>
-                    <td className="border border-black px-1 py-1">
+                    <td className="border border-[#333] px-1 py-1">
                       <div className="flex items-center">
                         <input
                           type="text"
@@ -350,10 +380,10 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                           onChange={(e) => handleChange(index, "productName", e.target.value)}
                           className={`${yellowInput} flex-1`}
                         />
-                        <span className="border border-black bg-slate-100 px-2 py-1 text-xs">▼</span>
+                        <span className="border border-[#333] bg-[#f3f3f3] px-2 py-1 text-xs">▼</span>
                       </div>
                     </td>
-                    <td className="border border-black px-1 py-1">
+                    <td className="border border-[#333] px-1 py-1">
                       <input
                         type="text"
                         value={row.type ?? ""}
@@ -361,7 +391,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                         className={yellowInput}
                       />
                     </td>
-                    <td className="border border-black px-1 py-1">
+                    <td className="border border-[#333] px-1 py-1">
                       <input
                         type="number"
                         value={row.quantity}
@@ -369,7 +399,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                         className={`${yellowInput} text-right`}
                       />
                     </td>
-                    <td className="border border-black px-1 py-1">
+                    <td className="border border-[#333] px-1 py-1">
                       <input
                         type="number"
                         value={row.unitPrice}
@@ -377,10 +407,10 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                         className={`${yellowInput} text-right`}
                       />
                     </td>
-                    <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
+                    <td className="border border-[#333] px-1 py-1 bg-[#fff6cc] text-right font-semibold">
                       {moneyDisplay(row.amount)}
                     </td>
-                    <td className="border border-black px-1 py-1">
+                    <td className="border border-[#333] px-1 py-1">
                       <input
                         type="number"
                         value={row.remainingDebt ?? 0}
@@ -388,7 +418,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                         className={`${yellowInput} text-right`}
                       />
                     </td>
-                    <td className="border border-black px-1 py-1">
+                    <td className="border border-[#333] px-1 py-1">
                       <input
                         type="text"
                         value={row.applicationPrefecture ?? ""}
@@ -396,7 +426,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                         className={yellowInput}
                       />
                     </td>
-                    <td className="border border-black px-1 py-1">
+                    <td className="border border-[#333] px-1 py-1">
                       <input
                         type="date"
                         value={row.applicationDate ?? ""}
@@ -404,7 +434,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                         className={`${yellowInput} text-center`}
                       />
                     </td>
-                    <td className="border border-black px-1 py-1">
+                    <td className="border border-[#333] px-1 py-1">
                       <input
                         type="text"
                         value={row.note ?? ""}
@@ -416,56 +446,56 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                 ))}
               </tbody>
             </table>
-            <div className="mt-2 flex justify-end">
+            <div className="mt-1 flex justify-end">
               <button
                 type="button"
                 onClick={handleAddRow}
-                className="border border-black bg-amber-200 px-3 py-1 text-sm font-semibold"
+                className="border border-[#333] bg-[#f7e6a3] px-3 py-1 text-[12px] font-semibold"
               >
                 行追加
               </button>
             </div>
           </div>
 
-          <div className="mt-3 grid grid-cols-12 gap-3 text-sm">
-            <div className="col-span-7 space-y-2">
-              <div className="grid grid-cols-[1fr_auto] gap-2 border border-black p-2">
+          <div className="mt-3 grid grid-cols-[7fr_5fr] gap-3 text-[13px]">
+            <div className="space-y-2">
+              <div className="grid grid-cols-[1fr_200px] gap-2 border border-[#333] p-2">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <span className="w-20 font-semibold">小計</span>
-                    <span className="border border-black bg-white px-2 py-1 text-right font-bold">{moneyDisplay(subtotal)}</span>
+                    <span className="w-24 font-semibold">小計</span>
+                    <span className="border border-[#333] bg-white px-2 py-1 text-right font-bold">{moneyDisplay(subtotal)}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-20 font-semibold">消費税(10%)</span>
-                    <span className="border border-black bg-white px-2 py-1 text-right font-bold">{moneyDisplay(tax)}</span>
+                    <span className="w-24 font-semibold">消費税(10%)</span>
+                    <span className="border border-[#333] bg-white px-2 py-1 text-right font-bold">{moneyDisplay(tax)}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-20 font-semibold">運送保険(税込)</span>
+                    <span className="w-24 font-semibold">運送保険(税込)</span>
                     <input
                       type="number"
                       value={insurance}
                       onChange={(e) => setInsurance(Number(e.target.value) || 0)}
-                      className={`${yellowInput} w-32 text-right`}
+                      className={`${yellowInput} w-36 text-right`}
                     />
                   </div>
                 </div>
-                <div className="flex flex-col justify-center border border-black bg-amber-50 px-3 py-2 text-center text-lg font-bold">
+                <div className="flex flex-col justify-center border border-[#333] bg-[#fff6cc] px-3 py-2 text-center text-lg font-bold">
                   <div>合計金額</div>
                   <div>{moneyDisplay(totalAmount)}</div>
                 </div>
               </div>
 
-              <div className="border border-black p-2">
+              <div className="border border-[#333] p-2">
                 <div className="font-semibold">お振込先</div>
                 <textarea
                   value={bankNote}
                   onChange={(e) => setBankNote(e.target.value)}
                   className={`${yellowInput} mt-1 h-16 resize-none`}
                 />
-                <div className="mt-2 grid grid-cols-2 gap-2">
+                <div className="mt-2 grid grid-cols-[1fr_1fr] gap-2 text-[12px]">
                   <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <span className="w-20">支払方法</span>
+                      <span className="w-24">支払方法</span>
                       <select
                         value={paymentMethod}
                         onChange={(e) => setPaymentMethod(e.target.value)}
@@ -477,7 +507,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                       </select>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="w-20">支払日</span>
+                      <span className="w-24">支払日</span>
                       <input
                         type="date"
                         value={paymentDate}
@@ -487,65 +517,77 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-20">支払金額</span>
+                    <span className="w-24">支払金額</span>
                     <input
                       type="number"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(Number(e.target.value) || 0)}
                       className={`${yellowInput} w-40 text-right`}
                     />
-                    <span className="border border-black px-3 py-1">円</span>
+                    <span className="border border-[#333] px-3 py-1">円</span>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="col-span-5 space-y-2">
-              <div className="border border-black bg-orange-50 p-2">
+            <div className="space-y-2">
+              <div className="border border-[#333] bg-[#fff6cc] p-2">
                 <div className="mb-2 text-sm font-semibold">導入・設置情報</div>
-                <div className="space-y-2">
+                <div className="space-y-2 text-[12px]">
                   <div className="flex items-center gap-2">
-                    <span className="w-24">導入店舗</span>
+                    <span className="w-24">導入店舗名</span>
                     <input
                       type="text"
                       value={introductionStore}
                       onChange={(e) => setIntroductionStore(e.target.value)}
-                      className={`${yellowInput} w-full`}
+                      className={`${yellowInput} flex-1`}
                     />
+                    <button type="button" className="border border-[#333] bg-[#f3f3f3] px-3 py-1 text-[12px]">
+                      導入店舗検索
+                    </button>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-24">設置日</span>
+                    <span className="w-24">機械納品日</span>
                     <input
                       type="date"
                       value={installationDate}
                       onChange={(e) => setInstallationDate(e.target.value)}
-                      className={`${yellowInput} w-40`}
+                      className={`${yellowInput} w-36 text-center`}
                     />
-                    <span className="w-20 text-right">開店日</span>
+                    <span className="w-20 text-right">設置日</span>
                     <input
                       type="date"
                       value={openingDate}
                       onChange={(e) => setOpeningDate(e.target.value)}
-                      className={`${yellowInput} w-40`}
+                      className={`${yellowInput} w-36 text-center`}
                     />
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="w-24">書類着日</span>
+                    <span className="w-24">請求書発行日</span>
                     <input
                       type="date"
                       value={documentArrivalDate}
                       onChange={(e) => setDocumentArrivalDate(e.target.value)}
-                      className={`${yellowInput} w-40`}
+                      className={`${yellowInput} w-36 text-center`}
                     />
-                    <span className="w-20 text-right">残債</span>
-                    <span className="border border-black bg-white px-2 py-1 text-right font-semibold">
+                    <span className="w-20 text-right">開始日</span>
+                    <input
+                      type="date"
+                      value={startDate}
+                      onChange={(e) => setStartDate(e.target.value)}
+                      className={`${yellowInput} w-36 text-center`}
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-24">残債</span>
+                    <span className="border border-[#333] bg-white px-2 py-1 text-right font-semibold">
                       {moneyDisplay(rows[0]?.remainingDebt ?? 0)}
                     </span>
                   </div>
                 </div>
               </div>
 
-              <div className="border border-black bg-white p-2 text-[12px] leading-relaxed">
+              <div className="border border-[#333] bg-white p-2 text-[12px] leading-relaxed">
                 <div className="mb-1 text-sm font-semibold">社内メモ</div>
                 <div className="space-y-1">
                   <div>・販売管理台帳に貼付</div>
@@ -556,18 +598,16 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
             </div>
           </div>
 
-          <div className="mt-4 grid grid-cols-12 gap-3">
-            <div className="col-span-9">
-              <div className="border border-black">
-                <div className="bg-slate-50 px-2 py-1 text-sm font-semibold">備考</div>
-                <textarea
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  className={`${yellowInput} h-24 w-full resize-none border-0 bg-amber-100 px-3 py-2`}
-                />
-              </div>
+          <div className="mt-3 grid grid-cols-[9fr_3fr] gap-3">
+            <div className="border border-[#333]">
+              <div className="bg-[#f5f5f5] px-2 py-1 text-[13px] font-semibold">備考</div>
+              <textarea
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                className={`${yellowInput} h-24 w-full resize-none border-0 bg-[#fff6cc] px-3 py-2`}
+              />
             </div>
-            <div className="col-span-3 border border-black p-2 text-sm">
+            <div className="border border-[#333] p-2 text-[12px]">
               <div className="flex items-center gap-2">
                 <span className="w-16">保管先</span>
                 <input
@@ -577,7 +617,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                   className={`${yellowInput} w-full`}
                 />
               </div>
-              <div className="mt-2 rounded border border-dashed border-gray-500 bg-slate-50 px-2 py-4 text-center text-xs text-gray-700">
+              <div className="mt-2 rounded border border-dashed border-gray-500 bg-[#f5f5f5] px-2 py-3 text-center text-[12px] text-gray-700">
                 ホール控え・社内控えを所定の場所へ保管してください。
               </div>
             </div>
@@ -587,14 +627,14 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
             <button
               type="button"
               onClick={handleSubmit}
-              className="border border-amber-600 bg-amber-300 px-6 py-2 text-sm font-bold shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
+              className="border border-[#b58500] bg-[#f2d14b] px-8 py-2 text-sm font-bold"
             >
               確認
             </button>
             <button
               type="button"
               onClick={() => router.back()}
-              className="border border-neutral-600 bg-neutral-200 px-6 py-2 text-sm font-semibold shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
+              className="border border-[#555] bg-[#ddd] px-8 py-2 text-sm font-semibold"
             >
               戻る
             </button>
