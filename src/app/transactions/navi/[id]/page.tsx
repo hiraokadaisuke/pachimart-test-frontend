@@ -7,22 +7,24 @@ import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { type TradeStatusKey } from "@/components/transactions/status";
 
 type TradeDetailResponse = {
-  trade: {
-    id: number;
-    status: string;
-    sellerUserId: string;
-    buyerUserId: string | null;
-    createdAt: string;
-    updatedAt: string;
-    naviId: number;
-  };
+  id: number;
+  status: string;
+  sellerUserId: string;
+  buyerUserId: string | null;
+  payload: unknown;
+  naviId: number;
+  createdAt: string;
+  updatedAt: string;
   navi?: {
     id: number;
-    status: string;
+    ownerUserId: string;
+    buyerUserId: string | null;
     payload: unknown;
     createdAt: string;
     updatedAt: string;
   };
+  sellerUser?: { id: string; companyName: string } | null;
+  buyerUser?: { id: string; companyName: string } | null;
 };
 
 type TradeDetailView = {
@@ -56,14 +58,11 @@ const toNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
-const transformTradeDetail = (
-  dto: TradeDetailResponse,
-  fallbackId: string
-): TradeDetailView => {
+const transformTradeDetail = (dto: TradeDetailResponse, fallbackId: string): TradeDetailView => {
   const base = buildDefaultView(fallbackId);
-  const tradeIdValue = dto.trade?.id;
+  const tradeIdValue = dto.id;
   const tradeId = Number.isFinite(tradeIdValue ?? NaN) ? String(tradeIdValue) : base.tradeId;
-  const payload = (dto.navi?.payload ?? {}) as Record<string, unknown>;
+  const payload = (dto.payload ?? dto.navi?.payload ?? {}) as Record<string, unknown>;
   const conditionsCandidate = (payload as { conditions?: unknown }).conditions;
   const conditions =
     conditionsCandidate && typeof conditionsCandidate === "object"
@@ -79,7 +78,8 @@ const transformTradeDetail = (
   const total = goods + shipping + fee;
 
   const productNameCandidate = (payload as { productName?: unknown }).productName;
-  const buyerCompanyCandidate = (payload as { buyerCompanyName?: unknown }).buyerCompanyName;
+  const buyerCompanyCandidate =
+    (payload as { buyerCompanyName?: unknown }).buyerCompanyName ?? dto.buyerUser?.companyName;
 
   const productName =
     typeof productNameCandidate === "string" && productNameCandidate.trim()
@@ -103,8 +103,8 @@ const formatCurrency = (value: number) => `¥${value.toLocaleString("ja-JP")}`;
 
 export default function TransactionDetailPage() {
   const params = useParams<{ id?: string }>();
-  const naviId = Array.isArray(params?.id) ? params.id[0] : params?.id;
-  const fallbackId = naviId ?? "NAVI-000000";
+  const tradeId = Array.isArray(params?.id) ? params.id[0] : params?.id;
+  const fallbackId = tradeId ?? "TRADE-000000";
   const [view, setView] = useState<TradeDetailView>(() => buildDefaultView(fallbackId));
 
   useEffect(() => {
@@ -112,11 +112,11 @@ export default function TransactionDetailPage() {
   }, [fallbackId]);
 
   useEffect(() => {
-    if (!naviId) return;
+    if (!tradeId) return;
 
     const fetchTradeDetail = async () => {
       try {
-        const response = await fetch(`/api/trades/in-progress/${naviId}`);
+        const response = await fetch(`/api/trades/in-progress/${tradeId}`);
         if (!response.ok) {
           throw new Error(`Failed to fetch trade detail: ${response.status}`);
         }
@@ -129,7 +129,7 @@ export default function TransactionDetailPage() {
     };
 
     fetchTradeDetail();
-  }, [fallbackId, naviId]);
+  }, [fallbackId, tradeId]);
 
   return (
     <div className="space-y-6">

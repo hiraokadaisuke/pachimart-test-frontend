@@ -35,6 +35,8 @@ Prisma と PostgreSQL を利用した取引(TradeNavi) API が app router で提
 - `PATCH /api/trades/[id]` : `status` を enum で更新
 - `GET /api/trades/in-progress/[id]` : `Trade.id` を指定して IN_PROGRESS 取引の詳細を取得（`navi`、`sellerUser`、`buyerUser` を含む）
 
+進行中取引の詳細ページ（`/transactions/navi/[id]`）も上記の `GET /api/trades/in-progress/[id]` を参照し、Trade と TradeNavi の両方を DB から読み取ります。
+
 レスポンスは DTO 形式で返し、日時は ISO8601 文字列です。
 
 `GET /api/trades/in-progress/[id]` の例:

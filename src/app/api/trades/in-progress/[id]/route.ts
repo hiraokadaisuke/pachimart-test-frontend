@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
@@ -7,35 +8,41 @@ type TradeRecord = {
   status: string;
   sellerUserId: string;
   buyerUserId: string | null;
+  payload: Prisma.JsonValue | null;
   naviId: number;
   createdAt: Date;
   updatedAt: Date;
   navi: {
     id: number;
-    status: string;
-    payload: unknown;
+    ownerUserId: string;
+    buyerUserId: string | null;
+    payload: Prisma.JsonValue | null;
     createdAt: Date;
     updatedAt: Date;
   } | null;
+  sellerUser: { id: string; companyName: string } | null;
+  buyerUser: { id: string; companyName: string } | null;
 };
 
 type TradeDetailDto = {
-  trade: {
-    id: number;
-    status: string;
-    sellerUserId: string;
-    buyerUserId: string | null;
-    createdAt: string;
-    updatedAt: string;
-    naviId: number;
-  };
+  id: number;
+  status: string;
+  sellerUserId: string;
+  buyerUserId: string | null;
+  payload: Prisma.JsonValue | null;
+  naviId: number;
+  createdAt: string;
+  updatedAt: string;
   navi?: {
     id: number;
-    status: string;
-    payload: unknown;
+    ownerUserId: string;
+    buyerUserId: string | null;
+    payload: Prisma.JsonValue | null;
     createdAt: string;
     updatedAt: string;
   };
+  sellerUser?: { id: string; companyName: string } | null;
+  buyerUser?: { id: string; companyName: string } | null;
 };
 
 const handleUnknownError = (error: unknown) =>
@@ -50,24 +57,26 @@ const parseId = (id: string) => {
 };
 
 const toDto = (trade: TradeRecord): TradeDetailDto => ({
-  trade: {
-    id: trade.id,
-    status: trade.status,
-    sellerUserId: trade.sellerUserId,
-    buyerUserId: trade.buyerUserId,
-    createdAt: trade.createdAt.toISOString(),
-    updatedAt: trade.updatedAt.toISOString(),
-    naviId: trade.naviId,
-  },
+  id: trade.id,
+  status: trade.status,
+  sellerUserId: trade.sellerUserId,
+  buyerUserId: trade.buyerUserId,
+  payload: (trade.payload as Prisma.JsonValue | null) ?? null,
+  naviId: trade.naviId,
+  createdAt: trade.createdAt.toISOString(),
+  updatedAt: trade.updatedAt.toISOString(),
   navi: trade.navi
     ? {
         id: trade.navi.id,
-        status: trade.navi.status,
-        payload: trade.navi.payload,
+        ownerUserId: trade.navi.ownerUserId,
+        buyerUserId: trade.navi.buyerUserId,
+        payload: (trade.navi.payload as Prisma.JsonValue | null) ?? null,
         createdAt: trade.navi.createdAt.toISOString(),
         updatedAt: trade.navi.updatedAt.toISOString(),
       }
     : undefined,
+  sellerUser: trade.sellerUser,
+  buyerUser: trade.buyerUser,
 });
 
 const toRecord = (trade: unknown): TradeRecord => {
@@ -90,6 +99,8 @@ const toRecord = (trade: unknown): TradeRecord => {
   };
 
   const naviCandidate = candidate.navi as Record<string, unknown> | null;
+  const sellerCandidate = candidate.sellerUser as Record<string, unknown> | null;
+  const buyerCandidate = candidate.buyerUser as Record<string, unknown> | null;
 
   const toOptionalString = (value: unknown) =>
     value === null || value === undefined ? null : String(value);
@@ -99,17 +110,25 @@ const toRecord = (trade: unknown): TradeRecord => {
     status: String(candidate.status),
     sellerUserId: String(candidate.sellerUserId),
     buyerUserId: toOptionalString(candidate.buyerUserId),
+    payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
     naviId: Number(candidate.naviId ?? 0),
     createdAt: toDate(candidate.createdAt),
     updatedAt: toDate(candidate.updatedAt, toDate(candidate.createdAt)),
     navi: naviCandidate
       ? {
           id: Number(naviCandidate.id),
-          status: String(naviCandidate.status),
-          payload: naviCandidate.payload,
+          ownerUserId: String(naviCandidate.ownerUserId),
+          buyerUserId: toOptionalString(naviCandidate.buyerUserId),
+          payload: (naviCandidate.payload as Prisma.JsonValue | null) ?? null,
           createdAt: toDate(naviCandidate.createdAt),
           updatedAt: toDate(naviCandidate.updatedAt, toDate(naviCandidate.createdAt)),
         }
+      : null,
+    sellerUser: sellerCandidate
+      ? { id: String(sellerCandidate.id), companyName: String(sellerCandidate.companyName) }
+      : null,
+    buyerUser: buyerCandidate
+      ? { id: String(buyerCandidate.id), companyName: String(buyerCandidate.companyName) }
       : null,
   };
 };
@@ -124,7 +143,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   try {
     const trade = await prisma.trade.findUnique({
       where: { id } as any,
-      include: { navi: true } as any,
+      include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
     if (!trade) {
