@@ -132,7 +132,7 @@ export async function POST(request: Request) {
         ownerUserId,
         buyerUserId: buyerUserId ?? null,
         status: status ?? TradeNaviStatus.DRAFT,
-        payload: payload ?? Prisma.JsonNull,
+        payload: (payload ?? null) as any,
       },
     });
 

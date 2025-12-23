@@ -151,7 +151,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
   }
 
   try {
-    const { updated, trade } = await prisma.$transaction(async (tx) => {
+    const { updated, trade } = await (prisma as any).$transaction(async (tx: any) => {
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
       const existing = await tx.tradeNavi.findUnique({ where: { id } as any });
 
