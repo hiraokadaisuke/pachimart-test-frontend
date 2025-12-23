@@ -5,12 +5,15 @@ import { z } from "zod";
 import { prisma } from "@/lib/server/prisma";
 
 const tradeNaviClient = prisma.tradeNavi;
+const listingClient = prisma.listing;
 
 type TradeNaviDto = {
   id: number;
   status: TradeNaviStatus;
   ownerUserId: string;
   buyerUserId: string | null;
+  listingId: string | null;
+  listingSnapshot: Prisma.JsonValue | null;
   payload: Prisma.JsonValue | null;
   createdAt: string;
   updatedAt: string;
@@ -21,6 +24,8 @@ type TradeNaviRecord = {
   status: TradeNaviStatus;
   ownerUserId: string;
   buyerUserId: string | null;
+  listingId: string | null;
+  listingSnapshot: Prisma.JsonValue | null;
   payload: Prisma.JsonValue | null;
   createdAt: Date;
   updatedAt: Date;
@@ -42,6 +47,7 @@ const createTradeSchema = z.object({
   buyerUserId: z.string().min(1).optional(),
   status: z.nativeEnum(TradeNaviStatus).optional(),
   payload: jsonValueSchema.optional(),
+  listingId: z.string().min(1).optional(),
 });
 
 const toDto = (trade: TradeNaviRecord): TradeNaviDto => ({
@@ -49,6 +55,8 @@ const toDto = (trade: TradeNaviRecord): TradeNaviDto => ({
   status: trade.status,
   ownerUserId: trade.ownerUserId,
   buyerUserId: trade.buyerUserId,
+  listingId: trade.listingId,
+  listingSnapshot: (trade.listingSnapshot as Prisma.JsonValue | null) ?? null,
   payload: (trade.payload as Prisma.JsonValue | null) ?? null,
   createdAt: trade.createdAt.toISOString(),
   updatedAt: trade.updatedAt.toISOString(),
@@ -77,11 +85,36 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
     status: candidate.status as TradeNaviStatus,
     ownerUserId: String(candidate.ownerUserId),
     buyerUserId: (candidate.buyerUserId as string | null) ?? null,
+    listingId: (candidate.listingId as string | null) ?? null,
+    listingSnapshot: (candidate.listingSnapshot as Prisma.JsonValue | null) ?? null,
     payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
     createdAt: toDate(candidate.createdAt),
     updatedAt: toDate(candidate.updatedAt, toDate(candidate.createdAt)),
   };
 };
+
+const toListingSnapshot = (listing: Record<string, unknown>): Prisma.JsonObject => ({
+  id: String(listing.id ?? ""),
+  sellerUserId: String(listing.sellerUserId ?? ""),
+  status: String(listing.status ?? ""),
+  isVisible: Boolean(listing.isVisible),
+  kind: String(listing.kind ?? ""),
+  maker: (listing.maker as string | null) ?? null,
+  machineName: (listing.machineName as string | null) ?? null,
+  quantity: Number(listing.quantity ?? 0),
+  unitPriceExclTax:
+    listing.unitPriceExclTax === null || listing.unitPriceExclTax === undefined
+      ? null
+      : Number(listing.unitPriceExclTax),
+  isNegotiable: Boolean(listing.isNegotiable),
+  storageLocation: String(listing.storageLocation ?? ""),
+  shippingFeeCount: Number(listing.shippingFeeCount ?? 0),
+  handlingFeeCount: Number(listing.handlingFeeCount ?? 0),
+  allowPartial: Boolean(listing.allowPartial),
+  note: (listing.note as string | null) ?? null,
+  createdAt: new Date(listing.createdAt as string | number | Date).toISOString(),
+  updatedAt: new Date(listing.updatedAt as string | number | Date).toISOString(),
+});
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -124,13 +157,29 @@ export async function POST(request: Request) {
     );
   }
 
-  const { ownerUserId, buyerUserId, status, payload } = parsed.data;
+  const { ownerUserId, buyerUserId, status, payload, listingId } = parsed.data;
+
+  let listingSnapshot: Prisma.JsonValue | null = null;
+
+  if (listingId) {
+    const listing = await listingClient.findUnique({ where: { id: listingId } });
+
+    if (!listing) {
+      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+    }
+
+    listingSnapshot = toListingSnapshot(listing as Record<string, unknown>);
+  }
+
+  const listingSnapshotInput = listingSnapshot ?? undefined;
 
   try {
     const created = await tradeNaviClient.create({
       data: {
         ownerUserId,
         buyerUserId: buyerUserId ?? null,
+        listingId: listingId ?? null,
+        listingSnapshot: listingSnapshotInput as any,
         status: status ?? TradeNaviStatus.DRAFT,
         payload: (payload ?? null) as any,
       },

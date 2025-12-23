@@ -22,7 +22,7 @@ const mapDraftConditions = (
   conditions: TradeConditions,
   fallback: TransactionConditions
 ): TransactionConditions => ({
-  price: conditions.unitPrice ?? fallback.price,
+  price: conditions.unitPrice === null ? 0 : conditions.unitPrice ?? fallback.price,
   quantity: conditions.quantity ?? fallback.quantity,
   removalDate: conditions.removalDate ?? fallback.removalDate,
   machineShipmentDate: conditions.machineShipmentDate ?? fallback.machineShipmentDate,
@@ -235,6 +235,12 @@ function StandardTradeRequestEditor({
       return Number.isFinite(parsed) ? parsed : fallback;
     };
 
+    const listingUnitPrice = linkedListing ? linkedListing.unitPriceExclTax : undefined;
+    const initialUnitPrice =
+      listingUnitPrice === null
+        ? undefined
+        : parseNumberParam(safeSearchParams.get("unitPrice"), listingUnitPrice ?? undefined);
+
     const initialDraft = createEmptyNaviDraft({
       id: transactionId,
       ownerUserId: currentUser.id,
@@ -248,8 +254,7 @@ function StandardTradeRequestEditor({
       buyerPending: safeSearchParams.has("buyerId") ? false : undefined,
       conditions: {
         quantity: parseNumberParam(safeSearchParams.get("quantity"), linkedListing?.quantity ?? 1) ?? 1,
-        unitPrice:
-          parseNumberParam(safeSearchParams.get("unitPrice"), linkedListing?.unitPriceExclTax ?? 0) ?? 0,
+        unitPrice: initialUnitPrice === undefined ? 0 : initialUnitPrice,
         shippingFee: 0,
         handlingFee: 0,
         taxRate: 0.1,
@@ -427,6 +432,7 @@ function StandardTradeRequestEditor({
         body: JSON.stringify({
           ownerUserId: currentUser.id,
           buyerUserId: updatedDraft.buyerId ?? undefined,
+          listingId: listingId ?? linkedListing?.id ?? undefined,
           status: "SENT",
           payload: updatedDraft,
         }),

@@ -90,6 +90,7 @@ export function createEmptyNaviDraft(initial?: Partial<TradeNaviDraft>): TradeNa
   const id =
     initial?.id ?? (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `draft-${Date.now()}`);
   const now = new Date().toISOString();
+  const initialUnitPrice = initial?.conditions?.unitPrice;
 
   return {
     id,
@@ -105,7 +106,7 @@ export function createEmptyNaviDraft(initial?: Partial<TradeNaviDraft>): TradeNa
     buyerNote: initial?.buyerNote ?? null,
     buyerPending: initial?.buyerPending ?? true,
     conditions: {
-      unitPrice: initial?.conditions?.unitPrice ?? 0,
+      unitPrice: initialUnitPrice === undefined ? 0 : initialUnitPrice,
       quantity: initial?.conditions?.quantity ?? 1,
       shippingFee: initial?.conditions?.shippingFee ?? 0,
       handlingFee: initial?.conditions?.handlingFee ?? 0,
