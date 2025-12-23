@@ -17,6 +17,8 @@ export type SalesInvoice = {
   invoiceType: "vendor" | "hall";
   createdAt: string;
   issuedDate?: string;
+  paymentDueDate?: string;
+  invoiceOriginalRequired?: boolean;
   vendorName?: string;
   buyerName?: string;
   staff?: string;

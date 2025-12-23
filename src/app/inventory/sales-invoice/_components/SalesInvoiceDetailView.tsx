@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { formatCurrency, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
+import { BUYER_OPTIONS, findBuyerById, type BuyerInfo } from "@/lib/demo-data/buyers";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { SalesInvoice } from "@/types/salesInvoices";
@@ -250,12 +251,21 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const [invoice, setInvoice] = useState<SalesInvoice | null>(null);
   const [inventories, setInventories] = useState<Map<string, InventoryRecord>>(new Map());
   const [attemptedLoad, setAttemptedLoad] = useState(false);
+  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [selectedPrintLabel, setSelectedPrintLabel] = useState<string | null>(null);
+  const [selectedSellerId, setSelectedSellerId] = useState<string>(BUYER_OPTIONS[0].id);
 
   useEffect(() => {
     const invoices = [...SEED_SALES_INVOICES, ...loadSalesInvoices()];
     const target = invoices.find((entry) => entry.invoiceId === invoiceId);
     setInvoice(target ?? null);
     setAttemptedLoad(true);
+  }, [invoiceId]);
+
+  useEffect(() => {
+    setIsPrintModalOpen(false);
+    setSelectedPrintLabel(null);
+    setSelectedSellerId(BUYER_OPTIONS[0].id);
   }, [invoiceId]);
 
   useEffect(() => {
@@ -297,15 +307,30 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const grandTotal = invoice?.totalAmount ?? subtotal + tax + shippingInsurance;
 
   const issuedDateLabel = formatFullDate(invoice?.issuedDate || invoice?.createdAt);
+  const paymentDueDateLabel = formatMonthDay(invoice?.paymentDueDate || invoice?.issuedDate || invoice?.createdAt);
+  const invoiceOriginalRequiredLabel = invoice?.invoiceOriginalRequired === false ? "不要" : "要";
   const paymentDateLabel = formatMonthDay(invoice?.issuedDate || invoice?.createdAt);
   const warehousingDateLabel = formatMonthDay(invoice?.issuedDate || invoice?.createdAt);
 
   const handlePrintMenu = (label: string) => {
-    if (label === "書類一括") {
-      alert("書類一括の印刷は準備中です");
-      return;
-    }
-    alert(`${label}の印刷はデモでは準備中です`);
+    setSelectedPrintLabel(label);
+    setIsPrintModalOpen(true);
+  };
+
+  const handlePrint = () => {
+    if (!invoice || !selectedPrintLabel) return;
+    const seller = findBuyerById(selectedSellerId);
+    const path =
+      selectedPrintLabel === "売却証明書"
+        ? "sale-certificate"
+        : selectedPrintLabel === "請求書"
+          ? "invoice"
+          : selectedPrintLabel === "発送依頼書"
+            ? "shipping-request"
+            : "bundle";
+    const url = `/inventory/sales-invoice/print/vendor/${path}/${invoice.invoiceId}?sellerId=${encodeURIComponent(seller.id)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    setIsPrintModalOpen(false);
   };
 
   const handleMachineDetail = () => {
@@ -373,6 +398,44 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
 
   return (
     <div className="min-h-screen bg-slate-100 px-4 py-8 text-[13px] text-neutral-800">
+      {isPrintModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-[360px] border border-neutral-500 bg-white px-6 py-5 text-neutral-900 shadow-md">
+            <div className="mb-4 text-base font-semibold">・売主表示</div>
+            <div className="space-y-2 text-sm">
+              <label className="block text-xs text-neutral-700">売主選択</label>
+              <select
+                value={selectedSellerId}
+                onChange={(event) => setSelectedSellerId(event.target.value)}
+                className="w-full border border-neutral-500 bg-white px-2 py-2 text-sm"
+              >
+                {BUYER_OPTIONS.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="mt-6 flex justify-end gap-2 text-sm font-semibold">
+              <button
+                type="button"
+                onClick={() => setIsPrintModalOpen(false)}
+                className="border border-neutral-500 bg-slate-200 px-5 py-2 text-neutral-800"
+              >
+                戻る
+              </button>
+              <button
+                type="button"
+                onClick={handlePrint}
+                className="border border-yellow-600 bg-yellow-300 px-5 py-2 text-neutral-900"
+              >
+                印刷
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mx-auto max-w-6xl space-y-4">
         <div className="border-b border-slate-400 pb-2">
           <div className="flex items-center gap-2 text-xl font-semibold text-neutral-900">
@@ -427,6 +490,8 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
                   shippingInsurance,
                   grandTotal,
                   issuedDateLabel,
+                  paymentDueDateLabel,
+                  invoiceOriginalRequiredLabel,
                 })
               : renderHallSheet({
                   recipientName,
@@ -487,6 +552,9 @@ type VendorSheetProps = {
   shippingInsurance: number;
   grandTotal: number;
   issuedDateLabel: string;
+  paymentDueDateLabel: string;
+  invoiceOriginalRequiredLabel: string;
+  sellerInfo?: BuyerInfo;
 };
 
 type HallSheetProps = VendorSheetProps & {
@@ -494,7 +562,7 @@ type HallSheetProps = VendorSheetProps & {
   warehousingDateLabel: string;
 };
 
-const renderVendorSheet = ({
+export const renderVendorSheet = ({
   recipientName,
   staffName,
   manager,
@@ -504,7 +572,20 @@ const renderVendorSheet = ({
   shippingInsurance,
   grandTotal,
   issuedDateLabel,
+  paymentDueDateLabel,
+  invoiceOriginalRequiredLabel,
 }: VendorSheetProps) => {
+  const sellerDisplay = sellerInfo
+    ? {
+        ...COMPANY_INFO,
+        name: sellerInfo.corporate,
+        address: sellerInfo.address,
+        postal: sellerInfo.postalCode,
+        tel: sellerInfo.tel,
+        fax: sellerInfo.fax,
+      }
+    : COMPANY_INFO;
+
   return (
     <div className="space-y-4 text-[12px] text-neutral-900">
       <div className="space-y-3 border border-black p-4">
@@ -532,12 +613,12 @@ const renderVendorSheet = ({
             <div className="border border-black px-3 py-3 text-neutral-800">
               <div className="text-right text-sm font-semibold text-neutral-900">売主</div>
               <div className="space-y-1 text-left">
-                <div>{COMPANY_INFO.postal}</div>
-                <div>東京都新宿区高田馬場4-4-17 山根ビル3F</div>
-                <div>{COMPANY_INFO.name}</div>
+                <div>{sellerDisplay.postal}</div>
+                <div>{sellerDisplay.address}</div>
+                <div>{sellerDisplay.name}</div>
                 <div className="flex items-center justify-between text-xs">
-                  <span>TEL 03-5389-1955</span>
-                  <span>FAX 03-5389-1956</span>
+                  <span>{sellerDisplay.tel}</span>
+                  <span>{sellerDisplay.fax}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span>担当 {staffName}</span>
@@ -620,40 +701,96 @@ const renderVendorSheet = ({
                 <div>三菱東京UFJ銀行 高田馬場支店</div>
                 <div>普通 0131849 カ)ピーカンクラブ</div>
               </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <div className="flex items-center justify-between border border-black px-2 py-1 text-[11px]">
+                  <span>支払期日</span>
+                  <span className="text-[12px] font-semibold">{paymentDueDateLabel}</span>
+                </div>
+                <div className="flex items-center justify-between border border-black px-2 py-1 text-[11px]">
+                  <span>請求書原本</span>
+                  <span className="text-[12px] font-semibold">{invoiceOriginalRequiredLabel}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="grid gap-3 lg:grid-cols-[2.3fr_1fr]">
-          <div className="space-y-3 text-[12px]">
-            <div className="border border-black p-3">
-              <div className="text-sm font-semibold text-neutral-900">保管先</div>
-              <div className="mt-2 h-10 border border-black bg-white" />
-            </div>
-            <div className="border border-black p-3">
-              <div className="text-sm font-semibold text-neutral-900">商品引き渡し方法</div>
-              <div className="mt-2 space-y-2">
-                <div className="h-7 border border-black" />
-                <div className="h-7 border border-black" />
-              </div>
-            </div>
-            <div className="border border-black p-3">
-              <div className="text-sm font-semibold text-neutral-900">売買引き渡し方法</div>
-              <div className="mt-2 h-24 border border-black bg-white" />
-            </div>
+        <div className="space-y-4 text-[12px]">
+          <div className="overflow-x-auto">
+            <table className="w-full table-fixed border border-black border-collapse text-[12px]">
+              <colgroup>
+                <col className="w-[140px]" />
+                <col />
+                <col className="w-[140px]" />
+                <col className="w-[180px]" />
+              </colgroup>
+              <tbody>
+                <tr>
+                  <td className="border border-black bg-slate-50 px-3 py-2 font-semibold">保管先</td>
+                  <td className="border border-black px-3 py-2">○○倉庫</td>
+                  <td className="border border-black bg-slate-50 px-3 py-2 font-semibold text-right">合計金額</td>
+                  <td className="border border-black px-3 py-2 text-right font-bold">{formatCurrency(grandTotal)}</td>
+                </tr>
+                <tr>
+                  <td colSpan={4} className="border border-black bg-slate-100 px-3 py-2 text-center font-semibold">
+                    商品配送先
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border border-black px-3 py-2 font-semibold">商品引き渡し方法</td>
+                  <td className="border border-black px-3 py-2">直送</td>
+                  <td className="border border-black px-3 py-2 font-semibold">直送日</td>
+                  <td className="border border-black px-3 py-2">
+                    <span className="inline-block min-w-[140px] border border-black px-2 py-1">月 日 ( )</span>
+                  </td>
+                </tr>
+                <tr>
+                  <td colSpan={4} className="border border-black px-3 py-10" />
+                </tr>
+                <tr>
+                  <td colSpan={4} className="border border-black bg-slate-100 px-3 py-2 text-center font-semibold">
+                    売契→先
+                  </td>
+                </tr>
+                <tr>
+                  <td className="border border-black px-3 py-2 font-semibold">売契引き渡し方法</td>
+                  <td className="border border-black px-3 py-2">--</td>
+                  <td className="border border-black px-3 py-2 font-semibold">--日</td>
+                  <td className="border border-black px-3 py-2">
+                    <span className="inline-block min-w-[140px] border border-black px-2 py-1">月 日 ( )</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
 
-          <div className="space-y-3 text-[12px]">
-            <div className="border border-black p-3">
-              <div className="text-sm font-semibold text-neutral-900">機械番号明細</div>
-              <div className="mt-2 h-16 border border-black bg-white" />
+          <div className="grid grid-cols-5 gap-3">
+            <div className="col-span-3 space-y-3">
+              <div className="border border-black p-3">
+                <div className="text-sm font-semibold text-neutral-900">機械番号明細</div>
+                <div className="mt-2 h-16 border border-black bg-white" />
+              </div>
+              <div className="border border-black p-3">
+                <div className="text-sm font-semibold text-neutral-900">案内</div>
+                <div className="mt-2 space-y-1 text-center text-[13px] font-bold leading-relaxed">
+                  <div>URL：{sellerDisplay.url}</div>
+                  <div>Email：{sellerDisplay.mail}</div>
+                  <div>FAX：{sellerDisplay.fax}</div>
+                </div>
+              </div>
             </div>
-            <div className="border border-black p-3">
-              <div className="text-sm font-semibold text-neutral-900">案内</div>
-              <div className="mt-2 space-y-1 text-center text-[13px] font-bold leading-relaxed">
-                <div>URL：{COMPANY_INFO.url}</div>
-                <div>Email：{COMPANY_INFO.mail}</div>
-                <div>FAX：03-5389-1956</div>
+            <div className="col-span-2 grid grid-cols-[1fr_2.5fr] gap-2">
+              <div className="flex flex-col items-center justify-between border border-black px-2 py-3 text-[11px] font-semibold text-neutral-900">
+                <div>住所</div>
+                <div>会社名</div>
+                <div>電話番号</div>
+                <div className="mt-6">印</div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-7 border border-black" />
+                <div className="h-7 border border-black" />
+                <div className="h-7 border border-black" />
+                <div className="h-16 border border-black" />
               </div>
             </div>
           </div>
