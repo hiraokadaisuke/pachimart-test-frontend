@@ -1,130 +1,126 @@
 "use client";
 
-import Link from 'next/link';
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
-import { products } from '@/lib/dummyData';
-import type { Product } from '@/types/product';
-import { useCurrentDevUser } from '@/lib/dev-user/DevUserContext';
+import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviTable";
+import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
+import type { Listing } from "@/lib/listings/types";
 
-const sortOptions = ['古い順', '新しい順', '安い順', '高い順'];
+function formatPrice(listing: Listing) {
+  if (listing.isNegotiable || listing.unitPriceExclTax === null) {
+    return "応相談";
+  }
 
-const formatPrice = (price: number) => `${price.toLocaleString()} 円`;
+  return `¥${listing.unitPriceExclTax.toLocaleString("ja-JP")}`;
+}
 
-const statusStyles: Record<Product['status'], string> = {
-  出品中: 'bg-green-100 text-green-800 text-xs px-2 py-0.5 rounded',
-  成約済: 'bg-gray-200 text-gray-700 text-xs px-2 py-0.5 rounded',
-  下書き: 'bg-amber-100 text-amber-800 text-xs px-2 py-0.5 rounded',
-};
+function formatDate(isoString: string) {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "-";
 
-const formatMonthDay = (dateString: string) => {
-  const [, month, day] = dateString.split('/');
-  if (!month || !day) return dateString;
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+  const hours = `${date.getHours()}`.padStart(2, "0");
+  const minutes = `${date.getMinutes()}`.padStart(2, "0");
 
-  return `${month.padStart(2, '0')}/${day.padStart(2, '0')}`;
-};
+  return `${year}/${month}/${day} ${hours}:${minutes}`;
+}
 
 export default function ProductListPage() {
-  const [activeSort, setActiveSort] = useState<string>('新しい順');
-  const currentUser = useCurrentDevUser();
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [keyword, setKeyword] = useState("");
+  const router = useRouter();
 
-  const filteredProducts = products.filter((product) => product.ownerUserId === currentUser.id);
+  useEffect(() => {
+    const fetchListings = async () => {
+      try {
+        const response = await fetch("/api/listings");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch listings: ${response.status}`);
+        }
+
+        const data: Listing[] = await response.json();
+        setListings(data);
+      } catch (error) {
+        console.error("Failed to load listings", error);
+        setListings([]);
+      }
+    };
+
+    fetchListings();
+  }, []);
+
+  const columns: NaviTableColumn[] = useMemo(
+    () => [
+      { key: "kind", label: "種別", width: "90px" },
+      { key: "maker", label: "メーカー", width: "140px" },
+      { key: "machineName", label: "機種名", width: "220px" },
+      {
+        key: "quantity",
+        label: "台数",
+        width: "80px",
+        render: (row: Listing) => `${row.quantity}台`,
+      },
+      {
+        key: "unitPriceExclTax",
+        label: "販売単価（税抜）",
+        width: "140px",
+        render: (row: Listing) => formatPrice(row),
+      },
+      {
+        key: "storageLocation",
+        label: "保管場所",
+        width: "180px",
+      },
+      {
+        key: "allowPartial",
+        label: "バラ売り",
+        width: "90px",
+        render: (row: Listing) => (row.allowPartial ? "可" : "不可"),
+      },
+      {
+        key: "updatedAt",
+        label: "更新日時",
+        width: "160px",
+        render: (row: Listing) => formatDate(row.updatedAt),
+      },
+    ],
+    []
+  );
+
+  const filteredListings = useMemo(() => {
+    const keywordLower = keyword.trim().toLowerCase();
+
+    if (!keywordLower) return listings;
+
+    return listings.filter((listing) => {
+      const maker = listing.maker?.toLowerCase() ?? "";
+      const machineName = listing.machineName?.toLowerCase() ?? "";
+      const storageLocation = listing.storageLocation.toLowerCase();
+
+      return (
+        maker.includes(keywordLower) ||
+        machineName.includes(keywordLower) ||
+        storageLocation.includes(keywordLower)
+      );
+    });
+  }, [keyword, listings]);
 
   return (
     <div className="w-full bg-white">
-      <div className="w-full max-w-[1400px] mx-auto px-4 xl:px-8 py-6 space-y-6 bg-white">
+      <div className="w-full max-w-[1400px] mx-auto px-4 xl:px-8 py-6 space-y-4 bg-white">
         <h1 className="text-xl font-bold text-slate-800">商品一覧から探す</h1>
 
-        <div className="mt-3 flex justify-end gap-4 text-xs">
-          {sortOptions.map((option) => {
-            const isActive = option === activeSort;
-            return (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setActiveSort(option)}
-                className={`transition-colors ${
-                  isActive ? 'font-semibold text-blue-600 underline' : 'text-neutral-700 hover:underline'
-                }`}
-              >
-                {option}
-              </button>
-            );
-          })}
-        </div>
+        <TransactionFilterBar keyword={keyword} onKeywordChange={setKeyword} hideStatusFilter />
 
-        <div className="mt-3 w-full overflow-x-auto px-0">
-          <table className="w-full table-auto border-collapse text-xs">
-            <colgroup>
-              <col className="w-[6%]" />
-              <col className="w-[6%]" />
-              <col className="w-[8%]" />
-              <col className="w-[8%]" />
-              <col className="w-[26%]" />
-              <col className="w-[6%]" />
-              <col className="w-[6%]" />
-              <col className="w-[10%]" />
-              <col className="w-[8%]" />
-              <col className="w-[8%]" />
-              <col className="w-[8%]" />
-            </colgroup>
-            <thead>
-              <tr className="bg-gray-50 border-b border-gray-200">
-                <th className="px-3 py-2 text-left min-w-[60px]">更新日</th>
-                <th className="px-3 py-2 text-left min-w-[70px]">状況</th>
-                <th className="px-3 py-2 text-left min-w-[80px]">前設置</th>
-                <th className="px-3 py-2 text-left min-w-[90px]">メーカー</th>
-                <th className="px-3 py-2 text-left min-w-[260px]">機種名</th>
-                <th className="px-3 py-2 text-left min-w-[60px]">タイプ</th>
-                <th className="px-3 py-2 text-right min-w-[70px]">台数</th>
-                <th className="px-3 py-2 text-right min-w-[100px]">価格</th>
-                <th className="px-3 py-2 text-left min-w-[80px]">撤去日</th>
-                <th className="px-3 py-2 text-left min-w-[120px]">出品者</th>
-                <th className="px-3 py-2 text-left min-w-[140px]">備考</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProducts.map((product, idx) => {
-                const isContracted = product.status === '成約済';
-                const zebra = idx % 2 === 0 ? 'bg-white' : 'bg-gray-50';
-                const rowStyle = isContracted ? 'bg-gray-100' : zebra;
-
-                return (
-                  <tr key={product.id} className={rowStyle}>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[60px]">{formatMonthDay(product.updatedAt)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top border-b border-gray-100 min-w-[70px]">
-                      <span className={`inline-flex items-center ${statusStyles[product.status]}`}>{product.status}</span>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[80px]">{product.prefecture}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[90px]">{product.maker}</td>
-                    <td className="px-3 py-2 align-top text-gray-900 border-b border-gray-100 min-w-[260px]">
-                      <Link
-                        href={`/products/${product.id}`}
-                        className="block max-w-full text-xs leading-snug whitespace-normal break-words text-blue-700 hover:underline"
-                      >
-                        {product.name}
-                      </Link>
-                    </td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[60px]">{product.type}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[70px]">{`${product.quantity} / ${product.quantity}`}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top font-semibold text-gray-900 border-b border-gray-100 min-w-[100px]">{formatPrice(product.price)}</td>
-                    <td className="whitespace-nowrap px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[80px]">{formatMonthDay(product.removalDate)}</td>
-                    <td className="px-3 py-2 align-top text-gray-800 border-b border-gray-100 min-w-[120px]">
-                      <span className="block max-w-full text-xs leading-snug whitespace-normal break-words">
-                        {product.sellerName}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 align-top text-gray-700 border-b border-gray-100 min-w-[140px]">
-                      <span className="block max-w-full text-xs leading-snug whitespace-normal break-words">
-                        {product.note ?? '-'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <NaviTable
+          columns={columns}
+          rows={filteredListings}
+          onRowClick={(row) => router.push(`/products/${row.id}`)}
+          emptyMessage="出品がありません"
+        />
       </div>
     </div>
   );
