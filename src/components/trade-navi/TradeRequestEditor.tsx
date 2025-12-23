@@ -15,7 +15,6 @@ import {
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { DEV_USERS, getDevUsers, findDevUserById, type DevUser } from "@/lib/dev-user/users";
 import { products } from "@/lib/dummyData";
-import { createOnlineInquiry } from "@/lib/trade/onlineInquiries";
 import type { Listing } from "@/lib/listings/types";
 
 const mapDraftConditions = (
@@ -1108,11 +1107,12 @@ function OnlineInquiryCreator({
   const [desiredPaymentDate, setDesiredPaymentDate] = useState("");
   const [memo, setMemo] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const formattedNumber = formatCurrency;
 
   const totalAmount = unitPrice * quantity;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const missing: string[] = [];
     if (!shippingAddress.trim()) missing.push("発送先住所を入力してください。");
     if (!contactPerson.trim()) missing.push("担当者を入力してください。");
@@ -1122,25 +1122,39 @@ function OnlineInquiryCreator({
     setErrors(missing);
     if (missing.length > 0) return;
 
-    createOnlineInquiry({
-      productId: productId ?? listingId ?? `unknown-${Date.now()}`,
-      sellerUserId,
-      buyerUserId: currentUser.id,
-      buyerCompanyName: currentUser.companyName,
-      sellerCompanyName: seller.companyName,
-      makerName,
-      productName: productName || "商品",
-      quantity,
-      unitPrice,
-      shippingAddress,
-      contactPerson,
-      desiredShipDate,
-      desiredPaymentDate,
-      memo,
-    });
+    setIsSubmitting(true);
 
-    alert("オンライン問い合わせを送信しました。");
-    router.push("/navi?tab=inProgress");
+    try {
+      const response = await fetch("/api/online-inquiries", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          listingId: listingId ?? productId ?? "",
+          quantity,
+          buyerUserId: currentUser.id,
+          buyerMemo: memo,
+          shippingAddress,
+          contactPerson,
+          desiredShipDate,
+          desiredPaymentDate,
+        }),
+      });
+
+      if (!response.ok) {
+        const detail = await response.json().catch(() => null);
+        const reason = detail?.error ?? "送信に失敗しました。時間をおいて再度お試しください。";
+        alert(reason);
+        return;
+      }
+
+      alert("オンライン問い合わせを送信しました。");
+      router.push("/navi?tab=inProgress");
+    } catch (error) {
+      console.error("Failed to send online inquiry", error);
+      alert("送信に失敗しました。時間をおいて再度お試しください。");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -1330,8 +1344,9 @@ function OnlineInquiryCreator({
           type="button"
           className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
           onClick={handleSubmit}
+          disabled={isSubmitting}
         >
-          売手に問い合わせを送信する
+          {isSubmitting ? "送信中..." : "売手に問い合わせを送信する"}
         </button>
       </div>
     </div>

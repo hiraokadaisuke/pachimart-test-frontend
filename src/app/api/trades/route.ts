@@ -1,4 +1,4 @@
-import { Prisma, TradeNaviStatus } from "@prisma/client";
+import { Prisma, TradeNaviStatus, TradeNaviType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -10,6 +10,7 @@ const listingClient = prisma.listing;
 type TradeNaviDto = {
   id: number;
   status: TradeNaviStatus;
+  naviType: TradeNaviType;
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
@@ -22,6 +23,7 @@ type TradeNaviDto = {
 type TradeNaviRecord = {
   id: number;
   status: TradeNaviStatus;
+  naviType: TradeNaviType;
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
@@ -46,6 +48,7 @@ const createTradeSchema = z.object({
   ownerUserId: z.string().min(1, "ownerUserId is required"),
   buyerUserId: z.string().min(1).optional(),
   status: z.nativeEnum(TradeNaviStatus).optional(),
+  naviType: z.nativeEnum(TradeNaviType).optional(),
   payload: jsonValueSchema.optional(),
   listingId: z.string().min(1).optional(),
 });
@@ -53,6 +56,7 @@ const createTradeSchema = z.object({
 const toDto = (trade: TradeNaviRecord): TradeNaviDto => ({
   id: trade.id,
   status: trade.status,
+  naviType: trade.naviType,
   ownerUserId: trade.ownerUserId,
   buyerUserId: trade.buyerUserId,
   listingId: trade.listingId,
@@ -83,6 +87,7 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
   return {
     id: Number(candidate.id),
     status: candidate.status as TradeNaviStatus,
+    naviType: (candidate.naviType as TradeNaviType | undefined) ?? TradeNaviType.PHONE_AGREEMENT,
     ownerUserId: String(candidate.ownerUserId),
     buyerUserId: (candidate.buyerUserId as string | null) ?? null,
     listingId: (candidate.listingId as string | null) ?? null,
@@ -157,7 +162,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { ownerUserId, buyerUserId, status, payload, listingId } = parsed.data;
+  const { ownerUserId, buyerUserId, status, payload, listingId, naviType } = parsed.data;
 
   let listingSnapshot: Prisma.JsonValue | null = null;
 
@@ -181,6 +186,7 @@ export async function POST(request: Request) {
         listingId: listingId ?? null,
         listingSnapshot: listingSnapshotInput as any,
         status: status ?? TradeNaviStatus.DRAFT,
+        naviType: naviType ?? TradeNaviType.PHONE_AGREEMENT,
         payload: (payload ?? null) as any,
       },
     });

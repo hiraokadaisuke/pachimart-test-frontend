@@ -2,10 +2,29 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { TradeNaviType } from "@prisma/client";
 
 import MyPageLayout from "@/components/layout/MyPageLayout";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { loadOnlineInquiries, type OnlineInquiryRecord } from "@/lib/trade/onlineInquiries";
+import { fetchTradeNaviById } from "@/lib/trade/api";
+import { findDevUserById } from "@/lib/dev-user/users";
+
+type InquiryView = {
+  id: string;
+  productName: string;
+  makerName?: string | null;
+  quantity: number;
+  unitPrice: number;
+  shippingAddress?: string;
+  contactPerson?: string;
+  desiredShipDate?: string;
+  desiredPaymentDate?: string;
+  memo?: string | null;
+  sellerUserId: string;
+  buyerUserId: string;
+  sellerCompanyName: string;
+  buyerCompanyName: string;
+};
 
 const formatYen = (value: number) =>
   new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }).format(value);
@@ -15,11 +34,78 @@ export default function InquiryDetailPage() {
   const inquiryId = Array.isArray(params?.inquiryId) ? params?.inquiryId[0] : params?.inquiryId ?? "";
   const currentUser = useCurrentDevUser();
   const router = useRouter();
-  const [record, setRecord] = useState<OnlineInquiryRecord | null>(null);
+  const [record, setRecord] = useState<InquiryView | null>(null);
 
   useEffect(() => {
-    const found = loadOnlineInquiries().find((item) => item.id === inquiryId) ?? null;
-    setRecord(found);
+    const loadInquiry = async () => {
+      try {
+        const dto = await fetchTradeNaviById(inquiryId);
+        if (!dto || dto.naviType !== TradeNaviType.ONLINE_INQUIRY) {
+          setRecord(null);
+          return;
+        }
+
+        const payload = (dto.payload ?? {}) as Record<string, unknown>;
+        const conditions = (payload.conditions as Record<string, unknown> | undefined) ?? {};
+        const listing = (dto.listingSnapshot as Record<string, unknown> | null) ?? null;
+
+        const resolveCompanyName = (userId: string | null | undefined) =>
+          findDevUserById(userId ?? "")?.companyName ?? userId ?? "-";
+
+        const quantity =
+          typeof conditions.quantity === "number"
+            ? conditions.quantity
+            : typeof listing?.quantity === "number"
+              ? listing.quantity
+              : 1;
+        const unitPrice =
+          typeof conditions.unitPrice === "number"
+            ? conditions.unitPrice
+            : typeof listing?.unitPriceExclTax === "number"
+              ? listing.unitPriceExclTax
+              : 0;
+
+        const view: InquiryView = {
+          id: String(dto.id),
+          productName:
+            (typeof conditions.productName === "string" && conditions.productName) ||
+            (typeof listing?.machineName === "string" ? listing.machineName : "商品"),
+          makerName:
+            (typeof conditions.makerName === "string" && conditions.makerName) ||
+            (typeof listing?.maker === "string" ? listing.maker : null),
+          quantity,
+          unitPrice,
+          shippingAddress:
+            (typeof payload.buyerAddress === "string" && payload.buyerAddress) ||
+            (typeof listing?.storageLocation === "string" ? listing.storageLocation : undefined),
+          contactPerson:
+            (typeof payload.buyerContactName === "string" && payload.buyerContactName) ||
+            (typeof conditions.handler === "string" ? conditions.handler : undefined),
+          desiredShipDate:
+            (typeof conditions.machineShipmentDate === "string" && conditions.machineShipmentDate) ||
+            (typeof payload.desiredShipDate === "string" ? payload.desiredShipDate : undefined),
+          desiredPaymentDate:
+            (typeof payload.desiredPaymentDate === "string" && payload.desiredPaymentDate) ||
+            (typeof conditions.paymentDue === "string" ? conditions.paymentDue : undefined),
+          memo:
+            (typeof conditions.memo === "string" && conditions.memo) ||
+            (typeof payload.buyerMemo === "string" ? payload.buyerMemo : undefined),
+          sellerUserId: dto.ownerUserId,
+          buyerUserId: dto.buyerUserId ?? "",
+          sellerCompanyName: resolveCompanyName(dto.ownerUserId),
+          buyerCompanyName: resolveCompanyName(dto.buyerUserId),
+        };
+
+        setRecord(view);
+      } catch (error) {
+        console.error("Failed to load inquiry", error);
+        setRecord(null);
+      }
+    };
+
+    if (inquiryId) {
+      loadInquiry();
+    }
   }, [inquiryId]);
 
   const isBuyer = record ? record.buyerUserId === currentUser.id : false;
@@ -77,7 +163,7 @@ export default function InquiryDetailPage() {
   );
 }
 
-function InquirySummary({ record }: { record: OnlineInquiryRecord }) {
+function InquirySummary({ record }: { record: InquiryView }) {
   const totalAmount = useMemo(() => record.unitPrice * record.quantity, [record.quantity, record.unitPrice]);
 
   return (

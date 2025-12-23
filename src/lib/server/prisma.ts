@@ -3,6 +3,7 @@ import {
   Prisma,
   PrismaClient,
   TradeNaviStatus,
+  TradeNaviType,
   TradeStatus,
 } from "@prisma/client";
 
@@ -11,6 +12,7 @@ import { DEV_USERS } from "@/lib/dev-user/users";
 type InMemoryTradeNavi = {
   id: number;
   status: TradeNaviStatus;
+  naviType: TradeNaviType;
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
@@ -189,6 +191,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         const record: InMemoryTradeNavi = {
           id: tradeNaviSeq++,
           status: (data.status as TradeNaviStatus) ?? TradeNaviStatus.DRAFT,
+          naviType: (data.naviType as TradeNaviType) ?? TradeNaviType.PHONE_AGREEMENT,
           ownerUserId: String(data.ownerUserId ?? ""),
           buyerUserId: (data.buyerUserId as string | null) ?? null,
           listingId: (data.listingId as string | null | undefined) ?? null,
@@ -218,6 +221,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           ...tradeNavis[idx],
           ...data,
           status: (data.status as TradeNaviStatus | undefined) ?? tradeNavis[idx].status,
+          naviType: (data.naviType as TradeNaviType | undefined) ?? tradeNavis[idx].naviType,
           buyerUserId: (data.buyerUserId as string | null | undefined) ?? tradeNavis[idx].buyerUserId,
           listingId: (data.listingId as string | null | undefined) ?? tradeNavis[idx].listingId,
           listingSnapshot:
