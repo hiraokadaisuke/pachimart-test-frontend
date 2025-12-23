@@ -181,7 +181,7 @@ export async function PATCH(request: Request, { params }: { params: { id: string
             sellerUserId: updatedNavi.ownerUserId,
             buyerUserId,
             status: TradeStatus.IN_PROGRESS,
-            payload: updatedNavi.payload ?? undefined,
+            payload: updatedNavi.payload ?? Prisma.JsonNull,
             naviId: updatedNavi.id,
           },
           update: {},
