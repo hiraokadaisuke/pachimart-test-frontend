@@ -133,9 +133,9 @@ const buildInquiryPayload = (
       productName: listing.machineName ?? undefined,
       makerName: listing.maker ?? undefined,
       location: listing.storageLocation ?? undefined,
+      machineShipmentDate: request.desiredShipDate ?? undefined,
+      paymentDue: request.desiredPaymentDate ?? undefined,
     },
-    desiredShipDate: request.desiredShipDate ?? undefined,
-    desiredPaymentDate: request.desiredPaymentDate ?? undefined,
     createdAt: now,
     updatedAt: now,
   };

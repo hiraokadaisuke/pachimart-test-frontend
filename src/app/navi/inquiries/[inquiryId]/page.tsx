@@ -52,7 +52,12 @@ export default function InquiryDetailPage() {
         const resolveCompanyName = (userId: string | null | undefined) =>
           findDevUserById(userId ?? "")?.companyName ?? userId ?? "-";
 
-        const quantity = typeof conditions.quantity === "number" ? conditions.quantity : listing?.quantity ?? 1;
+        const quantity =
+          typeof conditions.quantity === "number"
+            ? conditions.quantity
+            : typeof listing?.quantity === "number"
+              ? listing.quantity
+              : 1;
         const unitPrice =
           typeof conditions.unitPrice === "number"
             ? conditions.unitPrice
