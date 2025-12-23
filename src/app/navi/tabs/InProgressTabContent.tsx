@@ -256,8 +256,14 @@ export function InProgressTabContent() {
 
     filteredBuyerNaviApprovalRows.forEach((row) => {
       const hasNaviId = typeof row.naviId === "number";
-      if (hasNaviId && naviIds.has(row.naviId)) return;
-      if (!hasNaviId && ids.has(row.id)) return;
+      if (hasNaviId) {
+        const naviId = row.naviId as number;
+        if (naviIds.has(naviId)) return;
+        naviIds.add(naviId);
+      } else {
+        if (ids.has(row.id)) return;
+        ids.add(row.id);
+      }
       rows.push(row);
     });
 
