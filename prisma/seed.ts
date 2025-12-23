@@ -99,7 +99,6 @@ type TradeNaviSeed = {
   ownerUserId: string;
   buyerUserId: string;
   payload: Prisma.JsonObject;
-  createdAt: Date;
 };
 
 const TRADE_NAVIS: TradeNaviSeed[] = [
@@ -109,7 +108,6 @@ const TRADE_NAVIS: TradeNaviSeed[] = [
     ownerUserId: "dev_user_1",
     buyerUserId: "dev_user_2",
     payload: NAVI_PAYLOADS[1001],
-    createdAt: new Date("2024-05-01T10:00:00.000Z"),
   },
   {
     id: 1002,
@@ -117,7 +115,6 @@ const TRADE_NAVIS: TradeNaviSeed[] = [
     ownerUserId: "dev_user_1",
     buyerUserId: "dev_user_2",
     payload: NAVI_PAYLOADS[1002],
-    createdAt: new Date("2024-05-02T02:00:00.000Z"),
   },
 ];
 
@@ -209,7 +206,6 @@ async function main() {
         ownerUserId: navi.ownerUserId,
         buyerUserId: navi.buyerUserId,
         payload: navi.payload,
-        createdAt: navi.createdAt,
       },
     });
     console.log(`Upserted trade navi ${navi.id}`);
