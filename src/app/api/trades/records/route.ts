@@ -1,4 +1,4 @@
-import { Prisma, TradeStatus } from "@prisma/client";
+import { Prisma, TradeNaviType, TradeStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
@@ -43,6 +43,7 @@ const toRecord = (trade: unknown) => {
           ownerUserId: String(naviCandidate.ownerUserId),
           buyerUserId: (naviCandidate.buyerUserId as string | null) ?? null,
           payload: (naviCandidate.payload as Prisma.JsonValue | null) ?? null,
+          naviType: (naviCandidate.naviType as TradeNaviType | null) ?? null,
           createdAt: toDate(naviCandidate.createdAt),
           updatedAt: toDate(naviCandidate.updatedAt, toDate(naviCandidate.createdAt)),
         }
@@ -65,16 +66,17 @@ const toDto = (trade: ReturnType<typeof toRecord>) => ({
   naviId: trade.naviId,
   createdAt: trade.createdAt.toISOString(),
   updatedAt: trade.updatedAt.toISOString(),
-  navi: trade.navi
-    ? {
-        id: trade.navi.id,
-        ownerUserId: trade.navi.ownerUserId,
-        buyerUserId: trade.navi.buyerUserId,
-        payload: (trade.navi.payload as Prisma.JsonValue | null) ?? null,
-        createdAt: trade.navi.createdAt.toISOString(),
-        updatedAt: trade.navi.updatedAt.toISOString(),
-      }
-    : null,
+    navi: trade.navi
+      ? {
+          id: trade.navi.id,
+          ownerUserId: trade.navi.ownerUserId,
+          buyerUserId: trade.navi.buyerUserId,
+          payload: (trade.navi.payload as Prisma.JsonValue | null) ?? null,
+          naviType: trade.navi.naviType,
+          createdAt: trade.navi.createdAt.toISOString(),
+          updatedAt: trade.navi.updatedAt.toISOString(),
+        }
+      : null,
   sellerUser: trade.sellerUser,
   buyerUser: trade.buyerUser,
 });

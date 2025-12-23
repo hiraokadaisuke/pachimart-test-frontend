@@ -1,3 +1,5 @@
+import { TradeNaviType } from "@prisma/client";
+
 import { TodoItem } from "@/lib/todo/types";
 
 export type TradeStatus =
@@ -44,6 +46,7 @@ export type BuyerContact = {
 export type TradeRecord = {
   id: string;
   naviId?: number;
+  naviType?: TradeNaviType;
   status: TradeStatus;
   sellerUserId: string;
   buyerUserId: string;

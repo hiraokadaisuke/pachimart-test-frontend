@@ -131,6 +131,7 @@ export function mapTradeNaviToTradeRecord(trade: TradeNaviDto): TradeRecord | nu
   return {
     ...record,
     naviId: trade.id,
+    naviType: trade.naviType,
     id: draft.id,
     buyerUserId: draft.buyerId ?? trade.buyerUserId ?? record.buyerUserId,
     createdAt: draft.createdAt ?? trade.createdAt,
@@ -151,6 +152,7 @@ export function mapOnlineInquiryToTradeRecord(trade: TradeNaviDto): TradeRecord 
   return {
     ...record,
     naviId: trade.id,
+    naviType: trade.naviType,
     id: draft.id,
     buyerUserId: draft.buyerId ?? trade.buyerUserId ?? record.buyerUserId,
     createdAt: draft.createdAt ?? trade.createdAt,

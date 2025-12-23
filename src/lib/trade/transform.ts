@@ -1,3 +1,5 @@
+import { TradeNaviType } from "@prisma/client";
+
 import { buildTodosFromStatus } from "@/lib/trade/todo";
 import {
   type BuyerContact,
@@ -20,6 +22,7 @@ export type TradeDto = {
     ownerUserId: string;
     buyerUserId: string | null;
     payload: unknown;
+    naviType: TradeNaviType | null;
     createdAt: string;
     updatedAt: string;
   } | null;
@@ -185,6 +188,8 @@ export function transformTrade(dto: TradeDto): TradeRecord {
 
   return {
     id: String(dto.id),
+    naviId: dto.naviId ?? undefined,
+    naviType: dto.navi?.naviType ?? undefined,
     status: tradeStatus,
     sellerUserId: dto.sellerUserId,
     buyerUserId: dto.buyerUserId,
