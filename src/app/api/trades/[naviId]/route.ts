@@ -1,4 +1,4 @@
-import { Prisma, TradeNaviStatus, TradeStatus } from "@prisma/client";
+import { Prisma, TradeNaviStatus, TradeNaviType, TradeStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -15,6 +15,7 @@ const updateTradeSchema = z.object({
 type TradeNaviRecord = {
   id: number;
   status: TradeNaviStatus;
+  naviType: TradeNaviType;
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
@@ -27,6 +28,7 @@ type TradeNaviRecord = {
 const toDto = (trade: TradeNaviRecord, tradeId?: number) => ({
   id: trade.id,
   status: trade.status,
+  naviType: trade.naviType,
   ownerUserId: trade.ownerUserId,
   buyerUserId: trade.buyerUserId,
   listingId: trade.listingId,
@@ -58,6 +60,7 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
   return {
     id: Number(candidate.id),
     status: candidate.status as TradeNaviStatus,
+    naviType: (candidate.naviType as TradeNaviType | undefined) ?? TradeNaviType.PHONE_AGREEMENT,
     ownerUserId: String(candidate.ownerUserId),
     buyerUserId: (candidate.buyerUserId as string | null) ?? null,
     listingId: (candidate.listingId as string | null) ?? null,

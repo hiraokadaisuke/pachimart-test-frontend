@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TradeNaviStatus } from "@prisma/client";
+import { TradeNaviStatus, TradeNaviType } from "@prisma/client";
 
 import { TradeRecord } from "@/lib/trade/types";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
@@ -20,14 +20,7 @@ import { getInProgressDescription } from "@/lib/trade/copy";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap, type TodoUiDef } from "@/lib/todo/todoUiMap";
-import {
-  loadOnlineInquiries,
-  ONLINE_INQUIRY_STORAGE_KEY,
-  type OnlineInquiryRecord,
-  updateOnlineInquiryStatus,
-  cancelOnlineInquiry,
-} from "@/lib/trade/onlineInquiries";
-import { fetchTradeNavis, mapTradeNaviToTradeRecord } from "@/lib/trade/api";
+import { fetchTradeNavis, mapTradeNaviToTradeRecord, updateTradeStatus } from "@/lib/trade/api";
 
 type TradeSection = TodoUiDef["section"];
 
@@ -60,6 +53,7 @@ type TradeRow = {
 
 type InquiryRow = {
   id: string;
+  naviId?: number;
   updatedAt: string;
   partnerName: string;
   makerName: string;
@@ -69,7 +63,7 @@ type InquiryRow = {
   sellerUserId: string;
   buyerUserId: string;
   kind: "buy" | "sell";
-  status: OnlineInquiryRecord["status"];
+  status: TradeNaviStatus;
 };
 
 function formatDateTime(iso: string) {
@@ -115,31 +109,35 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   };
 }
 
-function buildInquiryRow(inquiry: OnlineInquiryRecord, viewerId: string): InquiryRow {
-  const updatedAtLabel = formatDateTime(inquiry.updatedAt ?? inquiry.createdAt ?? new Date().toISOString());
-  const isBuyer = inquiry.buyerUserId === viewerId;
+function buildInquiryRowFromTrade(trade: TradeRecord, viewerId: string): InquiryRow {
+  const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
+  const primaryItem = trade.items[0];
+  const updatedAtLabel = formatDateTime(trade.updatedAt ?? trade.createdAt ?? new Date().toISOString());
+  const isBuyer = (trade.buyerUserId ?? trade.buyer.userId) === viewerId;
   const kind = isBuyer ? ("buy" as const) : ("sell" as const);
-  const totalAmount = inquiry.unitPrice * inquiry.quantity;
+  const sellerId = trade.sellerUserId ?? trade.seller.userId ?? "seller";
+  const buyerId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
 
   return {
-    id: inquiry.id,
+    id: trade.naviId ? String(trade.naviId) : trade.id,
+    naviId: trade.naviId,
+    status: TradeNaviStatus.SENT,
+    partnerName: isBuyer ? trade.seller.companyName : trade.buyer.companyName,
+    makerName: primaryItem?.maker ?? trade.makerName ?? "-",
+    itemName: primaryItem?.itemName ?? trade.itemName ?? "商品",
+    quantity: trade.quantity ?? primaryItem?.qty ?? 1,
+    totalAmount: totals.total,
     updatedAt: updatedAtLabel,
-    partnerName: isBuyer ? inquiry.sellerCompanyName ?? "売主" : inquiry.buyerCompanyName ?? "買主",
-    makerName: inquiry.makerName ?? "-",
-    itemName: inquiry.productName,
-    quantity: inquiry.quantity,
-    totalAmount,
-    sellerUserId: inquiry.sellerUserId,
-    buyerUserId: inquiry.buyerUserId,
+    sellerUserId: sellerId,
+    buyerUserId: buyerId,
     kind,
-    status: inquiry.status,
   };
 }
 
 export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
-  const [onlineInquiries, setOnlineInquiries] = useState<OnlineInquiryRecord[]>([]);
+  const [onlineInquiryRows, setOnlineInquiryRows] = useState<InquiryRow[]>([]);
   const [sellerApprovalRows, setSellerApprovalRows] = useState<TradeRow[]>([]);
   const [buyerNaviApprovalRows, setBuyerNaviApprovalRows] = useState<TradeRow[]>([]);
   const router = useRouter();
@@ -152,45 +150,45 @@ export function InProgressTabContent() {
 
   useEffect(() => {
     loadAllTradesWithApi().then(setTrades).catch((error) => console.error(error));
-    setOnlineInquiries(loadOnlineInquiries());
   }, []);
 
-  useEffect(() => {
-    const fetchApprovalRows = async () => {
-      try {
-        const apiTrades = await fetchTradeNavis();
-        const rows = apiTrades
-          .filter(
-            (trade) =>
-              trade.status === TradeNaviStatus.SENT &&
-              (trade.ownerUserId === currentUser.id || trade.buyerUserId === currentUser.id)
-          )
-          .map((trade) => mapTradeNaviToTradeRecord(trade))
-          .filter((trade): trade is TradeRecord => Boolean(trade))
-          .map((trade) => buildTradeRow(trade, currentUser.id))
-          .filter((row) => row.section === "approval" && row.isOpen);
+  const fetchApprovalRows = useCallback(async () => {
+    try {
+      const apiTrades = await fetchTradeNavis();
+      const mappedTrades = apiTrades
+        .filter(
+          (trade) =>
+            trade.status === TradeNaviStatus.SENT &&
+            (trade.ownerUserId === currentUser.id || trade.buyerUserId === currentUser.id)
+        )
+        .map((trade) => mapTradeNaviToTradeRecord(trade))
+        .filter((trade): trade is TradeRecord => Boolean(trade));
 
-        setSellerApprovalRows(rows.filter((row) => row.kind === "sell"));
-        setBuyerNaviApprovalRows(rows.filter((row) => row.kind === "buy"));
-      } catch (error) {
-        console.error(error);
-        setSellerApprovalRows([]);
-        setBuyerNaviApprovalRows([]);
-      }
-    };
+      const rows = mappedTrades
+        .map((trade) => buildTradeRow(trade, currentUser.id))
+        .filter((row) => row.section === "approval" && row.isOpen);
 
-    fetchApprovalRows();
+      setSellerApprovalRows(rows.filter((row) => row.kind === "sell"));
+      setBuyerNaviApprovalRows(rows.filter((row) => row.kind === "buy"));
+
+      const inquiryRows = apiTrades
+        .filter((trade) => trade.naviType === TradeNaviType.ONLINE_INQUIRY && trade.status === TradeNaviStatus.SENT)
+        .map((trade) => mapTradeNaviToTradeRecord(trade))
+        .filter((trade): trade is TradeRecord => Boolean(trade))
+        .map((trade) => buildInquiryRowFromTrade(trade, currentUser.id));
+
+      setOnlineInquiryRows(inquiryRows);
+    } catch (error) {
+      console.error(error);
+      setSellerApprovalRows([]);
+      setBuyerNaviApprovalRows([]);
+      setOnlineInquiryRows([]);
+    }
   }, [currentUser.id]);
 
   useEffect(() => {
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key === ONLINE_INQUIRY_STORAGE_KEY) {
-        setOnlineInquiries(loadOnlineInquiries());
-      }
-    };
-    window.addEventListener("storage", handleStorage);
-    return () => window.removeEventListener("storage", handleStorage);
-  }, []);
+    fetchApprovalRows();
+  }, [fetchApprovalRows]);
 
   const mappedTradeRows = useMemo(
     () => trades.map((trade) => buildTradeRow(trade, currentUser.id)),
@@ -270,13 +268,7 @@ export function InProgressTabContent() {
     return rows;
   }, [buyerApprovalRowsFromTrades, filteredBuyerNaviApprovalRows]);
 
-  const mappedInquiryRows = useMemo(
-    () =>
-      onlineInquiries
-        .filter((inquiry) => inquiry.status === "INQUIRY_RESPONSE_REQUIRED")
-        .map((inquiry) => buildInquiryRow(inquiry, currentUser.id)),
-    [currentUser.id, onlineInquiries]
-  );
+  const mappedInquiryRows = useMemo(() => onlineInquiryRows, [onlineInquiryRows]);
 
   const filteredInquiryRows = useMemo(
     () =>
@@ -306,21 +298,31 @@ export function InProgressTabContent() {
     </span>
   );
 
-  const refreshOnlineInquiries = () => setOnlineInquiries(loadOnlineInquiries());
-
-  const handleCancelInquiry = (inquiryId: string) => {
-    cancelOnlineInquiry(inquiryId);
-    refreshOnlineInquiries();
+  const resolveNaviId = (rowId: string | number | undefined) => {
+    if (typeof rowId === "number" && Number.isInteger(rowId)) return String(rowId);
+    const parsed = Number(rowId);
+    return Number.isInteger(parsed) ? String(parsed) : null;
   };
 
-  const handleAcceptInquiry = (inquiryId: string) => {
-    updateOnlineInquiryStatus(inquiryId, "ACCEPTED");
-    refreshOnlineInquiries();
+  const handleCancelInquiry = async (inquiryId: string | number | undefined) => {
+    const targetId = resolveNaviId(inquiryId);
+    if (!targetId) return;
+    await updateTradeStatus(targetId, "REJECTED").catch((error) => console.error(error));
+    fetchApprovalRows();
   };
 
-  const handleDeclineInquiry = (inquiryId: string) => {
-    updateOnlineInquiryStatus(inquiryId, "DECLINED");
-    refreshOnlineInquiries();
+  const handleAcceptInquiry = async (inquiryId: string | number | undefined) => {
+    const targetId = resolveNaviId(inquiryId);
+    if (!targetId) return;
+    await updateTradeStatus(targetId, "APPROVED").catch((error) => console.error(error));
+    fetchApprovalRows();
+  };
+
+  const handleDeclineInquiry = async (inquiryId: string | number | undefined) => {
+    const targetId = resolveNaviId(inquiryId);
+    if (!targetId) return;
+    await updateTradeStatus(targetId, "REJECTED").catch((error) => console.error(error));
+    fetchApprovalRows();
   };
 
   const tradeColumnBase: NaviTableColumn[] = [
@@ -491,7 +493,7 @@ export function InProgressTabContent() {
           className="inline-flex w-full justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
           onClick={(e) => {
             e.stopPropagation();
-            handleCancelInquiry(row.id);
+            handleCancelInquiry(row.naviId ?? row.id);
           }}
         >
           キャンセル
@@ -513,7 +515,7 @@ export function InProgressTabContent() {
             className="inline-flex flex-1 justify-center rounded bg-indigo-700 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800"
             onClick={(e) => {
               e.stopPropagation();
-              handleAcceptInquiry(row.id);
+              handleAcceptInquiry(row.naviId ?? row.id);
             }}
           >
             受諾
@@ -523,7 +525,7 @@ export function InProgressTabContent() {
             className="inline-flex flex-1 justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
             onClick={(e) => {
               e.stopPropagation();
-              handleDeclineInquiry(row.id);
+              handleDeclineInquiry(row.naviId ?? row.id);
             }}
           >
             見送り
