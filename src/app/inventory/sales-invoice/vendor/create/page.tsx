@@ -1,17 +1,17 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { SalesInvoiceLegacyVendorForm } from "../_components/SalesInvoiceLegacyVendorForm";
 import { loadInventoryRecords, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 
-export default function VendorSalesInvoiceCreatePage() {
+function VendorSalesInvoiceCreateContent() {
   const searchParams = useSearchParams();
   const [inventories, setInventories] = useState<InventoryRecord[]>([]);
 
   const requestedIds = useMemo(() => {
-    const raw = searchParams.get("ids");
+    const raw = searchParams?.get("ids");
     if (!raw) return [] as string[];
     return raw.split(",").filter(Boolean);
   }, [searchParams]);
@@ -28,4 +28,12 @@ export default function VendorSalesInvoiceCreatePage() {
   }, [requestedIds]);
 
   return <SalesInvoiceLegacyVendorForm inventories={inventories} />;
+}
+
+export default function VendorSalesInvoiceCreatePage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-gray-700">Loading...</div>}>
+      <VendorSalesInvoiceCreateContent />
+    </Suspense>
+  );
 }
