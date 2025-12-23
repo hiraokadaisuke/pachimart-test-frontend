@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, TradeNaviStatus, TradeStatus, type Prisma } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -42,19 +42,138 @@ const USERS = [
   },
 ];
 
+const NAVI_PAYLOADS: Record<number, Prisma.JsonObject> = {
+  1001: {
+    id: "NAVI-1001",
+    ownerUserId: "dev_user_1",
+    status: "sent_to_buyer",
+    productId: "demo-product-1",
+    buyerId: "dev_user_2",
+    buyerCompanyName: "株式会社かきくけこ",
+    buyerContactName: "佐藤 花子",
+    buyerAddress: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
+    buyerTel: "06-9876-5432",
+    conditions: {
+      unitPrice: 800000,
+      quantity: 1,
+      shippingFee: 15000,
+      handlingFee: 5000,
+      taxRate: 0.1,
+      productName: "中古パチンコ機A",
+      makerName: "デモメーカー",
+      location: "東京倉庫",
+      memo: "オンライン問い合わせのサンプル",
+    },
+    createdAt: "2024-05-01T10:00:00.000Z",
+    updatedAt: "2024-05-01T10:00:00.000Z",
+  },
+  1002: {
+    id: "NAVI-1002",
+    ownerUserId: "dev_user_1",
+    status: "buyer_approved",
+    productId: "demo-product-2",
+    buyerId: "dev_user_2",
+    buyerCompanyName: "株式会社かきくけこ",
+    buyerContactName: "佐藤 花子",
+    buyerAddress: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
+    buyerTel: "06-9876-5432",
+    conditions: {
+      unitPrice: 1200000,
+      quantity: 2,
+      shippingFee: 30000,
+      handlingFee: 10000,
+      taxRate: 0.1,
+      productName: "中古パチンコ機B",
+      makerName: "デモメーカー",
+      location: "横浜倉庫",
+      machineShipmentDate: "2024-05-10",
+    },
+    createdAt: "2024-05-02T02:00:00.000Z",
+    updatedAt: "2024-05-02T02:00:00.000Z",
+  },
+};
+
+const TRADE_NAVIS = [
+  {
+    id: 1001,
+    status: TradeNaviStatus.SENT,
+    ownerUserId: "dev_user_1",
+    buyerUserId: "dev_user_2",
+    payload: NAVI_PAYLOADS[1001],
+    createdAt: new Date("2024-05-01T10:00:00.000Z"),
+  },
+  {
+    id: 1002,
+    status: TradeNaviStatus.APPROVED,
+    ownerUserId: "dev_user_1",
+    buyerUserId: "dev_user_2",
+    payload: NAVI_PAYLOADS[1002],
+    createdAt: new Date("2024-05-02T02:00:00.000Z"),
+  },
+];
+
+const TRADES = [
+  {
+    id: 2001,
+    sellerUserId: "dev_user_1",
+    buyerUserId: "dev_user_2",
+    status: TradeStatus.IN_PROGRESS,
+    payload: NAVI_PAYLOADS[1002],
+    naviId: 1002,
+    createdAt: new Date("2024-05-02T03:00:00.000Z"),
+  },
+];
+
+const MESSAGES = [
+  {
+    id: 3001,
+    naviId: 1001,
+    senderUserId: "dev_user_1",
+    receiverUserId: "dev_user_2",
+    body: "条件をまとめました。内容をご確認ください。",
+    createdAt: new Date("2024-05-01T11:00:00.000Z"),
+  },
+  {
+    id: 3002,
+    naviId: 1001,
+    senderUserId: "dev_user_2",
+    receiverUserId: "dev_user_1",
+    body: "確認しました。少し検討します。",
+    createdAt: new Date("2024-05-01T12:00:00.000Z"),
+  },
+  {
+    id: 3003,
+    naviId: 1002,
+    senderUserId: "dev_user_2",
+    receiverUserId: "dev_user_1",
+    body: "承認しました。進行をお願いします。",
+    createdAt: new Date("2024-05-02T04:00:00.000Z"),
+  },
+  {
+    id: 3004,
+    naviId: 1002,
+    senderUserId: "dev_user_1",
+    receiverUserId: "dev_user_2",
+    body: "ありがとうございます。発送準備を進めます。",
+    createdAt: new Date("2024-05-02T05:00:00.000Z"),
+  },
+];
+
 async function main() {
   const seedMode = process.env.SEED_MODE;
+  const nodeEnv = process.env.NODE_ENV;
+  const isAllowedMode = seedMode && ALLOWED_SEED_MODES.includes(seedMode as (typeof ALLOWED_SEED_MODES)[number]);
 
-  if (!seedMode || !ALLOWED_SEED_MODES.includes(seedMode as (typeof ALLOWED_SEED_MODES)[number])) {
+  if (nodeEnv === "production" || !isAllowedMode) {
     console.log(
-      `Skipping user seeding. Set SEED_MODE to one of ${ALLOWED_SEED_MODES.join(", ")} (current: ${
-        seedMode ?? "undefined"
-      }).`
+      `Skipping seeding. NODE_ENV=${nodeEnv ?? "undefined"}, SEED_MODE=${seedMode ?? "undefined"}, allowed modes=${ALLOWED_SEED_MODES.join(
+        ", "
+      )}`
     );
     return;
   }
 
-  console.log(`Seeding ${USERS.length} users (mode: ${seedMode})...`);
+  console.log(`Seeding users (${USERS.length})...`);
   for (const user of USERS) {
     await prisma.user.upsert({
       where: { id: user.id },
@@ -63,7 +182,69 @@ async function main() {
     });
     console.log(`Upserted user ${user.id}`);
   }
-  console.log("User seeding completed.");
+
+  console.log(`Seeding trade navis (${TRADE_NAVIS.length})...`);
+  for (const navi of TRADE_NAVIS) {
+    await prisma.tradeNavi.upsert({
+      where: { id: navi.id },
+      update: {
+        status: navi.status,
+        ownerUserId: navi.ownerUserId,
+        buyerUserId: navi.buyerUserId,
+        payload: navi.payload,
+      },
+      create: {
+        id: navi.id,
+        status: navi.status,
+        ownerUserId: navi.ownerUserId,
+        buyerUserId: navi.buyerUserId,
+        payload: navi.payload,
+        createdAt: navi.createdAt,
+      },
+    });
+    console.log(`Upserted trade navi ${navi.id}`);
+  }
+
+  console.log(`Seeding trades (${TRADES.length})...`);
+  for (const trade of TRADES) {
+    await prisma.trade.upsert({
+      where: { naviId: trade.naviId },
+      update: {
+        sellerUserId: trade.sellerUserId,
+        buyerUserId: trade.buyerUserId,
+        status: trade.status,
+        payload: trade.payload,
+      },
+      create: {
+        id: trade.id,
+        sellerUserId: trade.sellerUserId,
+        buyerUserId: trade.buyerUserId,
+        status: trade.status,
+        payload: trade.payload,
+        naviId: trade.naviId,
+        createdAt: trade.createdAt,
+      },
+    });
+    console.log(`Upserted trade ${trade.id}`);
+  }
+
+  console.log(`Seeding messages (${MESSAGES.length})...`);
+  for (const message of MESSAGES) {
+    await prisma.message.upsert({
+      where: { id: message.id },
+      update: {
+        senderUserId: message.senderUserId,
+        receiverUserId: message.receiverUserId,
+        body: message.body,
+        naviId: message.naviId,
+        createdAt: message.createdAt,
+      },
+      create: message,
+    });
+    console.log(`Upserted message ${message.id}`);
+  }
+
+  console.log("Seeding completed.");
 }
 
 main()

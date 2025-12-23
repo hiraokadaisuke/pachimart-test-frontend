@@ -75,6 +75,24 @@ curl "https://<your-domain>/api/trades/in-progress/1"
 - ローカルで seed を叩く導線は作りません。DB への適用は GitHub Actions 経由でのみ実行します。
 - 手動実行手順: GitHub の Actions タブ → `DB Init` ワークフロー → `Run workflow` を押下（`PRISMA_DATABASE_URL` が設定されたリポジトリにおいて、ワークフロー内で `SEED_MODE=preview` が渡されます）。
 
+### 体験用データでの動作確認手順（売主→買主→売主）
+
+1. 画面右上の DevUserContext で **売主A（dev_user_1）** に切り替える。
+2. 「オンライン問い合わせ」からサンプルナビ（`NAVI-1001`）が SENT 状態で見えることを確認する。
+3. 同じく **売主A** のまま、ナビ詳細を開いて送信済み内容（買主B宛て）を確認する。
+4. DevUserContext を **買主B（dev_user_2）** に切り替え、受信トレイに `NAVI-1001` が届いていることを確認する。
+5. 買主Bとして `NAVI-1002`（APPROVED 済み）を開き、取引中一覧に表示されることを確認する。
+6. 同じ `NAVI-1002` でメッセージタブを開き、買主→売主→買主の往復が 1 往復分表示されることを確認する。
+7. 取引詳細（/transactions/navi/1002）を開き、金額サマリーが表示されることを確認する。
+8. 必要に応じて `PATCH /api/trades/1002` で APPROVED 状態を再送し、Trade が upsert されることを確認する。
+9. 画面の UI・文言は変更せず、DevUserContext の切替だけで操作が追えることを確認する。
+10. 体験後は再度売主Aに戻し、ナビ一覧・取引一覧が整合していることを確認する。
+
+### Seed を更新したときの GitHub Actions 運用
+
+- `prisma/seed.ts` を変更した場合は、PR マージ後に GitHub Actions の `DB Init` ワークフローを **手動実行** して seed を反映する。
+- Actions の実行は `PRISMA_DATABASE_URL` が設定されたリポジトリでのみ有効。ローカル DB での migrate/seed は行わない。
+
 #### 開発用ユーザー ID 一覧（ownerUserId 等で利用できます）
 
 - `dev_user_1` / 株式会社あいおえお
