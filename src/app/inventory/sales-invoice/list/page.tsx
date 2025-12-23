@@ -402,6 +402,7 @@ export default function SalesInvoiceListPage() {
               <th className="border border-black px-3 py-2 text-left">メーカー名</th>
               <th className="border border-black px-3 py-2 text-left">機種名</th>
               <th className="border border-black px-3 py-2 text-left">販売先</th>
+              <th className="border border-black px-3 py-2 text-left">区分</th>
               <th className="border border-black px-3 py-2 text-left">担当</th>
               <th className="border border-black px-3 py-2 text-right">合計金額</th>
               <th className="border border-black px-3 py-2 text-center">選択</th>
@@ -411,7 +412,7 @@ export default function SalesInvoiceListPage() {
           <tbody>
             {filteredInvoices.length === 0 && (
               <tr>
-                <td colSpan={9} className="border border-black px-4 py-8 text-center text-sm text-slate-700">
+                <td colSpan={10} className="border border-black px-4 py-8 text-center text-sm text-slate-700">
                   該当データがありません。
                 </td>
               </tr>
@@ -422,6 +423,7 @@ export default function SalesInvoiceListPage() {
                 invoice.type === "vendor"
                   ? `/inventory/sales-invoice/vendor/${invoice.id}`
                   : `/inventory/sales-invoice/hall/${invoice.id}`;
+              const typeLabel = invoice.type === "vendor" ? "業者" : invoice.type === "hall" ? "ホール" : "-";
               return (
                 <tr key={invoice.id} className={`${rowColor}`}>
                   <td className="border border-black px-3 py-2 font-semibold">{invoice.id}</td>
@@ -429,6 +431,7 @@ export default function SalesInvoiceListPage() {
                   <td className="border border-black px-3 py-2">{invoice.maker}</td>
                   <td className="border border-black px-3 py-2">{invoice.model}</td>
                   <td className="border border-black px-3 py-2">{invoice.customer}</td>
+                  <td className="border border-black px-3 py-2">{typeLabel}</td>
                   <td className="border border-black px-3 py-2">{invoice.staff}</td>
                   <td className="border border-black px-3 py-2 text-right">{formatCurrency(invoice.totalAmount)}</td>
                   <td className="border border-black px-3 py-2 text-center">
