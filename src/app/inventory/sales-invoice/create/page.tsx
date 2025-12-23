@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
+import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 
 const labelCellClass = "bg-slate-200 text-center font-semibold text-slate-800";
@@ -18,6 +19,7 @@ const getSaleDate = (record: InventoryRecord): string | undefined => {
 export default function SalesInvoiceCreatePage() {
   const router = useRouter();
   const [records, setRecords] = useState<InventoryRecord[]>([]);
+  const [invoicedInventoryIds, setInvoicedInventoryIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
     id: "",
     maker: "",
@@ -33,9 +35,26 @@ export default function SalesInvoiceCreatePage() {
     setRecords(loadInventoryRecords());
   }, []);
 
+  useEffect(() => {
+    const invoices = loadSalesInvoices();
+    const ids = new Set<string>(
+      invoices.flatMap((invoice) => {
+        const directIds = invoice.inventoryIds ?? [];
+        const itemIds = (invoice.items ?? [])
+          .map((item) => item.inventoryId)
+          .filter((id): id is string => Boolean(id));
+        return [...directIds, ...itemIds];
+      }),
+    );
+    setInvoicedInventoryIds(ids);
+  }, []);
+
   const soldRecords = useMemo(
-    () => records.filter((record) => (record.status ?? record.stockStatus) === "売却済"),
-    [records],
+    () =>
+      records
+        .filter((record) => (record.status ?? record.stockStatus) === "売却済")
+        .filter((record) => !invoicedInventoryIds.has(record.id)),
+    [records, invoicedInventoryIds],
   );
 
   const filteredRecords = useMemo(() => {

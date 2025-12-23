@@ -506,182 +506,155 @@ const renderVendorSheet = ({
   issuedDateLabel,
 }: VendorSheetProps) => {
   return (
-    <div>
-      <div className="mb-6 flex flex-wrap justify-between gap-4 text-[13px]">
-        <div className="min-w-[280px] flex-1 space-y-1">
-          <div className="text-lg font-semibold text-neutral-900">{recipientName} 御中</div>
-          <div className="flex gap-4 text-sm text-neutral-800">
-            <span>FAX ―</span>
-            <span>TEL ―</span>
+    <div className="space-y-4 text-[12px] text-neutral-900">
+      <div className="space-y-3 border border-black p-4">
+        <div className="flex flex-wrap justify-between gap-4">
+          <div className="min-w-[280px] flex-1 space-y-2">
+            <div className="text-lg font-bold text-neutral-900">販売伝票発行（業者）</div>
+            <div className="text-lg font-semibold text-neutral-900">{recipientName} 御中</div>
+            <div className="flex gap-6 text-sm text-neutral-800">
+              <span>FAX ―</span>
+              <span>TEL ―</span>
+            </div>
+            <div className="text-sm font-semibold text-neutral-900">当社の規約に基づき下記の通り売却いたします</div>
+            <div className="text-xs leading-relaxed text-neutral-800">
+              <div>＊キャンセルは理由の如何にかかわらず承りません。</div>
+              <div>＊商品の引き渡し後の故障・損傷・破損などについて弊社は一切の責任を負いません。</div>
+              <div>＊同意の上お取引くださいますようお願い申し上げます。</div>
+            </div>
           </div>
-          <div className="text-sm font-semibold text-neutral-900">当社の規約に基づき下記の通り売却いたします</div>
-          <div className="text-xs leading-relaxed text-neutral-800">
-            <div>＊キャンセルは理由の如何にかかわらず承りません。</div>
-            <div>＊商品の引き渡し後の故障・損傷・破損などについて弊社は一切の責任を負いません。</div>
-            <div>＊キャンセルとなった場合、実費をご請求させていただきます。</div>
-            <div>＊売却機械の書類発行は完納後となります。</div>
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-2 text-sm font-semibold text-neutral-900">
-          <div>{issuedDateLabel}</div>
-          <div className="w-[280px] border border-black px-3 py-2 text-[12px]">
-            <div className="mb-1 text-base font-bold">【売主】</div>
-            <div className="space-y-1 text-left">
-              <div>{COMPANY_INFO.postal}</div>
-              <div>東京都新宿区高田馬場4-4-17 山根ビル3F</div>
-              <div>{COMPANY_INFO.name}</div>
-              <div className="flex items-center justify-between text-xs">
-                <span>TEL 03-5389-1955</span>
-                <span>FAX 03-5389-1956</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span>担当 {staffName}</span>
-                <span>経理担当 {manager}</span>
+
+          <div className="min-w-[260px] space-y-2 text-sm text-neutral-800">
+            <div className="flex items-center justify-between border border-black px-3 py-2 text-[13px] font-semibold text-neutral-900">
+              <span>日付</span>
+              <span>{issuedDateLabel}</span>
+            </div>
+            <div className="border border-black px-3 py-3 text-neutral-800">
+              <div className="text-right text-sm font-semibold text-neutral-900">売主</div>
+              <div className="space-y-1 text-left">
+                <div>{COMPANY_INFO.postal}</div>
+                <div>東京都新宿区高田馬場4-4-17 山根ビル3F</div>
+                <div>{COMPANY_INFO.name}</div>
+                <div className="flex items-center justify-between text-xs">
+                  <span>TEL 03-5389-1955</span>
+                  <span>FAX 03-5389-1956</span>
+                </div>
+                <div className="flex items-center justify-between text-xs">
+                  <span>担当 {staffName}</span>
+                  <span>経理担当 {manager}</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
 
-      <div className="mb-6 overflow-x-auto">
-        <table className="min-w-full table-fixed border border-black text-[12px]">
-          <thead className="bg-slate-100 text-center font-semibold">
-            <tr>
-              <th className="border border-black px-2 py-2">メーカー名</th>
-              <th className="border border-black px-2 py-2">商品名</th>
-              <th className="border border-black px-2 py-2">タイプ</th>
-              <th className="border border-black px-2 py-2 text-right">数量</th>
-              <th className="border border-black px-2 py-2 text-right">単価</th>
-              <th className="border border-black px-2 py-2 text-right">金額</th>
-              <th className="border border-black px-2 py-2 text-right">残債</th>
-              <th className="border border-black px-2 py-2">申請書</th>
-              <th className="border border-black px-2 py-2">申請日</th>
-              <th className="border border-black px-2 py-2">商品補足</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
-              <tr>
-                <td colSpan={10} className="border border-black px-3 py-6 text-center text-sm text-neutral-600">
-                  明細が登録されていません。
-                </td>
-              </tr>
-            ) : (
-              items.map((item, index) => (
-                <tr key={`${item.productName}-${index}`} className="align-middle text-center">
-                  <td className="border border-black px-2 py-2 text-left">{item.maker || ""}</td>
-                  <td className="border border-black px-2 py-2 text-left font-semibold">{item.productName || ""}</td>
-                  <td className="border border-black px-2 py-2 text-left">{item.type || ""}</td>
-                  <td className="border border-black px-2 py-2 text-right">{formatNumber(item.quantity)}</td>
-                  <td className="border border-black px-2 py-2 text-right">{formatNumber(item.unitPrice)}</td>
-                  <td className="border border-black px-2 py-2 text-right font-semibold">{formatNumber(item.amount)}</td>
-                  <td className="border border-black px-2 py-2 text-right">{formatNumber(item.remainingDebt)}</td>
-                  <td className="border border-black px-2 py-2">―</td>
-                  <td className="border border-black px-2 py-2">―</td>
-                  <td className="border border-black px-2 py-2 text-left">{item.note || ""}</td>
+        <div className="grid gap-3 lg:grid-cols-[2.3fr_1fr]">
+          <div className="overflow-x-auto">
+            <table className="min-w-full table-fixed border border-black text-[12px]">
+              <thead className="bg-slate-100 text-center font-semibold">
+                <tr>
+                  <th className="border border-black px-2 py-2">メーカー名</th>
+                  <th className="border border-black px-2 py-2">商品名</th>
+                  <th className="border border-black px-2 py-2">タイプ</th>
+                  <th className="border border-black px-2 py-2 text-right">数量</th>
+                  <th className="border border-black px-2 py-2 text-right">単価</th>
+                  <th className="border border-black px-2 py-2 text-right">金額</th>
+                  <th className="border border-black px-2 py-2">発信</th>
+                  <th className="border border-black px-2 py-2">申請適用</th>
+                  <th className="border border-black px-2 py-2">申請日</th>
+                  <th className="border border-black px-2 py-2">商品補足</th>
                 </tr>
-              ))
-            )}
-          </tbody>
-          <tfoot className="text-sm font-semibold">
-            <tr>
-              <td colSpan={6} className="border border-black px-3 py-2 text-right">
-                小計
-              </td>
-              <td colSpan={4} className="border border-black px-3 py-2 text-right">
-                {formatCurrency(subtotal)}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={6} className="border border-black px-3 py-2 text-right">
-                消費税（10%）
-              </td>
-              <td colSpan={4} className="border border-black px-3 py-2 text-right">
-                {formatCurrency(tax)}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={6} className="border border-black px-3 py-2 text-right">
-                運送保険（税込）
-              </td>
-              <td colSpan={4} className="border border-black px-3 py-2 text-right">
-                {formatCurrency(shippingInsurance)}
-              </td>
-            </tr>
-            <tr>
-              <td colSpan={6} className="border border-black px-3 py-2 text-right">
-                合計金額
-              </td>
-              <td colSpan={4} className="border border-black px-3 py-2 text-right font-bold">
-                {formatCurrency(grandTotal)}
-              </td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {items.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="border border-black px-3 py-6 text-center text-sm text-neutral-600">
+                      明細が登録されていません。
+                    </td>
+                  </tr>
+                ) : (
+                  items.map((item, index) => (
+                    <tr key={`${item.productName}-${index}`} className="align-middle text-center">
+                      <td className="border border-black px-2 py-2 text-left">{item.maker || ""}</td>
+                      <td className="border border-black px-2 py-2 text-left font-semibold">{item.productName || ""}</td>
+                      <td className="border border-black px-2 py-2 text-left">{item.type || ""}</td>
+                      <td className="border border-black px-2 py-2 text-right">{formatNumber(item.quantity)}</td>
+                      <td className="border border-black px-2 py-2 text-right">{formatNumber(item.unitPrice)}</td>
+                      <td className="border border-black px-2 py-2 text-right font-semibold">{formatNumber(item.amount)}</td>
+                      <td className="border border-black px-2 py-2">―</td>
+                      <td className="border border-black px-2 py-2">―</td>
+                      <td className="border border-black px-2 py-2">―</td>
+                      <td className="border border-black px-2 py-2 text-left">{item.note || ""}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      <div className="space-y-3 text-[12px]">
-        <div className="grid grid-cols-2 gap-3">
-          <div className="border border-black p-3">
-            <div className="text-sm font-semibold text-neutral-900">お振込先</div>
-            <div className="mt-2 space-y-1 text-neutral-800">
-              <div>三菱東京UFJ銀行 高田馬場支店</div>
-              <div>普通 0131849 カ)ピーカンクラブ</div>
+          <div className="space-y-3">
+            <div className="border border-black">
+              <div className="bg-slate-100 px-3 py-2 text-center text-sm font-semibold">金額集計</div>
+              <div className="space-y-1 px-3 py-2 text-[12px]">
+                <div className="flex items-center justify-between">
+                  <span>小計</span>
+                  <span className="font-semibold">{formatCurrency(subtotal)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>消費税（10%）</span>
+                  <span className="font-semibold">{formatCurrency(tax)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>運送保険（税込）</span>
+                  <span className="font-semibold">{formatCurrency(shippingInsurance)}</span>
+                </div>
+                <div className="border-t border-black pt-2 text-right text-sm font-bold">
+                  合計金額 {formatCurrency(grandTotal)}
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="border border-black p-3">
-            <div className="text-sm font-semibold text-neutral-900">支払期日</div>
-            <div className="mt-2 h-6 border border-black bg-white" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="border border-black p-3">
-            <div className="text-sm font-semibold text-neutral-900">請求書原本</div>
-            <div className="mt-2 flex items-center gap-4 text-neutral-800">
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-3 w-3 border border-black" aria-hidden /> 要
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="inline-block h-3 w-3 border border-black" aria-hidden /> 不要
-              </span>
-            </div>
-          </div>
-          <div className="border border-black p-3">
-            <div className="text-sm font-semibold text-neutral-900">商品引き渡し方法 / 日付 / 時間</div>
-            <div className="mt-2 grid grid-cols-3 gap-2 text-neutral-800">
-              <div className="h-6 border border-black" />
-              <div className="h-6 border border-black" />
-              <div className="h-6 border border-black" />
+
+            <div className="border border-black p-3 text-[12px]">
+              <div className="text-sm font-semibold text-neutral-900">お振込先</div>
+              <div className="mt-2 space-y-1 text-neutral-800">
+                <div>三菱東京UFJ銀行 高田馬場支店</div>
+                <div>普通 0131849 カ)ピーカンクラブ</div>
+              </div>
             </div>
           </div>
         </div>
-        <div className="border border-black p-3">
-          <div className="text-sm font-semibold text-neutral-900">売却引き渡し方法</div>
-          <div className="mt-2 grid grid-cols-3 gap-2 text-neutral-800">
-            <div className="h-7 border border-black" />
-            <div className="h-7 border border-black" />
-            <div className="h-7 border border-black" />
-          </div>
-          <div className="mt-3 grid grid-cols-4 gap-2 text-neutral-800">
-            <div className="h-7 border border-black" />
-            <div className="h-7 border border-black" />
-            <div className="h-7 border border-black" />
-            <div className="h-7 border border-black" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="border border-black p-3">
-            <div className="space-y-1 text-neutral-800">
-              <div>住所 〒169-0075 東京都新宿区高田馬場4-4-17 山根ビル3F</div>
-              <div>会社名 {COMPANY_INFO.name}</div>
-              <div>電話番号 03-5389-1955</div>
+
+        <div className="grid gap-3 lg:grid-cols-[2.3fr_1fr]">
+          <div className="space-y-3 text-[12px]">
+            <div className="border border-black p-3">
+              <div className="text-sm font-semibold text-neutral-900">保管先</div>
+              <div className="mt-2 h-10 border border-black bg-white" />
+            </div>
+            <div className="border border-black p-3">
+              <div className="text-sm font-semibold text-neutral-900">商品引き渡し方法</div>
+              <div className="mt-2 space-y-2">
+                <div className="h-7 border border-black" />
+                <div className="h-7 border border-black" />
+              </div>
+            </div>
+            <div className="border border-black p-3">
+              <div className="text-sm font-semibold text-neutral-900">売買引き渡し方法</div>
+              <div className="mt-2 h-24 border border-black bg-white" />
             </div>
           </div>
-          <div className="border border-black p-3">
-            <div className="space-y-1 text-neutral-800">
-              <div>サイト {COMPANY_INFO.url}</div>
-              <div>メール {COMPANY_INFO.mail}</div>
-              <div>FAX 03-5389-1956</div>
+
+          <div className="space-y-3 text-[12px]">
+            <div className="border border-black p-3">
+              <div className="text-sm font-semibold text-neutral-900">機械番号明細</div>
+              <div className="mt-2 h-16 border border-black bg-white" />
+            </div>
+            <div className="border border-black p-3">
+              <div className="text-sm font-semibold text-neutral-900">案内</div>
+              <div className="mt-2 space-y-1 text-center text-[13px] font-bold leading-relaxed">
+                <div>URL：{COMPANY_INFO.url}</div>
+                <div>Email：{COMPANY_INFO.mail}</div>
+                <div>FAX：03-5389-1956</div>
+              </div>
             </div>
           </div>
         </div>
