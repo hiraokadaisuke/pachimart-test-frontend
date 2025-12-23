@@ -194,7 +194,7 @@ async function main() {
 
   console.log(`Seeding trade navis (${TRADE_NAVIS.length})...`);
   for (const navi of TRADE_NAVIS) {
-    const naviId: Prisma.TradeNaviWhereUniqueInput["id"] = navi.id;
+    const naviId = navi.id as unknown as Prisma.TradeNaviWhereUniqueInput["id"];
     await prisma.tradeNavi.upsert({
       where: { id: naviId },
       update: {
