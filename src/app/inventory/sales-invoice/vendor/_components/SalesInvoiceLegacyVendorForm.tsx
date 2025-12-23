@@ -26,6 +26,9 @@ type Props = {
   selectedIds?: string[];
 };
 
+const A4_WIDTH = 1120;
+const A4_HEIGHT = 760;
+
 const yellowInput =
   "w-full bg-amber-100 border border-black px-2 py-1 text-[12px] leading-tight focus:outline-none";
 const orangeInput =
@@ -37,6 +40,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
   const [rows, setRows] = useState<BaseRow[]>([]);
   const [inventoryRecords, setInventoryRecords] = useState<InventoryRecord[]>([]);
   const [error, setError] = useState<string>("");
+  const [scale, setScale] = useState(1);
 
   const [vendorName, setVendorName] = useState("株式会社ピーコム");
   const [contactName] = useState("御中");
@@ -63,12 +67,33 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
 
   const idsKey = useMemo(() => (selectedIds && selectedIds.length > 0 ? selectedIds.join("_") : ""), [selectedIds]);
 
+  const resetForm = () => {
+    setVendorName("株式会社ピーコム");
+    setVendorTel("03-1234-5678");
+    setVendorFax("03-1234-5679");
+    setIssuedDate(new Date().toISOString().slice(0, 10));
+    setStaff("デモユーザー");
+    setManager("担当者A");
+    setInsurance(0);
+    setPaymentDate("");
+    setInvoiceOriginal("不要");
+    setDeliveryMethod("持参");
+    setDeliveryDate("");
+    setDeliveryTime("AM");
+    setTradeMethod("直送");
+    setTradeDate("");
+    setTradeTime("AM");
+    setRemarks("リアルタイムの在庫確認ができます");
+    setRows([]);
+    setInventoryRecords([]);
+    setError("");
+  };
+
   useEffect(() => {
+    resetForm();
     const availableInventories = inventories && inventories.length > 0 ? inventories : loadInventoryRecords();
     if (!selectedIds || selectedIds.length === 0) {
       setError("在庫が選択されていません。前の画面で在庫を選択してください。");
-      setRows([]);
-      setInventoryRecords([]);
       return;
     }
 
@@ -81,11 +106,9 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
 
     if (orderedRecords.length === 0) {
       setError("指定された在庫が見つかりませんでした。");
-      setRows([]);
       return;
     }
 
-    setError("");
     const mapped = orderedRecords.map<BaseRow>((item) => {
       const quantity = item.quantity ?? 1;
       const unitPrice = item.saleUnitPrice ?? item.unitPrice ?? 0;
@@ -108,6 +131,19 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
       setVendorName(firstVendor);
     }
   }, [idsKey, inventories, selectedIds]);
+
+  useEffect(() => {
+    const calculateScale = () => {
+      const availableHeight = window.innerHeight - 24;
+      const availableWidth = window.innerWidth - 24;
+      const nextScale = Math.min(1, availableWidth / A4_WIDTH, availableHeight / A4_HEIGHT);
+      setScale(nextScale > 1 ? 1 : nextScale);
+    };
+
+    calculateScale();
+    window.addEventListener("resize", calculateScale);
+    return () => window.removeEventListener("resize", calculateScale);
+  }, []);
 
   const subtotal = useMemo(
     () => rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0),
@@ -211,147 +247,163 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
   };
 
   return (
-    <div className="flex min-h-screen justify-center bg-[#dfe8f5] px-2 py-4 text-[12px] text-neutral-900">
-      <div className="w-[1120px] border-[6px] border-cyan-700 bg-white p-4 shadow-[5px_5px_0_rgba(0,0,0,0.35)]">
-        <div className="flex items-center gap-2 text-lg font-bold text-emerald-900">
-          <span className="text-green-600">●</span>
-          <span>販売伝票登録（業者）</span>
-        </div>
-        <div className="my-2 border-b border-dashed border-slate-400" />
-
-        {error ? (
-          <div className="mb-3 border border-red-600 bg-red-100 px-3 py-2 text-sm font-semibold text-red-700">
-            {error} / <button onClick={() => router.back()}>戻る</button>
+    <div
+      className="flex min-h-screen items-start justify-center overflow-hidden bg-[#dfe8f5] px-2 py-3 text-[12px] text-neutral-900"
+      style={{ fontFamily: '"MS UI Gothic", "Yu Gothic", sans-serif' }}
+    >
+      <div
+        className="overflow-hidden"
+        style={{ width: `${A4_WIDTH * scale}px`, height: `${A4_HEIGHT * scale}px` }}
+      >
+        <div
+          className="h-full border-[6px] border-cyan-700 bg-white p-3 shadow-[4px_4px_0_rgba(0,0,0,0.35)]"
+          style={{
+            width: `${A4_WIDTH}px`,
+            height: `${A4_HEIGHT}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: "top center",
+          }}
+        >
+          <div className="flex items-center gap-2 text-lg font-bold text-emerald-900">
+            <span className="text-green-600">●</span>
+            <span>販売伝票登録（業者）</span>
           </div>
-        ) : null}
+          <div className="my-2 border-b border-dashed border-slate-400" />
 
-        <div className="mb-2 flex items-center justify-between gap-3 text-sm font-semibold">
-          <div className="flex items-center gap-2">
-            <span className="h-5 w-1 bg-emerald-800" aria-hidden />
-            <span className="bg-slate-100 px-3 py-1">新規登録</span>
+          {error ? (
+            <div className="mb-2 border border-red-600 bg-red-100 px-3 py-2 text-sm font-semibold text-red-700">
+              {error} / <button onClick={() => router.back()}>戻る</button>
+            </div>
+          ) : null}
+
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
+            <div className="flex items-center gap-2">
+              <span className="h-5 w-1 bg-emerald-800" aria-hidden />
+            </div>
+            <div className="flex flex-1 justify-center">
+              <span className="bg-slate-100 px-4 py-1">新規登録</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                className="border border-amber-700 bg-amber-300 px-3 py-1 shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
+              >
+                確認
+              </button>
+              <button
+                type="button"
+                onClick={() => router.back()}
+                className="border border-neutral-600 bg-neutral-200 px-3 py-1 shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
+              >
+                戻る
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSubmit}
-              className="border border-amber-700 bg-amber-300 px-4 py-2 shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
-            >
-              確認
-            </button>
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="border border-neutral-600 bg-neutral-200 px-4 py-2 shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
-            >
-              戻る
-            </button>
-          </div>
-        </div>
 
-        <div className="border-[4px] border-cyan-700 bg-white p-3">
-          <div className="grid grid-cols-2 gap-3 border-2 border-black bg-white p-3">
-            <div className="col-span-2 grid grid-cols-[1.05fr_0.95fr] gap-3 border-b-2 border-black pb-3">
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-[15px] font-bold">
-                  <input
-                    type="text"
-                    value={vendorName}
-                    onChange={(e) => setVendorName(e.target.value)}
-                    className={`${yellowInput} max-w-sm text-lg font-bold`}
-                  />
-                  <span className="text-sm font-semibold">{contactName}</span>
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span>FAX</span>
-                  <input
-                    type="text"
-                    value={vendorFax}
-                    onChange={(e) => setVendorFax(e.target.value)}
-                    className={`${yellowInput} w-32`}
-                  />
-                  <span>TEL</span>
-                  <input
-                    type="text"
-                    value={vendorTel}
-                    onChange={(e) => setVendorTel(e.target.value)}
-                    className={`${yellowInput} w-32`}
-                  />
-                </div>
-                <div className="rounded-sm border border-black bg-amber-50 px-3 py-2 text-[12px] leading-tight">
-                  <div className="text-sm font-semibold">当社規約に基づき売買いたします</div>
-                  <ul className="list-disc space-y-1 pl-4">
-                    <li>成立後キャンセルは売買代金の50%をご請求します。</li>
-                    <li>商品到着後3営業日以内に検品・ご連絡ください。</li>
-                    <li>搬出入車両は指定場所への手配をお願いします。</li>
-                  </ul>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <div className="flex justify-end">
-                  <div className="flex items-center gap-2 border border-black bg-white px-2 py-1 text-sm font-semibold">
-                    <span>日付</span>
+          <div className="h-[696px] border-[4px] border-cyan-700 bg-white p-2">
+            <div className="grid h-full grid-cols-2 gap-2 border-2 border-black bg-white p-2">
+              <div className="col-span-2 grid grid-cols-[1.05fr_0.95fr] gap-2 border-b-2 border-black pb-2">
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center gap-2 text-[15px] font-bold">
                     <input
-                      type="date"
-                      value={issuedDate}
-                      onChange={(e) => setIssuedDate(e.target.value)}
-                      className={`${yellowInput} w-36 text-center`}
+                      type="text"
+                      value={vendorName}
+                      onChange={(e) => setVendorName(e.target.value)}
+                      className={`${yellowInput} max-w-sm text-lg font-bold`}
+                    />
+                    <span className="text-sm font-semibold">{contactName}</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>FAX</span>
+                    <input
+                      type="text"
+                      value={vendorFax}
+                      onChange={(e) => setVendorFax(e.target.value)}
+                      className={`${yellowInput} w-32`}
+                    />
+                    <span>TEL</span>
+                    <input
+                      type="text"
+                      value={vendorTel}
+                      onChange={(e) => setVendorTel(e.target.value)}
+                      className={`${yellowInput} w-32`}
                     />
                   </div>
-                </div>
-                <div className="border border-black">
-                  <div className="border-b border-black bg-slate-100 px-2 py-1 text-sm font-bold">【売主】</div>
-                  <div className="space-y-1 px-2 py-2 text-[12px] leading-tight">
-                    <div className="flex items-center gap-2">
-                      <span className={labelCell}>郵便番号</span>
-                      <span className="border border-black px-2 py-1">150-8512</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={labelCell}>住所</span>
-                      <span className="border border-black px-2 py-1">東京都渋谷区桜丘町26-1 セルリアンタワー15F</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={labelCell}>会社名</span>
-                      <span className="border border-black px-2 py-1">株式会社ピーコム</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={labelCell}>代表</span>
-                      <span className="border border-black px-2 py-1">代表 太郎</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className={labelCell}>TEL</span>
-                      <span className="border border-black px-2 py-1">03-1234-5678</span>
-                      <span className="w-10 text-right">FAX</span>
-                      <span className="border border-black px-2 py-1">03-1234-5679</span>
-                    </div>
+                  <div className="rounded-sm border border-black bg-amber-50 px-3 py-1.5 text-[12px] leading-tight">
+                    <div className="text-sm font-semibold">当社規約に基づき売買いたします</div>
+                    <ul className="list-disc space-y-0.5 pl-4">
+                      <li>成立後キャンセルは売買代金の50%をご請求します。</li>
+                      <li>商品到着後3営業日以内に検品・ご連絡ください。</li>
+                      <li>搬出入車両は指定場所への手配をお願いします。</li>
+                    </ul>
                   </div>
-                  <div className="border-t border-black px-2 py-2 text-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold">担当</span>
-                      <select
-                        value={staff}
-                        onChange={(e) => setStaff(e.target.value)}
-                        className={`${orangeInput} w-28`}
-                      >
-                        {["デモユーザー", "担当A", "担当B"].map((name) => (
-                          <option key={name} value={name}>
-                            {name}
-                          </option>
-                        ))}
-                      </select>
-                      <span className="font-semibold">経理担当</span>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-end">
+                    <div className="flex items-center gap-2 border border-black bg-white px-2 py-1 text-sm font-semibold">
+                      <span>日付</span>
                       <input
-                        type="text"
-                        value={manager}
-                        onChange={(e) => setManager(e.target.value)}
-                        className={`${yellowInput} w-32`}
+                        type="date"
+                        value={issuedDate}
+                        onChange={(e) => setIssuedDate(e.target.value)}
+                        className={`${yellowInput} w-36 text-center`}
                       />
                     </div>
                   </div>
+                  <div className="border border-black">
+                    <div className="border-b border-black bg-slate-100 px-2 py-1 text-sm font-bold">【売主】</div>
+                    <div className="space-y-1 px-2 py-2 text-[12px] leading-tight">
+                      <div className="flex items-center gap-2">
+                        <span className={labelCell}>郵便番号</span>
+                        <span className="border border-black px-2 py-1">150-8512</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={labelCell}>住所</span>
+                        <span className="border border-black px-2 py-1">東京都渋谷区桜丘町26-1 セルリアンタワー15F</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={labelCell}>会社名</span>
+                        <span className="border border-black px-2 py-1">株式会社ピーコム</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={labelCell}>代表</span>
+                        <span className="border border-black px-2 py-1">代表 太郎</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={labelCell}>TEL</span>
+                        <span className="border border-black px-2 py-1">03-1234-5678</span>
+                        <span className="w-10 text-right">FAX</span>
+                        <span className="border border-black px-2 py-1">03-1234-5679</span>
+                      </div>
+                    </div>
+                    <div className="border-t border-black px-2 py-2 text-sm">
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold">担当</span>
+                        <select
+                          value={staff}
+                          onChange={(e) => setStaff(e.target.value)}
+                          className={`${orangeInput} w-28`}
+                        >
+                          {["デモユーザー", "担当A", "担当B"].map((name) => (
+                            <option key={name} value={name}>
+                              {name}
+                            </option>
+                          ))}
+                        </select>
+                        <span className="font-semibold">経理担当</span>
+                        <input
+                          type="text"
+                          value={manager}
+                          onChange={(e) => setManager(e.target.value)}
+                          className={`${yellowInput} w-32`}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-            </div>
-
             <div className="col-span-2 pt-2">
               <div className="mb-2 flex items-center justify-between text-sm font-semibold text-neutral-800">
                 <span>行を追加します</span>
@@ -480,7 +532,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               <div className="mt-1 text-right text-[11px] text-neutral-600">商品補足（印刷料金で表示されます）</div>
             </div>
 
-            <div className="col-span-2 mt-3 grid grid-cols-[1.05fr_0.95fr] gap-3 text-sm">
+            <div className="col-span-2 mt-2 grid grid-cols-[1.05fr_0.95fr] gap-2 text-sm">
               <div className="space-y-2 border border-black p-2">
                 <div className="border-b border-black bg-slate-100 px-2 py-1 text-sm font-semibold">
                   備考（印刷料金で表示されます）
@@ -488,7 +540,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                 <textarea
                   value={remarks}
                   onChange={(e) => setRemarks(e.target.value)}
-                  className={`${yellowInput} h-[72px] w-full resize-none border-0 bg-amber-50`}
+                  className={`${yellowInput} h-[64px] w-full resize-none border-0 bg-amber-50`}
                 />
               </div>
 
@@ -551,17 +603,17 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               </div>
             </div>
 
-            <div className="col-span-2 mt-3 grid grid-cols-2 gap-3">
-              <div className="space-y-2 border-2 border-black bg-white p-3">
+            <div className="col-span-2 mt-2 grid grid-cols-2 gap-2">
+              <div className="space-y-2 border-2 border-black bg-white p-2">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <span className="border border-black bg-slate-100 px-2 py-1">配送 / 引渡し</span>
                 </div>
-                <div className="grid gap-2 text-[12px]">
+                <div className="grid gap-1.5 text-[12px]">
                   <div className="flex items-center gap-2">
                     <span className="w-24 border border-black bg-slate-100 px-2 py-1 text-left font-semibold">保管先</span>
                     <span className="flex-1 border border-black px-2 py-1">{deliveryAddress}</span>
                   </div>
-                  <div className="rounded-sm border border-black bg-orange-100 px-2 py-2">
+                  <div className="rounded-sm border border-black bg-orange-100 px-2 py-1.5">
                     <div className="text-sm font-semibold">商品配送先</div>
                     <div className="mt-1 grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2">
                       <select
@@ -590,7 +642,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                       <span className="text-xs">&nbsp;</span>
                     </div>
                   </div>
-                  <div className="rounded-sm border border-black bg-orange-100 px-2 py-2">
+                  <div className="rounded-sm border border-black bg-orange-100 px-2 py-1.5">
                     <div className="text-sm font-semibold">売契→先</div>
                     <div className="mt-1 grid grid-cols-[1fr_auto_auto_auto_auto] items-center gap-2">
                       <select
@@ -619,16 +671,16 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                       <span className="text-xs">&nbsp;</span>
                     </div>
                   </div>
-                  <div className="h-8 border border-dashed border-black bg-white" />
+                  <div className="h-6 border border-dashed border-black bg-white" />
                 </div>
               </div>
 
               <div className="border-2 border-black bg-white">
-                <div className="flex items-center justify-between border-b-2 border-black bg-slate-100 px-3 py-2 text-sm font-semibold">
+                <div className="flex items-center justify-between border-b-2 border-black bg-slate-100 px-3 py-1.5 text-sm font-semibold">
                   <span>買主様 捺印欄</span>
-                  <span className="border border-black px-4 py-1">印</span>
+                  <span className="border border-black px-3 py-0.5">印</span>
                 </div>
-                <div className="space-y-2 px-3 py-2 text-[12px]">
+                <div className="space-y-1.5 px-3 py-2 text-[12px]">
                   <div className="flex items-center gap-2">
                     <span className="w-20">住所</span>
                     <span className="flex-1 border border-black px-2 py-1">{tradeAddress}</span>
@@ -651,26 +703,10 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                 </div>
               </div>
             </div>
-
-            <div className="col-span-2 mt-4 flex justify-center gap-6">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                className="border border-amber-700 bg-amber-300 px-8 py-2 text-sm font-bold shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
-              >
-                確認
-              </button>
-              <button
-                type="button"
-                onClick={() => router.back()}
-                className="border border-neutral-700 bg-neutral-200 px-8 py-2 text-sm font-semibold shadow-[2px_2px_0_rgba(0,0,0,0.25)]"
-              >
-                戻る
-              </button>
-            </div>
           </div>
         </div>
       </div>
     </div>
+  </div>
   );
 }
