@@ -244,8 +244,8 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
         </div>
 
         <div className="border-[4px] border-cyan-700 bg-white p-4">
-          <div className="border-2 border-black bg-white p-3">
-            <div className="grid min-h-[160px] grid-cols-[1.05fr_0.95fr] gap-3 border-b-2 border-black pb-3">
+          <div className="grid grid-cols-2 gap-3 border-2 border-black bg-white p-3">
+            <div className="col-span-2 grid min-h-[160px] grid-cols-[1.05fr_0.95fr] gap-3 border-b-2 border-black pb-3">
               <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2 text-[15px] font-bold">
                   <input
@@ -347,7 +347,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               </div>
             </div>
 
-            <div className="pt-3">
+            <div className="col-span-2 pt-3">
               <div className="mb-2 flex items-center justify-between text-sm font-semibold text-neutral-800">
                 <span>行を追加します</span>
                 <button
@@ -465,7 +465,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               <div className="mt-1 text-right text-[12px] text-neutral-600">商品補足（印刷料金で表示されます）</div>
             </div>
 
-            <div className="mt-3 grid grid-cols-12 gap-3 text-sm">
+            <div className="col-span-2 mt-3 grid grid-cols-12 gap-3 text-sm">
               <div className="col-span-7">
                 <div className="border border-black">
                   <div className="border-b border-black bg-slate-100 px-2 py-1 text-sm font-semibold">備考（印刷料金で表示されます）</div>
@@ -516,14 +516,14 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                         type="date"
                         value={paymentDate}
                         onChange={(e) => setPaymentDate(e.target.value)}
-                        className={`${yellowInput} text-center`}
+                        className={`${yellowInput} w-full text-center`}
                       />
                     </div>
                     <div className="flex w-[120px] items-center justify-center px-2 py-2">
                       <select
                         value={invoiceOriginal}
                         onChange={(e) => setInvoiceOriginal(e.target.value)}
-                        className={`${yellowInput}`}
+                        className={`${yellowInput} w-full text-center`}
                       >
                         <option value="不要">不要</option>
                         <option value="要">要</option>
@@ -534,7 +534,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               </div>
             </div>
 
-            <div className="mt-3 grid grid-cols-2 gap-3">
+            <div className="col-span-2 mt-3 grid grid-cols-2 gap-3">
               <div className="min-h-[260px] space-y-2 rounded-sm border-2 border-black bg-white p-3">
                 <div className="flex items-center gap-2 text-sm font-semibold">
                   <span className="border border-black bg-slate-100 px-2 py-1">配送 / 引渡し</span>
@@ -633,7 +633,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               </div>
             </div>
 
-            <div className="mt-6 flex justify-center gap-6">
+            <div className="col-span-2 mt-6 flex justify-center gap-6">
               <button
                 type="button"
                 onClick={handleSubmit}
