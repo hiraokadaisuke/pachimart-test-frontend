@@ -111,7 +111,7 @@ export async function GET(
 
   try {
     const trade = await prisma.trade.findUnique({
-      where: { id },
+      where: { id: id as Prisma.TradeWhereUniqueInput["id"] },
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
