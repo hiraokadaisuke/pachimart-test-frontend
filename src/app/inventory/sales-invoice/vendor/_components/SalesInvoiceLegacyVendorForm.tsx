@@ -88,7 +88,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     setError("");
     const mapped = orderedRecords.map<BaseRow>((item) => {
       const quantity = item.quantity ?? 1;
-      const unitPrice = item.saleUnitPrice ?? item.unitPrice ?? item.defaultPrice ?? 0;
+      const unitPrice = item.saleUnitPrice ?? item.unitPrice ?? 0;
       return {
         inventoryId: item.id,
         maker: item.maker ?? "",
@@ -103,7 +103,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     });
 
     setRows(mapped);
-    const firstVendor = orderedRecords[0]?.vendorName;
+    const firstVendor = orderedRecords[0]?.supplierCorporate ?? orderedRecords[0]?.supplier ?? "";
     if (firstVendor) {
       setVendorName(firstVendor);
     }
