@@ -93,7 +93,16 @@ const NAVI_PAYLOADS: Record<number, Prisma.JsonObject> = {
   },
 };
 
-const TRADE_NAVIS = [
+type TradeNaviSeed = {
+  id: number;
+  status: TradeNaviStatus;
+  ownerUserId: string;
+  buyerUserId: string;
+  payload: Prisma.JsonObject;
+  createdAt: Date;
+};
+
+const TRADE_NAVIS: TradeNaviSeed[] = [
   {
     id: 1001,
     status: TradeNaviStatus.SENT,
@@ -185,8 +194,9 @@ async function main() {
 
   console.log(`Seeding trade navis (${TRADE_NAVIS.length})...`);
   for (const navi of TRADE_NAVIS) {
+    const naviId = Number(navi.id);
     await prisma.tradeNavi.upsert({
-      where: { id: navi.id },
+      where: { id: naviId },
       update: {
         status: navi.status,
         ownerUserId: navi.ownerUserId,
@@ -194,7 +204,7 @@ async function main() {
         payload: navi.payload,
       },
       create: {
-        id: navi.id,
+        id: naviId,
         status: navi.status,
         ownerUserId: navi.ownerUserId,
         buyerUserId: navi.buyerUserId,
