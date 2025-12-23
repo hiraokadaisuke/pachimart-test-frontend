@@ -111,6 +111,7 @@ type InMemoryPrisma = {
       where?: { sellerUserId?: string; status?: ListingStatus; isVisible?: boolean };
       orderBy?: { updatedAt?: "asc" | "desc" };
     }) => Promise<InMemoryListing[]>;
+    findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryListing | null>;
     create: ({ data }: { data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
   };
   $transaction: <T>(callback: (client: InMemoryPrisma) => Promise<T> | T) => Promise<T>;
@@ -299,6 +300,13 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         });
 
         return sorted.map((listing) => ({ ...listing }));
+      },
+      findUnique: async ({ where }: { where: { id?: string | null } }) => {
+        const id = where.id ?? null;
+        if (!id) return null;
+
+        const found = listings.find((listing) => listing.id === id) ?? null;
+        return found ? { ...found } : null;
       },
       create: async ({ data }: { data: Partial<InMemoryListing> }) => {
         const nowDate = now();
