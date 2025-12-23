@@ -15,7 +15,8 @@ import { SectionHeader } from "@/components/ui/SectionHeader";
 import { type TradeStatusKey } from "@/components/transactions/status";
 import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { getMessagesForTrade } from "@/lib/dummyMessages";
+import { fetchMessagesByNaviId } from "@/lib/messages/api";
+import type { TradeMessage } from "@/lib/messages/transform";
 import { getInProgressDescription } from "@/lib/trade/copy";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { getTodoPresentation } from "@/lib/trade/todo";
@@ -142,6 +143,7 @@ export function InProgressTabContent() {
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
+  const [messages, setMessages] = useState<TradeMessage[]>([]);
 
   const keywordLower = keyword.toLowerCase();
 
@@ -489,7 +491,28 @@ export function InProgressTabContent() {
     },
   ];
 
-  const messageThread = getMessagesForTrade(messageTarget);
+  useEffect(() => {
+    if (!messageTarget) {
+      setMessages([]);
+      return;
+    }
+
+    const parsedId = Number(messageTarget);
+    if (!Number.isInteger(parsedId)) {
+      console.error("Invalid navi id for messages", messageTarget);
+      setMessages([]);
+      return;
+    }
+
+    fetchMessagesByNaviId(parsedId)
+      .then(setMessages)
+      .catch((error) => {
+        console.error(error);
+        setMessages([]);
+      });
+  }, [messageTarget]);
+
+  const messageThread = messages;
 
   return (
     <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-8 px-4 md:px-6 xl:px-8">

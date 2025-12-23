@@ -8,7 +8,8 @@ import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TRADE_STATUS_DEFINITIONS, type TradeStatusKey } from "@/components/transactions/status";
 import { DocumentBadges, type DocumentStatus } from "@/components/transactions/DocumentBadges";
 import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
-import { getMessagesForTrade } from "@/lib/dummyMessages";
+import { fetchMessagesByNaviId } from "@/lib/messages/api";
+import type { TradeMessage } from "@/lib/messages/transform";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { loadSalesHistoryForUser } from "@/lib/trade/dataSources";
@@ -76,6 +77,7 @@ export function SalesHistoryTabContent() {
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [sortState, setSortState] = useState<SortState>(null);
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
+  const [messages, setMessages] = useState<TradeMessage[]>([]);
   const [rows, setRows] = useState<SalesHistoryRow[]>([]);
 
   useEffect(() => {
@@ -217,7 +219,28 @@ export function SalesHistoryTabContent() {
     });
   };
 
-  const messageThread = getMessagesForTrade(messageTarget);
+  useEffect(() => {
+    if (!messageTarget) {
+      setMessages([]);
+      return;
+    }
+
+    const parsedId = Number(messageTarget);
+    if (!Number.isInteger(parsedId)) {
+      console.error("Invalid navi id for messages", messageTarget);
+      setMessages([]);
+      return;
+    }
+
+    fetchMessagesByNaviId(parsedId)
+      .then(setMessages)
+      .catch((error) => {
+        console.error(error);
+        setMessages([]);
+      });
+  }, [messageTarget]);
+
+  const messageThread = messages;
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
