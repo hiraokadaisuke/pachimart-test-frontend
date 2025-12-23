@@ -1,21 +1,39 @@
+"use client";
+
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+
+import { SalesInvoiceLegacyHallForm } from "../_components/SalesInvoiceLegacyHallForm";
+import { loadInventoryRecords, type InventoryRecord } from "@/lib/demo-data/demoInventory";
+
+function HallSalesInvoiceCreateContent() {
+  const searchParams = useSearchParams();
+  const [inventories, setInventories] = useState<InventoryRecord[]>([]);
+
+  const requestedIds = useMemo(() => {
+    const raw = searchParams?.get("ids");
+    if (!raw) return [] as string[];
+    return raw.split(",").filter(Boolean);
+  }, [searchParams]);
+
+  useEffect(() => {
+    const all = loadInventoryRecords();
+    const sold = all.filter((item) => (item.status ?? item.stockStatus) === "売却済");
+    if (requestedIds.length > 0) {
+      const map = new Set(requestedIds);
+      setInventories(sold.filter((item) => map.has(item.id)));
+      return;
+    }
+    setInventories(sold.slice(0, 1));
+  }, [requestedIds]);
+
+  return <SalesInvoiceLegacyHallForm inventories={inventories} />;
+}
+
 export default function HallSalesInvoiceCreatePage() {
   return (
-    <div className="space-y-4 px-4 py-6">
-      <div className="flex items-center gap-3">
-        <span className="h-3.5 w-3.5 rounded-full bg-emerald-600" aria-hidden />
-        <h1 className="text-xl font-bold text-slate-800">販売伝票登録（ホール）</h1>
-      </div>
-      <div className="rounded-sm border border-dashed border-slate-400 bg-white px-4 py-6 text-sm text-slate-700 shadow-inner">
-        このページは現在準備中です。販売伝票作成ページから遷移できるようにしています。
-      </div>
-      <div>
-        <a
-          href="/inventory/sales-invoice/create"
-          className="inline-flex items-center rounded-sm border border-gray-400 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-slate-200"
-        >
-          ※ 販売伝票作成に戻る
-        </a>
-      </div>
-    </div>
+    <Suspense fallback={<div className="p-4 text-sm text-gray-700">Loading...</div>}>
+      <HallSalesInvoiceCreateContent />
+    </Suspense>
   );
 }

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
@@ -97,6 +96,15 @@ export default function SalesInvoiceCreatePage() {
     }
     const query = Array.from(selectedIds).join(",");
     router.push(`/inventory/sales-invoice/vendor/create?ids=${encodeURIComponent(query)}`);
+  };
+
+  const navigateToHallInvoice = () => {
+    if (selectedIds.size === 0) {
+      alert("販売伝票対象の在庫を選択してください");
+      return;
+    }
+    const query = Array.from(selectedIds).join(",");
+    router.push(`/inventory/sales-invoice/hall/create?ids=${encodeURIComponent(query)}`);
   };
 
   return (
@@ -229,12 +237,13 @@ export default function SalesInvoiceCreatePage() {
             >
               業者伝票登録
             </button>
-            <Link
-              href="/inventory/sales-invoice/hall/create"
+            <button
+              type="button"
+              onClick={navigateToHallInvoice}
               className="inline-flex items-center rounded-sm border border-emerald-700 bg-emerald-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-emerald-300"
             >
               ホール伝票登録
-            </Link>
+            </button>
           </div>
         </div>
         <div className="overflow-x-auto border border-gray-400">
