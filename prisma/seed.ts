@@ -1,4 +1,4 @@
-import { PrismaClient } from "@prisma/client";
+import { ListingStatus, PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -42,6 +42,94 @@ const USERS = [
   },
 ];
 
+const LISTINGS = [
+  {
+    id: "listing_dev_1",
+    sellerUserId: "dev_user_1",
+    status: ListingStatus.PUBLISHED,
+    isVisible: true,
+    kind: "P",
+    maker: "メーカーA",
+    machineName: "モデルA-1",
+    quantity: 3,
+    unitPriceExclTax: 120000,
+    isNegotiable: false,
+    storageLocation: "東京倉庫A",
+    shippingFeeCount: 1,
+    handlingFeeCount: 1,
+    allowPartial: false,
+    note: "即日出荷可",
+  },
+  {
+    id: "listing_dev_2",
+    sellerUserId: "dev_user_1",
+    status: ListingStatus.DRAFT,
+    isVisible: true,
+    kind: "S",
+    maker: "メーカーB",
+    machineName: "モデルB-2",
+    quantity: 2,
+    unitPriceExclTax: 90000,
+    isNegotiable: false,
+    storageLocation: "大阪保管庫",
+    shippingFeeCount: 2,
+    handlingFeeCount: 1,
+    allowPartial: true,
+    note: "点検済み",
+  },
+  {
+    id: "listing_dev_3",
+    sellerUserId: "dev_user_2",
+    status: ListingStatus.PUBLISHED,
+    isVisible: true,
+    kind: "P",
+    maker: "メーカーC",
+    machineName: "モデルC-3",
+    quantity: 5,
+    unitPriceExclTax: 150000,
+    isNegotiable: false,
+    storageLocation: "福岡倉庫",
+    shippingFeeCount: 1,
+    handlingFeeCount: 2,
+    allowPartial: true,
+    note: null,
+  },
+  {
+    id: "listing_dev_4",
+    sellerUserId: "dev_user_3",
+    status: ListingStatus.PUBLISHED,
+    isVisible: true,
+    kind: "S",
+    maker: "メーカーD",
+    machineName: "モデルD-4",
+    quantity: 1,
+    unitPriceExclTax: null,
+    isNegotiable: true,
+    storageLocation: "名古屋デポ",
+    shippingFeeCount: 1,
+    handlingFeeCount: 1,
+    allowPartial: false,
+    note: "応相談価格",
+  },
+  {
+    id: "listing_dev_5",
+    sellerUserId: "dev_user_4",
+    status: ListingStatus.SOLD,
+    isVisible: false,
+    kind: "P",
+    maker: "メーカーE",
+    machineName: "モデルE-5",
+    quantity: 4,
+    unitPriceExclTax: 80000,
+    isNegotiable: false,
+    storageLocation: "札幌ヤード",
+    shippingFeeCount: 2,
+    handlingFeeCount: 2,
+    allowPartial: true,
+    note: "取引済み",
+  },
+];
+
 async function main() {
   const seedMode = process.env.SEED_MODE;
 
@@ -64,6 +152,17 @@ async function main() {
     console.log(`Upserted user ${user.id}`);
   }
   console.log("User seeding completed.");
+
+  console.log(`Seeding ${LISTINGS.length} listings (mode: ${seedMode})...`);
+  for (const listing of LISTINGS) {
+    await prisma.listing.upsert({
+      where: { id: listing.id },
+      update: listing,
+      create: listing,
+    });
+    console.log(`Upserted listing ${listing.id}`);
+  }
+  console.log("Listing seeding completed.");
 }
 
 main()
