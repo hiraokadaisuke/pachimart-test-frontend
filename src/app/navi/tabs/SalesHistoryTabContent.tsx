@@ -23,6 +23,7 @@ import { TodoUiDef, todoUiMap } from "@/lib/todo/todoUiMap";
 
 type SalesHistoryRow = {
   id: string;
+  naviId?: number;
   status: TradeStatusKey;
   section: TodoUiDef["section"];
   contractDate: string;
@@ -77,6 +78,7 @@ export function SalesHistoryTabContent() {
   const [appliedFilters, setAppliedFilters] = useState(filters);
   const [sortState, setSortState] = useState<SortState>(null);
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
+  const [messageNaviId, setMessageNaviId] = useState<number | null>(null);
   const [messages, setMessages] = useState<TradeMessage[]>([]);
   const [rows, setRows] = useState<SalesHistoryRow[]>([]);
 
@@ -201,7 +203,7 @@ export function SalesHistoryTabContent() {
           className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
           onClick={(e) => {
             e.stopPropagation();
-            setMessageTarget(row.id);
+            handleOpenMessage(row);
           }}
         >
           メッセージ
@@ -220,25 +222,42 @@ export function SalesHistoryTabContent() {
   };
 
   useEffect(() => {
-    if (!messageTarget) {
+    if (messageNaviId === null) {
       setMessages([]);
       return;
     }
 
-    const parsedId = Number(messageTarget);
-    if (!Number.isInteger(parsedId)) {
+    if (!Number.isInteger(messageNaviId)) {
       console.error("Invalid navi id for messages", messageTarget);
       setMessages([]);
       return;
     }
 
-    fetchMessagesByNaviId(parsedId)
+    fetchMessagesByNaviId(messageNaviId)
       .then(setMessages)
       .catch((error) => {
         console.error(error);
         setMessages([]);
       });
-  }, [messageTarget]);
+  }, [messageNaviId, messageTarget]);
+
+  const handleOpenMessage = (row: SalesHistoryRow) => {
+    setMessageTarget(row.id);
+
+    if (typeof row.naviId === "number" && Number.isInteger(row.naviId)) {
+      setMessageNaviId(row.naviId);
+      return;
+    }
+
+    const parsedId = Number(row.id);
+    if (Number.isInteger(parsedId)) {
+      setMessageNaviId(parsedId);
+      return;
+    }
+
+    console.error("Invalid navi id for messages", row.id);
+    setMessageNaviId(null);
+  };
 
   const messageThread = messages;
 
@@ -459,7 +478,10 @@ export function SalesHistoryTabContent() {
         open={messageTarget !== null}
         tradeId={messageTarget}
         messages={messageThread}
-        onClose={() => setMessageTarget(null)}
+        onClose={() => {
+          setMessageTarget(null);
+          setMessageNaviId(null);
+        }}
       />
     </section>
   );
@@ -476,6 +498,7 @@ function mapTradeToSalesHistoryRow(trade: TradeRecord): SalesHistoryRow {
 
   return {
     id: trade.id,
+    naviId: trade.naviId,
     status,
     section,
     contractDate: trade.contractDate ?? trade.createdAt ?? "",

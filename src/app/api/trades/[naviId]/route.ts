@@ -63,7 +63,7 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-const parseId = (id: string) => {
+const parseNaviId = (id: string) => {
   const parsed = Number(id);
   if (!Number.isInteger(parsed) || parsed <= 0) {
     return null;
@@ -96,8 +96,8 @@ const resolveBuyerUserId = (trade: TradeNaviRecord): string | null => {
   return null;
 };
 
-export async function GET(_request: Request, { params }: { params: { id: string } }) {
-  const id = parseId(params.id);
+export async function GET(_request: Request, { params }: { params: { naviId: string } }) {
+  const id = parseNaviId(params.naviId);
 
   if (!id) {
     return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
@@ -121,8 +121,8 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id: string } }) {
-  const id = parseId(params.id);
+export async function PATCH(request: Request, { params }: { params: { naviId: string } }) {
+  const id = parseNaviId(params.naviId);
 
   if (!id) {
     return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });

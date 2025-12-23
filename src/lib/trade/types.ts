@@ -43,6 +43,7 @@ export type BuyerContact = {
 
 export type TradeRecord = {
   id: string;
+  naviId?: number;
   status: TradeStatus;
   sellerUserId: string;
   buyerUserId: string;
