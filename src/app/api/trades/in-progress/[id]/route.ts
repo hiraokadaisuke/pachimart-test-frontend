@@ -109,7 +109,7 @@ export async function GET(
     return NextResponse.json({ error: "Trade not found" }, { status: 404 });
   }
 
-  const where: Prisma.TradeWhereUniqueInput = { id };
+  const where = { id } satisfies Prisma.TradeWhereUniqueInput;
 
   try {
     const trade = await prisma.trade.findUnique({
