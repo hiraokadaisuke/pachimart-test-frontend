@@ -51,11 +51,10 @@ export async function GET(_request: Request, { params }: { params: { id?: string
 
     const listing = await listingClient.findUnique({ where: { id } });
 
-    if (
-      !listing ||
-      ![ListingStatus.PUBLISHED, ListingStatus.SOLD].includes(listing.status) ||
-      !listing.isVisible
-    ) {
+    const isPublicListing =
+      listing?.status === ListingStatus.PUBLISHED || listing?.status === ListingStatus.SOLD;
+
+    if (!listing || !isPublicListing || !listing.isVisible) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
