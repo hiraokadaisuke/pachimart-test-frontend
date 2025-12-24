@@ -49,6 +49,7 @@ model User {
   messagesSent   Message[]        @relation("Sender")
   messagesReceived Message[]      @relation("Receiver")
   storageLocations StorageLocation[]
+  machineStorageLocations MachineStorageLocation[]
 }
 
 model TradeNavi {
@@ -145,4 +146,24 @@ model StorageLocation {
   listings  Listing[]
 
   @@index([ownerUserId])
+}
+
+model MachineStorageLocation {
+  id                  String   @id @default(cuid())
+  ownerUserId         String
+  name                String
+  postalCode          String
+  prefecture          String
+  city                String
+  addressLine         String
+  handlingFeePerUnit  Int
+  shippingFeesByRegion Json
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  ownerUser User @relation(fields: [ownerUserId], references: [id])
+
+  @@index([ownerUserId])
+  @@index([isActive])
 }

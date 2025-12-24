@@ -81,6 +81,21 @@ type InMemoryStorageLocation = {
   updatedAt: Date;
 };
 
+type InMemoryMachineStorageLocation = {
+  id: string;
+  ownerUserId: string;
+  name: string;
+  postalCode: string;
+  prefecture: string;
+  city: string;
+  addressLine: string;
+  handlingFeePerUnit: number;
+  shippingFeesByRegion: Prisma.JsonValue;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 type InMemoryPrisma = {
   tradeNavi: {
     findMany: () => Promise<InMemoryTradeNavi[]>;
@@ -156,6 +171,28 @@ type InMemoryPrisma = {
       update: Partial<InMemoryStorageLocation>;
     }) => Promise<InMemoryStorageLocation>;
   };
+  machineStorageLocation: {
+    findMany: ({
+      where,
+      orderBy,
+    }: {
+      where?: { ownerUserId?: string; isActive?: boolean };
+      orderBy?: { updatedAt?: "asc" | "desc" };
+    }) => Promise<InMemoryMachineStorageLocation[]>;
+    findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryMachineStorageLocation | null>;
+    create: ({
+      data,
+    }: {
+      data: Partial<InMemoryMachineStorageLocation>;
+    }) => Promise<InMemoryMachineStorageLocation>;
+    update: ({
+      where,
+      data,
+    }: {
+      where: { id?: string | null };
+      data: Partial<InMemoryMachineStorageLocation>;
+    }) => Promise<InMemoryMachineStorageLocation>;
+  };
   $transaction: <T>(callback: (client: InMemoryPrisma) => Promise<T> | T) => Promise<T>;
   $queryRaw: (...params: unknown[]) => Promise<void>;
 };
@@ -174,11 +211,13 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   const messages: InMemoryMessage[] = [];
   const listings: InMemoryListing[] = [];
   const storageLocations: InMemoryStorageLocation[] = [];
+  const machineStorageLocations: InMemoryMachineStorageLocation[] = [];
   let tradeNaviSeq = 1;
   let tradeSeq = 1;
   let messageSeq = 1;
   let listingSeq = 1;
   let storageLocationSeq = 1;
+  let machineStorageLocationSeq = 1;
 
   const now = () => new Date();
 
@@ -518,6 +557,93 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
         storageLocations.push(record);
         return { ...record };
+      },
+    },
+    machineStorageLocation: {
+      findMany: async ({
+        where,
+        orderBy,
+      }: {
+        where?: { ownerUserId?: string; isActive?: boolean };
+        orderBy?: { updatedAt?: "asc" | "desc" };
+      } = {}) => {
+        const filtered = machineStorageLocations.filter((location) => {
+          const matchesOwner = where?.ownerUserId ? location.ownerUserId === where.ownerUserId : true;
+          const matchesActive =
+            where?.isActive === undefined ? true : location.isActive === where.isActive;
+          return matchesOwner && matchesActive;
+        });
+        const sorted = filtered.sort((a, b) => {
+          const order = orderBy?.updatedAt === "asc" ? 1 : -1;
+          return (a.updatedAt.getTime() - b.updatedAt.getTime()) * order;
+        });
+        return sorted.map((location) => ({ ...location }));
+      },
+      findUnique: async ({ where }: { where: { id?: string | null } }) => {
+        const id = where.id ?? null;
+        if (!id) return null;
+        const found = machineStorageLocations.find((location) => location.id === id) ?? null;
+        return found ? { ...found } : null;
+      },
+      create: async ({ data }: { data: Partial<InMemoryMachineStorageLocation> }) => {
+        const nowDate = now();
+        const record: InMemoryMachineStorageLocation = {
+          id: String(data.id ?? `machine_storage_location_${machineStorageLocationSeq++}`),
+          ownerUserId: String(data.ownerUserId ?? ""),
+          name: String(data.name ?? ""),
+          postalCode: String(data.postalCode ?? ""),
+          prefecture: String(data.prefecture ?? ""),
+          city: String(data.city ?? ""),
+          addressLine: String(data.addressLine ?? ""),
+          handlingFeePerUnit: Number.isFinite(Number(data.handlingFeePerUnit))
+            ? Number(data.handlingFeePerUnit)
+            : 0,
+          shippingFeesByRegion: (data.shippingFeesByRegion as Prisma.JsonValue | undefined) ?? {},
+          isActive: Boolean(data.isActive ?? true),
+          createdAt: nowDate,
+          updatedAt: nowDate,
+        };
+
+        machineStorageLocations.push(record);
+        return { ...record };
+      },
+      update: async ({
+        where,
+        data,
+      }: {
+        where: { id?: string | null };
+        data: Partial<InMemoryMachineStorageLocation>;
+      }) => {
+        const id = where.id ?? null;
+        if (!id) {
+          throw new Error("Machine storage location id is required");
+        }
+
+        const idx = machineStorageLocations.findIndex((location) => location.id === id);
+        if (idx < 0) {
+          throw new Error("Machine storage location not found");
+        }
+
+        const updated: InMemoryMachineStorageLocation = {
+          ...machineStorageLocations[idx],
+          ...data,
+          name: String(data.name ?? machineStorageLocations[idx].name),
+          postalCode: String(data.postalCode ?? machineStorageLocations[idx].postalCode),
+          prefecture: String(data.prefecture ?? machineStorageLocations[idx].prefecture),
+          city: String(data.city ?? machineStorageLocations[idx].city),
+          addressLine: String(data.addressLine ?? machineStorageLocations[idx].addressLine),
+          handlingFeePerUnit: Number.isFinite(Number(data.handlingFeePerUnit))
+            ? Number(data.handlingFeePerUnit)
+            : machineStorageLocations[idx].handlingFeePerUnit,
+          shippingFeesByRegion:
+            (data.shippingFeesByRegion as Prisma.JsonValue | undefined) ??
+            machineStorageLocations[idx].shippingFeesByRegion,
+          isActive: typeof data.isActive === "boolean" ? data.isActive : machineStorageLocations[idx].isActive,
+          updatedAt: now(),
+        };
+
+        machineStorageLocations[idx] = updated;
+        return { ...updated };
       },
     },
     $transaction: async <T>(callback: (client: ReturnType<typeof buildInMemoryPrisma>) => Promise<T> | T): Promise<T> =>
