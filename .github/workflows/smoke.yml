@@ -1,0 +1,49 @@
+name: Smoke Test
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      PRISMA_DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL }}
+      SEED_MODE: preview
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate Prisma Client
+        run: npx prisma generate --schema prisma/schema.prisma
+
+      - name: Run migrations
+        run: npx prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Seed database
+        run: npx prisma db seed --schema prisma/schema.prisma
+
+      - name: Start Next.js server
+        run: |
+          npm run dev -- --hostname 0.0.0.0 --port 3000 > /tmp/next.log 2>&1 &
+          echo $! > /tmp/next.pid
+
+      - name: Run smoke tests
+        env:
+          SMOKE_BASE_URL: http://localhost:3000
+        run: npm run smoke
+
+      - name: Stop Next.js server
+        if: always()
+        run: |
+          if [ -f /tmp/next.pid ]; then
+            kill "$(cat /tmp/next.pid)" || true
+          fi
