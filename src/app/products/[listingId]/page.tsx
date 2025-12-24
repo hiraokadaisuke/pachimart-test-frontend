@@ -7,8 +7,12 @@ import type { Listing } from "@/lib/listings/types";
 import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
 
 async function fetchListing(listingId: string): Promise<Listing | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
-  const response = await fetch(`${baseUrl}/api/listings/${listingId}`, {
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "");
+  const endpoint = baseUrl
+    ? `${baseUrl}/api/listings/${listingId}`
+    : `/api/listings/${listingId}`;
+
+  const response = await fetch(endpoint, {
     cache: "no-store",
   });
 
