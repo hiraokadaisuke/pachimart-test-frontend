@@ -151,12 +151,14 @@ export async function POST(request: Request) {
     const snapshot = buildListingSnapshot(listing as Record<string, unknown>);
     const payload = buildInquiryPayload(snapshot, listing.sellerUserId, parsed.data);
 
+    const listingSnapshotInput: Prisma.InputJsonValue = snapshot;
+
     const created = await prisma.tradeNavi.create({
       data: {
         ownerUserId: listing.sellerUserId,
         buyerUserId,
         listingId: listing.id,
-        listingSnapshot: snapshot as any,
+        listingSnapshot: listingSnapshotInput,
         status: TradeNaviStatus.SENT,
         naviType: TradeNaviType.ONLINE_INQUIRY,
         payload: { ...payload, buyerMemo },

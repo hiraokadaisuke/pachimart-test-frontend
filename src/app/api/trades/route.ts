@@ -142,7 +142,7 @@ export async function POST(request: Request) {
 
   const { ownerUserId, buyerUserId, status, payload, listingId, naviType } = parsed.data;
 
-  let listingSnapshot: Prisma.JsonValue | null = null;
+  let listingSnapshot: Prisma.InputJsonValue | null = null;
 
   if (listingId) {
     const listing = await listingClient.findUnique({ where: { id: listingId } });
@@ -154,15 +154,13 @@ export async function POST(request: Request) {
     listingSnapshot = buildListingSnapshot(listing as Record<string, unknown>);
   }
 
-  const listingSnapshotInput = listingSnapshot ?? undefined;
-
   try {
     const created = await tradeNaviClient.create({
       data: {
         ownerUserId,
         buyerUserId: buyerUserId ?? null,
         listingId: listingId ?? null,
-        listingSnapshot: listingSnapshotInput as any,
+        listingSnapshot,
         status: status ?? TradeNaviStatus.DRAFT,
         naviType: naviType ?? TradeNaviType.PHONE_AGREEMENT,
         payload: (payload ?? null) as any,

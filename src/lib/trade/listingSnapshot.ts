@@ -26,6 +26,7 @@ export type ListingSnapshot = Prisma.JsonObject & {
   quantity: number;
   isNegotiable: boolean;
   allowPartialSale: boolean;
+  storageLocationId: string | null;
   storageLocationSnapshot: TradeStorageLocationSnapshot | null;
   shippingCount: number;
   handlingFeeCount: number;
@@ -35,6 +36,7 @@ export type ListingSnapshot = Prisma.JsonObject & {
     pickupAvailable: boolean;
   };
   createdAt: string;
+  updatedAt: string;
   maker?: string | null;
   machineName?: string | null;
 };
@@ -120,6 +122,7 @@ export const buildListingSnapshot = (listing: Record<string, unknown>): ListingS
   const machineName = (listing.machineName as string | null | undefined) ?? null;
   const maker = (listing.maker as string | null | undefined) ?? null;
   const note = (listing.note as string | null | undefined) ?? null;
+  const kind = readString(listing.kind);
   const isNegotiable = Boolean(listing.isNegotiable);
   const unitPriceRaw = listing.unitPriceExclTax as number | null | undefined;
   const unitPriceExclTax = isNegotiable
@@ -129,6 +132,7 @@ export const buildListingSnapshot = (listing: Record<string, unknown>): ListingS
       : Number(unitPriceRaw);
 
   const storageLocation = readString(listing.storageLocation);
+  const storageLocationId = readString(listing.storageLocationId) ?? null;
   const storageLocationSnapshot = resolveTradeStorageLocationSnapshot(
     listing.storageLocationSnapshot,
     storageLocation
@@ -136,12 +140,13 @@ export const buildListingSnapshot = (listing: Record<string, unknown>): ListingS
 
   return {
     listingId,
-    title: machineName ?? listingId,
+    title: kind ?? machineName ?? listingId,
     description: note,
     unitPriceExclTax,
     quantity: Number(listing.quantity ?? 0),
     isNegotiable,
     allowPartialSale: Boolean(listing.allowPartial),
+    storageLocationId,
     storageLocationSnapshot,
     shippingCount: Number(listing.shippingFeeCount ?? 0),
     handlingFeeCount: Number(listing.handlingFeeCount ?? 0),
@@ -151,6 +156,7 @@ export const buildListingSnapshot = (listing: Record<string, unknown>): ListingS
       pickupAvailable: Boolean(listing.pickupAvailable),
     },
     createdAt: toIsoString(listing.createdAt),
+    updatedAt: toIsoString(listing.updatedAt ?? listing.createdAt),
     maker,
     machineName,
   };
@@ -163,6 +169,7 @@ export const resolveListingSnapshot = (snapshot: unknown): ListingSnapshot | nul
   if (!listingId) return null;
 
   const flags = isRecord(snapshot.flags) ? snapshot.flags : {};
+  const storageLocationId = readString(snapshot.storageLocationId) ?? null;
   const storageLocationSnapshot = resolveTradeStorageLocationSnapshot(
     snapshot.storageLocationSnapshot,
     readString(snapshot.storageLocation)
@@ -184,6 +191,7 @@ export const resolveListingSnapshot = (snapshot: unknown): ListingSnapshot | nul
     isNegotiable: readBoolean(snapshot.isNegotiable) ?? false,
     allowPartialSale:
       readBoolean(snapshot.allowPartialSale) ?? readBoolean(snapshot.allowPartial) ?? false,
+    storageLocationId,
     storageLocationSnapshot,
     shippingCount:
       readNumber(snapshot.shippingCount) ?? readNumber(snapshot.shippingFeeCount) ?? 0,
@@ -196,6 +204,10 @@ export const resolveListingSnapshot = (snapshot: unknown): ListingSnapshot | nul
         readBoolean(flags.pickupAvailable) ?? readBoolean(snapshot.pickupAvailable) ?? false,
     },
     createdAt: readString(snapshot.createdAt) ?? "",
+    updatedAt:
+      readString(snapshot.updatedAt) ??
+      readString(snapshot.createdAt) ??
+      "",
     maker: readString(snapshot.maker) ?? null,
     machineName: readString(snapshot.machineName) ?? null,
   };
