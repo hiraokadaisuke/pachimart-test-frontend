@@ -1,13 +1,21 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 
 type SellFormProps = {
   showHeader?: boolean;
+};
+
+type StorageLocation = {
+  id: string;
+  name: string;
+  address: string;
+  prefecture: string | null;
+  city: string | null;
 };
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
@@ -48,15 +56,19 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   const [quantity, setQuantity] = useState<number | "">(1);
   const [price, setPrice] = useState<number | "">("");
   const [isNegotiable, setIsNegotiable] = useState(false);
+  const [storageLocations, setStorageLocations] = useState<StorageLocation[]>([]);
+  const [selectedStorageLocationId, setSelectedStorageLocationId] = useState("");
+  const [removalStatus, setRemovalStatus] = useState<"REMOVED" | "SCHEDULED">("SCHEDULED");
+  const [removalDate, setRemovalDate] = useState("");
+  const [hasNailSheet, setHasNailSheet] = useState(false);
+  const [hasManual, setHasManual] = useState(false);
+  const [pickupAvailable, setPickupAvailable] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const [shippingFeeCount, setShippingFeeCount] = useState(1);
   const [handlingFeeCount, setHandlingFeeCount] = useState(1);
   const [allowPartial, setAllowPartial] = useState<boolean>(true);
 
-  const [storeName, setStoreName] = useState("");
-  const [address, setAddress] = useState("");
-  const [prefecture, setPrefecture] = useState("");
-  const [city, setCity] = useState("");
   const [note, setNote] = useState("");
 
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -73,7 +85,38 @@ export function SellForm({ showHeader = true }: SellFormProps) {
     };
   }, [price, quantity, isNegotiable]);
 
-  const storageLocation = [storeName, address, prefecture, city].filter(Boolean).join(" ");
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await fetch("/api/storage-locations", {
+          headers: { "x-dev-user-id": currentUser.id },
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch storage locations: ${response.status}`);
+        }
+        const data: StorageLocation[] = await response.json();
+        setStorageLocations(data);
+        if (!selectedStorageLocationId && data.length > 0) {
+          setSelectedStorageLocationId(data[0].id);
+        }
+        setLocationError(null);
+      } catch (error) {
+        console.error("Failed to fetch storage locations", error);
+        setLocationError("保管場所の取得に失敗しました。");
+      }
+    };
+
+    fetchLocations();
+  }, [currentUser.id]);
+
+  const selectedStorageLocation = useMemo(
+    () => storageLocations.find((location) => location.id === selectedStorageLocationId) ?? null,
+    [selectedStorageLocationId, storageLocations]
+  );
+
+  const storageLocation = selectedStorageLocation
+    ? [selectedStorageLocation.name, selectedStorageLocation.address].filter(Boolean).join(" ")
+    : "";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,8 +127,8 @@ export function SellForm({ showHeader = true }: SellFormProps) {
       return;
     }
 
-    if (!storageLocation.trim()) {
-      setSubmitError("保管場所を入力してください。");
+    if (!selectedStorageLocationId) {
+      setSubmitError("保管場所を選択してください。");
       return;
     }
 
@@ -96,6 +139,11 @@ export function SellForm({ showHeader = true }: SellFormProps) {
 
     if (typeof quantity !== "number" || Number.isNaN(quantity) || quantity <= 0) {
       setSubmitError("出品数を入力してください。");
+      return;
+    }
+
+    if (removalStatus === "SCHEDULED" && !removalDate) {
+      setSubmitError("撤去日を入力してください。");
       return;
     }
 
@@ -110,7 +158,21 @@ export function SellForm({ showHeader = true }: SellFormProps) {
       quantity,
       unitPriceExclTax: isNegotiable ? null : (price as number),
       isNegotiable,
+      removalStatus,
+      removalDate: removalStatus === "SCHEDULED" ? removalDate : null,
+      hasNailSheet,
+      hasManual,
+      pickupAvailable,
       storageLocation,
+      storageLocationId: selectedStorageLocationId,
+      storageLocationSnapshot: selectedStorageLocation
+        ? {
+            name: selectedStorageLocation.name,
+            address: selectedStorageLocation.address,
+            prefecture: selectedStorageLocation.prefecture,
+            city: selectedStorageLocation.city,
+          }
+        : null,
       shippingFeeCount,
       handlingFeeCount,
       allowPartial,
@@ -268,7 +330,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
                 <input
                   type="number"
                   min={0}
-                  value={price}
+                  value={isNegotiable ? "" : price}
                   onChange={(event) => {
                     const value = Number(event.target.value);
                     setPrice(Number.isNaN(value) ? "" : value);
@@ -286,7 +348,13 @@ export function SellForm({ showHeader = true }: SellFormProps) {
                     type="checkbox"
                     className="h-4 w-4"
                     checked={isNegotiable}
-                    onChange={(event) => setIsNegotiable(event.target.checked)}
+                    onChange={(event) => {
+                      const checked = event.target.checked;
+                      setIsNegotiable(checked);
+                      if (checked) {
+                        setPrice("");
+                      }
+                    }}
                   />
                   <span>応相談</span>
                 </label>
@@ -369,46 +437,71 @@ export function SellForm({ showHeader = true }: SellFormProps) {
                 </div>
               </FieldRow>
 
-              <FieldRow label="搬出日">
-                <input type="date" className="w-full rounded border border-slate-200 px-3 py-2" />
+              <FieldRow label="撤去日">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-4">
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="removalStatus"
+                        className="h-4 w-4"
+                        checked={removalStatus === "REMOVED"}
+                        onChange={() => {
+                          setRemovalStatus("REMOVED");
+                          setRemovalDate("");
+                        }}
+                      />
+                      <span>撤去済</span>
+                    </label>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="removalStatus"
+                        className="h-4 w-4"
+                        checked={removalStatus === "SCHEDULED"}
+                        onChange={() => setRemovalStatus("SCHEDULED")}
+                      />
+                      <span>先撤去</span>
+                    </label>
+                  </div>
+                  {removalStatus === "SCHEDULED" ? (
+                    <input
+                      type="date"
+                      className="w-full rounded border border-slate-200 px-3 py-2"
+                      value={removalDate}
+                      onChange={(event) => setRemovalDate(event.target.value)}
+                      required
+                    />
+                  ) : null}
+                </div>
               </FieldRow>
 
               <FieldRow label="保管場所" required>
                 <div className="space-y-3">
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <input
-                      type="text"
-                      placeholder="店舗名"
-                      className="rounded border border-slate-200 px-3 py-2"
-                      required
-                      value={storeName}
-                      onChange={(event) => setStoreName(event.target.value)}
-                    />
-                    <input
-                      type="text"
-                      placeholder="住所"
-                      className="rounded border border-slate-200 px-3 py-2"
-                      required
-                      value={address}
-                      onChange={(event) => setAddress(event.target.value)}
-                    />
-                  </div>
-                  <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-                    <input
-                      type="text"
-                      placeholder="都道府県"
-                      className="rounded border border-slate-200 px-3 py-2"
-                      value={prefecture}
-                      onChange={(event) => setPrefecture(event.target.value)}
-                    />
-                    <input
-                      type="text"
-                      placeholder="市区町村"
-                      className="rounded border border-slate-200 px-3 py-2"
-                      value={city}
-                      onChange={(event) => setCity(event.target.value)}
-                    />
-                  </div>
+                  <select
+                    className="w-full rounded border border-slate-200 px-3 py-2"
+                    value={selectedStorageLocationId}
+                    onChange={(event) => setSelectedStorageLocationId(event.target.value)}
+                    required
+                  >
+                    {storageLocations.length === 0 ? (
+                      <option value="">登録済み保管場所がありません</option>
+                    ) : null}
+                    {storageLocations.map((location) => (
+                      <option key={location.id} value={location.id}>
+                        {location.name}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedStorageLocation ? (
+                    <p className="text-xs text-neutral-600">
+                      {selectedStorageLocation.address}
+                      {selectedStorageLocation.prefecture
+                        ? ` (${selectedStorageLocation.prefecture}${selectedStorageLocation.city ?? ""})`
+                        : null}
+                    </p>
+                  ) : null}
+                  {locationError ? <p className="text-xs text-rose-600">{locationError}</p> : null}
                   <textarea
                     rows={3}
                     className="w-full rounded border border-slate-200 px-3 py-2"
@@ -418,28 +511,91 @@ export function SellForm({ showHeader = true }: SellFormProps) {
                   />
                 </div>
               </FieldRow>
+
+              <FieldRow label="釘シート">
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="nailSheet"
+                      className="h-4 w-4"
+                      checked={hasNailSheet}
+                      onChange={() => setHasNailSheet(true)}
+                    />
+                    <span>あり</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="nailSheet"
+                      className="h-4 w-4"
+                      checked={!hasNailSheet}
+                      onChange={() => setHasNailSheet(false)}
+                    />
+                    <span>なし</span>
+                  </label>
+                </div>
+              </FieldRow>
+
+              <FieldRow label="取扱説明書">
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="manual"
+                      className="h-4 w-4"
+                      checked={hasManual}
+                      onChange={() => setHasManual(true)}
+                    />
+                    <span>あり</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="manual"
+                      className="h-4 w-4"
+                      checked={!hasManual}
+                      onChange={() => setHasManual(false)}
+                    />
+                    <span>なし</span>
+                  </label>
+                </div>
+              </FieldRow>
+
+              <FieldRow label="引き取り">
+                <div className="flex flex-wrap gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="pickupAvailable"
+                      className="h-4 w-4"
+                      checked={pickupAvailable}
+                      onChange={() => setPickupAvailable(true)}
+                    />
+                    <span>可</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="pickupAvailable"
+                      className="h-4 w-4"
+                      checked={!pickupAvailable}
+                      onChange={() => setPickupAvailable(false)}
+                    />
+                    <span>不可</span>
+                  </label>
+                </div>
+              </FieldRow>
             </Section>
 
             <Section title="写真">
               <FieldRow label="外観写真">
-                <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-                  {[1, 2, 3, 4, 5, 6].map((slot) => (
-                    <label
-                      key={slot}
-                      className="flex aspect-[4/3] cursor-not-allowed items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-neutral-500"
-                    >
-                      <span>+ 画像追加</span>
-                      <input type="file" className="hidden" disabled />
-                    </label>
-                  ))}
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+                  <label className="flex aspect-[4/3] cursor-not-allowed items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-neutral-500">
+                    <span>+ 画像追加</span>
+                    <input type="file" className="hidden" disabled />
+                  </label>
                 </div>
-              </FieldRow>
-
-              <FieldRow label="動画">
-                <label className="flex h-24 cursor-not-allowed items-center justify-center rounded-lg border border-dashed border-slate-300 bg-slate-50 text-neutral-500">
-                  <span>+ 動画を追加</span>
-                  <input type="file" className="hidden" disabled />
-                </label>
               </FieldRow>
             </Section>
 

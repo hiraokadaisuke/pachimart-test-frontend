@@ -31,18 +31,24 @@ enum ListingStatus {
   SOLD
 }
 
+enum RemovalStatus {
+  REMOVED
+  SCHEDULED
+}
+
 model User {
   id             String     @id
   companyName    String
   contactName    String?
   address        String?
   tel            String?
-  tradeNavisOwned TradeNavi[] @relation("TradeNaviOwner")
-  tradeNavisBought TradeNavi[] @relation("TradeNaviBuyer")
-  tradesAsSeller Trade[]   @relation("TradeSeller")
-  tradesAsBuyer  Trade[]   @relation("TradeBuyer")
-  messagesSent   Message[] @relation("Sender")
-  messagesReceived Message[] @relation("Receiver")
+  tradeNavisOwned TradeNavi[]     @relation("TradeNaviOwner")
+  tradeNavisBought TradeNavi[]    @relation("TradeNaviBuyer")
+  tradesAsSeller Trade[]          @relation("TradeSeller")
+  tradesAsBuyer  Trade[]          @relation("TradeBuyer")
+  messagesSent   Message[]        @relation("Sender")
+  messagesReceived Message[]      @relation("Receiver")
+  storageLocations StorageLocation[]
 }
 
 model TradeNavi {
@@ -102,7 +108,14 @@ model Listing {
   quantity         Int
   unitPriceExclTax Int?
   isNegotiable     Boolean        @default(false)
+  removalStatus    RemovalStatus  @default(SCHEDULED)
+  removalDate      DateTime?
+  hasNailSheet     Boolean        @default(false)
+  hasManual        Boolean        @default(false)
+  pickupAvailable  Boolean        @default(false)
   storageLocation  String
+  storageLocationId String?
+  storageLocationSnapshot Json?
   shippingFeeCount Int
   handlingFeeCount Int
   allowPartial     Boolean
@@ -110,8 +123,26 @@ model Listing {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
+  storageLocationRef StorageLocation? @relation(fields: [storageLocationId], references: [id])
+
   @@index([sellerUserId])
   @@index([status])
   @@index([isVisible])
   @@index([updatedAt])
+}
+
+model StorageLocation {
+  id          String   @id @default(cuid())
+  ownerUserId String
+  name        String
+  address     String
+  prefecture  String?
+  city        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ownerUser User     @relation(fields: [ownerUserId], references: [id])
+  listings  Listing[]
+
+  @@index([ownerUserId])
 }

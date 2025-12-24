@@ -1,4 +1,4 @@
-import { ListingStatus } from "@prisma/client";
+import { ListingStatus, RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -26,7 +26,14 @@ const toDto = (listing: any) => ({
       ? null
       : Number(listing.unitPriceExclTax),
   isNegotiable: Boolean(listing.isNegotiable),
+  removalStatus: listing.removalStatus as RemovalStatus,
+  removalDate: listing.removalDate ? new Date(listing.removalDate as string).toISOString() : null,
+  hasNailSheet: Boolean(listing.hasNailSheet),
+  hasManual: Boolean(listing.hasManual),
+  pickupAvailable: Boolean(listing.pickupAvailable),
   storageLocation: String(listing.storageLocation),
+  storageLocationId: (listing.storageLocationId as string | null) ?? null,
+  storageLocationSnapshot: (listing.storageLocationSnapshot as unknown | null) ?? null,
   shippingFeeCount: Number(listing.shippingFeeCount),
   handlingFeeCount: Number(listing.handlingFeeCount),
   allowPartial: Boolean(listing.allowPartial),
