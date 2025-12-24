@@ -2,36 +2,32 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { products } from "@/lib/dummyData";
-import type { Product } from "@/types/product";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import type { Listing } from "@/lib/listings/types";
 
-function formatPrefecture(prefecture: string) {
-  if (prefecture === "北海道") return "北海道";
-  return prefecture.replace(/(都|府|県)$/u, "");
+function formatDate(isoString: string) {
+  const date = new Date(isoString);
+  if (Number.isNaN(date.getTime())) return "-";
+
+  const year = date.getFullYear();
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
+  const day = `${date.getDate()}`.padStart(2, "0");
+
+  return `${year}/${month}/${day}`;
 }
 
-function formatMonthDay(dateString: string | undefined) {
-  if (!dateString) return "";
-  const match = dateString.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
-  if (!match) return "";
-
-  const [, , month, day] = match;
-  return `${month.padStart(2, "0")}/${day.padStart(2, "0")}`;
-}
-
-function getRemovalDisplay(removalStatus: Product["removalStatus"], removalDate?: string) {
-  if (removalStatus === "撤去済") return "撤去済";
-
-  const formattedDate = formatMonthDay(removalDate);
-  if (formattedDate) return formattedDate;
-  return "";
+function getStatusLabel(listing: Listing) {
+  if (listing.status === "DRAFT") return "下書き";
+  if (listing.status === "SOLD") return "成約済";
+  if (listing.status === "PUBLISHED" && !listing.isVisible) return "公開停止";
+  return "出品中";
 }
 
 const statusBadgeStyles: Record<string, string> = {
   出品中: "bg-emerald-50 text-emerald-700 border border-emerald-100",
+  公開停止: "bg-slate-100 text-slate-600 border border-slate-200",
   成約済: "bg-gray-100 text-gray-700 border border-gray-200",
   下書き: "bg-amber-50 text-amber-700 border border-amber-100",
 };
@@ -47,41 +43,75 @@ type ExhibitListProps = {
   onNewExhibit?: () => void;
 };
 
+type ExhibitFilters = {
+  maker: string;
+  model: string;
+  noteKeyword: string;
+};
+
 export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
   const router = useRouter();
   const currentUser = useCurrentDevUser();
-  const defaultFilters = useMemo(
+  const defaultFilters = useMemo<ExhibitFilters>(
     () => ({
-      status,
       maker: "",
       model: "",
       noteKeyword: "",
     }),
-    [status]
+    []
   );
 
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
+  const [listings, setListings] = useState<Listing[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     setDraftFilters(defaultFilters);
     setAppliedFilters(defaultFilters);
   }, [defaultFilters]);
 
+  const fetchListings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const response = await fetch(`/api/listings?sellerUserId=${encodeURIComponent(currentUser.id)}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch listings: ${response.status}`);
+      }
+      const data: Listing[] = await response.json();
+      setListings(data);
+    } catch (error) {
+      console.error("Failed to load listings", error);
+      setListings([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentUser.id]);
+
+  useEffect(() => {
+    fetchListings();
+  }, [currentUser.id]);
+
+  const baseListings = useMemo(() => {
+    if (status === "下書き") {
+      return listings.filter((listing) => listing.status === "DRAFT");
+    }
+    return listings.filter((listing) => listing.status !== "DRAFT");
+  }, [listings, status]);
+
   const listedProducts = useMemo(() => {
-    return products.filter((product) => product.ownerUserId === currentUser.id).filter((product) => {
-      const makerMatched = appliedFilters.maker ? product.maker === appliedFilters.maker : true;
+    return baseListings.filter((listing) => {
+      const makerMatched = appliedFilters.maker ? listing.maker === appliedFilters.maker : true;
       const modelMatched = appliedFilters.model
-        ? product.name.toLowerCase().includes(appliedFilters.model.toLowerCase())
+        ? (listing.machineName ?? "").toLowerCase().includes(appliedFilters.model.toLowerCase())
         : true;
       const noteMatched = appliedFilters.noteKeyword
-        ? (product.note ?? "").toLowerCase().includes(appliedFilters.noteKeyword.toLowerCase())
+        ? (listing.note ?? "").toLowerCase().includes(appliedFilters.noteKeyword.toLowerCase())
         : true;
-      const statusMatched = appliedFilters.status ? product.status === appliedFilters.status : true;
 
-      return makerMatched && modelMatched && noteMatched && statusMatched;
+      return makerMatched && modelMatched && noteMatched;
     });
-  }, [appliedFilters, currentUser.id]);
+  }, [appliedFilters, baseListings]);
 
   const handleApplyFilters = () => {
     setAppliedFilters(draftFilters);
@@ -93,26 +123,34 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
   };
 
   const handleReload = () => {
-    router.refresh();
+    fetchListings();
   };
 
-  const handleCreateNaviFromListing = (product: Product) => {
+  const handleCreateNaviFromListing = (listing: Listing) => {
     const params = new URLSearchParams({
-      productId: product.id.toString(),
+      productId: listing.id.toString(),
       quantity: "1",
-      unitPrice: product.price.toString(),
-      productName: product.name,
-      makerName: product.maker,
+      unitPrice: listing.unitPriceExclTax?.toString() ?? "0",
+      productName: listing.machineName ?? "",
+      makerName: listing.maker ?? "",
     });
 
-    if (product.prefecture) {
-      params.set("location", product.prefecture);
+    if (listing.storageLocation) {
+      params.set("location", listing.storageLocation);
     }
 
-    router.push(`/transactions/navi/${product.id}/edit?${params.toString()}`);
+    router.push(`/transactions/navi/${listing.id}/edit?${params.toString()}`);
   };
 
   const totalCount = listedProducts.length;
+
+  const makerOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(baseListings.map((listing) => listing.maker).filter((maker): maker is string => Boolean(maker)))
+      ),
+    [baseListings]
+  );
 
   return (
     <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-4 px-4 text-xs md:px-6 xl:px-8">
@@ -122,7 +160,8 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
       </div>
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md bg-slate-50 px-4 py-3">
-        <div className="flex flex-col">{/* メーカー */}
+        <div className="flex flex-col">
+          {/* メーカー */}
           <label className="mb-1 block text-xs font-semibold text-neutral-800">メーカー</label>
           <select
             value={draftFilters.maker}
@@ -130,15 +169,15 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
             className="h-8 rounded-md border border-slate-300 px-2 text-sm"
           >
             <option value="">すべて</option>
-            {Array.from(new Set(products.filter((product) => product.ownerUserId === currentUser.id).map((product) => product.maker))
-              ).map((maker) => (
+            {makerOptions.map((maker) => (
               <option key={maker} value={maker}>
                 {maker}
               </option>
             ))}
           </select>
         </div>
-        <div className="flex flex-col">{/* 機種名 */}
+        <div className="flex flex-col">
+          {/* 機種名 */}
           <label className="mb-1 block text-xs font-semibold text-neutral-800">機種名</label>
           <input
             type="search"
@@ -148,7 +187,8 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
             className="h-8 rounded-md border border-slate-300 px-2 text-sm"
           />
         </div>
-        <div className="flex flex-col sm:min-w-[220px]">{/* 備考キーワード */}
+        <div className="flex flex-col sm:min-w-[220px]">
+          {/* 備考キーワード */}
           <label className="mb-1 block text-xs font-semibold text-neutral-800">備考</label>
           <input
             type="search"
@@ -158,7 +198,8 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
             className="h-8 rounded-md border border-slate-300 px-2 text-sm"
           />
         </div>
-        <div className="ml-auto flex flex-wrap items-center gap-2">{/* ボタン群 */}
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          {/* ボタン群 */}
           <button
             type="button"
             onClick={handleApplyFilters}
@@ -192,12 +233,16 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
         </div>
       </div>
 
-      {listedProducts.length === 0 ? (
+      {loading ? (
+        <div className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-neutral-800">
+          読み込み中…
+        </div>
+      ) : listedProducts.length === 0 ? (
         <div className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center text-sm text-neutral-800">
           {status === "下書き" ? "下書きはまだありません。" : "該当する出品がありません。"}
         </div>
       ) : (
-        <div className="relative overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm min-h-[420px]">
+        <div className="relative min-h-[420px] overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
           <table className="min-w-full table-auto border-collapse text-xs text-slate-800">
             <colgroup>
               <col className="w-[90px]" />
@@ -226,56 +271,68 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                 <th className="px-2 py-1.5 text-right">商品価</th>
                 <th className="px-2 py-1.5 text-left">撤去日</th>
                 <th className="px-2 py-1.5 text-left">備考</th>
-                <th className="sticky right-0 bg-slate-50 px-2 py-1.5 text-center">
-                  操作
-                </th>
+                <th className="sticky right-0 bg-slate-50 px-2 py-1.5 text-center">操作</th>
               </tr>
             </thead>
             <tbody>
-              {listedProducts.map((product, idx) => {
+              {listedProducts.map((listing, idx) => {
                 const zebra = idx % 2 === 0 ? "bg-white" : "bg-slate-50";
-                const soldCount = 0;
-                const remainingCount = product.quantity - soldCount;
-                const removalDisplay = getRemovalDisplay(product.removalStatus, product.removalDate);
+                const statusLabel = getStatusLabel(listing);
+                const soldCount = listing.status === "SOLD" ? listing.quantity : 0;
+                const remainingCount = Math.max(listing.quantity - soldCount, 0);
+                const rowTone =
+                  listing.status === "SOLD"
+                    ? "opacity-60"
+                    : listing.status === "PUBLISHED" && !listing.isVisible
+                      ? "opacity-80"
+                      : "";
 
                 return (
-                  <tr key={product.id} className={`${zebra} border-b border-slate-100 text-xs`}>
-                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-neutral-900">{product.updatedAt}</td>
+                  <tr key={listing.id} className={`${zebra} ${rowTone} border-b border-slate-100 text-xs`}>
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-neutral-900">
+                      {formatDate(listing.updatedAt)}
+                    </td>
                     <td className="px-2 py-1.5 align-top">
                       <span
                         className={`inline-flex items-center rounded-full px-2 py-1 text-[11px] font-semibold ${
-                          statusBadgeStyles[product.status] ?? "bg-slate-100 text-neutral-900 border border-slate-200"
+                          statusBadgeStyles[statusLabel] ?? "bg-slate-100 text-neutral-900 border border-slate-200"
                         }`}
                       >
-                        {product.status}
+                        {statusLabel}
                       </span>
                     </td>
                     <td className="px-2 py-1.5 align-top font-semibold text-slate-800">
-                      {formatPrefecture(product.prefecture)}
+                      <span className="block max-w-[110px] truncate whitespace-nowrap" title={listing.storageLocation}>
+                        {listing.storageLocation || "-"}
+                      </span>
                     </td>
-                    <td className="px-2 py-1.5 align-top text-neutral-900" title={product.maker}>
-                      <span className="block max-w-[110px] truncate whitespace-nowrap">{product.maker}</span>
+                    <td className="px-2 py-1.5 align-top text-neutral-900" title={listing.maker ?? ""}>
+                      <span className="block max-w-[110px] truncate whitespace-nowrap">{listing.maker ?? "-"}</span>
                     </td>
                     <td className="px-2 py-1.5 align-top">
                       <Link
-                        href={`/products/${product.id}`}
+                        href={`/products/${listing.id}`}
                         className="block max-w-[220px] truncate text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
-                        title={product.name}
+                        title={listing.machineName ?? ""}
                       >
-                        {product.name}
+                        {listing.machineName ?? "-"}
                       </Link>
                     </td>
                     <td className="whitespace-nowrap px-2 py-1.5 align-top text-right font-semibold tabular-nums">
-                      {product.quantity}
+                      {listing.quantity}
                     </td>
                     <td className="whitespace-nowrap px-2 py-1.5 align-top text-right tabular-nums">{soldCount}</td>
-                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-right tabular-nums">{remainingCount}</td>
-                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-right font-semibold tabular-nums">
-                      {currencyFormatter.format(product.price)}
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-right tabular-nums">
+                      {remainingCount}
                     </td>
-                    <td className="whitespace-nowrap px-2 py-1.5 align-top font-semibold text-slate-800">{removalDisplay}</td>
-                    <td className="px-2 py-1.5 align-top text-neutral-900" title={product.note ?? ""}>
-                      <span className="block max-w-[220px] truncate whitespace-nowrap">{product.note ?? "-"}</span>
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top text-right font-semibold tabular-nums">
+                      {listing.isNegotiable || listing.unitPriceExclTax === null
+                        ? "応相談"
+                        : currencyFormatter.format(listing.unitPriceExclTax)}
+                    </td>
+                    <td className="whitespace-nowrap px-2 py-1.5 align-top font-semibold text-slate-800">-</td>
+                    <td className="px-2 py-1.5 align-top text-neutral-900" title={listing.note ?? ""}>
+                      <span className="block max-w-[220px] truncate whitespace-nowrap">{listing.note ?? "-"}</span>
                     </td>
                     <td
                       className={`sticky right-0 px-2 py-1.5 align-top border-l border-slate-200 ${
@@ -284,7 +341,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                     >
                       <div className="flex items-center justify-center">
                         <ActionMenu
-                          onCreateNavi={() => handleCreateNaviFromListing(product)}
+                          onCreateNavi={() => handleCreateNaviFromListing(listing)}
                           onEdit={() => {}}
                           onWithdraw={status === "出品中" ? () => {} : undefined}
                           onDelete={() => {}}

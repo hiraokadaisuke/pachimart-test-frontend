@@ -117,6 +117,7 @@ type InMemoryPrisma = {
     }) => Promise<InMemoryListing[]>;
     findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryListing | null>;
     create: ({ data }: { data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
+    update: ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
   };
   $transaction: <T>(callback: (client: InMemoryPrisma) => Promise<T> | T) => Promise<T>;
   $queryRaw: (...params: unknown[]) => Promise<void>;
@@ -351,6 +352,48 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
         listings.push(record);
         return { ...record };
+      },
+      update: async ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryListing> }) => {
+        const id = where.id ?? null;
+        if (!id) {
+          throw new Error("Listing id is required");
+        }
+
+        const idx = listings.findIndex((listing) => listing.id === id);
+        if (idx < 0) {
+          throw new Error("Listing not found");
+        }
+
+        const updated: InMemoryListing = {
+          ...listings[idx],
+          ...data,
+          status: (data.status as ListingStatus | undefined) ?? listings[idx].status,
+          isVisible: (data.isVisible as boolean | undefined) ?? listings[idx].isVisible,
+          kind: (data.kind as string | undefined) ?? listings[idx].kind,
+          maker: (data.maker as string | null | undefined) ?? listings[idx].maker,
+          machineName: (data.machineName as string | null | undefined) ?? listings[idx].machineName,
+          quantity: Number.isFinite(Number(data.quantity)) ? Number(data.quantity) : listings[idx].quantity,
+          unitPriceExclTax:
+            data.unitPriceExclTax === undefined
+              ? listings[idx].unitPriceExclTax
+              : data.unitPriceExclTax === null
+                ? null
+                : Number(data.unitPriceExclTax),
+          isNegotiable: (data.isNegotiable as boolean | undefined) ?? listings[idx].isNegotiable,
+          storageLocation: (data.storageLocation as string | undefined) ?? listings[idx].storageLocation,
+          shippingFeeCount: Number.isFinite(Number(data.shippingFeeCount))
+            ? Number(data.shippingFeeCount)
+            : listings[idx].shippingFeeCount,
+          handlingFeeCount: Number.isFinite(Number(data.handlingFeeCount))
+            ? Number(data.handlingFeeCount)
+            : listings[idx].handlingFeeCount,
+          allowPartial: (data.allowPartial as boolean | undefined) ?? listings[idx].allowPartial,
+          note: (data.note as string | null | undefined) ?? listings[idx].note,
+          updatedAt: now(),
+        };
+
+        listings[idx] = updated;
+        return { ...updated };
       },
     },
     $transaction: async <T>(callback: (client: ReturnType<typeof buildInMemoryPrisma>) => Promise<T> | T): Promise<T> =>
