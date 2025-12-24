@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
+import { buildListingSnapshot } from "@/lib/trade/listingSnapshot";
 
 const tradeNaviClient = prisma.tradeNavi;
 const listingClient = prisma.listing;
@@ -98,29 +99,6 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
   };
 };
 
-const toListingSnapshot = (listing: Record<string, unknown>): Prisma.JsonObject => ({
-  id: String(listing.id ?? ""),
-  sellerUserId: String(listing.sellerUserId ?? ""),
-  status: String(listing.status ?? ""),
-  isVisible: Boolean(listing.isVisible),
-  kind: String(listing.kind ?? ""),
-  maker: (listing.maker as string | null) ?? null,
-  machineName: (listing.machineName as string | null) ?? null,
-  quantity: Number(listing.quantity ?? 0),
-  unitPriceExclTax:
-    listing.unitPriceExclTax === null || listing.unitPriceExclTax === undefined
-      ? null
-      : Number(listing.unitPriceExclTax),
-  isNegotiable: Boolean(listing.isNegotiable),
-  storageLocation: String(listing.storageLocation ?? ""),
-  shippingFeeCount: Number(listing.shippingFeeCount ?? 0),
-  handlingFeeCount: Number(listing.handlingFeeCount ?? 0),
-  allowPartial: Boolean(listing.allowPartial),
-  note: (listing.note as string | null) ?? null,
-  createdAt: new Date(listing.createdAt as string | number | Date).toISOString(),
-  updatedAt: new Date(listing.updatedAt as string | number | Date).toISOString(),
-});
-
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
@@ -173,7 +151,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    listingSnapshot = toListingSnapshot(listing as Record<string, unknown>);
+    listingSnapshot = buildListingSnapshot(listing as Record<string, unknown>);
   }
 
   const listingSnapshotInput = listingSnapshot ?? undefined;

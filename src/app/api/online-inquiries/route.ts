@@ -4,6 +4,11 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
 import { type TradeNaviDraft } from "@/lib/navi/types";
+import {
+  buildListingSnapshot,
+  formatListingStorageLocation,
+  type ListingSnapshot,
+} from "@/lib/trade/listingSnapshot";
 
 const requestSchema = z.object({
   listingId: z.string().min(1, "listingId is required"),
@@ -14,49 +19,6 @@ const requestSchema = z.object({
   contactPerson: z.string().optional(),
   desiredShipDate: z.string().optional(),
   desiredPaymentDate: z.string().optional(),
-});
-
-type ListingSnapshot = {
-  id: string;
-  sellerUserId: string;
-  status: string;
-  isVisible: boolean;
-  kind: string;
-  maker: string | null;
-  machineName: string | null;
-  quantity: number;
-  unitPriceExclTax: number | null;
-  isNegotiable: boolean;
-  storageLocation: string;
-  shippingFeeCount: number;
-  handlingFeeCount: number;
-  allowPartial: boolean;
-  note: string | null;
-  createdAt: string;
-  updatedAt: string;
-};
-
-const toListingSnapshot = (listing: Record<string, unknown>): ListingSnapshot => ({
-  id: String(listing.id ?? ""),
-  sellerUserId: String(listing.sellerUserId ?? ""),
-  status: String(listing.status ?? ""),
-  isVisible: Boolean(listing.isVisible),
-  kind: String(listing.kind ?? ""),
-  maker: (listing.maker as string | null) ?? null,
-  machineName: (listing.machineName as string | null) ?? null,
-  quantity: Number(listing.quantity ?? 0),
-  unitPriceExclTax:
-    listing.unitPriceExclTax === null || listing.unitPriceExclTax === undefined
-      ? null
-      : Number(listing.unitPriceExclTax),
-  isNegotiable: Boolean(listing.isNegotiable),
-  storageLocation: String(listing.storageLocation ?? ""),
-  shippingFeeCount: Number(listing.shippingFeeCount ?? 0),
-  handlingFeeCount: Number(listing.handlingFeeCount ?? 0),
-  allowPartial: Boolean(listing.allowPartial),
-  note: (listing.note as string | null) ?? null,
-  createdAt: new Date(listing.createdAt as string | number | Date).toISOString(),
-  updatedAt: new Date(listing.updatedAt as string | number | Date).toISOString(),
 });
 
 const toRecord = (trade: unknown) => {
@@ -109,15 +71,17 @@ const handleUnknownError = (error: unknown) =>
 
 const buildInquiryPayload = (
   listing: ListingSnapshot,
+  ownerUserId: string,
   request: z.infer<typeof requestSchema>
 ): TradeNaviDraft & { inquiryType: "ONLINE_INQUIRY" } => {
   const now = new Date().toISOString();
+  const location = formatListingStorageLocation(listing) ?? "";
   return {
     inquiryType: "ONLINE_INQUIRY",
-    id: listing.id,
-    ownerUserId: listing.sellerUserId,
+    id: listing.listingId,
+    ownerUserId,
     status: "sent_to_buyer",
-    productId: listing.id,
+    productId: listing.listingId,
     buyerId: request.buyerUserId,
     buyerCompanyName: null,
     buyerContactName: request.contactPerson ?? null,
@@ -130,9 +94,9 @@ const buildInquiryPayload = (
       handlingFee: 0,
       taxRate: 0.1,
       memo: request.buyerMemo ?? null,
-      productName: listing.machineName ?? undefined,
+      productName: listing.machineName ?? listing.title ?? undefined,
       makerName: listing.maker ?? undefined,
-      location: listing.storageLocation ?? undefined,
+      location: location || undefined,
       machineShipmentDate: request.desiredShipDate ?? undefined,
       paymentDue: request.desiredPaymentDate ?? undefined,
     },
@@ -184,8 +148,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: reason }, { status: 400 });
     }
 
-    const snapshot = toListingSnapshot(listing as Record<string, unknown>);
-    const payload = buildInquiryPayload(snapshot, parsed.data);
+    const snapshot = buildListingSnapshot(listing as Record<string, unknown>);
+    const payload = buildInquiryPayload(snapshot, listing.sellerUserId, parsed.data);
 
     const created = await prisma.tradeNavi.create({
       data: {
