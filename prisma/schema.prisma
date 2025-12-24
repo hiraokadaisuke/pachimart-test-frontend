@@ -124,7 +124,7 @@ model Listing {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
-  storageLocationRef StorageLocation? @relation(fields: [storageLocationId], references: [id])
+  storageLocationRef MachineStorageLocation? @relation(fields: [storageLocationId], references: [id])
 
   @@index([sellerUserId])
   @@index([status])

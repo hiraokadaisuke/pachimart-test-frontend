@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
+import {
+  buildStorageLocationSnapshot,
+  formatStorageLocationShort,
+  type StorageLocationSnapshot,
+} from "@/lib/listings/storageLocation";
 
 type ListingRecord = {
   id: string;
@@ -74,8 +79,8 @@ const createListingSchema = z
     quantity: z.number().int().positive("quantity must be a positive integer"),
     unitPriceExclTax: z.number().int().nonnegative().optional().nullable(),
     isNegotiable: z.boolean().default(false),
-    storageLocation: z.string().min(1, "storageLocation is required"),
-    storageLocationId: z.string().optional().nullable(),
+    storageLocation: z.string().optional().nullable(),
+    storageLocationId: z.string().min(1, "storageLocationId is required"),
     storageLocationSnapshot: z.unknown().optional().nullable(),
     shippingFeeCount: z.number().int().nonnegative(),
     handlingFeeCount: z.number().int().nonnegative(),
@@ -205,6 +210,47 @@ const parseListingStatus = (value: string | null): ListingStatus | undefined => 
     : undefined;
 };
 
+const resolveStorageLocationSnapshot = async (
+  listing: ListingRecord
+): Promise<{ storageLocationSnapshot: StorageLocationSnapshot | null; storageLocation: string }> => {
+  if (listing.storageLocationSnapshot || !listing.storageLocationId) {
+    return {
+      storageLocationSnapshot: listing.storageLocationSnapshot as StorageLocationSnapshot | null,
+      storageLocation: formatStorageLocationShort(
+        listing.storageLocationSnapshot,
+        listing.storageLocation
+      ),
+    };
+  }
+
+  const location = await prisma.machineStorageLocation.findUnique({
+    where: { id: listing.storageLocationId },
+  });
+
+  if (!location) {
+    return {
+      storageLocationSnapshot: null,
+      storageLocation: formatStorageLocationShort(null, listing.storageLocation),
+    };
+  }
+
+  const snapshot = buildStorageLocationSnapshot({
+    id: String(location.id),
+    name: String(location.name),
+    postalCode: String(location.postalCode),
+    prefecture: String(location.prefecture),
+    city: String(location.city),
+    addressLine: String(location.addressLine),
+    handlingFeePerUnit: Number(location.handlingFeePerUnit),
+    shippingFeesByRegion: location.shippingFeesByRegion,
+  });
+
+  return {
+    storageLocationSnapshot: snapshot,
+    storageLocation: formatStorageLocationShort(snapshot, listing.storageLocation),
+  };
+};
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -247,7 +293,19 @@ export async function GET(request: Request) {
       orderBy: { updatedAt: "desc" },
     });
 
-    return NextResponse.json(listings.map(toRecord).map(toDto));
+    const records = listings.map(toRecord);
+    const enriched = await Promise.all(
+      records.map(async (listing) => {
+        const resolved = await resolveStorageLocationSnapshot(listing);
+        return {
+          ...listing,
+          storageLocationSnapshot: resolved.storageLocationSnapshot ?? listing.storageLocationSnapshot,
+          storageLocation: resolved.storageLocation,
+        };
+      })
+    );
+
+    return NextResponse.json(enriched.map(toDto));
   } catch (error) {
     console.error("Failed to fetch listings", error);
     return NextResponse.json(
@@ -287,6 +345,32 @@ export async function POST(request: Request) {
   const data = parsed.data;
 
   try {
+    const storageLocation = await prisma.machineStorageLocation.findFirst({
+      where: { id: data.storageLocationId, ownerUserId: sellerUserId, isActive: true },
+    });
+
+    if (!storageLocation) {
+      return NextResponse.json(
+        { error: "保管場所が見つかりません。倉庫設定を確認してください。" },
+        { status: 400 }
+      );
+    }
+
+    const storageLocationSnapshot = buildStorageLocationSnapshot({
+      id: String(storageLocation.id),
+      name: String(storageLocation.name),
+      postalCode: String(storageLocation.postalCode),
+      prefecture: String(storageLocation.prefecture),
+      city: String(storageLocation.city),
+      addressLine: String(storageLocation.addressLine),
+      handlingFeePerUnit: Number(storageLocation.handlingFeePerUnit),
+      shippingFeesByRegion: storageLocation.shippingFeesByRegion,
+    });
+    const storageLocationLabel = formatStorageLocationShort(
+      storageLocationSnapshot,
+      data.storageLocation ?? ""
+    );
+
     const created = await listingClient.create({
       data: {
         sellerUserId,
@@ -306,9 +390,9 @@ export async function POST(request: Request) {
         hasNailSheet: data.hasNailSheet ?? false,
         hasManual: data.hasManual ?? false,
         pickupAvailable: data.pickupAvailable ?? false,
-        storageLocation: data.storageLocation,
-        storageLocationId: data.storageLocationId ?? null,
-        storageLocationSnapshot: data.storageLocationSnapshot ?? null,
+        storageLocation: storageLocationLabel,
+        storageLocationId: storageLocationSnapshot.id,
+        storageLocationSnapshot,
         shippingFeeCount: data.shippingFeeCount,
         handlingFeeCount: data.handlingFeeCount,
         allowPartial: data.allowPartial,
