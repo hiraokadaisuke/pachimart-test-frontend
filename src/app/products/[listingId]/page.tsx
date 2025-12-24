@@ -7,21 +7,21 @@ import type { Listing } from "@/lib/listings/types";
 import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
 
 async function fetchListing(listingId: string): Promise<Listing | null> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL?.replace(/\/$/, "");
-  const endpoint = baseUrl
-    ? `${baseUrl}/api/listings/${listingId}`
-    : `/api/listings/${listingId}`;
+  try {
+    const response = await fetch(`/api/listings/${listingId}`, {
+      cache: "no-store",
+    });
 
-  const response = await fetch(endpoint, {
-    cache: "no-store",
-  });
+    if (response.status === 404) return null;
+    if (!response.ok) {
+      throw new Error(`Failed to fetch listing: ${response.status}`);
+    }
 
-  if (response.status === 404) return null;
-  if (!response.ok) {
-    throw new Error(`Failed to fetch listing: ${response.status}`);
+    return response.json();
+  } catch (error) {
+    console.error("Failed to fetch listing detail", error);
+    return null;
   }
-
-  return response.json();
 }
 
 const formatPrice = (listing: Listing) => {

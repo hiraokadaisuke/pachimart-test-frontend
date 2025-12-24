@@ -36,15 +36,37 @@ export default function ProductListPage() {
   const router = useRouter();
 
   useEffect(() => {
+    const normalizeListing = (listing: unknown): Listing | null => {
+      if (!listing || typeof listing !== "object") return null;
+
+      const candidate = listing as Record<string, unknown>;
+      const id = candidate.id ?? candidate.listingId;
+
+      if (!id) return null;
+
+      return {
+        ...candidate,
+        id: String(id),
+      } as Listing;
+    };
+
     const fetchListings = async () => {
       try {
-        const response = await fetch("/api/listings");
+        const response = await fetch("/api/listings", { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Failed to fetch listings: ${response.status}`);
         }
 
-        const data: Listing[] = await response.json();
-        setListings(data);
+        const data: unknown = await response.json();
+        if (!Array.isArray(data)) {
+          throw new Error("Invalid listings response");
+        }
+
+        const normalized = data
+          .map((listing) => normalizeListing(listing))
+          .filter((listing): listing is Listing => Boolean(listing));
+
+        setListings(normalized);
       } catch (error) {
         console.error("Failed to load listings", error);
         setListings([]);
@@ -140,8 +162,7 @@ export default function ProductListPage() {
           columns={columns}
           rows={filteredListings}
           onRowClick={(row) => {
-            console.debug("[products] rowClick", row); // TODO: remove debug log after investigation
-            console.debug("[products] router.push", `/products/${row.id}`); // TODO: remove debug log after investigation
+            if (!row?.id) return;
             router.push(`/products/${row.id}`);
           }}
           emptyMessage="出品がありません"
