@@ -1,10 +1,11 @@
-name: DB Init
+name: Smoke Test
 
 on:
+  pull_request:
   workflow_dispatch:
 
 jobs:
-  db-init:
+  smoke:
     runs-on: ubuntu-latest
     env:
       PRISMA_DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL }}
@@ -29,3 +30,20 @@ jobs:
 
       - name: Seed database
         run: npx prisma db seed --schema prisma/schema.prisma
+
+      - name: Start Next.js server
+        run: |
+          npm run dev -- --hostname 0.0.0.0 --port 3000 > /tmp/next.log 2>&1 &
+          echo $! > /tmp/next.pid
+
+      - name: Run smoke tests
+        env:
+          SMOKE_BASE_URL: http://localhost:3000
+        run: npm run smoke
+
+      - name: Stop Next.js server
+        if: always()
+        run: |
+          if [ -f /tmp/next.pid ]; then
+            kill "$(cat /tmp/next.pid)" || true
+          fi
