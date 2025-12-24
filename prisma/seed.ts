@@ -273,6 +273,153 @@ const STORAGE_LOCATIONS = [
   },
 ];
 
+const MACHINE_STORAGE_LOCATIONS = [
+  {
+    id: "machine_storage_dev_user_1_1",
+    ownerUserId: "dev_user_1",
+    name: "東京湾岸倉庫",
+    postalCode: "135-0064",
+    prefecture: "東京都",
+    city: "江東区",
+    addressLine: "青海2-7-4",
+    handlingFeePerUnit: 5000,
+    shippingFeesByRegion: {
+      hokkaido: 18000,
+      tohokuNorth: 14000,
+      tohokuSouth: 12000,
+      kanto: 8000,
+      chubu: 11000,
+      kinki: 13000,
+      chugoku: 15000,
+      shikoku: 16000,
+      kitakyushu: 17000,
+      minamikyushu: 18000,
+      okinawa: 22000,
+    },
+    isActive: true,
+  },
+  {
+    id: "machine_storage_dev_user_1_2",
+    ownerUserId: "dev_user_1",
+    name: "埼玉メンテ倉庫",
+    postalCode: "330-0854",
+    prefecture: "埼玉県",
+    city: "さいたま市大宮区",
+    addressLine: "桜木町1-2-3",
+    handlingFeePerUnit: 4500,
+    shippingFeesByRegion: {
+      hokkaido: 17000,
+      tohokuNorth: 13000,
+      tohokuSouth: 11000,
+      kanto: 7000,
+      chubu: 10000,
+      kinki: 12500,
+      chugoku: 14500,
+      shikoku: 15500,
+      kitakyushu: 16500,
+      minamikyushu: 17500,
+      okinawa: 21000,
+    },
+    isActive: true,
+  },
+  {
+    id: "machine_storage_dev_user_2_1",
+    ownerUserId: "dev_user_2",
+    name: "福岡出庫センター",
+    postalCode: "810-0001",
+    prefecture: "福岡県",
+    city: "福岡市中央区",
+    addressLine: "天神2-4-5",
+    handlingFeePerUnit: 4200,
+    shippingFeesByRegion: {
+      hokkaido: 20000,
+      tohokuNorth: 16000,
+      tohokuSouth: 15000,
+      kanto: 13000,
+      chubu: 12000,
+      kinki: 11000,
+      chugoku: 9000,
+      shikoku: 9500,
+      kitakyushu: 8000,
+      minamikyushu: 8500,
+      okinawa: 23000,
+    },
+    isActive: true,
+  },
+  {
+    id: "machine_storage_dev_user_3_1",
+    ownerUserId: "dev_user_3",
+    name: "名古屋サービス倉庫",
+    postalCode: "450-0002",
+    prefecture: "愛知県",
+    city: "名古屋市中村区",
+    addressLine: "名駅3-5-7",
+    handlingFeePerUnit: 4800,
+    shippingFeesByRegion: {
+      hokkaido: 18500,
+      tohokuNorth: 15000,
+      tohokuSouth: 14000,
+      kanto: 10000,
+      chubu: 7000,
+      kinki: 9000,
+      chugoku: 12000,
+      shikoku: 13000,
+      kitakyushu: 14000,
+      minamikyushu: 15000,
+      okinawa: 22500,
+    },
+    isActive: true,
+  },
+  {
+    id: "machine_storage_dev_user_4_1",
+    ownerUserId: "dev_user_4",
+    name: "札幌北倉庫",
+    postalCode: "060-0042",
+    prefecture: "北海道",
+    city: "札幌市中央区",
+    addressLine: "大通西1-1-1",
+    handlingFeePerUnit: 5200,
+    shippingFeesByRegion: {
+      hokkaido: 6000,
+      tohokuNorth: 14000,
+      tohokuSouth: 13000,
+      kanto: 16000,
+      chubu: 17000,
+      kinki: 18000,
+      chugoku: 19000,
+      shikoku: 19500,
+      kitakyushu: 20000,
+      minamikyushu: 21000,
+      okinawa: 24000,
+    },
+    isActive: true,
+  },
+  {
+    id: "machine_storage_dev_user_5_1",
+    ownerUserId: "dev_user_5",
+    name: "小樽物流倉庫",
+    postalCode: "047-0032",
+    prefecture: "北海道",
+    city: "小樽市",
+    addressLine: "稲穂1-2-3",
+    handlingFeePerUnit: 5100,
+    shippingFeesByRegion: {
+      hokkaido: 6500,
+      tohokuNorth: 14500,
+      tohokuSouth: 13500,
+      kanto: 16500,
+      chubu: 17500,
+      kinki: 18500,
+      chugoku: 19500,
+      shikoku: 20000,
+      kitakyushu: 20500,
+      minamikyushu: 21500,
+      okinawa: 24500,
+    },
+    isActive: true,
+  },
+];
+
 async function main() {
   const seedMode = process.env.SEED_MODE;
 
@@ -306,6 +453,19 @@ async function main() {
     console.log(`Upserted storage location ${location.id}`);
   }
   console.log("Storage location seeding completed.");
+
+  console.log(
+    `Seeding ${MACHINE_STORAGE_LOCATIONS.length} machine storage locations (mode: ${seedMode})...`
+  );
+  for (const location of MACHINE_STORAGE_LOCATIONS) {
+    await prisma.machineStorageLocation.upsert({
+      where: { id: location.id },
+      update: location,
+      create: location,
+    });
+    console.log(`Upserted machine storage location ${location.id}`);
+  }
+  console.log("Machine storage location seeding completed.");
 
   console.log(`Seeding ${LISTINGS.length} listings (mode: ${seedMode})...`);
   for (const listing of LISTINGS) {
