@@ -160,7 +160,7 @@ export async function POST(request: Request) {
         ownerUserId,
         buyerUserId: buyerUserId ?? null,
         listingId: listingId ?? null,
-        listingSnapshot,
+        listingSnapshot: listingSnapshot ?? Prisma.JsonNull,
         status: status ?? TradeNaviStatus.DRAFT,
         naviType: naviType ?? TradeNaviType.PHONE_AGREEMENT,
         payload: (payload ?? null) as any,
