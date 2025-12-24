@@ -14,6 +14,7 @@ import {
 } from "@/lib/useDummyNavi";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { DEV_USERS, getDevUsers, findDevUserById, type DevUser } from "@/lib/dev-user/users";
+import { buildApiUrl } from "@/lib/http/apiBaseUrl";
 import { products } from "@/lib/dummyData";
 import type { Listing } from "@/lib/listings/types";
 
@@ -198,7 +199,7 @@ function StandardTradeRequestEditor({
     let isMounted = true;
     setIsLoadingListing(true);
 
-    fetch(`/api/listings/${listingId}`)
+    fetch(buildApiUrl(`/api/listings/${listingId}`))
       .then((response) => (response.ok ? response.json() : null))
       .then((data: Listing | null) => {
         if (!isMounted) return;
@@ -1060,7 +1061,7 @@ function OnlineInquiryCreator({
 
     let isMounted = true;
 
-    fetch(`/api/listings/${listingId}`)
+    fetch(buildApiUrl(`/api/listings/${listingId}`))
       .then((response) => (response.ok ? response.json() : null))
       .then((data: Listing | null) => {
         if (!isMounted) return;

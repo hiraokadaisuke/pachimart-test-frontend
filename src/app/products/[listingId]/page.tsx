@@ -3,12 +3,13 @@ import { notFound } from "next/navigation";
 
 import MainContainer from "@/components/layout/MainContainer";
 import { SectionHeader } from "@/components/ui/SectionHeader";
+import { buildApiUrl } from "@/lib/http/apiBaseUrl";
 import type { Listing } from "@/lib/listings/types";
 import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
 
 async function fetchListing(listingId: string): Promise<Listing | null> {
   try {
-    const response = await fetch(`/api/listings/${listingId}`, {
+    const response = await fetch(buildApiUrl(`/api/listings/${listingId}`), {
       cache: "no-store",
     });
 
