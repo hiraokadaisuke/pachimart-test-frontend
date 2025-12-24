@@ -1,13 +1,15 @@
+import { Prisma } from "@prisma/client";
+
 import {
   formatStorageLocationAddress,
   resolveStorageLocationSnapshot,
 } from "@/lib/listings/storageLocation";
 
-export type TradeStorageLocationSnapshot = {
+export type TradeStorageLocationSnapshot = Prisma.JsonObject & {
   name: string;
   address: string;
   handlingFee: number;
-  shippingFeesByRegion: unknown;
+  shippingFeesByRegion: Prisma.JsonValue | null;
   id?: string;
   postalCode?: string;
   prefecture?: string;
@@ -16,7 +18,7 @@ export type TradeStorageLocationSnapshot = {
   handlingFeePerUnit?: number;
 };
 
-export type ListingSnapshot = {
+export type ListingSnapshot = Prisma.JsonObject & {
   listingId: string;
   title: string;
   description: string | null;
@@ -27,7 +29,7 @@ export type ListingSnapshot = {
   storageLocationSnapshot: TradeStorageLocationSnapshot | null;
   shippingCount: number;
   handlingFeeCount: number;
-  flags: {
+  flags: Prisma.JsonObject & {
     hasKugiSheet: boolean;
     hasManual: boolean;
     pickupAvailable: boolean;
@@ -88,7 +90,9 @@ const resolveTradeStorageLocationSnapshot = (
     (legacy?.handlingFeePerUnit !== undefined ? legacy.handlingFeePerUnit : undefined) ??
     0;
   const shippingFeesByRegion =
-    (snapshot.shippingFeesByRegion as unknown) ?? legacy?.shippingFeesByRegion ?? null;
+    (snapshot.shippingFeesByRegion as Prisma.JsonValue | undefined) ??
+    (legacy?.shippingFeesByRegion as Prisma.JsonValue | undefined) ??
+    null;
 
   if (!name && !address) return null;
 
