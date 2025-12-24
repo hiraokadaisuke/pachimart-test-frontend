@@ -85,7 +85,10 @@ export function NaviTable({
                 className={`divide-x divide-slate-200 transition hover:bg-slate-50 ${
                   onRowClick ? "cursor-pointer" : ""
                 } ${getRowClassName?.(row) ?? ""}`}
-                onClick={() => onRowClick?.(row)}
+                onClick={() => {
+                  console.debug("[NaviTable] rowClick", row); // TODO: remove debug log after investigation
+                  onRowClick?.(row);
+                }}
               >
                 {columns.map((column) => (
                   <td

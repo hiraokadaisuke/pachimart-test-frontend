@@ -139,7 +139,11 @@ export default function ProductListPage() {
         <NaviTable
           columns={columns}
           rows={filteredListings}
-          onRowClick={(row) => router.push(`/products/${row.id}`)}
+          onRowClick={(row) => {
+            console.debug("[products] rowClick", row); // TODO: remove debug log after investigation
+            console.debug("[products] router.push", `/products/${row.id}`); // TODO: remove debug log after investigation
+            router.push(`/products/${row.id}`);
+          }}
           emptyMessage="出品がありません"
           getRowClassName={(row: Listing) => (row.status === "SOLD" ? "opacity-60" : "")}
         />
