@@ -2,6 +2,7 @@ import {
   ListingStatus,
   Prisma,
   PrismaClient,
+  RemovalStatus,
   TradeNaviStatus,
   TradeNaviType,
   TradeStatus,
@@ -53,7 +54,7 @@ type InMemoryListing = {
   quantity: number;
   unitPriceExclTax: number | null;
   isNegotiable: boolean;
-  removalStatus: Prisma.RemovalStatus;
+  removalStatus: RemovalStatus;
   removalDate: Date | null;
   hasNailSheet: boolean;
   hasManual: boolean;
@@ -379,7 +380,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
             ? null
             : Number(data.unitPriceExclTax),
           isNegotiable: Boolean(data.isNegotiable),
-          removalStatus: (data.removalStatus as Prisma.RemovalStatus | undefined) ?? "SCHEDULED",
+          removalStatus: (data.removalStatus as RemovalStatus | undefined) ?? RemovalStatus.SCHEDULED,
           removalDate:
             data.removalDate === undefined || data.removalDate === null
               ? null
@@ -428,7 +429,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
                 ? null
                 : Number(data.unitPriceExclTax),
           isNegotiable: (data.isNegotiable as boolean | undefined) ?? listings[idx].isNegotiable,
-          removalStatus: (data.removalStatus as Prisma.RemovalStatus | undefined) ?? listings[idx].removalStatus,
+          removalStatus: (data.removalStatus as RemovalStatus | undefined) ?? listings[idx].removalStatus,
           removalDate:
             data.removalDate === undefined
               ? listings[idx].removalDate
