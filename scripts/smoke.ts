@@ -51,6 +51,18 @@ const run = async () => {
   console.log("GET /api/listings?sellerUserId=dev_user_1");
   await requestJson(`/api/listings?sellerUserId=${sellerUserId}`);
 
+  console.log("GET /api/machine-storage-locations");
+  const storageLocations = (await requestJson("/api/machine-storage-locations", {
+    headers: {
+      "x-dev-user-id": sellerUserId,
+    },
+  })) as Array<{ id: string; name: string }>;
+  const storageLocationId = storageLocations[0]?.id;
+
+  if (!storageLocationId) {
+    throw new Error("No machine storage locations available for smoke test.");
+  }
+
   console.log("POST /api/listings");
   await requestJson("/api/listings", {
     method: "POST",
@@ -64,9 +76,7 @@ const run = async () => {
       quantity: 1,
       unitPriceExclTax: 1000,
       isNegotiable: false,
-      storageLocation: "スモークテスト倉庫",
-      storageLocationId: null,
-      storageLocationSnapshot: null,
+      storageLocationId,
       shippingFeeCount: 0,
       handlingFeeCount: 0,
       allowPartial: false,
