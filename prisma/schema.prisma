@@ -143,7 +143,6 @@ model StorageLocation {
   updatedAt   DateTime @updatedAt
 
   ownerUser User     @relation(fields: [ownerUserId], references: [id])
-  listings  Listing[]
 
   @@index([ownerUserId])
 }
@@ -163,6 +162,7 @@ model MachineStorageLocation {
   updatedAt           DateTime @updatedAt
 
   ownerUser User @relation(fields: [ownerUserId], references: [id])
+  listings  Listing[]
 
   @@index([ownerUserId])
   @@index([isActive])
