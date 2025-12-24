@@ -315,7 +315,9 @@ export function getTradesForUser(userId: string, trades?: TradeRecord[]): TradeR
 
 export function getHistoryTradesForUser(userId: string, trades?: TradeRecord[]): TradeRecord[] {
   return getTradesForUser(userId, trades).filter((trade) =>
-    ["PAYMENT_REQUIRED", "CONFIRM_REQUIRED", "COMPLETED", "CANCELED"].includes(trade.status)
+    ["APPROVAL_REQUIRED", "PAYMENT_REQUIRED", "CONFIRM_REQUIRED", "COMPLETED", "CANCELED"].includes(
+      trade.status
+    )
   );
 }
 
