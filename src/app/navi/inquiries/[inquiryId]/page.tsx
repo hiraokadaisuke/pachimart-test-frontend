@@ -8,6 +8,10 @@ import MyPageLayout from "@/components/layout/MyPageLayout";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { fetchTradeNaviById } from "@/lib/trade/api";
 import { findDevUserById } from "@/lib/dev-user/users";
+import {
+  formatListingStorageLocation,
+  resolveListingSnapshot,
+} from "@/lib/trade/listingSnapshot";
 
 type InquiryView = {
   id: string;
@@ -47,7 +51,8 @@ export default function InquiryDetailPage() {
 
         const payload = (dto.payload ?? {}) as Record<string, unknown>;
         const conditions = (payload.conditions as Record<string, unknown> | undefined) ?? {};
-        const listing = (dto.listingSnapshot as Record<string, unknown> | null) ?? null;
+        const listingSnapshot = resolveListingSnapshot(dto.listingSnapshot);
+        const storageLocation = formatListingStorageLocation(listingSnapshot);
 
         const resolveCompanyName = (userId: string | null | undefined) =>
           findDevUserById(userId ?? "")?.companyName ?? userId ?? "-";
@@ -55,29 +60,32 @@ export default function InquiryDetailPage() {
         const quantity =
           typeof conditions.quantity === "number"
             ? conditions.quantity
-            : typeof listing?.quantity === "number"
-              ? listing.quantity
+            : typeof listingSnapshot?.quantity === "number"
+              ? listingSnapshot.quantity
               : 1;
         const unitPrice =
           typeof conditions.unitPrice === "number"
             ? conditions.unitPrice
-            : typeof listing?.unitPriceExclTax === "number"
-              ? listing.unitPriceExclTax
+            : typeof listingSnapshot?.unitPriceExclTax === "number"
+              ? listingSnapshot.unitPriceExclTax
               : 0;
 
         const view: InquiryView = {
           id: String(dto.id),
           productName:
             (typeof conditions.productName === "string" && conditions.productName) ||
-            (typeof listing?.machineName === "string" ? listing.machineName : "商品"),
+            listingSnapshot?.machineName ||
+            listingSnapshot?.title ||
+            "商品",
           makerName:
             (typeof conditions.makerName === "string" && conditions.makerName) ||
-            (typeof listing?.maker === "string" ? listing.maker : null),
+            listingSnapshot?.maker ||
+            null,
           quantity,
           unitPrice,
           shippingAddress:
             (typeof payload.buyerAddress === "string" && payload.buyerAddress) ||
-            (typeof listing?.storageLocation === "string" ? listing.storageLocation : undefined),
+            storageLocation,
           contactPerson:
             (typeof payload.buyerContactName === "string" && payload.buyerContactName) ||
             (typeof conditions.handler === "string" ? conditions.handler : undefined),

@@ -4,6 +4,11 @@ import { z } from "zod";
 import { findDevUserById } from "@/lib/dev-user/users";
 import { buildTodosFromStatus } from "./todo";
 import { type TradeNaviDraft } from "@/lib/navi/types";
+import {
+  formatListingStorageLocation,
+  resolveListingSnapshot,
+  type ListingSnapshot,
+} from "@/lib/trade/listingSnapshot";
 
 import { createTradeFromDraft } from "./storage";
 import { type TradeRecord } from "./types";
@@ -29,14 +34,6 @@ const isTradeNaviDraft = (payload: unknown): payload is TradeNaviDraft => {
   return "id" in payload && "ownerUserId" in payload && "conditions" in payload;
 };
 
-type ListingSnapshot = {
-  id: string;
-  machineName?: string | null;
-  maker?: string | null;
-  storageLocation?: string;
-  unitPriceExclTax?: number | null;
-};
-
 type OnlineInquiryPayload = {
   unitPriceExclTax?: number | null;
   quantity?: number | null;
@@ -57,37 +54,24 @@ const isOnlineInquiryPayload = (payload: unknown): payload is OnlineInquiryPaylo
   return "quantity" in candidate || "unitPriceExclTax" in candidate || "buyerMemo" in candidate;
 };
 
-const resolveListingSnapshot = (snapshot: unknown): ListingSnapshot | null => {
-  if (!snapshot || typeof snapshot !== "object") return null;
-  const listing = snapshot as Record<string, unknown>;
-  const id = listing.id;
-  if (typeof id !== "string") return null;
-  return {
-    id,
-    machineName: (listing.machineName as string | null | undefined) ?? null,
-    maker: (listing.maker as string | null | undefined) ?? null,
-    storageLocation: (listing.storageLocation as string | null | undefined) ?? undefined,
-    unitPriceExclTax: listing.unitPriceExclTax as number | null | undefined,
-  };
-};
-
 const buildOnlineInquiryDraft = (
   trade: TradeNaviDto,
   payload: OnlineInquiryPayload,
   snapshot: ListingSnapshot | null
 ): TradeNaviDraft => {
   const now = new Date().toISOString();
-  const listingUnitPrice = snapshot?.unitPriceExclTax;
+  const listingUnitPrice = snapshot?.unitPriceExclTax ?? null;
   const unitPrice =
     payload.unitPriceExclTax === null || payload.unitPriceExclTax === undefined
       ? listingUnitPrice ?? 0
       : payload.unitPriceExclTax;
+  const location = formatListingStorageLocation(snapshot);
 
   return {
     id: String(trade.id),
     ownerUserId: trade.ownerUserId,
     status: "sent_to_buyer",
-    productId: snapshot?.id ?? undefined,
+    productId: snapshot?.listingId ?? undefined,
     buyerId: trade.buyerUserId ?? undefined,
     buyerCompanyName: findDevUserById(trade.buyerUserId ?? "")?.companyName ?? null,
     buyerContactName: payload.buyerContactName ?? undefined,
@@ -100,9 +84,9 @@ const buildOnlineInquiryDraft = (
       handlingFee: payload.handlingFee ?? 0,
       taxRate: payload.taxRate ?? 0.1,
       memo: payload.buyerMemo ?? null,
-      productName: payload.productName ?? snapshot?.machineName ?? undefined,
+      productName: payload.productName ?? snapshot?.machineName ?? snapshot?.title ?? undefined,
       makerName: payload.makerName ?? snapshot?.maker ?? undefined,
-      location: payload.location ?? snapshot?.storageLocation ?? undefined,
+      location: payload.location ?? location ?? undefined,
     },
     createdAt: trade.createdAt,
     updatedAt: trade.updatedAt ?? now,
