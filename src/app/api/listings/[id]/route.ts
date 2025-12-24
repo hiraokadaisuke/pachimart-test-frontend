@@ -51,7 +51,11 @@ export async function GET(_request: Request, { params }: { params: { id?: string
 
     const listing = await listingClient.findUnique({ where: { id } });
 
-    if (!listing || listing.status !== ListingStatus.PUBLISHED || !listing.isVisible) {
+    if (
+      !listing ||
+      ![ListingStatus.PUBLISHED, ListingStatus.SOLD].includes(listing.status) ||
+      !listing.isVisible
+    ) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
