@@ -20,7 +20,7 @@ function formatDate(isoString: string) {
 
 function getStatusLabel(listing: Listing) {
   if (listing.status === "DRAFT") return "下書き";
-  if (listing.status === "SOLD") return "成約済";
+  if (listing.status === "SOLD") return "成約済み";
   if (listing.status === "PUBLISHED" && !listing.isVisible) return "公開停止";
   return "出品中";
 }
@@ -28,7 +28,7 @@ function getStatusLabel(listing: Listing) {
 const statusBadgeStyles: Record<string, string> = {
   出品中: "bg-emerald-50 text-emerald-700 border border-emerald-100",
   公開停止: "bg-slate-100 text-slate-600 border border-slate-200",
-  成約済: "bg-gray-100 text-gray-700 border border-gray-200",
+  成約済み: "bg-gray-100 text-gray-700 border border-gray-200",
   下書き: "bg-amber-50 text-amber-700 border border-amber-100",
 };
 
@@ -90,7 +90,31 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
 
   useEffect(() => {
     fetchListings();
-  }, [currentUser.id]);
+  }, [fetchListings]);
+
+  const updateListing = useCallback(
+    async (listingId: string, payload: { status?: string; isVisible?: boolean }) => {
+      try {
+        const response = await fetch(`/api/listings/${listingId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "x-dev-user-id": currentUser.id,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to update listing: ${response.status}`);
+        }
+
+        await fetchListings();
+      } catch (error) {
+        console.error("Failed to update listing", error);
+      }
+    },
+    [currentUser.id, fetchListings]
+  );
 
   const baseListings = useMemo(() => {
     if (status === "下書き") {
@@ -286,6 +310,23 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                     : listing.status === "PUBLISHED" && !listing.isVisible
                       ? "opacity-80"
                       : "";
+                const canOperate = listing.status !== "SOLD";
+                const statusActionLabel =
+                  listing.status === "DRAFT"
+                    ? "公開する"
+                    : listing.status === "PUBLISHED" && listing.isVisible
+                      ? "公開停止"
+                      : listing.status === "PUBLISHED"
+                        ? "再公開"
+                        : null;
+                const statusActionPayload =
+                  listing.status === "DRAFT"
+                    ? { status: "PUBLISHED", isVisible: true }
+                    : listing.status === "PUBLISHED" && listing.isVisible
+                      ? { isVisible: false }
+                      : listing.status === "PUBLISHED"
+                        ? { isVisible: true }
+                        : null;
 
                 return (
                   <tr key={listing.id} className={`${zebra} ${rowTone} border-b border-slate-100 text-xs`}>
@@ -340,12 +381,20 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                       }`}
                     >
                       <div className="flex items-center justify-center">
-                        <ActionMenu
-                          onCreateNavi={() => handleCreateNaviFromListing(listing)}
-                          onEdit={() => {}}
-                          onWithdraw={status === "出品中" ? () => {} : undefined}
-                          onDelete={() => {}}
-                        />
+                        {canOperate ? (
+                          <ActionMenu
+                            onCreateNavi={() => handleCreateNaviFromListing(listing)}
+                            onEdit={() => {}}
+                            statusActionLabel={statusActionLabel ?? undefined}
+                            onStatusAction={
+                              statusActionPayload
+                                ? () => updateListing(listing.id, statusActionPayload)
+                                : undefined
+                            }
+                          />
+                        ) : (
+                          <span className="text-[11px] font-semibold text-slate-400">-</span>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -362,11 +411,11 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
 type ActionMenuProps = {
   onCreateNavi: () => void;
   onEdit?: () => void;
-  onWithdraw?: () => void;
-  onDelete?: () => void;
+  statusActionLabel?: string;
+  onStatusAction?: () => void;
 };
 
-function ActionMenu({ onCreateNavi, onEdit, onWithdraw, onDelete }: ActionMenuProps) {
+function ActionMenu({ onCreateNavi, onEdit, statusActionLabel, onStatusAction }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -426,29 +475,18 @@ function ActionMenu({ onCreateNavi, onEdit, onWithdraw, onDelete }: ActionMenuPr
           >
             編集
           </button>
-          {onWithdraw && (
+          {statusActionLabel && onStatusAction && (
             <button
               type="button"
               className="block w-full px-3 py-1.5 text-left text-[13px] text-neutral-800 hover:bg-slate-50"
               onClick={() => {
-                onWithdraw();
+                onStatusAction();
                 setOpen(false);
               }}
             >
-              取り下げ
+              {statusActionLabel}
             </button>
           )}
-          <div className="my-1 border-t border-slate-200" />
-          <button
-            type="button"
-            className="block w-full px-3 py-1.5 text-left text-[13px] font-semibold text-rose-600 hover:bg-rose-50"
-            onClick={() => {
-              onDelete?.();
-              setOpen(false);
-            }}
-          >
-            削除
-          </button>
         </div>
       )}
     </div>
