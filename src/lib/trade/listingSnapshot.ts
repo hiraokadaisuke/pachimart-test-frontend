@@ -5,11 +5,11 @@ import {
   resolveStorageLocationSnapshot,
 } from "@/lib/listings/storageLocation";
 
-export type TradeStorageLocationSnapshot = Prisma.JsonObject & {
+export type TradeStorageLocationSnapshot = Prisma.InputJsonObject & {
   name: string;
   address: string;
   handlingFee: number;
-  shippingFeesByRegion: Prisma.JsonValue | null;
+  shippingFeesByRegion: Prisma.InputJsonValue | null;
   id?: string;
   postalCode?: string;
   prefecture?: string;
@@ -18,7 +18,7 @@ export type TradeStorageLocationSnapshot = Prisma.JsonObject & {
   handlingFeePerUnit?: number;
 };
 
-export type ListingSnapshot = Prisma.JsonObject & {
+export type ListingSnapshot = Prisma.InputJsonObject & {
   listingId: string;
   title: string;
   description: string | null;
@@ -92,8 +92,8 @@ const resolveTradeStorageLocationSnapshot = (
     (legacy?.handlingFeePerUnit !== undefined ? legacy.handlingFeePerUnit : undefined) ??
     0;
   const shippingFeesByRegion =
-    (snapshot.shippingFeesByRegion as Prisma.JsonValue | undefined) ??
-    (legacy?.shippingFeesByRegion as Prisma.JsonValue | undefined) ??
+    (snapshot.shippingFeesByRegion as Prisma.InputJsonValue | undefined) ??
+    (legacy?.shippingFeesByRegion as Prisma.InputJsonValue | undefined) ??
     null;
 
   if (!name && !address) return null;
