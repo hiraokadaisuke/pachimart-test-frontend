@@ -13,11 +13,11 @@ import { fetchMessagesByNaviId } from "@/lib/messages/api";
 import type { TradeMessage } from "@/lib/messages/transform";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { getInProgressDescription } from "@/lib/trade/copy";
+import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { TradeRecord } from "@/lib/trade/types";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
-import { TradeDto, transformTrade } from "@/lib/trade/transform";
 
 const SECTION_LABELS = {
   approval: todoUiMap["application_sent"],
@@ -115,7 +115,6 @@ export function InProgressTabContent() {
         .filter(
           (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
         )
-        .filter((trade) => trade.section !== "approval")
         .filter((trade) => {
           if (statusFilter === "inProgress") return trade.isOpen;
           if (statusFilter === "completed")
@@ -135,16 +134,11 @@ export function InProgressTabContent() {
 
   const refreshTrades = useCallback(async () => {
     try {
-      const response = await fetch("/api/trades/in-progress");
-      if (!response.ok) {
-        throw new Error(`Failed to fetch trades: ${response.status}`);
-      }
-
-      const data: TradeDto[] = await response.json();
+      const data = await loadAllTradesWithApi();
       const ownedTrades = data.filter(
         (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
       );
-      setTrades(ownedTrades.map(transformTrade));
+      setTrades(ownedTrades);
     } catch (error) {
       console.error("Failed to load trades", error);
       setTrades([]);
@@ -171,13 +165,13 @@ export function InProgressTabContent() {
   const filteredTrades = useMemo(() => filterTrades(tradeRows), [filterTrades, tradeRows]);
 
   const buyPayment = filteredTrades.filter(
-    (trade) => trade.kind === "buy" && trade.section === "payment"
+    (trade) => trade.kind === "buy" && (trade.section === "payment" || trade.section === "approval")
   );
   const buyConfirmation = filteredTrades.filter(
     (trade) => trade.kind === "buy" && trade.section === "confirmation"
   );
   const sellPayment = filteredTrades.filter(
-    (trade) => trade.kind === "sell" && trade.section === "payment"
+    (trade) => trade.kind === "sell" && (trade.section === "payment" || trade.section === "approval")
   );
   const sellConfirmation = filteredTrades.filter(
     (trade) => trade.kind === "sell" && trade.section === "confirmation"
