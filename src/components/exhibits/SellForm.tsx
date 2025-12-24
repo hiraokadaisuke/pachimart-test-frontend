@@ -10,12 +10,15 @@ type SellFormProps = {
   showHeader?: boolean;
 };
 
-type StorageLocation = {
+type MachineStorageLocation = {
   id: string;
   name: string;
-  address: string;
-  prefecture: string | null;
-  city: string | null;
+  postalCode: string;
+  prefecture: string;
+  city: string;
+  addressLine: string;
+  handlingFeePerUnit: number;
+  shippingFeesByRegion: Record<string, number>;
 };
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
@@ -56,7 +59,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   const [quantity, setQuantity] = useState<number | "">(1);
   const [price, setPrice] = useState<number | "">("");
   const [isNegotiable, setIsNegotiable] = useState(false);
-  const [storageLocations, setStorageLocations] = useState<StorageLocation[]>([]);
+  const [storageLocations, setStorageLocations] = useState<MachineStorageLocation[]>([]);
   const [selectedStorageLocationId, setSelectedStorageLocationId] = useState("");
   const [removalStatus, setRemovalStatus] = useState<"REMOVED" | "SCHEDULED">("SCHEDULED");
   const [removalDate, setRemovalDate] = useState("");
@@ -88,17 +91,14 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        const response = await fetch("/api/storage-locations", {
+        const response = await fetch("/api/machine-storage-locations", {
           headers: { "x-dev-user-id": currentUser.id },
         });
         if (!response.ok) {
           throw new Error(`Failed to fetch storage locations: ${response.status}`);
         }
-        const data: StorageLocation[] = await response.json();
+        const data: MachineStorageLocation[] = await response.json();
         setStorageLocations(data);
-        if (!selectedStorageLocationId && data.length > 0) {
-          setSelectedStorageLocationId(data[0].id);
-        }
         setLocationError(null);
       } catch (error) {
         console.error("Failed to fetch storage locations", error);
@@ -114,8 +114,8 @@ export function SellForm({ showHeader = true }: SellFormProps) {
     [selectedStorageLocationId, storageLocations]
   );
 
-  const storageLocation = selectedStorageLocation
-    ? [selectedStorageLocation.name, selectedStorageLocation.address].filter(Boolean).join(" ")
+  const storageLocationAddress = selectedStorageLocation
+    ? `〒${selectedStorageLocation.postalCode} ${selectedStorageLocation.prefecture}${selectedStorageLocation.city}${selectedStorageLocation.addressLine}`
     : "";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -163,16 +163,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
       hasNailSheet,
       hasManual,
       pickupAvailable,
-      storageLocation,
       storageLocationId: selectedStorageLocationId,
-      storageLocationSnapshot: selectedStorageLocation
-        ? {
-            name: selectedStorageLocation.name,
-            address: selectedStorageLocation.address,
-            prefecture: selectedStorageLocation.prefecture,
-            city: selectedStorageLocation.city,
-          }
-        : null,
       shippingFeeCount,
       handlingFeeCount,
       allowPartial,
@@ -484,22 +475,23 @@ export function SellForm({ showHeader = true }: SellFormProps) {
                     onChange={(event) => setSelectedStorageLocationId(event.target.value)}
                     required
                   >
-                    {storageLocations.length === 0 ? (
-                      <option value="">登録済み保管場所がありません</option>
-                    ) : null}
+                    <option value="">
+                      {storageLocations.length === 0 ? "登録済みの倉庫がありません" : "倉庫を選択してください"}
+                    </option>
                     {storageLocations.map((location) => (
                       <option key={location.id} value={location.id}>
-                        {location.name}
+                        {location.name}（{location.prefecture}
+                        {location.city}）
                       </option>
                     ))}
                   </select>
                   {selectedStorageLocation ? (
-                    <p className="text-xs text-neutral-600">
-                      {selectedStorageLocation.address}
-                      {selectedStorageLocation.prefecture
-                        ? ` (${selectedStorageLocation.prefecture}${selectedStorageLocation.city ?? ""})`
-                        : null}
-                    </p>
+                    <div className="space-y-1 rounded border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-neutral-700">
+                      <p className="font-semibold text-slate-800">{selectedStorageLocation.name}</p>
+                      <p>{storageLocationAddress}</p>
+                      <p>出庫手数料（1台あたり）：{selectedStorageLocation.handlingFeePerUnit.toLocaleString("ja-JP")}円</p>
+                      <p className="text-[11px] text-neutral-500">送料は倉庫設定で確認できます。</p>
+                    </div>
                   ) : null}
                   {locationError ? <p className="text-xs text-rose-600">{locationError}</p> : null}
                   <textarea

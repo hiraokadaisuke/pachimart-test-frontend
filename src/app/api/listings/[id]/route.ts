@@ -3,6 +3,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
+import {
+  buildStorageLocationSnapshot,
+  formatStorageLocationShort,
+  type StorageLocationSnapshot,
+} from "@/lib/listings/storageLocation";
 
 const listingClient = prisma.listing;
 
@@ -58,7 +63,37 @@ export async function GET(_request: Request, { params }: { params: { id?: string
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    return NextResponse.json(toDto(listing));
+    let storageLocationSnapshot = listing.storageLocationSnapshot as StorageLocationSnapshot | null;
+    let storageLocation = String(listing.storageLocation ?? "");
+
+    if (!storageLocationSnapshot && listing.storageLocationId) {
+      const location = await prisma.machineStorageLocation.findUnique({
+        where: { id: String(listing.storageLocationId) },
+      });
+
+      if (location) {
+        storageLocationSnapshot = buildStorageLocationSnapshot({
+          id: String(location.id),
+          name: String(location.name),
+          postalCode: String(location.postalCode),
+          prefecture: String(location.prefecture),
+          city: String(location.city),
+          addressLine: String(location.addressLine),
+          handlingFeePerUnit: Number(location.handlingFeePerUnit),
+          shippingFeesByRegion: location.shippingFeesByRegion,
+        });
+      }
+    }
+
+    storageLocation = formatStorageLocationShort(storageLocationSnapshot, storageLocation);
+
+    return NextResponse.json(
+      toDto({
+        ...listing,
+        storageLocationSnapshot,
+        storageLocation,
+      })
+    );
   } catch (error) {
     console.error("Failed to fetch listing", error);
     return NextResponse.json({ error: "Failed to fetch listing" }, { status: 500 });

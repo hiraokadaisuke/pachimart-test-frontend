@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviTable";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
 import { Badge } from "@/components/ui/badge";
+import { formatStorageLocationShort } from "@/lib/listings/storageLocation";
 import type { Listing } from "@/lib/listings/types";
 
 function formatPrice(listing: Listing) {
@@ -88,6 +89,8 @@ export default function ProductListPage() {
         key: "storageLocation",
         label: "保管場所",
         width: "180px",
+        render: (row: Listing) =>
+          formatStorageLocationShort(row.storageLocationSnapshot, row.storageLocation),
       },
       {
         key: "allowPartial",
@@ -113,7 +116,10 @@ export default function ProductListPage() {
     return listings.filter((listing) => {
       const maker = listing.maker?.toLowerCase() ?? "";
       const machineName = listing.machineName?.toLowerCase() ?? "";
-      const storageLocation = listing.storageLocation.toLowerCase();
+      const storageLocation = formatStorageLocationShort(
+        listing.storageLocationSnapshot,
+        listing.storageLocation
+      ).toLowerCase();
 
       return (
         maker.includes(keywordLower) ||

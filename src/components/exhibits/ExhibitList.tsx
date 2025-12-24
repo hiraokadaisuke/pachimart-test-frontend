@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { formatStorageLocationShort } from "@/lib/listings/storageLocation";
 import type { Listing } from "@/lib/listings/types";
 
 function formatDate(isoString: string) {
@@ -327,6 +328,10 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                       : listing.status === "PUBLISHED"
                         ? { isVisible: true }
                         : null;
+                const storageLocationLabel = formatStorageLocationShort(
+                  listing.storageLocationSnapshot,
+                  listing.storageLocation
+                );
 
                 return (
                   <tr key={listing.id} className={`${zebra} ${rowTone} border-b border-slate-100 text-xs`}>
@@ -343,8 +348,8 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                       </span>
                     </td>
                     <td className="px-2 py-1.5 align-top font-semibold text-slate-800">
-                      <span className="block max-w-[110px] truncate whitespace-nowrap" title={listing.storageLocation}>
-                        {listing.storageLocation || "-"}
+                      <span className="block max-w-[110px] truncate whitespace-nowrap" title={storageLocationLabel}>
+                        {storageLocationLabel}
                       </span>
                     </td>
                     <td className="px-2 py-1.5 align-top text-neutral-900" title={listing.maker ?? ""}>

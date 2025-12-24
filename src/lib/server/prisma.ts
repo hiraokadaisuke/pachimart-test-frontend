@@ -179,6 +179,9 @@ type InMemoryPrisma = {
       where?: { ownerUserId?: string; isActive?: boolean };
       orderBy?: { updatedAt?: "asc" | "desc" };
     }) => Promise<InMemoryMachineStorageLocation[]>;
+    findFirst: ({ where }: { where: { id?: string | null; ownerUserId?: string; isActive?: boolean } }) => Promise<
+      InMemoryMachineStorageLocation | null
+    >;
     findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryMachineStorageLocation | null>;
     create: ({
       data,
@@ -578,6 +581,21 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           return (a.updatedAt.getTime() - b.updatedAt.getTime()) * order;
         });
         return sorted.map((location) => ({ ...location }));
+      },
+      findFirst: async ({
+        where,
+      }: {
+        where: { id?: string | null; ownerUserId?: string; isActive?: boolean };
+      }) => {
+        const filtered = machineStorageLocations.filter((location) => {
+          const matchesId = where.id ? location.id === where.id : true;
+          const matchesOwner = where.ownerUserId ? location.ownerUserId === where.ownerUserId : true;
+          const matchesActive =
+            where.isActive === undefined ? true : location.isActive === where.isActive;
+          return matchesId && matchesOwner && matchesActive;
+        });
+        const found = filtered[0] ?? null;
+        return found ? { ...found } : null;
       },
       findUnique: async ({ where }: { where: { id?: string | null } }) => {
         const id = where.id ?? null;

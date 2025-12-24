@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import MainContainer from "@/components/layout/MainContainer";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import type { Listing } from "@/lib/listings/types";
+import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
 
 async function fetchListing(listingId: string): Promise<Listing | null> {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
@@ -80,7 +81,10 @@ export default async function ProductDetailPage({ params }: { params: { listingI
               <DetailRow label="機種名" value={listing.machineName ?? "-"} />
               <DetailRow label="台数" value={`${listing.quantity}台`} />
               <DetailRow label="単価" value={formatPrice(listing)} />
-              <DetailRow label="保管場所" value={listing.storageLocation} />
+              <DetailRow
+                label="保管場所"
+                value={formatStorageLocationFull(listing.storageLocationSnapshot, listing.storageLocation)}
+              />
             </div>
           </div>
 
