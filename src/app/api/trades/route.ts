@@ -155,12 +155,15 @@ export async function POST(request: Request) {
   }
 
   try {
+    const listingSnapshotInput: Prisma.InputJsonValue | Prisma.NullableJsonNullValueInput =
+      listingSnapshot ?? Prisma.DbNull;
+
     const created = await tradeNaviClient.create({
       data: {
         ownerUserId,
         buyerUserId: buyerUserId ?? null,
         listingId: listingId ?? null,
-        listingSnapshot: listingSnapshot ?? Prisma.JsonNull,
+        listingSnapshot: listingSnapshotInput,
         status: status ?? TradeNaviStatus.DRAFT,
         naviType: naviType ?? TradeNaviType.PHONE_AGREEMENT,
         payload: (payload ?? null) as any,
