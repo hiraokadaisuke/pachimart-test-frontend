@@ -17,8 +17,8 @@ type InMemoryTradeNavi = {
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
-  listingSnapshot: Prisma.JsonValue | null;
-  payload: Prisma.JsonValue | null;
+  listingSnapshot: Prisma.InputJsonValue | null;
+  payload: Prisma.InputJsonValue | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -28,7 +28,7 @@ type InMemoryTrade = {
   sellerUserId: string;
   buyerUserId: string;
   status: TradeStatus;
-  payload: Prisma.JsonValue | null;
+  payload: Prisma.InputJsonValue | null;
   naviId: number | null;
   createdAt: Date;
   updatedAt: Date;
@@ -61,7 +61,7 @@ type InMemoryListing = {
   pickupAvailable: boolean;
   storageLocation: string;
   storageLocationId: string | null;
-  storageLocationSnapshot: Prisma.JsonValue | null;
+  storageLocationSnapshot: Prisma.InputJsonValue | null;
   shippingFeeCount: number;
   handlingFeeCount: number;
   allowPartial: boolean;
@@ -90,7 +90,7 @@ type InMemoryMachineStorageLocation = {
   city: string;
   addressLine: string;
   handlingFeePerUnit: number;
-  shippingFeesByRegion: Prisma.JsonValue;
+  shippingFeesByRegion: Prisma.InputJsonValue;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
