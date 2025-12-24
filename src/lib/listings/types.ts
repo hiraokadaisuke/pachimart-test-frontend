@@ -9,7 +9,14 @@ export type Listing = {
   quantity: number;
   unitPriceExclTax: number | null;
   isNegotiable: boolean;
+  removalStatus: string;
+  removalDate: string | null;
+  hasNailSheet: boolean;
+  hasManual: boolean;
+  pickupAvailable: boolean;
   storageLocation: string;
+  storageLocationId: string | null;
+  storageLocationSnapshot: unknown | null;
   shippingFeeCount: number;
   handlingFeeCount: number;
   allowPartial: boolean;

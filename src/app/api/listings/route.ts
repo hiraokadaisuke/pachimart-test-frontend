@@ -1,4 +1,4 @@
-import { ListingStatus } from "@prisma/client";
+import { ListingStatus, RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -15,7 +15,14 @@ type ListingRecord = {
   quantity: number;
   unitPriceExclTax: number | null;
   isNegotiable: boolean;
+  removalStatus: RemovalStatus;
+  removalDate: Date | null;
+  hasNailSheet: boolean;
+  hasManual: boolean;
+  pickupAvailable: boolean;
   storageLocation: string;
+  storageLocationId: string | null;
+  storageLocationSnapshot: unknown | null;
   shippingFeeCount: number;
   handlingFeeCount: number;
   allowPartial: boolean;
@@ -35,7 +42,14 @@ type ListingDto = {
   quantity: number;
   unitPriceExclTax: number | null;
   isNegotiable: boolean;
+  removalStatus: RemovalStatus;
+  removalDate: string | null;
+  hasNailSheet: boolean;
+  hasManual: boolean;
+  pickupAvailable: boolean;
   storageLocation: string;
+  storageLocationId: string | null;
+  storageLocationSnapshot: unknown | null;
   shippingFeeCount: number;
   handlingFeeCount: number;
   allowPartial: boolean;
@@ -61,10 +75,21 @@ const createListingSchema = z
     unitPriceExclTax: z.number().int().nonnegative().optional().nullable(),
     isNegotiable: z.boolean().default(false),
     storageLocation: z.string().min(1, "storageLocation is required"),
+    storageLocationId: z.string().optional().nullable(),
+    storageLocationSnapshot: z.unknown().optional().nullable(),
     shippingFeeCount: z.number().int().nonnegative(),
     handlingFeeCount: z.number().int().nonnegative(),
     allowPartial: z.boolean(),
     note: z.string().optional().nullable(),
+    removalStatus: z.nativeEnum(RemovalStatus).optional().default(RemovalStatus.SCHEDULED),
+    removalDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "removalDate must be in YYYY-MM-DD format")
+      .optional()
+      .nullable(),
+    hasNailSheet: z.boolean().optional(),
+    hasManual: z.boolean().optional(),
+    pickupAvailable: z.boolean().optional(),
     status: z.nativeEnum(ListingStatus).optional(),
     isVisible: z.boolean().optional(),
   })
@@ -75,6 +100,15 @@ const createListingSchema = z
     {
       message: "unitPriceExclTax is required when not negotiable",
       path: ["unitPriceExclTax"],
+    }
+  )
+  .refine(
+    (data) =>
+      (data.removalStatus ?? RemovalStatus.SCHEDULED) === RemovalStatus.REMOVED ||
+      Boolean(data.removalDate),
+    {
+      message: "removalDate is required when removalStatus is scheduled",
+      path: ["removalDate"],
     }
   );
 
@@ -110,7 +144,14 @@ const toRecord = (listing: unknown): ListingRecord => {
         ? null
         : Number(candidate.unitPriceExclTax),
     isNegotiable: Boolean(candidate.isNegotiable),
+    removalStatus: (candidate.removalStatus as RemovalStatus) ?? RemovalStatus.SCHEDULED,
+    removalDate: candidate.removalDate ? toDate(candidate.removalDate) : null,
+    hasNailSheet: Boolean(candidate.hasNailSheet),
+    hasManual: Boolean(candidate.hasManual),
+    pickupAvailable: Boolean(candidate.pickupAvailable),
     storageLocation: String(candidate.storageLocation),
+    storageLocationId: (candidate.storageLocationId as string | null) ?? null,
+    storageLocationSnapshot: (candidate.storageLocationSnapshot as unknown | null) ?? null,
     shippingFeeCount: Number(candidate.shippingFeeCount),
     handlingFeeCount: Number(candidate.handlingFeeCount),
     allowPartial: Boolean(candidate.allowPartial),
@@ -131,7 +172,14 @@ const toDto = (listing: ListingRecord): ListingDto => ({
   quantity: listing.quantity,
   unitPriceExclTax: listing.unitPriceExclTax,
   isNegotiable: listing.isNegotiable,
+  removalStatus: listing.removalStatus,
+  removalDate: listing.removalDate ? listing.removalDate.toISOString() : null,
+  hasNailSheet: listing.hasNailSheet,
+  hasManual: listing.hasManual,
+  pickupAvailable: listing.pickupAvailable,
   storageLocation: listing.storageLocation,
+  storageLocationId: listing.storageLocationId,
+  storageLocationSnapshot: listing.storageLocationSnapshot,
   shippingFeeCount: listing.shippingFeeCount,
   handlingFeeCount: listing.handlingFeeCount,
   allowPartial: listing.allowPartial,
@@ -248,9 +296,19 @@ export async function POST(request: Request) {
         maker: data.maker ?? null,
         machineName: data.machineName ?? null,
         quantity: data.quantity,
-        unitPriceExclTax: data.unitPriceExclTax ?? null,
+        unitPriceExclTax: data.isNegotiable ? null : (data.unitPriceExclTax ?? null),
         isNegotiable: data.isNegotiable,
+        removalStatus: data.removalStatus ?? RemovalStatus.SCHEDULED,
+        removalDate:
+          data.removalStatus === RemovalStatus.SCHEDULED && data.removalDate
+            ? new Date(data.removalDate)
+            : null,
+        hasNailSheet: data.hasNailSheet ?? false,
+        hasManual: data.hasManual ?? false,
+        pickupAvailable: data.pickupAvailable ?? false,
         storageLocation: data.storageLocation,
+        storageLocationId: data.storageLocationId ?? null,
+        storageLocationSnapshot: data.storageLocationSnapshot ?? null,
         shippingFeeCount: data.shippingFeeCount,
         handlingFeeCount: data.handlingFeeCount,
         allowPartial: data.allowPartial,

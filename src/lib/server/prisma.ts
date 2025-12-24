@@ -53,11 +53,29 @@ type InMemoryListing = {
   quantity: number;
   unitPriceExclTax: number | null;
   isNegotiable: boolean;
+  removalStatus: Prisma.RemovalStatus;
+  removalDate: Date | null;
+  hasNailSheet: boolean;
+  hasManual: boolean;
+  pickupAvailable: boolean;
   storageLocation: string;
+  storageLocationId: string | null;
+  storageLocationSnapshot: Prisma.JsonValue | null;
   shippingFeeCount: number;
   handlingFeeCount: number;
   allowPartial: boolean;
   note: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type InMemoryStorageLocation = {
+  id: string;
+  ownerUserId: string;
+  name: string;
+  address: string;
+  prefecture: string | null;
+  city: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -119,6 +137,24 @@ type InMemoryPrisma = {
     create: ({ data }: { data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
     update: ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
   };
+  storageLocation: {
+    findMany: ({
+      where,
+      orderBy,
+    }: {
+      where?: { ownerUserId?: string };
+      orderBy?: { updatedAt?: "asc" | "desc" };
+    }) => Promise<InMemoryStorageLocation[]>;
+    upsert: ({
+      where,
+      create,
+      update,
+    }: {
+      where: { id?: string | null };
+      create: Partial<InMemoryStorageLocation>;
+      update: Partial<InMemoryStorageLocation>;
+    }) => Promise<InMemoryStorageLocation>;
+  };
   $transaction: <T>(callback: (client: InMemoryPrisma) => Promise<T> | T) => Promise<T>;
   $queryRaw: (...params: unknown[]) => Promise<void>;
 };
@@ -136,10 +172,12 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   const trades: InMemoryTrade[] = [];
   const messages: InMemoryMessage[] = [];
   const listings: InMemoryListing[] = [];
+  const storageLocations: InMemoryStorageLocation[] = [];
   let tradeNaviSeq = 1;
   let tradeSeq = 1;
   let messageSeq = 1;
   let listingSeq = 1;
+  let storageLocationSeq = 1;
 
   const now = () => new Date();
 
@@ -341,7 +379,17 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
             ? null
             : Number(data.unitPriceExclTax),
           isNegotiable: Boolean(data.isNegotiable),
+          removalStatus: (data.removalStatus as Prisma.RemovalStatus | undefined) ?? "SCHEDULED",
+          removalDate:
+            data.removalDate === undefined || data.removalDate === null
+              ? null
+              : new Date(data.removalDate as Date),
+          hasNailSheet: Boolean(data.hasNailSheet),
+          hasManual: Boolean(data.hasManual),
+          pickupAvailable: Boolean(data.pickupAvailable),
           storageLocation: String(data.storageLocation ?? ""),
+          storageLocationId: (data.storageLocationId as string | null | undefined) ?? null,
+          storageLocationSnapshot: (data.storageLocationSnapshot as Prisma.JsonValue | null | undefined) ?? null,
           shippingFeeCount: Number.isFinite(Number(data.shippingFeeCount)) ? Number(data.shippingFeeCount) : 0,
           handlingFeeCount: Number.isFinite(Number(data.handlingFeeCount)) ? Number(data.handlingFeeCount) : 0,
           allowPartial: Boolean(data.allowPartial),
@@ -380,7 +428,22 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
                 ? null
                 : Number(data.unitPriceExclTax),
           isNegotiable: (data.isNegotiable as boolean | undefined) ?? listings[idx].isNegotiable,
+          removalStatus: (data.removalStatus as Prisma.RemovalStatus | undefined) ?? listings[idx].removalStatus,
+          removalDate:
+            data.removalDate === undefined
+              ? listings[idx].removalDate
+              : data.removalDate === null
+                ? null
+                : new Date(data.removalDate as Date),
+          hasNailSheet: (data.hasNailSheet as boolean | undefined) ?? listings[idx].hasNailSheet,
+          hasManual: (data.hasManual as boolean | undefined) ?? listings[idx].hasManual,
+          pickupAvailable: (data.pickupAvailable as boolean | undefined) ?? listings[idx].pickupAvailable,
           storageLocation: (data.storageLocation as string | undefined) ?? listings[idx].storageLocation,
+          storageLocationId:
+            (data.storageLocationId as string | null | undefined) ?? listings[idx].storageLocationId,
+          storageLocationSnapshot:
+            (data.storageLocationSnapshot as Prisma.JsonValue | null | undefined) ??
+            listings[idx].storageLocationSnapshot,
           shippingFeeCount: Number.isFinite(Number(data.shippingFeeCount))
             ? Number(data.shippingFeeCount)
             : listings[idx].shippingFeeCount,
@@ -394,6 +457,66 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
         listings[idx] = updated;
         return { ...updated };
+      },
+    },
+    storageLocation: {
+      findMany: async ({
+        where,
+        orderBy,
+      }: {
+        where?: { ownerUserId?: string };
+        orderBy?: { updatedAt?: "asc" | "desc" };
+      } = {}) => {
+        const filtered = storageLocations.filter((location) =>
+          where?.ownerUserId ? location.ownerUserId === where.ownerUserId : true
+        );
+        const sorted = filtered.sort((a, b) => {
+          const order = orderBy?.updatedAt === "asc" ? 1 : -1;
+          return (a.updatedAt.getTime() - b.updatedAt.getTime()) * order;
+        });
+        return sorted.map((location) => ({ ...location }));
+      },
+      upsert: async ({
+        where,
+        create,
+        update,
+      }: {
+        where: { id?: string | null };
+        create: Partial<InMemoryStorageLocation>;
+        update: Partial<InMemoryStorageLocation>;
+      }) => {
+        const id = where.id ?? null;
+        if (id) {
+          const idx = storageLocations.findIndex((location) => location.id === id);
+          if (idx >= 0) {
+            const updated: InMemoryStorageLocation = {
+              ...storageLocations[idx],
+              ...update,
+              name: String(update.name ?? storageLocations[idx].name),
+              address: String(update.address ?? storageLocations[idx].address),
+              prefecture:
+                (update.prefecture as string | null | undefined) ?? storageLocations[idx].prefecture,
+              city: (update.city as string | null | undefined) ?? storageLocations[idx].city,
+              updatedAt: now(),
+            };
+            storageLocations[idx] = updated;
+            return { ...updated };
+          }
+        }
+
+        const record: InMemoryStorageLocation = {
+          id: String(create.id ?? `storage_location_${storageLocationSeq++}`),
+          ownerUserId: String(create.ownerUserId ?? ""),
+          name: String(create.name ?? ""),
+          address: String(create.address ?? ""),
+          prefecture: (create.prefecture as string | null | undefined) ?? null,
+          city: (create.city as string | null | undefined) ?? null,
+          createdAt: now(),
+          updatedAt: now(),
+        };
+
+        storageLocations.push(record);
+        return { ...record };
       },
     },
     $transaction: async <T>(callback: (client: ReturnType<typeof buildInMemoryPrisma>) => Promise<T> | T): Promise<T> =>
