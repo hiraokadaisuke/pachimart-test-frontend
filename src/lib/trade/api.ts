@@ -11,7 +11,7 @@ import {
 } from "@/lib/trade/listingSnapshot";
 
 import { createTradeFromDraft } from "./storage";
-import { type TradeRecord } from "./types";
+import { type BuyerContact, type ShippingInfo, type TradeRecord } from "./types";
 
 const tradeNaviSchema = z.object({
   id: z.number(),
@@ -52,6 +52,21 @@ const isOnlineInquiryPayload = (payload: unknown): payload is OnlineInquiryPaylo
   if (!payload || typeof payload !== "object") return false;
   const candidate = payload as Record<string, unknown>;
   return "quantity" in candidate || "unitPriceExclTax" in candidate || "buyerMemo" in candidate;
+};
+
+const normalizeContacts = (input: unknown, fallback: BuyerContact[] = []): BuyerContact[] => {
+  if (!Array.isArray(input)) return fallback;
+
+  return input
+    .map((candidate) => {
+      if (!candidate || typeof candidate !== "object") return null;
+      const record = candidate as Record<string, unknown>;
+      const contactId = record.contactId ?? record.id ?? record.name;
+
+      if (typeof contactId !== "string" || typeof record.name !== "string") return null;
+      return { contactId, name: record.name } satisfies BuyerContact;
+    })
+    .filter(Boolean) as BuyerContact[];
 };
 
 const buildOnlineInquiryDraft = (
@@ -114,6 +129,27 @@ export function mapTradeNaviToTradeRecord(trade: TradeNaviDto): TradeRecord | nu
 
   const record = createTradeFromDraft(draft, trade.ownerUserId);
 
+  const payloadShipping =
+    trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)
+      ? ((trade.payload as { buyerShippingAddress?: ShippingInfo }).buyerShippingAddress ??
+          (trade.payload as { shipping?: ShippingInfo }).shipping ??
+          undefined)
+      : undefined;
+
+  const payloadContacts =
+    trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)
+      ? (trade.payload as { buyerContacts?: BuyerContact[] }).buyerContacts
+      : undefined;
+
+  const payloadContactName =
+    trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)
+      ? (trade.payload as { buyerContactName?: string }).buyerContactName
+      : undefined;
+
+  const normalizedShipping = payloadShipping ?? record.buyerShippingAddress ?? record.shipping ?? {};
+  const normalizedContacts = normalizeContacts(payloadContacts, record.buyerContacts ?? []);
+  const normalizedContactName = payloadContactName ?? normalizedShipping.personName ?? record.buyerContactName;
+
   return {
     ...record,
     naviId: trade.id,
@@ -123,6 +159,10 @@ export function mapTradeNaviToTradeRecord(trade: TradeNaviDto): TradeRecord | nu
     createdAt: draft.createdAt ?? trade.createdAt,
     updatedAt: draft.updatedAt ?? trade.updatedAt,
     listingSnapshot,
+    shipping: normalizedShipping,
+    buyerShippingAddress: normalizedShipping,
+    buyerContactName: normalizedContactName,
+    buyerContacts: normalizedContacts,
   };
 }
 
@@ -194,7 +234,7 @@ const normalizeTradeRecord = (trade: TradeRecord): TradeRecord => {
     todos: Array.isArray(trade.todos) ? trade.todos : [],
     shipping: trade.shipping ?? trade.buyerShippingAddress ?? {},
     buyerShippingAddress: trade.buyerShippingAddress ?? trade.shipping ?? {},
-    buyerContacts: trade.buyerContacts ?? [],
+    buyerContacts: Array.isArray(trade.buyerContacts) ? trade.buyerContacts : [],
     listingSnapshot: trade.listingSnapshot ?? null,
     storageLocationName: trade.storageLocationName ?? undefined,
   };
@@ -293,4 +333,30 @@ export async function updateTradeStatus(tradeId: string, status: "APPROVED" | "R
     const detail = await response.text();
     throw new Error(`Failed to update trade ${tradeId}: ${response.status} ${detail}`);
   }
+}
+
+export async function saveTradeShippingInfo(
+  tradeId: string,
+  shipping: ShippingInfo,
+  contacts?: BuyerContact[],
+  actorUserId?: string
+) {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+
+  if (actorUserId) {
+    headers["x-dev-user-id"] = actorUserId;
+  }
+
+  const response = await fetch(`/api/trades/${tradeId}/shipping`, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify({ shipping, contacts: contacts ?? undefined }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Failed to update shipping for trade ${tradeId}: ${response.status} ${detail}`);
+  }
+
+  return (await response.json()) as unknown;
 }

@@ -164,3 +164,21 @@ model MachineStorageLocation {
   @@index([ownerUserId])
   @@index([isActive])
 }
+
+model BuyerShippingAddress {
+  id           String   @id @default(cuid())
+  ownerUserId  String
+  label        String?
+  companyName  String?
+  postalCode   String?
+  prefecture   String?
+  city         String?
+  addressLine  String?
+  tel          String?
+  contactName  String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([ownerUserId, isActive])
+}
