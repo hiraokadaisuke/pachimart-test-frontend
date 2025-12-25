@@ -2,6 +2,7 @@ import { TradeNaviStatus, TradeNaviType, type Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { findDevUserById } from "@/lib/dev-user/users";
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { buildTodosFromStatus } from "./todo";
 import { type TradeNaviDraft } from "@/lib/navi/types";
 import {
@@ -247,7 +248,7 @@ const parseNaviId = (value: string): number | null => {
 };
 
 export async function fetchTradeNavis(): Promise<TradeNaviDto[]> {
-  const response = await fetch("/api/trades");
+  const response = await fetchWithDevHeader("/api/trades");
 
   if (!response.ok) {
     const detail = await response.text();
@@ -277,7 +278,7 @@ export async function fetchTradeRecordsFromApi(): Promise<TradeRecord[]> {
 }
 
 export async function fetchTradeNaviById(tradeId: string): Promise<TradeNaviDto | null> {
-  const response = await fetch(`/api/trades/${tradeId}`);
+  const response = await fetchWithDevHeader(`/api/trades/${tradeId}`);
 
   if (response.status === 404) return null;
 
@@ -321,13 +322,16 @@ export async function fetchTradeRecordById(tradeId: string): Promise<TradeRecord
 }
 
 export async function updateTradeStatus(tradeId: string, status: "APPROVED" | "REJECTED") {
-  const response = await fetch(`/api/trades/${tradeId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ status }),
-  });
+  const response = await fetchWithDevHeader(
+    `/api/trades/${tradeId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    }
+  );
 
   if (!response.ok) {
     const detail = await response.text();
@@ -341,17 +345,15 @@ export async function saveTradeShippingInfo(
   contacts?: BuyerContact[],
   actorUserId?: string
 ) {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-
-  if (actorUserId) {
-    headers["x-dev-user-id"] = actorUserId;
-  }
-
-  const response = await fetch(`/api/trades/${tradeId}/shipping`, {
-    method: "PATCH",
-    headers,
-    body: JSON.stringify({ shipping, contacts: contacts ?? undefined }),
-  });
+  const response = await fetchWithDevHeader(
+    `/api/trades/${tradeId}/shipping`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shipping, contacts: contacts ?? undefined }),
+    },
+    actorUserId
+  );
 
   if (!response.ok) {
     const detail = await response.text();

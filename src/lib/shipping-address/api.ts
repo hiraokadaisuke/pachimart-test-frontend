@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { type ShippingInfo } from "@/lib/trade/types";
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 
 const shippingAddressSchema = z.object({
   id: z.string(),
@@ -36,9 +37,13 @@ export const shippingAddressToShippingInfo = (address: ShippingAddressDto): Ship
 });
 
 export async function fetchShippingAddresses(ownerUserId: string): Promise<ShippingAddressDto[]> {
-  const response = await fetch("/api/shipping-addresses", {
-    headers: { "x-dev-user-id": ownerUserId },
-  });
+  const response = await fetchWithDevHeader(
+    "/api/shipping-addresses",
+    {
+      headers: { "x-dev-user-id": ownerUserId },
+    },
+    ownerUserId
+  );
 
   await handleResponse(response);
 
@@ -56,23 +61,27 @@ export async function createShippingAddress(
   ownerUserId: string,
   payload: ShippingInfo & { label?: string | null }
 ): Promise<ShippingAddressDto> {
-  const response = await fetch("/api/shipping-addresses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-dev-user-id": ownerUserId,
+  const response = await fetchWithDevHeader(
+    "/api/shipping-addresses",
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-dev-user-id": ownerUserId,
+      },
+      body: JSON.stringify({
+        label: payload.label ?? null,
+        companyName: payload.companyName ?? null,
+        postalCode: payload.zip ?? null,
+        prefecture: null,
+        city: null,
+        addressLine: payload.address ?? null,
+        tel: payload.tel ?? null,
+        contactName: payload.personName ?? null,
+      }),
     },
-    body: JSON.stringify({
-      label: payload.label ?? null,
-      companyName: payload.companyName ?? null,
-      postalCode: payload.zip ?? null,
-      prefecture: null,
-      city: null,
-      addressLine: payload.address ?? null,
-      tel: payload.tel ?? null,
-      contactName: payload.personName ?? null,
-    }),
-  });
+    ownerUserId
+  );
 
   await handleResponse(response);
 

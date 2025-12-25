@@ -15,6 +15,7 @@ import {
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { DEV_USERS, getDevUsers, findDevUserById, type DevUser } from "@/lib/dev-user/users";
 import { buildApiUrl } from "@/lib/http/apiBaseUrl";
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { products } from "@/lib/dummyData";
 import type { Listing } from "@/lib/listings/types";
 
@@ -199,7 +200,7 @@ function StandardTradeRequestEditor({
     let isMounted = true;
     setIsLoadingListing(true);
 
-    fetch(buildApiUrl(`/api/listings/${listingId}`))
+    fetchWithDevHeader(buildApiUrl(`/api/listings/${listingId}`), {}, currentUser.id)
       .then((response) => (response.ok ? response.json() : null))
       .then((data: Listing | null) => {
         if (!isMounted) return;
@@ -426,17 +427,21 @@ function StandardTradeRequestEditor({
     setIsSending(true);
 
     try {
-      const response = await fetch("/api/trades", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ownerUserId: currentUser.id,
-          buyerUserId: updatedDraft.buyerId ?? undefined,
-          listingId: listingId ?? linkedListing?.id ?? undefined,
-          status: "SENT",
-          payload: updatedDraft,
-        }),
-      });
+      const response = await fetchWithDevHeader(
+        "/api/trades",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ownerUserId: currentUser.id,
+            buyerUserId: updatedDraft.buyerId ?? undefined,
+            listingId: listingId ?? linkedListing?.id ?? undefined,
+            status: "SENT",
+            payload: updatedDraft,
+          }),
+        },
+        currentUser.id
+      );
 
       if (!response.ok) {
         const detail = await response.text();
@@ -1061,7 +1066,7 @@ function OnlineInquiryCreator({
 
     let isMounted = true;
 
-    fetch(buildApiUrl(`/api/listings/${listingId}`))
+    fetchWithDevHeader(buildApiUrl(`/api/listings/${listingId}`), {}, currentUser.id)
       .then((response) => (response.ok ? response.json() : null))
       .then((data: Listing | null) => {
         if (!isMounted) return;
@@ -1126,20 +1131,24 @@ function OnlineInquiryCreator({
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/online-inquiries", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-dev-user-id": currentUser.id },
-        body: JSON.stringify({
-          listingId: listingId ?? productId ?? "",
-          quantity,
-          buyerUserId: currentUser.id,
-          buyerMemo: memo,
-          shippingAddress,
-          contactPerson,
-          desiredShipDate,
-          desiredPaymentDate,
-        }),
-      });
+      const response = await fetchWithDevHeader(
+        "/api/online-inquiries",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            listingId: listingId ?? productId ?? "",
+            quantity,
+            buyerUserId: currentUser.id,
+            buyerMemo: memo,
+            shippingAddress,
+            contactPerson,
+            desiredShipDate,
+            desiredPaymentDate,
+          }),
+        },
+        currentUser.id
+      );
 
       if (!response.ok) {
         const detail = await response.json().catch(() => null);

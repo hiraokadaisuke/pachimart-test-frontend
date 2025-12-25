@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 
 type SellFormProps = {
   showHeader?: boolean;
@@ -91,9 +92,11 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   useEffect(() => {
     const fetchLocations = async () => {
       try {
-        const response = await fetch("/api/machine-storage-locations", {
-          headers: { "x-dev-user-id": currentUser.id },
-        });
+        const response = await fetchWithDevHeader(
+          "/api/machine-storage-locations",
+          {},
+          currentUser.id
+        );
         if (!response.ok) {
           throw new Error(`Failed to fetch storage locations: ${response.status}`);
         }
@@ -174,14 +177,17 @@ export function SellForm({ showHeader = true }: SellFormProps) {
 
     setIsSubmitting(true);
     try {
-      const response = await fetch("/api/listings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-dev-user-id": currentUser.id,
+      const response = await fetchWithDevHeader(
+        "/api/listings",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
         },
-        body: JSON.stringify(payload),
-      });
+        currentUser.id
+      );
 
       if (!response.ok) {
         throw new Error(`Failed to create listing: ${response.status}`);
