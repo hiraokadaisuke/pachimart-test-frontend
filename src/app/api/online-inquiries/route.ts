@@ -2,7 +2,7 @@ import { MessageSenderRole, Prisma, PrismaClient, TradeNaviStatus, TradeNaviType
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@/lib/server/prisma";
+import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 import { type TradeNaviDraft } from "@/lib/navi/types";
 import {
   buildListingSnapshot,
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
     const snapshot = buildListingSnapshot(listing as Record<string, unknown>);
     const payload = buildInquiryPayload(snapshot, listing.sellerUserId, parsed.data);
 
-    const createInquiry = async (tx: typeof prisma) => {
+    const createInquiry = async (tx: Prisma.TransactionClient | InMemoryPrismaClient) => {
       const tradeNavi = await tx.tradeNavi.create({
         data: {
           ownerUserId: listing.sellerUserId,
@@ -191,7 +191,7 @@ export async function POST(request: Request) {
 
     const created = await (prisma instanceof PrismaClient
       ? prisma.$transaction((tx) => createInquiry(tx))
-      : prisma.$transaction((tx) => createInquiry(tx as typeof prisma)));
+      : prisma.$transaction((tx) => createInquiry(tx as InMemoryPrismaClient)));
 
     return NextResponse.json(toDto(toRecord(created)), { status: 201 });
   } catch (error) {

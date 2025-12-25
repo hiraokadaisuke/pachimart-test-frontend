@@ -753,6 +753,8 @@ const globalForPrisma = globalThis as unknown as {
 
 const inMemoryPrisma = buildInMemoryPrisma();
 
+export type InMemoryPrismaClient = typeof inMemoryPrisma;
+
 export const prisma: PrismaClient | typeof inMemoryPrisma =
   process.env.PRISMA_DATABASE_URL
     ? globalForPrisma.prisma ??

@@ -100,7 +100,11 @@ export async function handlePostMessage(request: Request, tradeNaviIdOverride?: 
     );
   }
 
-  const parsed = messageInputSchema.safeParse({ ...payload, tradeNaviId: tradeNaviIdOverride ?? (payload as any)?.tradeNaviId });
+  const base = typeof payload === "object" && payload !== null ? payload : {};
+  const parsed = messageInputSchema.safeParse({
+    ...(base as Record<string, unknown>),
+    tradeNaviId: tradeNaviIdOverride ?? (base as any)?.tradeNaviId,
+  });
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
