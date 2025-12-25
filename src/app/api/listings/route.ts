@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
+import { getCurrentUserId } from "@/lib/server/currentUser";
 import {
   buildStorageLocationSnapshot,
   formatStorageLocationShort,
@@ -254,10 +255,11 @@ const resolveStorageLocationSnapshot = async (
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const sellerUserId = url.searchParams.get("sellerUserId") ?? undefined;
+    const sellerUserIdParam = url.searchParams.get("sellerUserId") ?? undefined;
     const statusParam = url.searchParams.get("status");
     const status = parseListingStatus(statusParam);
     const visibleOnly = parseVisibleOnly(url.searchParams.get("visibleOnly"));
+    const currentUserId = getCurrentUserId(request);
 
     if (statusParam && !status) {
       return NextResponse.json(
@@ -268,24 +270,35 @@ export async function GET(request: Request) {
 
     const where: ListingQueryWhere = {};
 
-    if (sellerUserId) {
-      where.sellerUserId = sellerUserId;
-    }
-
-    if (status) {
-      where.status = status;
-    }
-
-    if (visibleOnly !== undefined) {
-      if (visibleOnly) {
-        where.isVisible = true;
+    if (sellerUserIdParam) {
+      if (!currentUserId) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-    } else if (!sellerUserId) {
-      where.isVisible = true;
-    }
 
-    if (!status && !sellerUserId) {
-      where.status = { in: [ListingStatus.PUBLISHED, ListingStatus.SOLD] };
+      if (sellerUserIdParam !== currentUserId) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      where.sellerUserId = currentUserId;
+
+      if (status) {
+        where.status = status;
+      }
+
+      if (visibleOnly !== undefined) {
+        where.isVisible = visibleOnly ? true : undefined;
+      }
+    } else {
+      where.isVisible = true;
+
+      if (status) {
+        if (status !== ListingStatus.PUBLISHED && status !== ListingStatus.SOLD) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        where.status = status;
+      } else {
+        where.status = { in: [ListingStatus.PUBLISHED, ListingStatus.SOLD] };
+      }
     }
 
     const listings = await listingClient.findMany({
@@ -316,10 +329,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const sellerUserId = request.headers.get("x-dev-user-id");
+  const sellerUserId = getCurrentUserId(request);
 
   if (!sellerUserId) {
-    return NextResponse.json({ error: "Missing seller user id" }, { status: 400 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let body: unknown;

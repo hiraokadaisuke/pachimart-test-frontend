@@ -9,6 +9,7 @@ import {
   formatListingStorageLocation,
   type ListingSnapshot,
 } from "@/lib/trade/listingSnapshot";
+import { getCurrentUserId } from "@/lib/server/currentUser";
 
 const requestSchema = z.object({
   listingId: z.string().min(1, "listingId is required"),
@@ -106,6 +107,12 @@ const buildInquiryPayload = (
 };
 
 export async function POST(request: Request) {
+  const currentUserId = getCurrentUserId(request);
+
+  if (!currentUserId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   let body: unknown;
 
   try {
@@ -127,6 +134,10 @@ export async function POST(request: Request) {
   }
 
   const { listingId, quantity, buyerMemo, buyerUserId } = parsed.data;
+
+  if (buyerUserId !== currentUserId) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   try {
     const listing = await prisma.listing.findUnique({ where: { id: listingId } });

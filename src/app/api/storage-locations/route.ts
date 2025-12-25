@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
+import { getCurrentUserId } from "@/lib/server/currentUser";
 
 const storageLocationClient = prisma.storageLocation;
 
@@ -8,10 +9,10 @@ const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
 export async function GET(request: Request) {
-  const ownerUserId = request.headers.get("x-dev-user-id");
+  const ownerUserId = getCurrentUserId(request);
 
   if (!ownerUserId) {
-    return NextResponse.json({ error: "Missing owner user id" }, { status: 400 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {

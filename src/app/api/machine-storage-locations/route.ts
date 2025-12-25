@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
+import { getCurrentUserId } from "@/lib/server/currentUser";
 
 const machineStorageLocationClient = prisma.machineStorageLocation;
 
@@ -14,10 +15,10 @@ const parseNumber = (value: unknown) => {
 };
 
 export async function GET(request: Request) {
-  const ownerUserId = request.headers.get("x-dev-user-id");
+  const ownerUserId = getCurrentUserId(request);
 
   if (!ownerUserId) {
-    return NextResponse.json({ error: "Missing owner user id" }, { status: 400 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -55,10 +56,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const ownerUserId = request.headers.get("x-dev-user-id");
+  const ownerUserId = getCurrentUserId(request);
 
   if (!ownerUserId) {
-    return NextResponse.json({ error: "Missing owner user id" }, { status: 400 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
