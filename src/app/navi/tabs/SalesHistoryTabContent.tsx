@@ -108,7 +108,7 @@ export function SalesHistoryTabContent() {
   );
 
   const getStatementDestination = (row: SalesHistoryRow) =>
-    getStatementPath(row.id, row.status, "seller");
+    getStatementPath(row.id, row.status, "seller", { naviId: row.naviId });
 
   const columns: NaviTableColumn[] = [
     {

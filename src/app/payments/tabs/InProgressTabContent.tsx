@@ -178,7 +178,9 @@ export function InProgressTabContent() {
   );
 
   const getStatementDestination = (row: TradeRow) =>
-    getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller");
+    getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller", {
+      naviId: row.naviId,
+    });
 
   const tradeColumnBase: NaviTableColumn[] = [
     {

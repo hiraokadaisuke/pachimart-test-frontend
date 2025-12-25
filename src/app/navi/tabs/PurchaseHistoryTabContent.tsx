@@ -109,7 +109,7 @@ export function PurchaseHistoryTabContent() {
   );
 
   const getStatementDestination = (row: PurchaseHistoryRow) =>
-    getStatementPath(row.id, row.status, "buyer");
+    getStatementPath(row.id, row.status, "buyer", { naviId: row.naviId });
 
   const columns: NaviTableColumn[] = [
   {

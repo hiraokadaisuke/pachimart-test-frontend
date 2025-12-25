@@ -319,7 +319,9 @@ export function InProgressTabContent() {
   const sellerInquiryRows = filteredInquiryRows.filter((row) => row.kind === "sell");
 
   const getStatementDestination = (row: TradeRow) =>
-    getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller");
+    getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller", {
+      naviId: row.naviId,
+    });
 
   const inquiryStatusBadge = (
     <span className="inline-flex items-center rounded-full bg-blue-50 px-2 py-0.5 text-xs font-semibold text-blue-700">

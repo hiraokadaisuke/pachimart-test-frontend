@@ -43,6 +43,8 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const statementId = typeof trade?.naviId === "number" ? String(trade.naviId) : tradeId;
+
   useEffect(() => {
     let canceled = false;
 
@@ -115,7 +117,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   };
 
   const handleAddContact = (name: string) => {
-    const result = addBuyerContact(tradeId, name);
+    const result = addBuyerContact(statementId, name);
     if (result.trade && result.contact) {
       setContacts((prev) => [...prev, result.contact!]);
       setShipping((prev) => ({ ...prev, personName: result.contact!.name }));
@@ -135,13 +137,13 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
           : [...scopedContacts, { contactId: value, name: value }]
         : scopedContacts;
       setContacts(normalized);
-      if (value) saveContactsToTrade(tradeId, normalized);
+      if (value) saveContactsToTrade(statementId, normalized);
     }
   };
 
   const refreshTrade = async () => {
     try {
-      const latest = await fetchTradeRecordById(tradeId);
+      const latest = await fetchTradeRecordById(statementId);
       if (!latest) {
         setTrade(null);
         setShipping({});
@@ -173,11 +175,11 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       return;
     }
 
-    const updatedShipping = updateTradeShipping(trade.id, shipping, contacts);
+    const updatedShipping = updateTradeShipping(statementId, shipping, contacts);
     if (updatedShipping) setShipping(updatedShipping.shipping);
 
     try {
-      await updateTradeStatus(trade.id, "APPROVED");
+      await updateTradeStatus(statementId, "APPROVED");
       const latest = await refreshTrade();
       if (latest) {
         setMessage("承認しました。ステータスを更新しました。");
@@ -197,7 +199,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     }
 
     try {
-      await updateTradeStatus(trade.id, "REJECTED");
+      await updateTradeStatus(statementId, "REJECTED");
       const latest = await refreshTrade();
       if (latest) {
         setMessage("依頼をキャンセルしました。");

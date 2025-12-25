@@ -13,18 +13,22 @@ export function getActorRole(
 export function getStatementPath(
   tradeId: string,
   todoKind: TodoKind | null,
-  actorRole: "buyer" | "seller"
+  actorRole: "buyer" | "seller",
+  options?: { naviId?: number | string }
 ): string {
+  const candidateId = options?.naviId ?? tradeId;
+  const statementId = typeof candidateId === "number" ? String(candidateId) : candidateId;
+
   if (todoKind === "application_sent" && actorRole === "buyer") {
-    return `/navi/buyer/requests/${tradeId}`;
+    return `/navi/buyer/requests/${statementId}`;
   }
-  return `/navi/${tradeId}/statement`;
+  return `/navi/${statementId}/statement`;
 }
 
 export function getStatementPathForTrade(
-  trade: Pick<TradeRecord, "id" | "status" | "todos">,
+  trade: Pick<TradeRecord, "id" | "status" | "todos" | "naviId">,
   actorRole: "buyer" | "seller"
 ): string {
   const todoKind = resolveCurrentTodoKind(trade);
-  return getStatementPath(trade.id, todoKind, actorRole);
+  return getStatementPath(trade.id, todoKind, actorRole, { naviId: trade.naviId });
 }
