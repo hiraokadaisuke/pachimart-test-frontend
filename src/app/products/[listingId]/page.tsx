@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { headers } from "next/headers";
 
 import MainContainer from "@/components/layout/MainContainer";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -8,20 +9,26 @@ import type { Listing } from "@/lib/listings/types";
 import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
 
 async function fetchListing(listingId: string): Promise<Listing | null> {
+  const incomingHeaders = headers();
+  const devUserId =
+    incomingHeaders.get("x-dev-user-id") ?? incomingHeaders.get("x-dev-user-id".toLowerCase());
+
   try {
     const response = await fetch(buildApiUrl(`/api/listings/${listingId}`), {
       cache: "no-store",
+      headers: devUserId ? { "x-dev-user-id": devUserId } : undefined,
     });
 
     if (response.status === 404) return null;
     if (!response.ok) {
+      console.error("Failed to fetch listing detail", response.status);
       throw new Error(`Failed to fetch listing: ${response.status}`);
     }
 
     return response.json();
   } catch (error) {
     console.error("Failed to fetch listing detail", error);
-    return null;
+    throw error;
   }
 }
 
