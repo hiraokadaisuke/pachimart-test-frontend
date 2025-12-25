@@ -76,7 +76,10 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
     payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
     createdAt: toDate(candidate.createdAt),
     updatedAt: toDate(candidate.updatedAt, toDate(candidate.createdAt)),
-    trade: (candidate.trade as { id?: unknown } | null) ?? null,
+    trade: (() => {
+      const tradeValue = (candidate.trade as { id?: unknown } | null) ?? null;
+      return tradeValue ? { id: tradeValue.id ?? null } : null;
+    })(),
   };
 };
 
