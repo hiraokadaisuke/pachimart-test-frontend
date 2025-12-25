@@ -1,4 +1,5 @@
 import { TradeNaviType } from "@prisma/client";
+import { z } from "zod";
 
 import { buildTodosFromStatus } from "@/lib/trade/todo";
 import {
@@ -9,28 +10,35 @@ import {
 } from "@/lib/trade/types";
 import { resolveListingSnapshot, type ListingSnapshot } from "./listingSnapshot";
 
-export type TradeDto = {
-  id: number;
-  sellerUserId: string;
-  buyerUserId: string;
-  status: "IN_PROGRESS" | "COMPLETED" | "CANCELED";
-  payload: unknown;
-  naviId: number | null;
-  createdAt: string;
-  updatedAt: string;
-  navi: {
-    id: number;
-    ownerUserId: string;
-    buyerUserId: string | null;
-    payload: unknown;
-    listingSnapshot: unknown;
-    naviType: TradeNaviType | null;
-    createdAt: string;
-    updatedAt: string;
-  } | null;
-  sellerUser: { id: string; companyName: string } | null;
-  buyerUser: { id: string; companyName: string } | null;
-};
+export const tradeDtoSchema = z.object({
+  id: z.number(),
+  sellerUserId: z.string(),
+  buyerUserId: z.string(),
+  status: z.enum(["IN_PROGRESS", "COMPLETED", "CANCELED"]),
+  payload: z.unknown().nullable().optional(),
+  naviId: z.number().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  navi: z
+    .object({
+      id: z.number(),
+      ownerUserId: z.string(),
+      buyerUserId: z.string().nullable(),
+      payload: z.unknown().nullable().optional(),
+      listingSnapshot: z.unknown().nullable().optional(),
+      naviType: z.nativeEnum(TradeNaviType).nullable().optional(),
+      createdAt: z.string(),
+      updatedAt: z.string(),
+    })
+    .nullable()
+    .optional(),
+  sellerUser: z.object({ id: z.string(), companyName: z.string() }).nullable().optional(),
+  buyerUser: z.object({ id: z.string(), companyName: z.string() }).nullable().optional(),
+});
+
+export const tradeDtoListSchema = z.array(tradeDtoSchema);
+
+export type TradeDto = z.infer<typeof tradeDtoSchema>;
 
 type TradeConditions = {
   unitPrice?: unknown;
