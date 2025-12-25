@@ -168,11 +168,15 @@ const normalizeTradeRecord = (trade: TradeRecord): TradeRecord => {
   };
 
   const items = Array.isArray(trade.items)
-    ? trade.items.map((item, index) => ({
-        lineId: item?.lineId ?? `${trade.id || trade.naviId || "item"}-${index}`,
-        itemName: item?.itemName ?? "商品",
-        ...item,
-      }))
+    ? trade.items.map((item, index) => {
+        const { lineId, itemName, ...rest } = item ?? {};
+
+        return {
+          ...rest,
+          lineId: lineId ?? `${trade.id || trade.naviId || "item"}-${index}`,
+          itemName: itemName ?? "商品",
+        };
+      })
     : [];
 
   return {
