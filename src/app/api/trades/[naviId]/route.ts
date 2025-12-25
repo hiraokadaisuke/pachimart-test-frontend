@@ -30,6 +30,7 @@ type TradeNaviRecord = {
   payload: Prisma.JsonValue | null;
   createdAt: Date;
   updatedAt: Date;
+  trade?: { id: unknown } | null;
 };
 
 const toDto = (trade: TradeNaviRecord, tradeId?: number) => ({
@@ -75,6 +76,10 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
     payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
     createdAt: toDate(candidate.createdAt),
     updatedAt: toDate(candidate.updatedAt, toDate(candidate.createdAt)),
+    trade: (() => {
+      const tradeValue = (candidate.trade as { id?: unknown } | null) ?? null;
+      return tradeValue ? { id: tradeValue.id ?? null } : null;
+    })(),
   };
 };
 
@@ -95,7 +100,37 @@ class BuyerRequiredError extends Error {
   }
 }
 
+class ShippingInfoMissingError extends Error {
+  constructor() {
+    super("Shipping destination and contact are required to approve");
+  }
+}
+
 class TradeNotFoundError extends Error {}
+
+const extractShippingInfo = (payload: Prisma.JsonValue | null) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
+
+  const candidate = payload as Record<string, unknown>;
+  const shipping =
+    candidate.buyerShippingAddress ??
+    candidate.shipping ??
+    (candidate.shippingInfo as unknown) ??
+    (candidate.shippingInfo && typeof candidate.shippingInfo === "object"
+      ? (candidate.shippingInfo as Record<string, unknown>).shipping
+      : null);
+
+  if (!shipping || typeof shipping !== "object" || Array.isArray(shipping)) return null;
+
+  const shippingRecord = shipping as Record<string, unknown>;
+
+  return {
+    companyName: (shippingRecord.companyName as string | undefined) ?? undefined,
+    address: (shippingRecord.address as string | undefined) ?? undefined,
+    tel: (shippingRecord.tel as string | undefined) ?? undefined,
+    personName: (shippingRecord.personName as string | undefined) ?? undefined,
+  };
+};
 
 const resolveBuyerUserId = (trade: TradeNaviRecord): string | null => {
   if (trade.buyerUserId) return trade.buyerUserId;
@@ -186,7 +221,10 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
   }
 
   try {
-    const existing = await tradeNaviClient.findUnique({ where: { id } as any });
+    const existing = await tradeNaviClient.findUnique({
+      where: { id } as any,
+      include: { trade: true } as any,
+    });
 
     if (!existing) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
@@ -210,32 +248,64 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    if (targetStatus === TradeNaviStatus.APPROVED) {
+      const shipping = extractShippingInfo(existingRecord.payload);
+
+      if (!shipping?.address || !shipping.personName) {
+        throw new ShippingInfoMissingError();
+      }
+    }
+
+    const isApproving = targetStatus === TradeNaviStatus.APPROVED;
+
+    if (isApproving && existingRecord.trade?.id) {
+      return NextResponse.json(
+        toDto(existingRecord, Number(existingRecord.trade.id) || undefined),
+        { status: existingRecord.status === TradeNaviStatus.APPROVED ? 200 : 409 }
+      );
+    }
+
     const { updated, trade } = await (prisma as any).$transaction(async (tx: any) => {
-      // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
+      const current = await tx.tradeNavi.findUnique({ where: { id } as any, include: { trade: true } });
+
+      if (!current) throw new TradeNotFoundError();
+
+      const payload =
+        current.payload && typeof current.payload === "object" && !Array.isArray(current.payload)
+          ? ({ ...(current.payload as Record<string, unknown>) } as Record<string, unknown>)
+          : ({} as Record<string, unknown>);
+
+      const resolvedBuyerId = resolveBuyerUserId(toRecord(current));
+
+      if (isApproving && !resolvedBuyerId) {
+        throw new BuyerRequiredError();
+      }
+
+      const nextPayload = {
+        ...payload,
+        listingSnapshot:
+          (current.listingSnapshot as Prisma.JsonValue | null | undefined) ??
+          (payload.listingSnapshot as Prisma.JsonValue | null | undefined) ??
+          null,
+      } as Prisma.JsonValue;
+
       const updatedNavi = await tx.tradeNavi.update({
         where: { id } as any,
-        data: { status: parsed.data.status },
+        data: { status: parsed.data.status, payload: nextPayload },
       });
+
+      const existingTradeId = (current.trade as { id?: unknown } | null)?.id;
 
       let createdTrade: { id: unknown } | null = null;
 
-      if (
-        parsed.data.status === TradeNaviStatus.APPROVED &&
-        existing.status !== TradeNaviStatus.APPROVED
-      ) {
-        const resolvedBuyerId = resolveBuyerUserId(toRecord(updatedNavi));
-
-        if (!resolvedBuyerId) {
-          throw new BuyerRequiredError();
-        }
-
+      if (isApproving && !existingTradeId) {
         createdTrade = await tx.trade.upsert({
           where: { naviId: updatedNavi.id } as any,
           create: {
             sellerUserId: updatedNavi.ownerUserId,
-            buyerUserId: resolvedBuyerId,
+            buyerUserId: resolvedBuyerId!,
             status: TradeStatus.IN_PROGRESS,
-            payload: updatedNavi.payload ?? Prisma.JsonNull,
+            payload: nextPayload ?? Prisma.JsonNull,
             naviId: updatedNavi.id,
           },
           update: {},
@@ -260,7 +330,10 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         }
       }
 
-      return { updated: toRecord(updatedNavi), trade: createdTrade };
+      return {
+        updated: toRecord({ ...updatedNavi, trade: createdTrade ?? current.trade }),
+        trade: createdTrade ?? (existingTradeId ? { id: existingTradeId } : null),
+      };
     });
 
     const tradeId = trade ? Number(trade.id) : undefined;
@@ -279,6 +352,10 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
     }
 
     if (error instanceof BuyerRequiredError) {
+      return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    if (error instanceof ShippingInfoMissingError) {
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
