@@ -2,9 +2,9 @@ import { z } from "zod";
 
 export const messageRecordSchema = z.object({
   id: z.number(),
-  tradeNaviId: z.number().int().positive(),
+  naviId: z.number(),
   senderUserId: z.string(),
-  senderRole: z.enum(["buyer", "seller"]).optional().default("buyer"),
+  receiverUserId: z.string(),
   body: z.string(),
   createdAt: z.date(),
 });
@@ -13,9 +13,9 @@ export type MessageRecord = z.infer<typeof messageRecordSchema>;
 
 export const messageDtoSchema = z.object({
   id: z.number(),
-  tradeNaviId: z.number().int().positive(),
+  naviId: z.number(),
   senderUserId: z.string(),
-  senderRole: z.enum(["buyer", "seller"]).optional().default("buyer"),
+  receiverUserId: z.string(),
   body: z.string(),
   createdAt: z.string(),
 });
@@ -55,9 +55,9 @@ export const normalizeMessageRecord = (message: unknown): MessageRecord => {
 
   const parsed = messageRecordSchema.safeParse({
     id: Number(candidate.id),
-    tradeNaviId: Number(candidate.tradeNaviId ?? candidate.naviId),
+    naviId: Number(candidate.naviId),
     senderUserId: String(candidate.senderUserId ?? ""),
-    senderRole: (candidate.senderRole as "buyer" | "seller" | undefined) ?? "buyer",
+    receiverUserId: String(candidate.receiverUserId ?? ""),
     body: String(candidate.body ?? ""),
     createdAt: toDate(candidate.createdAt),
   });
@@ -71,9 +71,9 @@ export const normalizeMessageRecord = (message: unknown): MessageRecord => {
 
 export const toMessageDto = (message: MessageRecord): MessageDto => ({
   id: message.id,
-  tradeNaviId: message.tradeNaviId,
+  naviId: message.naviId,
   senderUserId: message.senderUserId,
-  senderRole: message.senderRole,
+  receiverUserId: message.receiverUserId,
   body: message.body,
   createdAt: message.createdAt.toISOString(),
 });
