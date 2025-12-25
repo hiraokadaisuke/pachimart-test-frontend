@@ -36,9 +36,9 @@ type InMemoryTrade = {
 
 type InMemoryMessage = {
   id: number;
-  tradeNaviId: number;
+  naviId: number;
   senderUserId: string;
-  senderRole: "buyer" | "seller";
+  receiverUserId: string;
   body: string;
   createdAt: Date;
 };
@@ -153,7 +153,7 @@ type InMemoryPrisma = {
     >;
   };
   message: {
-    findMany: ({ where, orderBy }?: { where?: { tradeNaviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
+    findMany: ({ where, orderBy }?: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
       Promise<InMemoryMessage[]>;
     create: ({ data }: { data: Partial<InMemoryMessage> }) => Promise<InMemoryMessage>;
   };
@@ -377,13 +377,8 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       },
     },
     message: {
-      findMany: async ({
-        where,
-        orderBy,
-      }: { where?: { tradeNaviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } } = {}) => {
-        const filtered = messages.filter((message) =>
-          where?.tradeNaviId ? message.tradeNaviId === where.tradeNaviId : true
-        );
+      findMany: async ({ where, orderBy }: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } } = {}) => {
+        const filtered = messages.filter((message) => (where?.naviId ? message.naviId === where.naviId : true));
         const sorted = filtered.sort((a, b) => {
           const order = orderBy?.createdAt === "desc" ? -1 : 1;
           return (a.createdAt.getTime() - b.createdAt.getTime()) * order;
@@ -393,9 +388,9 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       create: async ({ data }: { data: Partial<InMemoryMessage> }) => {
         const record: InMemoryMessage = {
           id: messageSeq++,
-          tradeNaviId: Number(data.tradeNaviId ?? 0),
+          naviId: Number(data.naviId ?? 0),
           senderUserId: String(data.senderUserId ?? ""),
-          senderRole: (data.senderRole as "buyer" | "seller" | undefined) ?? "buyer",
+          receiverUserId: String(data.receiverUserId ?? ""),
           body: String(data.body ?? ""),
           createdAt: now(),
         };
@@ -752,8 +747,6 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 const inMemoryPrisma = buildInMemoryPrisma();
-
-export type InMemoryPrismaClient = typeof inMemoryPrisma;
 
 export const prisma: PrismaClient | typeof inMemoryPrisma =
   process.env.PRISMA_DATABASE_URL
