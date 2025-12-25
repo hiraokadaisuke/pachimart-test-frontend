@@ -145,6 +145,61 @@ export function mapOnlineInquiryToTradeRecord(trade: TradeNaviDto): TradeRecord 
   };
 }
 
+const normalizeTradeRecord = (trade: TradeRecord): TradeRecord => {
+  const sellerUserId = trade.sellerUserId ?? trade.seller?.userId ?? "seller";
+  const buyerUserId = trade.buyerUserId ?? trade.buyer?.userId ?? "buyer";
+
+  const seller = {
+    companyName: trade.seller?.companyName ?? trade.sellerName ?? "-",
+    userId: trade.seller?.userId ?? sellerUserId,
+    address: trade.seller?.address ?? "",
+    tel: trade.seller?.tel ?? "",
+    fax: trade.seller?.fax ?? "",
+    contactName: trade.seller?.contactName ?? "",
+  };
+
+  const buyer = {
+    companyName: trade.buyer?.companyName ?? trade.buyerName ?? "-",
+    userId: trade.buyer?.userId ?? buyerUserId,
+    address: trade.buyer?.address ?? "",
+    tel: trade.buyer?.tel ?? "",
+    fax: trade.buyer?.fax ?? "",
+    contactName: trade.buyer?.contactName ?? "",
+  };
+
+  const items = Array.isArray(trade.items)
+    ? trade.items.map((item, index) => {
+        const { lineId, itemName, ...rest } = item ?? {};
+
+        return {
+          ...rest,
+          lineId: lineId ?? `${trade.id || trade.naviId || "item"}-${index}`,
+          itemName: itemName ?? "商品",
+        };
+      })
+    : [];
+
+  return {
+    ...trade,
+    id: trade.id || (trade.naviId ? String(trade.naviId) : ""),
+    sellerUserId,
+    buyerUserId,
+    seller,
+    buyer,
+    items,
+    todos: Array.isArray(trade.todos) ? trade.todos : [],
+    shipping: trade.shipping ?? trade.buyerShippingAddress ?? {},
+    buyerShippingAddress: trade.buyerShippingAddress ?? trade.shipping ?? {},
+    buyerContacts: trade.buyerContacts ?? [],
+  };
+};
+
+const parseNaviId = (value: string): number | null => {
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed)) return null;
+  return parsed;
+};
+
 export async function fetchTradeNavis(): Promise<TradeNaviDto[]> {
   const response = await fetch("/api/trades");
 
@@ -200,8 +255,23 @@ export async function fetchTradeNaviById(tradeId: string): Promise<TradeNaviDto 
 }
 
 export async function fetchTradeRecordById(tradeId: string): Promise<TradeRecord | null> {
-  const trade = await fetchTradeNaviById(tradeId);
-  return trade ? mapTradeNaviToTradeRecord(trade) : null;
+  const numericId = parseNaviId(tradeId);
+
+  if (numericId !== null) {
+    const trade = await fetchTradeNaviById(String(numericId));
+    const mapped = trade ? mapTradeNaviToTradeRecord(trade) : null;
+    if (mapped) {
+      return normalizeTradeRecord(mapped);
+    }
+  }
+
+  const trades = await fetchTradeRecordsFromApi();
+  const matched = trades.find((candidate) => {
+    const candidateNaviId = typeof candidate.naviId === "number" ? candidate.naviId : null;
+    return candidate.id === tradeId || (numericId !== null && candidateNaviId === numericId);
+  });
+
+  return matched ? normalizeTradeRecord(matched) : null;
 }
 
 export async function updateTradeStatus(tradeId: string, status: "APPROVED" | "REJECTED") {
