@@ -14,10 +14,9 @@ export function getStatementPath(
   tradeId: string,
   todoKind: TodoKind | null,
   actorRole: "buyer" | "seller",
-  options?: { naviId?: number | string }
+  _options?: { naviId?: number | string }
 ): string {
-  const candidateId = options?.naviId ?? tradeId;
-  const statementId = typeof candidateId === "number" ? String(candidateId) : candidateId;
+  const statementId = tradeId;
 
   if (todoKind === "application_sent" && actorRole === "buyer") {
     return `/navi/buyer/requests/${statementId}`;

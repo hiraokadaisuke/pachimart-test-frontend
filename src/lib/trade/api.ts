@@ -13,6 +13,7 @@ import {
 
 import { createTradeFromDraft } from "./storage";
 import { type BuyerContact, type ShippingInfo, type TradeRecord } from "./types";
+import { tradeDtoListSchema, type TradeDto, transformTrade } from "./transform";
 
 const tradeNaviSchema = z.object({
   id: z.number(),
@@ -241,12 +242,6 @@ const normalizeTradeRecord = (trade: TradeRecord): TradeRecord => {
   };
 };
 
-const parseNaviId = (value: string): number | null => {
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed)) return null;
-  return parsed;
-};
-
 export async function fetchTradeNavis(): Promise<TradeNaviDto[]> {
   const response = await fetchWithDevHeader("/api/trades");
 
@@ -302,23 +297,27 @@ export async function fetchTradeNaviById(tradeId: string): Promise<TradeNaviDto 
 }
 
 export async function fetchTradeRecordById(tradeId: string): Promise<TradeRecord | null> {
-  const numericId = parseNaviId(tradeId);
+  const response = await fetchWithDevHeader("/api/trades/records");
 
-  if (numericId !== null) {
-    const trade = await fetchTradeNaviById(String(numericId));
-    const mapped = trade ? mapTradeNaviToTradeRecord(trade) : null;
-    if (mapped) {
-      return normalizeTradeRecord(mapped);
-    }
+  if (!response.ok) {
+    throw new Error(`Failed to fetch trades: ${response.status}`);
   }
 
-  const trades = await fetchTradeRecordsFromApi();
-  const matched = trades.find((candidate) => {
-    const candidateNaviId = typeof candidate.naviId === "number" ? candidate.naviId : null;
-    return candidate.id === tradeId || (numericId !== null && candidateNaviId === numericId);
-  });
+  const json = (await response.json()) as unknown;
+  const parsed = tradeDtoListSchema.safeParse(json);
 
-  return matched ? normalizeTradeRecord(matched) : null;
+  if (!parsed.success) {
+    throw new Error(parsed.error.message);
+  }
+
+  const numericId = Number(tradeId);
+  const matchingTrade = parsed.data.find(
+    (candidate) => candidate.id === numericId || String(candidate.id) === tradeId
+  );
+
+  if (!matchingTrade) return null;
+
+  return normalizeTradeRecord(transformTrade(matchingTrade as TradeDto));
 }
 
 export async function updateTradeStatus(tradeId: string, status: "APPROVED" | "REJECTED") {

@@ -1,43 +1,28 @@
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
-import { fetchTradeRecordsFromApi } from "./api";
 import { type TradeRecord } from "./types";
-import { type TradeDto, transformTrade } from "./transform";
+import { tradeDtoListSchema, transformTrade } from "./transform";
 import { getHistoryTradesForUser, getPurchaseHistoryForUser, getSalesHistoryForUser, getTradesForUser } from "./storage";
 
 async function loadTradesFromApi(): Promise<TradeRecord[]> {
   try {
-    const [recordsResponse, tradeNaviRecords] = await Promise.all([
-      fetchWithDevHeader("/api/trades/records"),
-      fetchTradeRecordsFromApi().catch((error) => {
-        console.error("Failed to load trade navis", error);
-        return [] as TradeRecord[];
-      }),
-    ]);
+    const recordsResponse = await fetchWithDevHeader("/api/trades/records");
 
     if (!recordsResponse.ok) {
       throw new Error(`Failed to fetch trades: ${recordsResponse.status}`);
     }
 
     const json = (await recordsResponse.json()) as unknown;
-    if (!Array.isArray(json)) {
-      throw new Error("Invalid trade response");
+    const parsed = tradeDtoListSchema.safeParse(json);
+
+    if (!parsed.success) {
+      throw new Error(parsed.error.message);
     }
 
-    const tradeRecords = (json as TradeDto[]).map(transformTrade);
+    const eligibleTrades = parsed.data.filter((trade) =>
+      ["IN_PROGRESS", "COMPLETED", "CANCELED"].includes(trade.status)
+    );
 
-    const seenKeys = new Set<string>();
-    const normalizeKey = (trade: TradeRecord) =>
-      typeof trade.naviId === "number" ? `navi:${trade.naviId}` : `id:${trade.id}`;
-
-    tradeRecords.forEach((record) => seenKeys.add(normalizeKey(record)));
-
-    tradeNaviRecords.forEach((record) => {
-      const key = normalizeKey(record);
-      if (!seenKeys.has(key)) {
-        tradeRecords.push(record);
-        seenKeys.add(key);
-      }
-    });
+    const tradeRecords = eligibleTrades.map(transformTrade);
 
     return tradeRecords.sort((a, b) => {
       const aDate = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
