@@ -101,6 +101,8 @@ export function mapTradeNaviToTradeRecord(trade: TradeNaviDto): TradeRecord | nu
 
   if (!isTradeNaviDraft(trade.payload)) return null;
 
+  const listingSnapshot = resolveListingSnapshot(trade.listingSnapshot);
+
   const draft: TradeNaviDraft = {
     ...trade.payload,
     status: trade.payload.status ?? "sent_to_buyer",
@@ -120,6 +122,7 @@ export function mapTradeNaviToTradeRecord(trade: TradeNaviDto): TradeRecord | nu
     buyerUserId: draft.buyerId ?? trade.buyerUserId ?? record.buyerUserId,
     createdAt: draft.createdAt ?? trade.createdAt,
     updatedAt: draft.updatedAt ?? trade.updatedAt,
+    listingSnapshot,
   };
 }
 
@@ -142,6 +145,7 @@ export function mapOnlineInquiryToTradeRecord(trade: TradeNaviDto): TradeRecord 
     createdAt: draft.createdAt ?? trade.createdAt,
     updatedAt: draft.updatedAt ?? trade.updatedAt,
     todos: buildTodosFromStatus("APPROVAL_REQUIRED"),
+    listingSnapshot: snapshot,
   };
 }
 
@@ -191,6 +195,8 @@ const normalizeTradeRecord = (trade: TradeRecord): TradeRecord => {
     shipping: trade.shipping ?? trade.buyerShippingAddress ?? {},
     buyerShippingAddress: trade.buyerShippingAddress ?? trade.shipping ?? {},
     buyerContacts: trade.buyerContacts ?? [],
+    listingSnapshot: trade.listingSnapshot ?? null,
+    storageLocationName: trade.storageLocationName ?? undefined,
   };
 };
 

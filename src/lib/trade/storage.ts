@@ -571,6 +571,7 @@ export function createTradeFromDraft(
     taxRate,
     remarks: draft.conditions.notes ?? draft.conditions.memo ?? undefined,
     termsText,
+    storageLocationName: draft.conditions.location ?? undefined,
     shipping: {
       companyName: draft.buyerCompanyName ?? buyerProfile.companyName,
       address: draft.buyerAddress ?? "",

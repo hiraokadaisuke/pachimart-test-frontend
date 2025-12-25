@@ -1,6 +1,7 @@
 "use client";
 
 import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
+import { buildTradeDiffNotes } from "@/lib/trade/diff";
 import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 
@@ -72,6 +73,7 @@ export function StatementDocument({
 
   const primaryItem = trade.items[0];
   const paymentTerms = trade.paymentTerms ?? trade.paymentMethod ?? "支払条件未設定";
+  const diffNotes = buildTradeDiffNotes(trade, trade.listingSnapshot ?? null);
 
   return (
     <div className="statement-sheet">
@@ -99,11 +101,23 @@ export function StatementDocument({
           <InfoRow label="機種カテゴリ" value={trade.category ?? primaryItem?.category ?? "-"} />
           <InfoRow label="メーカー" value={trade.makerName ?? primaryItem?.maker ?? "-"} />
           <InfoRow label="機種名" value={trade.itemName ?? primaryItem?.itemName ?? "-"} />
-          <InfoRow label="台数" value={trade.quantity?.toString() ?? primaryItem?.qty?.toString() ?? "-"} />
-          <InfoRow label="単価（参考）" value={primaryItem?.unitPrice ? formatYen(primaryItem.unitPrice) : "-"} />
+          <InfoRow
+            label="台数"
+            value={trade.quantity?.toString() ?? primaryItem?.qty?.toString() ?? "-"}
+            note={diffNotes.quantityNote}
+          />
+          <InfoRow
+            label="単価（参考）"
+            value={primaryItem?.unitPrice ? formatYen(primaryItem.unitPrice) : "-"}
+            note={diffNotes.unitPriceNote}
+          />
           <InfoRow label="支払条件" value={paymentTerms} />
           <InfoRow label="発送予定日" value={formatDateLabel(trade.shipmentDate)} />
-          <InfoRow label="受渡方法" value={trade.receiveMethod ?? trade.shippingMethod ?? "-"} />
+          <InfoRow
+            label="受渡方法"
+            value={trade.receiveMethod ?? trade.shippingMethod ?? "-"}
+            note={diffNotes.storageNote}
+          />
           <InfoRow label="備考" value={trade.remarks ?? "特記事項なし"} multiline />
         </div>
       </section>
@@ -272,12 +286,14 @@ function InfoRow({
   multiline = false,
   emphasize = false,
   dense = false,
+  note,
 }: {
   label: string;
   value: string;
   multiline?: boolean;
   emphasize?: boolean;
   dense?: boolean;
+  note?: string;
 }) {
   return (
     <div className="flex items-start gap-3">
@@ -288,6 +304,7 @@ function InfoRow({
         }`}
       >
         {value || "-"}
+        {note && <p className="text-[11px] font-normal text-neutral-600">{note}</p>}
       </span>
     </div>
   );
