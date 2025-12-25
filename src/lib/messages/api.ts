@@ -1,18 +1,7 @@
 import { messageDtoSchema, mapMessageDtoToTradeMessage, type MessageDto, type TradeMessage } from "./transform";
-import { DEV_USERS, type DevUserKey } from "@/lib/dev-user/users";
+import { fetchWithDevHeader, resolveCurrentDevUserId } from "@/lib/api/fetchWithDevHeader";
 
 const messageListSchema = messageDtoSchema.array();
-
-const resolveCurrentDevUserId = (): string | undefined => {
-  if (typeof window === "undefined") return undefined;
-
-  const storedType = window.localStorage.getItem("dev_user_type") as DevUserKey | null;
-  if (storedType && storedType in DEV_USERS) {
-    return DEV_USERS[storedType].id;
-  }
-
-  return DEV_USERS.A.id;
-};
 
 export async function fetchMessagesByNaviId(naviId: number): Promise<TradeMessage[]> {
   const currentUserId = resolveCurrentDevUserId();
@@ -20,7 +9,7 @@ export async function fetchMessagesByNaviId(naviId: number): Promise<TradeMessag
     ? { "x-dev-user-id": currentUserId }
     : undefined;
 
-  const response = await fetch(`/api/messages?tradeNaviId=${naviId}`, { headers });
+  const response = await fetchWithDevHeader(`/api/messages?tradeNaviId=${naviId}`, { headers });
 
   if (!response.ok) {
     const detail = await response.text();
@@ -44,14 +33,18 @@ type CreateMessageBody = {
 export async function postMessage(naviId: number, payload: CreateMessageBody): Promise<MessageDto> {
   const currentUserId = resolveCurrentDevUserId();
 
-  const response = await fetch(`/api/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(currentUserId ? { "x-dev-user-id": currentUserId } : {}),
+  const response = await fetchWithDevHeader(
+    `/api/messages`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(currentUserId ? { "x-dev-user-id": currentUserId } : {}),
+      },
+      body: JSON.stringify({ tradeNaviId: naviId, ...payload }),
     },
-    body: JSON.stringify({ tradeNaviId: naviId, ...payload }),
-  });
+    currentUserId
+  );
 
   if (!response.ok) {
     const detail = await response.text();

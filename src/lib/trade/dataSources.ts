@@ -1,3 +1,4 @@
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { fetchTradeRecordsFromApi } from "./api";
 import { type TradeRecord } from "./types";
 import { type TradeDto, transformTrade } from "./transform";
@@ -6,7 +7,7 @@ import { getHistoryTradesForUser, getPurchaseHistoryForUser, getSalesHistoryForU
 async function loadTradesFromApi(): Promise<TradeRecord[]> {
   try {
     const [recordsResponse, tradeNaviRecords] = await Promise.all([
-      fetch("/api/trades/records"),
+      fetchWithDevHeader("/api/trades/records"),
       fetchTradeRecordsFromApi().catch((error) => {
         console.error("Failed to load trade navis", error);
         return [] as TradeRecord[];

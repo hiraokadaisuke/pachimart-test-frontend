@@ -8,6 +8,7 @@ import { TransactionFilterBar } from "@/components/transactions/TransactionFilte
 import { Badge } from "@/components/ui/badge";
 import { formatStorageLocationShort } from "@/lib/listings/storageLocation";
 import type { Listing } from "@/lib/listings/types";
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 
 function formatPrice(listing: Listing) {
   if (listing.isNegotiable || listing.unitPriceExclTax === null) {
@@ -52,7 +53,7 @@ export default function ProductListPage() {
 
     const fetchListings = async () => {
       try {
-        const response = await fetch("/api/listings", { cache: "no-store" });
+        const response = await fetchWithDevHeader("/api/listings", { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Failed to fetch listings: ${response.status}`);
         }

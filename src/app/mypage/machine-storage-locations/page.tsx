@@ -7,6 +7,7 @@ import SettingsSubTabs from "@/components/mypage/SettingsSubTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 
 type RegionKey =
   | "hokkaido"
@@ -98,9 +99,11 @@ export default function MachineStorageLocationsPage() {
     setLoadingMessage("読み込み中...");
     setErrorMessage(null);
     try {
-      const response = await fetch("/api/machine-storage-locations", {
-        headers: { "x-dev-user-id": currentUser.id },
-      });
+      const response = await fetchWithDevHeader(
+        "/api/machine-storage-locations",
+        {},
+        currentUser.id
+      );
       if (!response.ok) {
         throw new Error("倉庫一覧の取得に失敗しました。");
       }
@@ -203,16 +206,16 @@ export default function MachineStorageLocationsPage() {
     setLoadingMessage(mode === "edit" ? "更新中..." : "登録中...");
     setErrorMessage(null);
     try {
-      const response = await fetch(
+      const response = await fetchWithDevHeader(
         editingId ? `/api/machine-storage-locations/${editingId}` : "/api/machine-storage-locations",
         {
           method: editingId ? "PATCH" : "POST",
           headers: {
             "Content-Type": "application/json",
-            "x-dev-user-id": currentUser.id,
           },
           body: JSON.stringify(payload),
-        }
+        },
+        currentUser.id
       );
 
       if (!response.ok) {
@@ -238,10 +241,13 @@ export default function MachineStorageLocationsPage() {
     setLoadingMessage("削除中...");
     setErrorMessage(null);
     try {
-      const response = await fetch(`/api/machine-storage-locations/${location.id}`, {
-        method: "DELETE",
-        headers: { "x-dev-user-id": currentUser.id },
-      });
+      const response = await fetchWithDevHeader(
+        `/api/machine-storage-locations/${location.id}`,
+        {
+          method: "DELETE",
+        },
+        currentUser.id
+      );
 
       if (!response.ok) {
         throw new Error("倉庫情報の削除に失敗しました。");
