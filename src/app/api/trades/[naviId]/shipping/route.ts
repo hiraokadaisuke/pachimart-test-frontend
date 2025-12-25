@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
+import { getCurrentUserId } from "@/lib/server/currentUser";
 
 const shippingInfoSchema = z.object({
   companyName: z.string().optional(),
@@ -91,14 +92,14 @@ const resolveBuyerUserId = (trade: TradeNaviRecord): string | null => {
 
 export async function PATCH(request: Request, { params }: { params: { naviId: string } }) {
   const naviId = parseNaviId(params.naviId);
-  const actorUserId = request.headers.get("x-dev-user-id");
+  const actorUserId = getCurrentUserId(request);
 
   if (!naviId) {
     return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
   }
 
   if (!actorUserId) {
-    return NextResponse.json({ error: "Missing actor user id" }, { status: 400 });
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   let body: unknown;

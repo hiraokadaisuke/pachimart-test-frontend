@@ -2,6 +2,7 @@ import { Prisma, TradeStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
+import { getCurrentUserId } from "@/lib/server/currentUser";
 
 type TradeRecord = {
   id: number;
@@ -100,10 +101,19 @@ const toRecord = (trade: unknown): TradeRecord => {
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-export async function GET() {
+export async function GET(request: Request) {
+  const currentUserId = getCurrentUserId(request);
+
+  if (!currentUserId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   try {
     const trades = await prisma.trade.findMany({
-      where: { status: TradeStatus.IN_PROGRESS },
+      where: {
+        status: TradeStatus.IN_PROGRESS,
+        OR: [{ sellerUserId: currentUserId }, { buyerUserId: currentUserId }],
+      },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
