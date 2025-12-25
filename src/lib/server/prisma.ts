@@ -36,9 +36,9 @@ type InMemoryTrade = {
 
 type InMemoryMessage = {
   id: number;
-  naviId: number;
+  tradeNaviId: number;
   senderUserId: string;
-  receiverUserId: string;
+  senderRole: "buyer" | "seller";
   body: string;
   createdAt: Date;
 };
@@ -153,7 +153,7 @@ type InMemoryPrisma = {
     >;
   };
   message: {
-    findMany: ({ where, orderBy }?: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
+    findMany: ({ where, orderBy }?: { where?: { tradeNaviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
       Promise<InMemoryMessage[]>;
     create: ({ data }: { data: Partial<InMemoryMessage> }) => Promise<InMemoryMessage>;
   };
@@ -377,8 +377,13 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       },
     },
     message: {
-      findMany: async ({ where, orderBy }: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } } = {}) => {
-        const filtered = messages.filter((message) => (where?.naviId ? message.naviId === where.naviId : true));
+      findMany: async ({
+        where,
+        orderBy,
+      }: { where?: { tradeNaviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } } = {}) => {
+        const filtered = messages.filter((message) =>
+          where?.tradeNaviId ? message.tradeNaviId === where.tradeNaviId : true
+        );
         const sorted = filtered.sort((a, b) => {
           const order = orderBy?.createdAt === "desc" ? -1 : 1;
           return (a.createdAt.getTime() - b.createdAt.getTime()) * order;
@@ -388,9 +393,9 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       create: async ({ data }: { data: Partial<InMemoryMessage> }) => {
         const record: InMemoryMessage = {
           id: messageSeq++,
-          naviId: Number(data.naviId ?? 0),
+          tradeNaviId: Number(data.tradeNaviId ?? 0),
           senderUserId: String(data.senderUserId ?? ""),
-          receiverUserId: String(data.receiverUserId ?? ""),
+          senderRole: (data.senderRole as "buyer" | "seller" | undefined) ?? "buyer",
           body: String(data.body ?? ""),
           createdAt: now(),
         };

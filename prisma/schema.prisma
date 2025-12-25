@@ -19,6 +19,11 @@ enum TradeNaviType {
   ONLINE_INQUIRY
 }
 
+enum MessageSenderRole {
+  buyer
+  seller
+}
+
 enum TradeStatus {
   IN_PROGRESS
   COMPLETED
@@ -47,7 +52,6 @@ model User {
   tradesAsSeller Trade[]          @relation("TradeSeller")
   tradesAsBuyer  Trade[]          @relation("TradeBuyer")
   messagesSent   Message[]        @relation("Sender")
-  messagesReceived Message[]      @relation("Receiver")
   storageLocations StorageLocation[]
   machineStorageLocations MachineStorageLocation[]
 }
@@ -86,16 +90,15 @@ model Trade {
 }
 
 model Message {
-  id             Int       @id @default(autoincrement())
-  senderUserId   String
-  receiverUserId String
-  naviId         Int?
-  body           String
-  createdAt      DateTime  @default(now())
+  id           Int               @id @default(autoincrement())
+  tradeNaviId  Int
+  senderUserId String
+  senderRole   MessageSenderRole
+  body         String
+  createdAt    DateTime          @default(now())
 
-  senderUser   User      @relation("Sender", fields: [senderUserId], references: [id])
-  receiverUser User      @relation("Receiver", fields: [receiverUserId], references: [id])
-  navi         TradeNavi? @relation(fields: [naviId], references: [id])
+  senderUser User     @relation("Sender", fields: [senderUserId], references: [id])
+  navi       TradeNavi @relation(fields: [tradeNaviId], references: [id])
 }
 
 model Listing {
