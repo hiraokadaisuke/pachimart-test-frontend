@@ -1128,7 +1128,7 @@ function OnlineInquiryCreator({
     try {
       const response = await fetch("/api/online-inquiries", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "x-dev-user-id": currentUser.id },
         body: JSON.stringify({
           listingId: listingId ?? productId ?? "",
           quantity,
