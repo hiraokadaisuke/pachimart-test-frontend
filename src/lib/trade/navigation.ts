@@ -14,14 +14,16 @@ export function getStatementPath(
   tradeId: string,
   todoKind: TodoKind | null,
   actorRole: "buyer" | "seller",
-  _options?: { naviId?: number | string }
+  options?: { naviId?: number | string }
 ): string {
   const statementId = tradeId;
 
+  const query = options?.naviId ? `?naviId=${encodeURIComponent(options.naviId)}` : "";
+
   if (todoKind === "application_sent" && actorRole === "buyer") {
-    return `/navi/buyer/requests/${statementId}`;
+    return `/navi/buyer/requests/${statementId}${query}`;
   }
-  return `/navi/${statementId}/statement`;
+  return `/navi/${statementId}/statement${query}`;
 }
 
 export function getStatementPathForTrade(

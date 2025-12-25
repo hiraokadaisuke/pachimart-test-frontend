@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TradeStatusKey } from "@/components/transactions/status";
@@ -9,7 +9,13 @@ import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
 import { getActorRole } from "@/lib/trade/navigation";
 import { canApprove, canCancel } from "@/lib/trade/permissions";
 import { addBuyerContact, ensureContactsLoaded, saveContactsToTrade, updateTradeShipping } from "@/lib/trade/storage";
-import { fetchTradeRecordById, saveTradeShippingInfo, updateTradeStatus } from "@/lib/trade/api";
+import {
+  fetchTradeNaviById,
+  fetchTradeRecordById,
+  mapTradeNaviToTradeRecord,
+  saveTradeShippingInfo,
+  updateTradeStatus,
+} from "@/lib/trade/api";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getTodoPresentation } from "@/lib/trade/todo";
@@ -43,6 +49,7 @@ const requiredFieldLabels: Record<keyof ShippingInfo, string> = {
 
 export function StatementWorkspace({ tradeId, pageTitle, description, backHref }: StatementWorkspaceProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const currentUser = useCurrentDevUser();
   const [trade, setTrade] = useState<TradeRecord | null>(null);
   const [shipping, setShipping] = useState<ShippingInfo>({});
@@ -53,45 +60,73 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const statementId = typeof trade?.naviId === "number" ? String(trade.naviId) : tradeId;
+  const queryNaviId = searchParams?.get("naviId");
+  const resolvedNaviId = queryNaviId ?? (typeof trade?.naviId === "number" ? String(trade.naviId) : null);
+  const statementId = resolvedNaviId ?? tradeId;
 
   useEffect(() => {
     let canceled = false;
 
-    fetchTradeRecordById(tradeId)
-      .then((remote) => {
+    const loadTrade = async () => {
+      try {
+        const remote = await fetchTradeRecordById(tradeId);
+
         if (canceled) return;
-        if (!remote) {
+
+        if (remote) {
+          if (remote.sellerUserId !== currentUser.id && remote.buyerUserId !== currentUser.id) {
+            console.error("Trade not found or access denied", tradeId);
+            setTrade(null);
+            setShipping({});
+            setContacts([]);
+            return;
+          }
+
+          setTrade(remote);
+          setShipping(remote?.buyerShippingAddress ?? remote?.shipping ?? {});
+          setContacts(ensureContactsLoaded(remote));
+          return;
+        }
+
+        if (!resolvedNaviId) {
           setTrade(null);
           setShipping({});
           setContacts([]);
           return;
         }
 
-        if (remote.sellerUserId !== currentUser.id && remote.buyerUserId !== currentUser.id) {
-          console.error("Trade not found or access denied", tradeId);
+        const navi = await fetchTradeNaviById(resolvedNaviId);
+
+        if (canceled) return;
+
+        const mapped = navi ? mapTradeNaviToTradeRecord(navi) : null;
+
+        if (!mapped || (mapped.sellerUserId !== currentUser.id && mapped.buyerUserId !== currentUser.id)) {
+          console.error("Trade navi not found or access denied", resolvedNaviId);
           setTrade(null);
           setShipping({});
           setContacts([]);
           return;
         }
 
-        setTrade(remote);
-        setShipping(remote?.buyerShippingAddress ?? remote?.shipping ?? {});
-        setContacts(ensureContactsLoaded(remote));
-      })
-      .catch((loadError) => {
+        setTrade(mapped);
+        setShipping(mapped?.buyerShippingAddress ?? mapped?.shipping ?? {});
+        setContacts(ensureContactsLoaded(mapped));
+      } catch (loadError) {
         if (canceled) return;
         console.error("Failed to load trade", loadError);
         setTrade(null);
         setShipping({});
         setContacts([]);
-      });
+      }
+    };
+
+    loadTrade();
 
     return () => {
       canceled = true;
     };
-  }, [currentUser.id, tradeId]);
+  }, [currentUser.id, resolvedNaviId, tradeId]);
 
   const actorRole = trade ? getActorRole(trade, currentUser.id) : "none";
   const isBuyer = actorRole === "buyer";
