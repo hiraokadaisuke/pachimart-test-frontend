@@ -96,6 +96,22 @@ type InMemoryMachineStorageLocation = {
   updatedAt: Date;
 };
 
+type InMemoryBuyerShippingAddress = {
+  id: string;
+  ownerUserId: string;
+  label: string | null;
+  companyName: string | null;
+  postalCode: string | null;
+  prefecture: string | null;
+  city: string | null;
+  addressLine: string | null;
+  tel: string | null;
+  contactName: string | null;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 type InMemoryPrisma = {
   tradeNavi: {
     findMany: () => Promise<InMemoryTradeNavi[]>;
@@ -196,6 +212,16 @@ type InMemoryPrisma = {
       data: Partial<InMemoryMachineStorageLocation>;
     }) => Promise<InMemoryMachineStorageLocation>;
   };
+  buyerShippingAddress: {
+    findMany: ({
+      where,
+      orderBy,
+    }?: {
+      where?: { ownerUserId?: string; isActive?: boolean };
+      orderBy?: { updatedAt?: "asc" | "desc" };
+    }) => Promise<InMemoryBuyerShippingAddress[]>;
+    create: ({ data }: { data: Partial<InMemoryBuyerShippingAddress> }) => Promise<InMemoryBuyerShippingAddress>;
+  };
   $transaction: <T>(callback: (client: InMemoryPrisma) => Promise<T> | T) => Promise<T>;
   $queryRaw: (...params: unknown[]) => Promise<void>;
 };
@@ -215,12 +241,14 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   const listings: InMemoryListing[] = [];
   const storageLocations: InMemoryStorageLocation[] = [];
   const machineStorageLocations: InMemoryMachineStorageLocation[] = [];
+  const buyerShippingAddresses: InMemoryBuyerShippingAddress[] = [];
   let tradeNaviSeq = 1;
   let tradeSeq = 1;
   let messageSeq = 1;
   let listingSeq = 1;
   let storageLocationSeq = 1;
   let machineStorageLocationSeq = 1;
+  let buyerShippingAddressSeq = 1;
 
   const now = () => new Date();
 
@@ -625,16 +653,16 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         machineStorageLocations.push(record);
         return { ...record };
       },
-      update: async ({
-        where,
-        data,
-      }: {
-        where: { id?: string | null };
-        data: Partial<InMemoryMachineStorageLocation>;
-      }) => {
-        const id = where.id ?? null;
-        if (!id) {
-          throw new Error("Machine storage location id is required");
+    update: async ({
+      where,
+      data,
+    }: {
+      where: { id?: string | null };
+      data: Partial<InMemoryMachineStorageLocation>;
+    }) => {
+      const id = where.id ?? null;
+      if (!id) {
+        throw new Error("Machine storage location id is required");
         }
 
         const idx = machineStorageLocations.findIndex((location) => location.id === id);
@@ -660,8 +688,50 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           updatedAt: now(),
         };
 
-        machineStorageLocations[idx] = updated;
-        return { ...updated };
+      machineStorageLocations[idx] = updated;
+      return { ...updated };
+    },
+    },
+    buyerShippingAddress: {
+      findMany: async ({
+        where,
+        orderBy,
+      }: {
+        where?: { ownerUserId?: string; isActive?: boolean };
+        orderBy?: { updatedAt?: "asc" | "desc" };
+      } = {}) => {
+        const filtered = buyerShippingAddresses.filter((address) => {
+          const matchesOwner = where?.ownerUserId ? address.ownerUserId === where.ownerUserId : true;
+          const matchesActive =
+            where?.isActive === undefined ? true : address.isActive === where.isActive;
+          return matchesOwner && matchesActive;
+        });
+        const sorted = filtered.sort((a, b) => {
+          const order = orderBy?.updatedAt === "asc" ? 1 : -1;
+          return (a.updatedAt.getTime() - b.updatedAt.getTime()) * order;
+        });
+        return sorted.map((address) => ({ ...address }));
+      },
+      create: async ({ data }: { data: Partial<InMemoryBuyerShippingAddress> }) => {
+        const nowDate = now();
+        const record: InMemoryBuyerShippingAddress = {
+          id: data.id ?? `buyer_shipping_address_${buyerShippingAddressSeq++}`,
+          ownerUserId: String(data.ownerUserId ?? ""),
+          label: (data.label as string | null | undefined) ?? null,
+          companyName: (data.companyName as string | null | undefined) ?? null,
+          postalCode: (data.postalCode as string | null | undefined) ?? null,
+          prefecture: (data.prefecture as string | null | undefined) ?? null,
+          city: (data.city as string | null | undefined) ?? null,
+          addressLine: (data.addressLine as string | null | undefined) ?? null,
+          tel: (data.tel as string | null | undefined) ?? null,
+          contactName: (data.contactName as string | null | undefined) ?? null,
+          isActive: typeof data.isActive === "boolean" ? data.isActive : true,
+          createdAt: nowDate,
+          updatedAt: nowDate,
+        };
+
+        buyerShippingAddresses.push(record);
+        return { ...record };
       },
     },
     $transaction: async <T>(callback: (client: ReturnType<typeof buildInMemoryPrisma>) => Promise<T> | T): Promise<T> =>

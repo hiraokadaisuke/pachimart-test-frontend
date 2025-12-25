@@ -9,12 +9,18 @@ import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
 import { getActorRole } from "@/lib/trade/navigation";
 import { canApprove, canCancel } from "@/lib/trade/permissions";
 import { addBuyerContact, ensureContactsLoaded, saveContactsToTrade, updateTradeShipping } from "@/lib/trade/storage";
-import { fetchTradeRecordById, updateTradeStatus } from "@/lib/trade/api";
+import { fetchTradeRecordById, saveTradeShippingInfo, updateTradeStatus } from "@/lib/trade/api";
 import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
 import { buildTradeDiffNotes } from "@/lib/trade/diff";
+import {
+  createShippingAddress,
+  fetchShippingAddresses,
+  shippingAddressToShippingInfo,
+  type ShippingAddressDto,
+} from "@/lib/shipping-address/api";
 
 import { StatementDocument } from "./StatementDocument";
 import { ContactSelector } from "./ContactSelector";
@@ -41,6 +47,9 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const [trade, setTrade] = useState<TradeRecord | null>(null);
   const [shipping, setShipping] = useState<ShippingInfo>({});
   const [contacts, setContacts] = useState<BuyerContact[]>([]);
+  const [shippingAddresses, setShippingAddresses] = useState<ShippingAddressDto[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState("");
+  const [savingAddress, setSavingAddress] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -92,6 +101,30 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     : null;
   const statusKey: TradeStatusKey | null = todoView?.todoKind ?? null;
 
+  useEffect(() => {
+    let canceled = false;
+
+    if (!trade || !isBuyer) {
+      setShippingAddresses([]);
+      setSelectedAddressId("");
+      return;
+    }
+
+    fetchShippingAddresses(currentUser.id)
+      .then((list) => {
+        if (canceled) return;
+        setShippingAddresses(list);
+      })
+      .catch((loadError) => {
+        if (canceled) return;
+        console.warn("Failed to load shipping addresses", loadError);
+      });
+
+    return () => {
+      canceled = true;
+    };
+  }, [currentUser.id, isBuyer, trade]);
+
   const totals = useMemo(
     () => (trade ? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1) : null),
     [trade]
@@ -125,6 +158,49 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       setTrade(result.trade);
       setMessage("担当者を追加しました。");
       setError(null);
+    }
+  };
+
+  const handleAddressSelect = (addressId: string) => {
+    setSelectedAddressId(addressId);
+    const matched = shippingAddresses.find((address) => address.id === addressId);
+    if (!matched) return;
+
+    const mapped = shippingAddressToShippingInfo(matched);
+    setShipping((prev) => ({
+      ...prev,
+      ...mapped,
+      companyName: mapped.companyName ?? prev.companyName ?? trade?.buyer.companyName,
+    }));
+    setMessage("登録済み住所を読み込みました。");
+    setError(null);
+  };
+
+  const handleSaveAddress = async () => {
+    if (!shipping.address || shipping.address.trim() === "") {
+      setError("住所を入力してから保存してください。");
+      setMessage(null);
+      return;
+    }
+
+    setSavingAddress(true);
+    try {
+      const payload: ShippingInfo & { label?: string | null } = {
+        ...shipping,
+        companyName: shipping.companyName ?? trade?.buyer.companyName ?? undefined,
+        label: shipping.address ?? shipping.companyName ?? trade?.buyer.companyName ?? undefined,
+      };
+      const created = await createShippingAddress(currentUser.id, payload);
+      setShippingAddresses((prev) => [created, ...prev.filter((address) => address.id !== created.id)]);
+      setSelectedAddressId(created.id);
+      setMessage("住所帳に保存しました。");
+      setError(null);
+    } catch (saveError) {
+      console.error("Failed to save shipping address", saveError);
+      setError("住所帳への保存に失敗しました。再度お試しください。");
+      setMessage(null);
+    } finally {
+      setSavingAddress(false);
     }
   };
 
@@ -172,6 +248,15 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     const missing = requiredFields.filter((field) => !shipping[field] || (shipping[field] ?? "").toString().trim() === "");
     if (missing.length > 0) {
       setError("発送先と担当者をすべて入力してください。");
+      setMessage(null);
+      return;
+    }
+
+    try {
+      await saveTradeShippingInfo(statementId, shipping, contacts, currentUser.id);
+    } catch (persistError) {
+      console.error("Failed to persist shipping", persistError);
+      setError("発送先の保存に失敗しました。時間をおいて再度お試しください。");
       setMessage(null);
       return;
     }
@@ -425,8 +510,32 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                       </div>
                     </div>
 
-                    <div className="space-y-1">
+                    <div className="space-y-2">
                       <p className="text-[11px] font-semibold text-neutral-600">発送先住所</p>
+                      {allowShippingEdit && (
+                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+                          <select
+                            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                            value={selectedAddressId}
+                            onChange={(e) => handleAddressSelect(e.target.value)}
+                          >
+                            <option value="">登録済み住所を選択</option>
+                            {shippingAddresses.map((address) => (
+                              <option key={address.id} value={address.id}>
+                                {address.label || address.addressLine || address.companyName || "登録済み住所"}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={handleSaveAddress}
+                            disabled={savingAddress}
+                            className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+                          >
+                            住所帳に保存
+                          </button>
+                        </div>
+                      )}
                       {allowShippingEdit ? (
                         <textarea
                           className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
