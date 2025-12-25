@@ -1,8 +1,8 @@
-import { Prisma, TradeNaviStatus, TradeNaviType } from "@prisma/client";
+import { MessageSenderRole, Prisma, PrismaClient, TradeNaviStatus, TradeNaviType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { prisma } from "@/lib/server/prisma";
+import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 import { type TradeNaviDraft } from "@/lib/navi/types";
 import {
   buildListingSnapshot,
@@ -162,17 +162,36 @@ export async function POST(request: Request) {
     const snapshot = buildListingSnapshot(listing as Record<string, unknown>);
     const payload = buildInquiryPayload(snapshot, listing.sellerUserId, parsed.data);
 
-    const created = await prisma.tradeNavi.create({
-      data: {
-        ownerUserId: listing.sellerUserId,
-        buyerUserId,
-        listingId: listing.id,
-        listingSnapshot: snapshot as any,
-        status: TradeNaviStatus.SENT,
-        naviType: TradeNaviType.ONLINE_INQUIRY,
-        payload: { ...payload, buyerMemo },
-      },
-    });
+    const createInquiry = async (tx: Prisma.TransactionClient | InMemoryPrismaClient) => {
+      const tradeNavi = await tx.tradeNavi.create({
+        data: {
+          ownerUserId: listing.sellerUserId,
+          buyerUserId,
+          listingId: listing.id,
+          listingSnapshot: snapshot as any,
+          status: TradeNaviStatus.SENT,
+          naviType: TradeNaviType.ONLINE_INQUIRY,
+          payload: { ...payload, buyerMemo },
+        },
+      });
+
+      const normalizedBody = (buyerMemo ?? "").toString().trim() || "問い合わせが送信されました。";
+
+      await tx.message.create({
+        data: {
+          tradeNaviId: tradeNavi.id,
+          senderUserId: buyerUserId,
+          senderRole: MessageSenderRole.buyer,
+          body: normalizedBody,
+        },
+      });
+
+      return tradeNavi;
+    };
+
+    const created = await (prisma instanceof PrismaClient
+      ? prisma.$transaction((tx) => createInquiry(tx))
+      : prisma.$transaction((tx) => createInquiry(tx as InMemoryPrismaClient)));
 
     return NextResponse.json(toDto(toRecord(created)), { status: 201 });
   } catch (error) {
