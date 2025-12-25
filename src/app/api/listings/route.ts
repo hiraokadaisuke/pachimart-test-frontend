@@ -292,7 +292,7 @@ export async function GET(request: Request) {
       where.isVisible = true;
 
       if (status) {
-        if (![ListingStatus.PUBLISHED, ListingStatus.SOLD].includes(status)) {
+        if (status !== ListingStatus.PUBLISHED && status !== ListingStatus.SOLD) {
           return NextResponse.json({ error: "Forbidden" }, { status: 403 });
         }
         where.status = status;
