@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { formatStorageLocationShort } from "@/lib/listings/storageLocation";
 import type { Listing } from "@/lib/listings/types";
@@ -75,7 +76,11 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
   const fetchListings = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/listings?sellerUserId=${encodeURIComponent(currentUser.id)}`);
+      const response = await fetchWithDevHeader(
+        `/api/listings?sellerUserId=${encodeURIComponent(currentUser.id)}`,
+        { cache: "no-store" },
+        currentUser.id
+      );
       if (!response.ok) {
         throw new Error(`Failed to fetch listings: ${response.status}`);
       }
