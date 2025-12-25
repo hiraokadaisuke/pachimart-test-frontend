@@ -1,6 +1,7 @@
 import { TradeNaviType } from "@prisma/client";
 
 import { TodoItem } from "@/lib/todo/types";
+import { type ListingSnapshot } from "./listingSnapshot";
 
 export type TradeStatus =
   | "APPROVAL_REQUIRED"
@@ -84,4 +85,6 @@ export type TradeRecord = {
   termsText?: string;
   shipping: ShippingInfo;
   buyerContacts?: BuyerContact[];
+  listingSnapshot?: ListingSnapshot | null;
+  storageLocationName?: string;
 };

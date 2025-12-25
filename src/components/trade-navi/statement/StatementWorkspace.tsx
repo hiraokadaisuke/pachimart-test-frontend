@@ -14,6 +14,7 @@ import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
+import { buildTradeDiffNotes } from "@/lib/trade/diff";
 
 import { StatementDocument } from "./StatementDocument";
 import { ContactSelector } from "./ContactSelector";
@@ -282,6 +283,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const memoText = primaryItem?.note ?? "-";
   const notesText = trade.remarks ?? "-";
   const termsText = trade.termsText ?? "-";
+  const diffNotes = buildTradeDiffNotes(trade, trade?.listingSnapshot ?? null);
 
   const machineShipmentLabel =
     trade.shipmentDate || trade.shippingMethod
@@ -487,10 +489,23 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                     <div>
                       <p className="text-[11px] font-semibold text-neutral-600">台数</p>
                       <p className="text-neutral-900">{quantity}台</p>
+                      {diffNotes.quantityNote && (
+                        <p className="text-[11px] text-neutral-600">{diffNotes.quantityNote}</p>
+                      )}
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-neutral-600">単価</p>
                       <p className="text-neutral-900">{unitPrice ? formatYen(unitPrice) : "-"}</p>
+                      {diffNotes.unitPriceNote && (
+                        <p className="text-[11px] text-neutral-600">{diffNotes.unitPriceNote}</p>
+                      )}
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-semibold text-neutral-600">保管場所</p>
+                      <p className="text-neutral-900">{trade.storageLocationName || "-"}</p>
+                      {diffNotes.storageNote && (
+                        <p className="text-[11px] text-neutral-600">{diffNotes.storageNote}</p>
+                      )}
                     </div>
                   </div>
                 </section>
@@ -511,11 +526,21 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                       <tbody className="text-neutral-900">
                         <tr className="border-t border-slate-300">
                           <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">単価</th>
-                          <td className="px-3 py-2">{unitPrice ? formatYen(unitPrice) : "-"}</td>
+                          <td className="px-3 py-2">
+                            {unitPrice ? formatYen(unitPrice) : "-"}
+                            {diffNotes.unitPriceNote && (
+                              <p className="text-[11px] text-neutral-600">{diffNotes.unitPriceNote}</p>
+                            )}
+                          </td>
                         </tr>
                         <tr className="border-t border-slate-300">
                           <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">台数</th>
-                          <td className="px-3 py-2">{quantity}台</td>
+                          <td className="px-3 py-2">
+                            {quantity}台
+                            {diffNotes.quantityNote && (
+                              <p className="text-[11px] text-neutral-600">{diffNotes.quantityNote}</p>
+                            )}
+                          </td>
                         </tr>
                         <tr className="border-t border-slate-300">
                           <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">撤去日</th>
@@ -535,11 +560,21 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                         </tr>
                         <tr className="border-t border-slate-300">
                           <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械運賃</th>
-                          <td className="px-3 py-2">{shippingFee ? formatYen(shippingFee.amount) : "-"}</td>
+                          <td className="px-3 py-2">
+                            {shippingFee ? formatYen(shippingFee.amount) : "-"}
+                            {diffNotes.shippingCountNote && (
+                              <p className="text-[11px] text-neutral-600">{diffNotes.shippingCountNote}</p>
+                            )}
+                          </td>
                         </tr>
                         <tr className="border-t border-slate-300">
                           <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">出庫手数料</th>
-                          <td className="px-3 py-2">{handlingFee ? formatYen(handlingFee.amount) : "-"}</td>
+                          <td className="px-3 py-2">
+                            {handlingFee ? formatYen(handlingFee.amount) : "-"}
+                            {diffNotes.handlingCountNote && (
+                              <p className="text-[11px] text-neutral-600">{diffNotes.handlingCountNote}</p>
+                            )}
+                          </td>
                         </tr>
                         <tr className="border-t border-slate-300">
                           <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">段ボール</th>
@@ -598,11 +633,25 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-neutral-800">送料</span>
-                      <span className="font-semibold text-slate-900">{shippingFee ? formatYen(shippingFee.amount) : "-"}</span>
+                      <div className="text-right">
+                        <p className="font-semibold text-slate-900">
+                          {shippingFee ? formatYen(shippingFee.amount) : "-"}
+                        </p>
+                        {diffNotes.shippingCountNote && (
+                          <p className="text-[11px] text-neutral-600">{diffNotes.shippingCountNote}</p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-neutral-800">出庫手数料</span>
-                      <span className="font-semibold text-slate-900">{handlingFee ? formatYen(handlingFee.amount) : "-"}</span>
+                      <div className="text-right">
+                        <p className="font-semibold text-slate-900">
+                          {handlingFee ? formatYen(handlingFee.amount) : "-"}
+                        </p>
+                        {diffNotes.handlingCountNote && (
+                          <p className="text-[11px] text-neutral-600">{diffNotes.handlingCountNote}</p>
+                        )}
+                      </div>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-neutral-800">段ボール</span>
