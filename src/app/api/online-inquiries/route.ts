@@ -1,4 +1,4 @@
-import { MessageSenderRole, Prisma, TradeNaviStatus, TradeNaviType } from "@prisma/client";
+import { MessageSenderRole, Prisma, PrismaClient, TradeNaviStatus, TradeNaviType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -162,7 +162,7 @@ export async function POST(request: Request) {
     const snapshot = buildListingSnapshot(listing as Record<string, unknown>);
     const payload = buildInquiryPayload(snapshot, listing.sellerUserId, parsed.data);
 
-    const created = await prisma.$transaction(async (tx) => {
+    const createInquiry = async (tx: typeof prisma) => {
       const tradeNavi = await tx.tradeNavi.create({
         data: {
           ownerUserId: listing.sellerUserId,
@@ -187,7 +187,11 @@ export async function POST(request: Request) {
       });
 
       return tradeNavi;
-    });
+    };
+
+    const created = await (prisma instanceof PrismaClient
+      ? prisma.$transaction((tx) => createInquiry(tx))
+      : prisma.$transaction((tx) => createInquiry(tx as typeof prisma)));
 
     return NextResponse.json(toDto(toRecord(created)), { status: 201 });
   } catch (error) {
