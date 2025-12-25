@@ -7,6 +7,7 @@ import {
   type StatementItem,
   type TradeRecord,
 } from "@/lib/trade/types";
+import { resolveListingSnapshot, type ListingSnapshot } from "./listingSnapshot";
 
 export type TradeDto = {
   id: number;
@@ -22,6 +23,7 @@ export type TradeDto = {
     ownerUserId: string;
     buyerUserId: string | null;
     payload: unknown;
+    listingSnapshot: unknown;
     naviType: TradeNaviType | null;
     createdAt: string;
     updatedAt: string;
@@ -165,6 +167,9 @@ const DB_STATUS_TO_TRADE_STATUS: Record<TradeDto["status"], TradeRecord["status"
 export function transformTrade(dto: TradeDto): TradeRecord {
   const payload = (dto.payload ?? dto.navi?.payload ?? {}) as TradePayload;
   const conditions: TradeConditions = payload.conditions ?? {};
+  const listingSnapshot: ListingSnapshot | null = resolveListingSnapshot(
+    dto.navi?.listingSnapshot ?? (payload as Record<string, unknown>).listingSnapshot ?? null
+  );
 
   const buyerCompanyName = toString(payload.buyerCompanyName);
   const sellerCompanyName = toString(payload.sellerCompanyName);
@@ -215,5 +220,6 @@ export function transformTrade(dto: TradeDto): TradeRecord {
     buyerContacts: payload.buyerContacts,
     buyerContactName: toString(payload.buyerContactName),
     buyerShippingAddress: buildShippingInfo(payload),
+    listingSnapshot,
   } satisfies TradeRecord;
 }

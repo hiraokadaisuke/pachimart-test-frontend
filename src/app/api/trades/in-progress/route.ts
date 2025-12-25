@@ -18,6 +18,7 @@ type TradeRecord = {
     ownerUserId: string;
     buyerUserId: string | null;
     payload: Prisma.JsonValue | null;
+    listingSnapshot: Prisma.JsonValue | null;
     createdAt: Date;
     updatedAt: Date;
   } | null;
@@ -40,6 +41,7 @@ const toDto = (trade: TradeRecord) => ({
         ownerUserId: trade.navi.ownerUserId,
         buyerUserId: trade.navi.buyerUserId,
         payload: (trade.navi.payload as Prisma.JsonValue | null) ?? null,
+        listingSnapshot: (trade.navi.listingSnapshot as Prisma.JsonValue | null) ?? null,
         createdAt: trade.navi.createdAt.toISOString(),
         updatedAt: trade.navi.updatedAt.toISOString(),
       }
@@ -85,6 +87,7 @@ const toRecord = (trade: unknown): TradeRecord => {
           ownerUserId: String(naviCandidate.ownerUserId),
           buyerUserId: (naviCandidate.buyerUserId as string | null) ?? null,
           payload: (naviCandidate.payload as Prisma.JsonValue | null) ?? null,
+          listingSnapshot: (naviCandidate.listingSnapshot as Prisma.JsonValue | null) ?? null,
           createdAt: toDate(naviCandidate.createdAt),
           updatedAt: toDate(naviCandidate.updatedAt, toDate(naviCandidate.createdAt)),
         }
