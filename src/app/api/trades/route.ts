@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/trade/listingSnapshot";
 
 const tradeNaviClient = prisma.tradeNavi;
@@ -103,18 +102,9 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-export async function GET(request: Request) {
-  const currentUserId = getCurrentUserId(request);
-
-  if (!currentUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function GET() {
   try {
     const trades = await tradeNaviClient.findMany({
-      where: {
-        OR: [{ ownerUserId: currentUserId }, { buyerUserId: currentUserId }],
-      },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,
     });
@@ -130,12 +120,6 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const currentUserId = getCurrentUserId(request);
-
-  if (!currentUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   let body: unknown;
 
   try {
@@ -158,16 +142,10 @@ export async function POST(request: Request) {
 
   const { ownerUserId, buyerUserId, status, payload, listingId, naviType } = parsed.data;
 
-  if (ownerUserId !== currentUserId) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-  }
-
   let listingSnapshot: Prisma.JsonValue | null = null;
 
   if (listingId) {
-    const listing = await listingClient.findUnique({
-      where: { id: listingId, sellerUserId: currentUserId } as any,
-    });
+    const listing = await listingClient.findUnique({ where: { id: listingId } });
 
     if (!listing) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
@@ -181,7 +159,7 @@ export async function POST(request: Request) {
   try {
     const created = await tradeNaviClient.create({
       data: {
-        ownerUserId: currentUserId,
+        ownerUserId,
         buyerUserId: buyerUserId ?? null,
         listingId: listingId ?? null,
         listingSnapshot: listingSnapshotInput as any,

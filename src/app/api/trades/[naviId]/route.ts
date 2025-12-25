@@ -9,7 +9,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
 
 const tradeNaviClient = prisma.tradeNavi;
 
@@ -114,17 +113,11 @@ const resolveBuyerUserId = (trade: TradeNaviRecord): string | null => {
   return null;
 };
 
-export async function GET(request: Request, { params }: { params: { naviId: string } }) {
+export async function GET(_request: Request, { params }: { params: { naviId: string } }) {
   const id = parseNaviId(params.naviId);
 
   if (!id) {
     return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
-  }
-
-  const currentUserId = getCurrentUserId(request);
-
-  if (!currentUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
@@ -133,13 +126,6 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
 
     if (!trade) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
-    }
-
-    const tradeRecord = toRecord(trade);
-    const buyerUserId = resolveBuyerUserId(tradeRecord);
-
-    if (tradeRecord.ownerUserId !== currentUserId && buyerUserId !== currentUserId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     return NextResponse.json(toDto(toRecord(trade)));
@@ -154,12 +140,6 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
 
 export async function PATCH(request: Request, { params }: { params: { naviId: string } }) {
   const id = parseNaviId(params.naviId);
-
-  const currentUserId = getCurrentUserId(request);
-
-  if (!currentUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
 
   if (!id) {
     return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
@@ -186,32 +166,14 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
   }
 
   try {
-    const existing = await tradeNaviClient.findUnique({ where: { id } as any });
-
-    if (!existing) {
-      return NextResponse.json({ error: "Trade not found" }, { status: 404 });
-    }
-
-    const existingRecord = toRecord(existing);
-    const buyerUserId = resolveBuyerUserId(existingRecord);
-    const isOwner = existingRecord.ownerUserId === currentUserId;
-
-    if (!isOwner && buyerUserId !== currentUserId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const targetStatus = parsed.data.status;
-
-    if (targetStatus === TradeNaviStatus.APPROVED && buyerUserId !== currentUserId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    if (targetStatus !== TradeNaviStatus.APPROVED && !isOwner) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
     const { updated, trade } = await (prisma as any).$transaction(async (tx: any) => {
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
+      const existing = await tx.tradeNavi.findUnique({ where: { id } as any });
+
+      if (!existing) {
+        throw new TradeNotFoundError();
+      }
+
       const updatedNavi = await tx.tradeNavi.update({
         where: { id } as any,
         data: { status: parsed.data.status },
@@ -223,9 +185,9 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         parsed.data.status === TradeNaviStatus.APPROVED &&
         existing.status !== TradeNaviStatus.APPROVED
       ) {
-        const resolvedBuyerId = resolveBuyerUserId(toRecord(updatedNavi));
+        const buyerUserId = resolveBuyerUserId(toRecord(updatedNavi));
 
-        if (!resolvedBuyerId) {
+        if (!buyerUserId) {
           throw new BuyerRequiredError();
         }
 
@@ -233,7 +195,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
           where: { naviId: updatedNavi.id } as any,
           create: {
             sellerUserId: updatedNavi.ownerUserId,
-            buyerUserId: resolvedBuyerId,
+            buyerUserId,
             status: TradeStatus.IN_PROGRESS,
             payload: updatedNavi.payload ?? Prisma.JsonNull,
             naviId: updatedNavi.id,

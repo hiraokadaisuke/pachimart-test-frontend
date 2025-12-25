@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
 import {
   buildStorageLocationSnapshot,
   formatStorageLocationShort,
@@ -255,11 +254,10 @@ const resolveStorageLocationSnapshot = async (
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
-    const sellerUserIdParam = url.searchParams.get("sellerUserId") ?? undefined;
+    const sellerUserId = url.searchParams.get("sellerUserId") ?? undefined;
     const statusParam = url.searchParams.get("status");
     const status = parseListingStatus(statusParam);
     const visibleOnly = parseVisibleOnly(url.searchParams.get("visibleOnly"));
-    const currentUserId = getCurrentUserId(request);
 
     if (statusParam && !status) {
       return NextResponse.json(
@@ -270,35 +268,24 @@ export async function GET(request: Request) {
 
     const where: ListingQueryWhere = {};
 
-    if (sellerUserIdParam) {
-      if (!currentUserId) {
-        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-      }
+    if (sellerUserId) {
+      where.sellerUserId = sellerUserId;
+    }
 
-      if (sellerUserIdParam !== currentUserId) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-      }
+    if (status) {
+      where.status = status;
+    }
 
-      where.sellerUserId = currentUserId;
-
-      if (status) {
-        where.status = status;
+    if (visibleOnly !== undefined) {
+      if (visibleOnly) {
+        where.isVisible = true;
       }
-
-      if (visibleOnly !== undefined) {
-        where.isVisible = visibleOnly ? true : undefined;
-      }
-    } else {
+    } else if (!sellerUserId) {
       where.isVisible = true;
+    }
 
-      if (status) {
-        if (status !== ListingStatus.PUBLISHED && status !== ListingStatus.SOLD) {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-        where.status = status;
-      } else {
-        where.status = { in: [ListingStatus.PUBLISHED, ListingStatus.SOLD] };
-      }
+    if (!status && !sellerUserId) {
+      where.status = { in: [ListingStatus.PUBLISHED, ListingStatus.SOLD] };
     }
 
     const listings = await listingClient.findMany({
@@ -329,10 +316,10 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const sellerUserId = getCurrentUserId(request);
+  const sellerUserId = request.headers.get("x-dev-user-id");
 
   if (!sellerUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Missing seller user id" }, { status: 400 });
   }
 
   let body: unknown;

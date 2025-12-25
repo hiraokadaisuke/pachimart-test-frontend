@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
 import {
   buildStorageLocationSnapshot,
   formatStorageLocationShort,
@@ -48,7 +47,7 @@ const toDto = (listing: any) => ({
   updatedAt: new Date(listing.updatedAt).toISOString(),
 });
 
-export async function GET(request: Request, { params }: { params: { id?: string } }) {
+export async function GET(_request: Request, { params }: { params: { id?: string } }) {
   try {
     const id = params?.id;
     if (!id) {
@@ -57,18 +56,11 @@ export async function GET(request: Request, { params }: { params: { id?: string 
 
     const listing = await listingClient.findUnique({ where: { id } });
 
-    if (!listing) {
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
-    }
-
-    const currentUserId = getCurrentUserId(request);
     const isPublicListing =
-      listing.status === ListingStatus.PUBLISHED || listing.status === ListingStatus.SOLD;
+      listing?.status === ListingStatus.PUBLISHED || listing?.status === ListingStatus.SOLD;
 
-    const isOwner = currentUserId && listing.sellerUserId === currentUserId;
-
-    if ((!isPublicListing || !listing.isVisible) && !isOwner) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    if (!listing || !isPublicListing || !listing.isVisible) {
+      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
     let storageLocationSnapshot = listing.storageLocationSnapshot as StorageLocationSnapshot | null;
@@ -115,9 +107,9 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
     return NextResponse.json({ error: "Listing id is required" }, { status: 400 });
   }
 
-  const sellerUserId = getCurrentUserId(request);
+  const sellerUserId = request.headers.get("x-dev-user-id");
   if (!sellerUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Missing seller user id" }, { status: 400 });
   }
 
   let body: unknown;

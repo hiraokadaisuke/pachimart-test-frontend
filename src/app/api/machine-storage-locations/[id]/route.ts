@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
 
 const machineStorageLocationClient = prisma.machineStorageLocation;
 
@@ -15,20 +14,22 @@ const parseNumber = (value: unknown) => {
 };
 
 export async function PATCH(request: Request, context: { params: { id: string } }) {
-  const ownerUserId = getCurrentUserId(request);
+  const ownerUserId = request.headers.get("x-dev-user-id");
   const { id } = context.params;
 
   if (!ownerUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Missing owner user id" }, { status: 400 });
   }
 
   try {
-    const existing = await machineStorageLocationClient.findFirst({
-      where: { id, ownerUserId, isActive: true },
-    });
+    const existing = await machineStorageLocationClient.findUnique({ where: { id } });
 
-    if (!existing) {
+    if (!existing || !existing.isActive) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    if (existing.ownerUserId !== ownerUserId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -86,20 +87,22 @@ export async function PATCH(request: Request, context: { params: { id: string } 
 }
 
 export async function DELETE(request: Request, context: { params: { id: string } }) {
-  const ownerUserId = getCurrentUserId(request);
+  const ownerUserId = request.headers.get("x-dev-user-id");
   const { id } = context.params;
 
   if (!ownerUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "Missing owner user id" }, { status: 400 });
   }
 
   try {
-    const existing = await machineStorageLocationClient.findFirst({
-      where: { id, ownerUserId, isActive: true },
-    });
+    const existing = await machineStorageLocationClient.findUnique({ where: { id } });
 
-    if (!existing) {
+    if (!existing || !existing.isActive) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+
+    if (existing.ownerUserId !== ownerUserId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const updated = await machineStorageLocationClient.update({

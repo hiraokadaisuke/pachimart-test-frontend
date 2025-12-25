@@ -2,7 +2,6 @@ import { Prisma, TradeNaviType, TradeStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -82,18 +81,9 @@ const toDto = (trade: ReturnType<typeof toRecord>) => ({
   buyerUser: trade.buyerUser,
 });
 
-export async function GET(request: Request) {
-  const currentUserId = getCurrentUserId(request);
-
-  if (!currentUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
+export async function GET() {
   try {
     const trades = await prisma.trade.findMany({
-      where: {
-        OR: [{ sellerUserId: currentUserId }, { buyerUserId: currentUserId }],
-      },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
