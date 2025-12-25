@@ -20,14 +20,28 @@ export type TradeStorageLocationSnapshot = Prisma.JsonObject & {
 
 export type ListingSnapshot = Prisma.JsonObject & {
   listingId: string;
+  status: string | null;
+  isVisible: boolean;
+  kind: string;
+  maker: string | null;
+  machineName: string | null;
   title: string;
   description: string | null;
   unitPriceExclTax: number | null;
   quantity: number;
   isNegotiable: boolean;
+  removalStatus: string | null;
+  removalDate: string | null;
+  hasNailSheet: boolean;
+  hasManual: boolean;
+  pickupAvailable: boolean;
+  storageLocation: string | null;
+  storageLocationId: string | null;
   allowPartialSale: boolean;
+  allowPartial: boolean;
   storageLocationSnapshot: TradeStorageLocationSnapshot | null;
   shippingCount: number;
+  shippingFeeCount: number;
   handlingFeeCount: number;
   flags: Prisma.JsonObject & {
     hasKugiSheet: boolean;
@@ -35,8 +49,8 @@ export type ListingSnapshot = Prisma.JsonObject & {
     pickupAvailable: boolean;
   };
   createdAt: string;
-  maker?: string | null;
-  machineName?: string | null;
+  updatedAt: string;
+  note?: string | null;
 };
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -51,6 +65,9 @@ const readNumber = (value: unknown): number | undefined =>
 const readBoolean = (value: unknown): boolean | undefined =>
   typeof value === "boolean" ? value : undefined;
 
+const readNullableString = (value: unknown): string | null | undefined =>
+  value === null ? null : readString(value);
+
 const toIsoString = (value: unknown): string => {
   if (value instanceof Date) return value.toISOString();
   if (typeof value === "string" || typeof value === "number") {
@@ -60,6 +77,11 @@ const toIsoString = (value: unknown): string => {
     }
   }
   return new Date().toISOString();
+};
+
+const toIsoStringOrNull = (value: unknown): string | null => {
+  if (value === null || value === undefined) return null;
+  return toIsoString(value);
 };
 
 const resolveTradeStorageLocationSnapshot = (
@@ -117,6 +139,7 @@ const resolveTradeStorageLocationSnapshot = (
 
 export const buildListingSnapshot = (listing: Record<string, unknown>): ListingSnapshot => {
   const listingId = readString(listing.id) ?? "";
+  const kind = readString(listing.kind) ?? listingId;
   const machineName = (listing.machineName as string | null | undefined) ?? null;
   const maker = (listing.maker as string | null | undefined) ?? null;
   const note = (listing.note as string | null | undefined) ?? null;
@@ -134,25 +157,42 @@ export const buildListingSnapshot = (listing: Record<string, unknown>): ListingS
     storageLocation
   );
 
+  const createdAt = toIsoString(listing.createdAt);
+  const updatedAt = toIsoString(listing.updatedAt ?? listing.createdAt);
+
   return {
     listingId,
-    title: machineName ?? listingId,
+    status: readString(listing.status) ?? null,
+    isVisible: Boolean(listing.isVisible),
+    kind,
+    maker,
+    machineName,
+    title: machineName ?? kind,
     description: note,
     unitPriceExclTax,
     quantity: Number(listing.quantity ?? 0),
     isNegotiable,
+    removalStatus: readString(listing.removalStatus) ?? null,
+    removalDate: toIsoStringOrNull(listing.removalDate),
+    hasNailSheet: Boolean(listing.hasNailSheet),
+    hasManual: Boolean(listing.hasManual),
+    pickupAvailable: Boolean(listing.pickupAvailable),
+    storageLocation: storageLocation ?? null,
+    storageLocationId: readString(listing.storageLocationId) ?? null,
     allowPartialSale: Boolean(listing.allowPartial),
+    allowPartial: Boolean(listing.allowPartial),
     storageLocationSnapshot,
     shippingCount: Number(listing.shippingFeeCount ?? 0),
+    shippingFeeCount: Number(listing.shippingFeeCount ?? 0),
     handlingFeeCount: Number(listing.handlingFeeCount ?? 0),
     flags: {
       hasKugiSheet: Boolean(listing.hasNailSheet),
       hasManual: Boolean(listing.hasManual),
       pickupAvailable: Boolean(listing.pickupAvailable),
     },
-    createdAt: toIsoString(listing.createdAt),
-    maker,
-    machineName,
+    createdAt,
+    updatedAt,
+    note,
   };
 };
 
@@ -168,25 +208,46 @@ export const resolveListingSnapshot = (snapshot: unknown): ListingSnapshot | nul
     readString(snapshot.storageLocation)
   );
 
+  const createdAt = readString(snapshot.createdAt) ?? "";
+  const updatedAt = readString(snapshot.updatedAt) ?? createdAt;
+  const shippingFeeCount =
+    readNumber(snapshot.shippingFeeCount) ?? readNumber(snapshot.shippingCount) ?? 0;
+  const allowPartial =
+    readBoolean(snapshot.allowPartial) ?? readBoolean(snapshot.allowPartialSale) ?? false;
+
   return {
     listingId,
+    status: readString(snapshot.status) ?? null,
+    isVisible: readBoolean(snapshot.isVisible) ?? true,
+    kind: readString(snapshot.kind) ?? listingId,
+    maker: readString(snapshot.maker) ?? null,
+    machineName: readString(snapshot.machineName) ?? null,
     title:
       readString(snapshot.title) ??
       readString(snapshot.machineName) ??
       readString(snapshot.kind) ??
       listingId,
-    description: readString(snapshot.description) ?? readString(snapshot.note) ?? null,
+    description: readString(snapshot.description) ?? readNullableString(snapshot.note) ?? null,
     unitPriceExclTax:
       snapshot.unitPriceExclTax === null || snapshot.unitPriceExclTax === undefined
         ? null
         : (snapshot.unitPriceExclTax as number),
     quantity: readNumber(snapshot.quantity) ?? 0,
     isNegotiable: readBoolean(snapshot.isNegotiable) ?? false,
-    allowPartialSale:
-      readBoolean(snapshot.allowPartialSale) ?? readBoolean(snapshot.allowPartial) ?? false,
+    removalStatus: readString(snapshot.removalStatus) ?? null,
+    removalDate: toIsoStringOrNull(snapshot.removalDate),
+    hasNailSheet:
+      readBoolean(snapshot.hasNailSheet) ?? readBoolean(flags.hasKugiSheet) ?? false,
+    hasManual: readBoolean(snapshot.hasManual) ?? readBoolean(flags.hasManual) ?? false,
+    pickupAvailable:
+      readBoolean(snapshot.pickupAvailable) ?? readBoolean(flags.pickupAvailable) ?? false,
+    storageLocation: readString(snapshot.storageLocation) ?? null,
+    storageLocationId: readString(snapshot.storageLocationId) ?? null,
+    allowPartialSale: allowPartial,
+    allowPartial,
     storageLocationSnapshot,
-    shippingCount:
-      readNumber(snapshot.shippingCount) ?? readNumber(snapshot.shippingFeeCount) ?? 0,
+    shippingCount: shippingFeeCount,
+    shippingFeeCount,
     handlingFeeCount: readNumber(snapshot.handlingFeeCount) ?? 0,
     flags: {
       hasKugiSheet:
@@ -195,9 +256,9 @@ export const resolveListingSnapshot = (snapshot: unknown): ListingSnapshot | nul
       pickupAvailable:
         readBoolean(flags.pickupAvailable) ?? readBoolean(snapshot.pickupAvailable) ?? false,
     },
-    createdAt: readString(snapshot.createdAt) ?? "",
-    maker: readString(snapshot.maker) ?? null,
-    machineName: readString(snapshot.machineName) ?? null,
+    note: readNullableString(snapshot.note) ?? readNullableString(snapshot.description) ?? null,
+    createdAt,
+    updatedAt,
   };
 };
 
