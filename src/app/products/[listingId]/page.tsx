@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
 
 import MainContainer from "@/components/layout/MainContainer";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -59,9 +59,7 @@ const resolveInquiryStatus = (listing: Listing) => {
 };
 
 export default async function ProductDetailPage({ params }: { params: { listingId: string } }) {
-  const incomingHeaders = headers();
-  const devUserId =
-    incomingHeaders.get("x-dev-user-id") ?? incomingHeaders.get("x-dev-user-id".toLowerCase()) ?? undefined;
+  const devUserId = cookies().get("dev_user_id")?.value;
 
   const listing = await fetchListing(params.listingId, devUserId);
 
