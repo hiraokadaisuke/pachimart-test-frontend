@@ -24,16 +24,16 @@ type RegionKey =
 
 type ShippingFeesByRegion = Record<RegionKey, number>;
 
-type MachineStorageLocation = {
+type StorageLocation = {
   id: string;
   ownerUserId: string;
   name: string;
-  postalCode: string;
-  prefecture: string;
-  city: string;
-  addressLine: string;
-  handlingFeePerUnit: number;
-  shippingFeesByRegion: ShippingFeesByRegion;
+  postalCode: string | null;
+  prefecture: string | null;
+  city: string | null;
+  addressLine: string | null;
+  handlingFeePerUnit: number | null;
+  shippingFeesByRegion: ShippingFeesByRegion | null;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -87,7 +87,7 @@ type Mode = "list" | "new" | "edit";
 export default function MachineStorageLocationsPage() {
   const currentUser = useCurrentDevUser();
   const [mode, setMode] = useState<Mode>("list");
-  const [locations, setLocations] = useState<MachineStorageLocation[]>([]);
+  const [locations, setLocations] = useState<StorageLocation[]>([]);
   const [formState, setFormState] = useState<FormState>(createEmptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
@@ -107,7 +107,7 @@ export default function MachineStorageLocationsPage() {
       if (!response.ok) {
         throw new Error("倉庫一覧の取得に失敗しました。");
       }
-      const data = (await response.json()) as MachineStorageLocation[];
+      const data = (await response.json()) as StorageLocation[];
       setLocations(data);
     } catch (error) {
       const message = error instanceof Error ? error.message : "倉庫一覧の取得に失敗しました。";
@@ -128,14 +128,14 @@ export default function MachineStorageLocationsPage() {
     setErrorMessage(null);
   };
 
-  const handleStartEdit = (location: MachineStorageLocation) => {
+  const handleStartEdit = (location: StorageLocation) => {
     setEditingId(location.id);
     setFormState({
       name: location.name,
-      postalCode: location.postalCode,
-      prefecture: location.prefecture,
-      city: location.city,
-      addressLine: location.addressLine,
+      postalCode: location.postalCode ?? "",
+      prefecture: location.prefecture ?? "",
+      city: location.city ?? "",
+      addressLine: location.addressLine ?? "",
       handlingFeePerUnit: String(location.handlingFeePerUnit ?? ""),
       shippingFeesByRegion: REGION_FIELDS.reduce(
         (acc, region) => {
@@ -234,7 +234,7 @@ export default function MachineStorageLocationsPage() {
     }
   };
 
-  const handleDelete = async (location: MachineStorageLocation) => {
+  const handleDelete = async (location: StorageLocation) => {
     const confirmed = window.confirm(`「${location.name}」を削除しますか？`);
     if (!confirmed) return;
 
@@ -295,10 +295,10 @@ export default function MachineStorageLocationsPage() {
               <tr key={location.id} className="border-t border-slate-100">
                 <td className="px-3 py-2 font-medium text-slate-900">{location.name}</td>
                 <td className="px-3 py-2 text-sm text-slate-700">
-                  {`${location.postalCode} ${location.prefecture}${location.city}${location.addressLine}`}
+                  {`${location.postalCode ? `${location.postalCode} ` : ""}${location.prefecture ?? ""}${location.city ?? ""}${location.addressLine ?? ""}`}
                 </td>
                 <td className="px-3 py-2 text-right">
-                  {location.handlingFeePerUnit.toLocaleString()} 円
+                  {Number(location.handlingFeePerUnit ?? 0).toLocaleString()} 円
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex justify-center gap-2">

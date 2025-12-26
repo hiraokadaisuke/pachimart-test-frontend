@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "format": "prettier --write .",
-    "smoke": "ts-node scripts/smoke.ts"
+    "smoke": "ts-node scripts/smoke.ts",
+    "migrate:storage-locations": "ts-node scripts/migrate-storage-locations.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "6.1.0",

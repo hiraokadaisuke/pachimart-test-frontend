@@ -11,15 +11,15 @@ type SellFormProps = {
   showHeader?: boolean;
 };
 
-type MachineStorageLocation = {
+type StorageLocation = {
   id: string;
   name: string;
-  postalCode: string;
-  prefecture: string;
-  city: string;
-  addressLine: string;
-  handlingFeePerUnit: number;
-  shippingFeesByRegion: Record<string, number>;
+  postalCode: string | null;
+  prefecture: string | null;
+  city: string | null;
+  addressLine: string | null;
+  handlingFeePerUnit: number | null;
+  shippingFeesByRegion: Record<string, number> | null;
 };
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
@@ -60,7 +60,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   const [quantity, setQuantity] = useState<number | "">(1);
   const [price, setPrice] = useState<number | "">("");
   const [isNegotiable, setIsNegotiable] = useState(false);
-  const [storageLocations, setStorageLocations] = useState<MachineStorageLocation[]>([]);
+  const [storageLocations, setStorageLocations] = useState<StorageLocation[]>([]);
   const [selectedStorageLocationId, setSelectedStorageLocationId] = useState("");
   const [removalStatus, setRemovalStatus] = useState<"REMOVED" | "SCHEDULED">("SCHEDULED");
   const [removalDate, setRemovalDate] = useState("");
@@ -100,7 +100,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
         if (!response.ok) {
           throw new Error(`Failed to fetch storage locations: ${response.status}`);
         }
-        const data: MachineStorageLocation[] = await response.json();
+        const data: StorageLocation[] = await response.json();
         setStorageLocations(data);
         setLocationError(null);
       } catch (error) {
