@@ -61,7 +61,7 @@ const resolveInquiryStatus = (listing: Listing) => {
 export default async function ProductDetailPage({ params }: { params: { listingId: string } }) {
   const incomingHeaders = headers();
   const devUserId =
-    incomingHeaders.get("x-dev-user-id") ?? incomingHeaders.get("x-dev-user-id".toLowerCase());
+    incomingHeaders.get("x-dev-user-id") ?? incomingHeaders.get("x-dev-user-id".toLowerCase()) ?? undefined;
 
   const listing = await fetchListing(params.listingId, devUserId);
 
