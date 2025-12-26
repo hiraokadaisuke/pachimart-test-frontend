@@ -149,10 +149,7 @@ type InMemoryPrisma = {
     create: ({ data }: { data: Partial<InMemoryMessage> }) => Promise<InMemoryMessage>;
   };
   listing: {
-    findMany: ({
-      where,
-      orderBy,
-    }?: {
+    findMany: (args?: {
       where?: { sellerUserId?: string; status?: ListingStatus | { in: ListingStatus[] }; isVisible?: boolean };
       orderBy?: { updatedAt?: "asc" | "desc" };
     }) => Promise<InMemoryListing[]>;
