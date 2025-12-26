@@ -12,7 +12,7 @@ import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
 
 async function fetchListing(listingId: string, devUserId?: string): Promise<Listing | null> {
   try {
-    const response = await fetch(buildApiUrl(`/api/listings/${listingId}`), {
+    const response = await fetch(buildApiUrl(`/api/public-listings/${listingId}`), {
       cache: "no-store",
       headers: devUserId ? { "x-dev-user-id": devUserId } : undefined,
     });
