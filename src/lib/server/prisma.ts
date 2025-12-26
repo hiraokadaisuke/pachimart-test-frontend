@@ -60,7 +60,7 @@ type InMemoryListing = {
   hasManual: boolean;
   pickupAvailable: boolean;
   storageLocation: string;
-  storageLocationId: string | null;
+  storageLocationId: string;
   storageLocationSnapshot: Prisma.JsonValue | null;
   shippingFeeCount: number;
   handlingFeeCount: number;
@@ -74,23 +74,13 @@ type InMemoryStorageLocation = {
   id: string;
   ownerUserId: string;
   name: string;
-  address: string;
+  address: string | null;
+  postalCode: string | null;
   prefecture: string | null;
   city: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-type InMemoryMachineStorageLocation = {
-  id: string;
-  ownerUserId: string;
-  name: string;
-  postalCode: string;
-  prefecture: string;
-  city: string;
-  addressLine: string;
-  handlingFeePerUnit: number;
-  shippingFeesByRegion: Prisma.JsonValue;
+  addressLine: string | null;
+  handlingFeePerUnit: number | null;
+  shippingFeesByRegion: Prisma.JsonValue | null;
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -174,9 +164,15 @@ type InMemoryPrisma = {
       where,
       orderBy,
     }: {
-      where?: { ownerUserId?: string };
+      where?: { ownerUserId?: string; isActive?: boolean };
       orderBy?: { updatedAt?: "asc" | "desc" };
     }) => Promise<InMemoryStorageLocation[]>;
+    findFirst: ({ where }: { where?: { id?: string | null; ownerUserId?: string; isActive?: boolean } }) =>
+      Promise<InMemoryStorageLocation | null>;
+    findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryStorageLocation | null>;
+    create: ({ data }: { data: Partial<InMemoryStorageLocation> }) => Promise<InMemoryStorageLocation>;
+    update: ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryStorageLocation> }) =>
+      Promise<InMemoryStorageLocation>;
     upsert: ({
       where,
       create,
@@ -186,31 +182,6 @@ type InMemoryPrisma = {
       create: Partial<InMemoryStorageLocation>;
       update: Partial<InMemoryStorageLocation>;
     }) => Promise<InMemoryStorageLocation>;
-  };
-  machineStorageLocation: {
-    findMany: ({
-      where,
-      orderBy,
-    }: {
-      where?: { ownerUserId?: string; isActive?: boolean };
-      orderBy?: { updatedAt?: "asc" | "desc" };
-    }) => Promise<InMemoryMachineStorageLocation[]>;
-    findFirst: ({ where }: { where: { id?: string | null; ownerUserId?: string; isActive?: boolean } }) => Promise<
-      InMemoryMachineStorageLocation | null
-    >;
-    findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryMachineStorageLocation | null>;
-    create: ({
-      data,
-    }: {
-      data: Partial<InMemoryMachineStorageLocation>;
-    }) => Promise<InMemoryMachineStorageLocation>;
-    update: ({
-      where,
-      data,
-    }: {
-      where: { id?: string | null };
-      data: Partial<InMemoryMachineStorageLocation>;
-    }) => Promise<InMemoryMachineStorageLocation>;
   };
   buyerShippingAddress: {
     findMany: ({
@@ -240,14 +211,12 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   const messages: InMemoryMessage[] = [];
   const listings: InMemoryListing[] = [];
   const storageLocations: InMemoryStorageLocation[] = [];
-  const machineStorageLocations: InMemoryMachineStorageLocation[] = [];
   const buyerShippingAddresses: InMemoryBuyerShippingAddress[] = [];
   let tradeNaviSeq = 1;
   let tradeSeq = 1;
   let messageSeq = 1;
   let listingSeq = 1;
   let storageLocationSeq = 1;
-  let machineStorageLocationSeq = 1;
   let buyerShippingAddressSeq = 1;
 
   const now = () => new Date();
@@ -464,7 +433,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           hasManual: Boolean(data.hasManual),
           pickupAvailable: Boolean(data.pickupAvailable),
           storageLocation: String(data.storageLocation ?? ""),
-          storageLocationId: (data.storageLocationId as string | null | undefined) ?? null,
+          storageLocationId: String(data.storageLocationId ?? ""),
           storageLocationSnapshot: (data.storageLocationSnapshot as Prisma.JsonValue | null | undefined) ?? null,
           shippingFeeCount: Number.isFinite(Number(data.shippingFeeCount)) ? Number(data.shippingFeeCount) : 0,
           handlingFeeCount: Number.isFinite(Number(data.handlingFeeCount)) ? Number(data.handlingFeeCount) : 0,
@@ -515,8 +484,9 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           hasManual: (data.hasManual as boolean | undefined) ?? listings[idx].hasManual,
           pickupAvailable: (data.pickupAvailable as boolean | undefined) ?? listings[idx].pickupAvailable,
           storageLocation: (data.storageLocation as string | undefined) ?? listings[idx].storageLocation,
-          storageLocationId:
-            (data.storageLocationId as string | null | undefined) ?? listings[idx].storageLocationId,
+          storageLocationId: String(
+            data.storageLocationId === undefined ? listings[idx].storageLocationId : data.storageLocationId
+          ),
           storageLocationSnapshot:
             (data.storageLocationSnapshot as Prisma.JsonValue | null | undefined) ??
             listings[idx].storageLocationSnapshot,
@@ -540,17 +510,99 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         where,
         orderBy,
       }: {
-        where?: { ownerUserId?: string };
+        where?: { ownerUserId?: string; isActive?: boolean };
         orderBy?: { updatedAt?: "asc" | "desc" };
       } = {}) => {
-        const filtered = storageLocations.filter((location) =>
-          where?.ownerUserId ? location.ownerUserId === where.ownerUserId : true
-        );
+        const filtered = storageLocations.filter((location) => {
+          const matchesOwner = where?.ownerUserId ? location.ownerUserId === where.ownerUserId : true;
+          const matchesActive = where?.isActive === undefined ? true : location.isActive === where.isActive;
+          return matchesOwner && matchesActive;
+        });
         const sorted = filtered.sort((a, b) => {
           const order = orderBy?.updatedAt === "asc" ? 1 : -1;
           return (a.updatedAt.getTime() - b.updatedAt.getTime()) * order;
         });
         return sorted.map((location) => ({ ...location }));
+      },
+      findFirst: async ({ where = {} }: { where?: { id?: string | null; ownerUserId?: string; isActive?: boolean } } = {}) => {
+        const filtered = storageLocations.filter((location) => {
+          const matchesId = where.id ? location.id === where.id : true;
+          const matchesOwner = where.ownerUserId ? location.ownerUserId === where.ownerUserId : true;
+          const matchesActive = where.isActive === undefined ? true : location.isActive === where.isActive;
+          return matchesId && matchesOwner && matchesActive;
+        });
+
+        const found = filtered[0] ?? null;
+        return found ? { ...found } : null;
+      },
+      findUnique: async ({ where }: { where: { id?: string | null } }) => {
+        const id = where.id ?? null;
+        if (!id) return null;
+
+        const found = storageLocations.find((location) => location.id === id) ?? null;
+        return found ? { ...found } : null;
+      },
+      create: async ({ data }: { data: Partial<InMemoryStorageLocation> }) => {
+        const nowDate = now();
+        const record: InMemoryStorageLocation = {
+          id: String(data.id ?? `storage_location_${storageLocationSeq++}`),
+          ownerUserId: String(data.ownerUserId ?? ""),
+          name: String(data.name ?? ""),
+          address: (data.address as string | null | undefined) ?? null,
+          postalCode: (data.postalCode as string | null | undefined) ?? null,
+          prefecture: (data.prefecture as string | null | undefined) ?? null,
+          city: (data.city as string | null | undefined) ?? null,
+          addressLine: (data.addressLine as string | null | undefined) ?? null,
+          handlingFeePerUnit:
+            data.handlingFeePerUnit === undefined
+              ? null
+              : data.handlingFeePerUnit === null
+                ? null
+                : Number(data.handlingFeePerUnit),
+          shippingFeesByRegion: (data.shippingFeesByRegion as Prisma.JsonValue | null | undefined) ?? null,
+          isActive: typeof data.isActive === "boolean" ? data.isActive : true,
+          createdAt: nowDate,
+          updatedAt: nowDate,
+        };
+
+        storageLocations.push(record);
+        return { ...record };
+      },
+      update: async ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryStorageLocation> }) => {
+        const id = where.id ?? null;
+        if (!id) {
+          throw new Error("Storage location id is required");
+        }
+
+        const idx = storageLocations.findIndex((location) => location.id === id);
+        if (idx < 0) {
+          throw new Error("Storage location not found");
+        }
+
+        const updated: InMemoryStorageLocation = {
+          ...storageLocations[idx],
+          ...data,
+          name: String(data.name ?? storageLocations[idx].name),
+          address: (data.address as string | null | undefined) ?? storageLocations[idx].address,
+          postalCode: (data.postalCode as string | null | undefined) ?? storageLocations[idx].postalCode,
+          prefecture: (data.prefecture as string | null | undefined) ?? storageLocations[idx].prefecture,
+          city: (data.city as string | null | undefined) ?? storageLocations[idx].city,
+          addressLine: (data.addressLine as string | null | undefined) ?? storageLocations[idx].addressLine,
+          handlingFeePerUnit:
+            data.handlingFeePerUnit === undefined
+              ? storageLocations[idx].handlingFeePerUnit
+              : data.handlingFeePerUnit === null
+                ? null
+                : Number(data.handlingFeePerUnit),
+          shippingFeesByRegion:
+            (data.shippingFeesByRegion as Prisma.JsonValue | null | undefined) ??
+            storageLocations[idx].shippingFeesByRegion,
+          isActive: typeof data.isActive === "boolean" ? data.isActive : storageLocations[idx].isActive,
+          updatedAt: now(),
+        };
+
+        storageLocations[idx] = updated;
+        return { ...updated };
       },
       upsert: async ({
         where,
@@ -569,10 +621,23 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
               ...storageLocations[idx],
               ...update,
               name: String(update.name ?? storageLocations[idx].name),
-              address: String(update.address ?? storageLocations[idx].address),
+              address: (update.address as string | null | undefined) ?? storageLocations[idx].address,
+              postalCode: (update.postalCode as string | null | undefined) ?? storageLocations[idx].postalCode,
               prefecture:
                 (update.prefecture as string | null | undefined) ?? storageLocations[idx].prefecture,
               city: (update.city as string | null | undefined) ?? storageLocations[idx].city,
+              addressLine:
+                (update.addressLine as string | null | undefined) ?? storageLocations[idx].addressLine,
+              handlingFeePerUnit:
+                update.handlingFeePerUnit === undefined
+                  ? storageLocations[idx].handlingFeePerUnit
+                  : update.handlingFeePerUnit === null
+                    ? null
+                    : Number(update.handlingFeePerUnit),
+              shippingFeesByRegion:
+                (update.shippingFeesByRegion as Prisma.JsonValue | null | undefined) ??
+                storageLocations[idx].shippingFeesByRegion,
+              isActive: typeof update.isActive === "boolean" ? update.isActive : storageLocations[idx].isActive,
               updatedAt: now(),
             };
             storageLocations[idx] = updated;
@@ -584,9 +649,19 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           id: String(create.id ?? `storage_location_${storageLocationSeq++}`),
           ownerUserId: String(create.ownerUserId ?? ""),
           name: String(create.name ?? ""),
-          address: String(create.address ?? ""),
+          address: (create.address as string | null | undefined) ?? null,
+          postalCode: (create.postalCode as string | null | undefined) ?? null,
           prefecture: (create.prefecture as string | null | undefined) ?? null,
           city: (create.city as string | null | undefined) ?? null,
+          addressLine: (create.addressLine as string | null | undefined) ?? null,
+          handlingFeePerUnit:
+            create.handlingFeePerUnit === undefined
+              ? null
+              : create.handlingFeePerUnit === null
+                ? null
+                : Number(create.handlingFeePerUnit),
+          shippingFeesByRegion: (create.shippingFeesByRegion as Prisma.JsonValue | null | undefined) ?? null,
+          isActive: typeof create.isActive === "boolean" ? create.isActive : true,
           createdAt: now(),
           updatedAt: now(),
         };
@@ -594,108 +669,6 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         storageLocations.push(record);
         return { ...record };
       },
-    },
-    machineStorageLocation: {
-      findMany: async ({
-        where,
-        orderBy,
-      }: {
-        where?: { ownerUserId?: string; isActive?: boolean };
-        orderBy?: { updatedAt?: "asc" | "desc" };
-      } = {}) => {
-        const filtered = machineStorageLocations.filter((location) => {
-          const matchesOwner = where?.ownerUserId ? location.ownerUserId === where.ownerUserId : true;
-          const matchesActive =
-            where?.isActive === undefined ? true : location.isActive === where.isActive;
-          return matchesOwner && matchesActive;
-        });
-        const sorted = filtered.sort((a, b) => {
-          const order = orderBy?.updatedAt === "asc" ? 1 : -1;
-          return (a.updatedAt.getTime() - b.updatedAt.getTime()) * order;
-        });
-        return sorted.map((location) => ({ ...location }));
-      },
-      findFirst: async ({
-        where,
-      }: {
-        where: { id?: string | null; ownerUserId?: string; isActive?: boolean };
-      }) => {
-        const filtered = machineStorageLocations.filter((location) => {
-          const matchesId = where.id ? location.id === where.id : true;
-          const matchesOwner = where.ownerUserId ? location.ownerUserId === where.ownerUserId : true;
-          const matchesActive =
-            where.isActive === undefined ? true : location.isActive === where.isActive;
-          return matchesId && matchesOwner && matchesActive;
-        });
-        const found = filtered[0] ?? null;
-        return found ? { ...found } : null;
-      },
-      findUnique: async ({ where }: { where: { id?: string | null } }) => {
-        const id = where.id ?? null;
-        if (!id) return null;
-        const found = machineStorageLocations.find((location) => location.id === id) ?? null;
-        return found ? { ...found } : null;
-      },
-      create: async ({ data }: { data: Partial<InMemoryMachineStorageLocation> }) => {
-        const nowDate = now();
-        const record: InMemoryMachineStorageLocation = {
-          id: String(data.id ?? `machine_storage_location_${machineStorageLocationSeq++}`),
-          ownerUserId: String(data.ownerUserId ?? ""),
-          name: String(data.name ?? ""),
-          postalCode: String(data.postalCode ?? ""),
-          prefecture: String(data.prefecture ?? ""),
-          city: String(data.city ?? ""),
-          addressLine: String(data.addressLine ?? ""),
-          handlingFeePerUnit: Number.isFinite(Number(data.handlingFeePerUnit))
-            ? Number(data.handlingFeePerUnit)
-            : 0,
-          shippingFeesByRegion: (data.shippingFeesByRegion as Prisma.JsonValue | undefined) ?? {},
-          isActive: Boolean(data.isActive ?? true),
-          createdAt: nowDate,
-          updatedAt: nowDate,
-        };
-
-        machineStorageLocations.push(record);
-        return { ...record };
-      },
-    update: async ({
-      where,
-      data,
-    }: {
-      where: { id?: string | null };
-      data: Partial<InMemoryMachineStorageLocation>;
-    }) => {
-      const id = where.id ?? null;
-      if (!id) {
-        throw new Error("Machine storage location id is required");
-        }
-
-        const idx = machineStorageLocations.findIndex((location) => location.id === id);
-        if (idx < 0) {
-          throw new Error("Machine storage location not found");
-        }
-
-        const updated: InMemoryMachineStorageLocation = {
-          ...machineStorageLocations[idx],
-          ...data,
-          name: String(data.name ?? machineStorageLocations[idx].name),
-          postalCode: String(data.postalCode ?? machineStorageLocations[idx].postalCode),
-          prefecture: String(data.prefecture ?? machineStorageLocations[idx].prefecture),
-          city: String(data.city ?? machineStorageLocations[idx].city),
-          addressLine: String(data.addressLine ?? machineStorageLocations[idx].addressLine),
-          handlingFeePerUnit: Number.isFinite(Number(data.handlingFeePerUnit))
-            ? Number(data.handlingFeePerUnit)
-            : machineStorageLocations[idx].handlingFeePerUnit,
-          shippingFeesByRegion:
-            (data.shippingFeesByRegion as Prisma.JsonValue | undefined) ??
-            machineStorageLocations[idx].shippingFeesByRegion,
-          isActive: typeof data.isActive === "boolean" ? data.isActive : machineStorageLocations[idx].isActive,
-          updatedAt: now(),
-        };
-
-      machineStorageLocations[idx] = updated;
-      return { ...updated };
-    },
     },
     buyerShippingAddress: {
       findMany: async ({

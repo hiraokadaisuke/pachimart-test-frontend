@@ -15,7 +15,7 @@ export type Listing = {
   hasManual: boolean;
   pickupAvailable: boolean;
   storageLocation: string;
-  storageLocationId: string | null;
+  storageLocationId: string;
   storageLocationSnapshot: unknown | null;
   shippingFeeCount: number;
   handlingFeeCount: number;

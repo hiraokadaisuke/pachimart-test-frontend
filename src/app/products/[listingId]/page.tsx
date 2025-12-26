@@ -38,7 +38,11 @@ const formatPrice = (listing: Listing) => {
   return `¥${listing.unitPriceExclTax.toLocaleString("ja-JP")}（税抜）`;
 };
 
-const resolveInquiryStatus = (listing: Listing) => {
+const resolveInquiryStatus = (listing: Listing, isSellerViewing: boolean) => {
+  if (isSellerViewing) {
+    return { available: false as const, reason: "出品者は問い合わせを作成できません" };
+  }
+
   if (listing.status === "SOLD") {
     return { available: false as const, reason: "成約済みのため受付できません" };
   }
@@ -69,8 +73,11 @@ export default async function ProductDetailPage({ params }: { params: { listingI
     notFound();
   }
 
-  const inquiryStatus = resolveInquiryStatus(listing);
+  const isSellerViewing = listing.sellerUserId === devUserId;
+  const inquiryStatus = resolveInquiryStatus(listing, isSellerViewing);
   const isSold = listing.status === "SOLD";
+  const canCreateNavi = !isSold && !isSellerViewing;
+  const naviDisabledReason = isSold ? "成約済みのため受付できません" : "出品者は操作できません";
   const naviCreateHref = `/navi?tab=new&listingId=${listing.id}`;
   const inquiryHref = `/navi?tab=new&mode=inquiry&listingId=${listing.id}`;
 
@@ -119,17 +126,17 @@ export default async function ProductDetailPage({ params }: { params: { listingI
             </div>
             <Link
               href={naviCreateHref}
-              aria-disabled={isSold}
+              aria-disabled={!canCreateNavi}
               className={`flex h-10 w-full items-center justify-center rounded-md px-3 text-[13px] font-semibold shadow ${
-                isSold
-                  ? "cursor-not-allowed bg-slate-200 text-neutral-500"
-                  : "bg-blue-600 text-white hover:bg-blue-700"
-              } ${isSold ? "pointer-events-none" : ""}`}
+                canCreateNavi
+                  ? "bg-blue-600 text-white hover:bg-blue-700"
+                  : "cursor-not-allowed bg-slate-200 text-neutral-500"
+              } ${!canCreateNavi ? "pointer-events-none" : ""}`}
             >
               ナビ作成
             </Link>
-            {isSold && (
-              <p className="text-[12px] leading-[16px] text-neutral-700">成約済みのため受付できません</p>
+            {!canCreateNavi && (
+              <p className="text-[12px] leading-[16px] text-neutral-700">{naviDisabledReason}</p>
             )}
           </div>
 

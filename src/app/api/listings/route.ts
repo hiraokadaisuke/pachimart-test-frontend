@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import {
+  buildStorageLocationSnapshot,
   formatStorageLocationShort,
   resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
@@ -27,7 +28,7 @@ type ListingRecord = {
   hasManual: boolean;
   pickupAvailable: boolean;
   storageLocation: string;
-  storageLocationId: string | null;
+  storageLocationId: string;
   storageLocationSnapshot: unknown | null;
   shippingFeeCount: number;
   handlingFeeCount: number;
@@ -54,7 +55,7 @@ type ListingDto = {
   hasManual: boolean;
   pickupAvailable: boolean;
   storageLocation: string;
-  storageLocationId: string | null;
+  storageLocationId: string;
   storageLocationSnapshot: unknown | null;
   shippingFeeCount: number;
   handlingFeeCount: number;
@@ -76,7 +77,6 @@ const createListingSchema = z
     isNegotiable: z.boolean().default(false),
     storageLocation: z.string().optional().nullable(),
     storageLocationId: z.string().min(1, "storageLocationId is required"),
-    storageLocationSnapshot: z.unknown().optional().nullable(),
     shippingFeeCount: z.number().int().nonnegative(),
     handlingFeeCount: z.number().int().nonnegative(),
     allowPartial: z.boolean(),
@@ -151,7 +151,7 @@ const toRecord = (listing: unknown): ListingRecord => {
     pickupAvailable: Boolean(candidate.pickupAvailable),
     storageLocation:
       typeof candidate.storageLocation === "string" ? candidate.storageLocation : "",
-    storageLocationId: (candidate.storageLocationId as string | null) ?? null,
+    storageLocationId: String(candidate.storageLocationId ?? ""),
     storageLocationSnapshot: (candidate.storageLocationSnapshot as unknown | null) ?? null,
     shippingFeeCount: Number(candidate.shippingFeeCount),
     handlingFeeCount: Number(candidate.handlingFeeCount),
@@ -203,26 +203,28 @@ const publicListingStatuses = [ListingStatus.PUBLISHED, ListingStatus.SOLD];
 
 type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
 
-const toSnapshotFromMachineStorageLocation = (location?: {
+const toSnapshotFromStorageLocation = (location?: {
   id: string;
   name: string;
-  postalCode: string;
-  prefecture: string;
-  city: string;
-  addressLine: string;
-  handlingFeePerUnit: number;
-  shippingFeesByRegion: unknown;
+  address?: string | null;
+  postalCode?: string | null;
+  prefecture?: string | null;
+  city?: string | null;
+  addressLine?: string | null;
+  handlingFeePerUnit?: number | null;
+  shippingFeesByRegion?: unknown | null;
 } | null): StorageLocationSnapshotLike | null =>
   location
     ? {
         id: location.id,
         name: location.name,
-        postalCode: location.postalCode,
-        prefecture: location.prefecture,
-        city: location.city,
-        addressLine: location.addressLine,
-        handlingFeePerUnit: location.handlingFeePerUnit,
-        shippingFeesByRegion: location.shippingFeesByRegion,
+        address: location.address ?? undefined,
+        postalCode: location.postalCode ?? undefined,
+        prefecture: location.prefecture ?? undefined,
+        city: location.city ?? undefined,
+        addressLine: location.addressLine ?? undefined,
+        handlingFeePerUnit: location.handlingFeePerUnit ?? undefined,
+        shippingFeesByRegion: location.shippingFeesByRegion ?? undefined,
       }
     : null;
 
@@ -290,7 +292,7 @@ export async function GET(request: Request) {
       .map((listing) => listing.storageLocationId)
       .filter((id): id is string => Boolean(id));
 
-    const storageLocations = await prisma.machineStorageLocation.findMany({
+    const storageLocations = await prisma.storageLocation.findMany({
       where: { id: { in: storageLocationIds } },
     });
 
@@ -301,11 +303,7 @@ export async function GET(request: Request) {
     const enriched = records.map((listing) => {
       const snapshot =
         resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
-        toSnapshotFromMachineStorageLocation(
-          listing.storageLocationId
-            ? storageLocationMap.get(listing.storageLocationId)
-            : undefined
-        );
+        toSnapshotFromStorageLocation(storageLocationMap.get(listing.storageLocationId));
 
       return {
         ...listing,
@@ -354,30 +352,34 @@ export async function POST(request: Request) {
   const data = parsed.data;
 
   try {
-    const machineStorageLocation = await prisma.machineStorageLocation.findFirst({
-      where: { id: data.storageLocationId, ownerUserId: sellerUserId },
+    const storageLocation = await prisma.storageLocation.findFirst({
+      where: { id: data.storageLocationId, ownerUserId: sellerUserId, isActive: true },
     });
 
-    if (!machineStorageLocation) {
+    if (!storageLocation) {
       return NextResponse.json(
         { error: "保管場所が見つかりません。倉庫設定を確認してください。" },
         { status: 400 }
       );
     }
 
-    const storageLocationSnapshot = {
-      id: String(machineStorageLocation.id),
-      name: String(machineStorageLocation.name),
-      postalCode: String(machineStorageLocation.postalCode),
-      prefecture: String(machineStorageLocation.prefecture),
-      city: String(machineStorageLocation.city),
-      addressLine: String(machineStorageLocation.addressLine),
-      handlingFeePerUnit: Number(machineStorageLocation.handlingFeePerUnit),
-      shippingFeesByRegion: machineStorageLocation.shippingFeesByRegion,
-    } satisfies StorageLocationSnapshot;
+    const storageLocationSnapshot = buildStorageLocationSnapshot({
+      id: String(storageLocation.id),
+      name: String(storageLocation.name),
+      address: storageLocation.address ?? undefined,
+      postalCode: storageLocation.postalCode ?? undefined,
+      prefecture: storageLocation.prefecture ?? undefined,
+      city: storageLocation.city ?? undefined,
+      addressLine: storageLocation.addressLine ?? undefined,
+      handlingFeePerUnit:
+        storageLocation.handlingFeePerUnit !== null && storageLocation.handlingFeePerUnit !== undefined
+          ? Number(storageLocation.handlingFeePerUnit)
+          : undefined,
+      shippingFeesByRegion: storageLocation.shippingFeesByRegion ?? undefined,
+    });
     const storageLocationLabel = formatStorageLocationShort(
       storageLocationSnapshot,
-      data.storageLocation ?? ""
+      data.storageLocation ?? storageLocation.address ?? ""
     );
 
     const created = await listingClient.create({

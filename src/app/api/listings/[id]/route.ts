@@ -1,4 +1,4 @@
-import { ListingStatus, RemovalStatus } from "@prisma/client";
+import { RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -20,26 +20,28 @@ const updateListingSchema = z.object({
 
 type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
 
-const toSnapshotFromMachineStorageLocation = (location?: {
+const toSnapshotFromStorageLocation = (location?: {
   id: string;
   name: string;
-  postalCode: string;
-  prefecture: string;
-  city: string;
-  addressLine: string;
-  handlingFeePerUnit: number;
-  shippingFeesByRegion: unknown;
+  address?: string | null;
+  postalCode?: string | null;
+  prefecture?: string | null;
+  city?: string | null;
+  addressLine?: string | null;
+  handlingFeePerUnit?: number | null;
+  shippingFeesByRegion?: unknown | null;
 } | null): StorageLocationSnapshotLike | null =>
   location
     ? {
         id: location.id,
         name: location.name,
-        postalCode: location.postalCode,
-        prefecture: location.prefecture,
-        city: location.city,
-        addressLine: location.addressLine,
-        handlingFeePerUnit: location.handlingFeePerUnit,
-        shippingFeesByRegion: location.shippingFeesByRegion,
+        address: location.address ?? undefined,
+        postalCode: location.postalCode ?? undefined,
+        prefecture: location.prefecture ?? undefined,
+        city: location.city ?? undefined,
+        addressLine: location.addressLine ?? undefined,
+        handlingFeePerUnit: location.handlingFeePerUnit ?? undefined,
+        shippingFeesByRegion: location.shippingFeesByRegion ?? undefined,
       }
     : null;
 
@@ -63,7 +65,7 @@ const toDto = (listing: any) => ({
   hasManual: Boolean(listing.hasManual),
   pickupAvailable: Boolean(listing.pickupAvailable),
   storageLocation: String(listing.storageLocation),
-  storageLocationId: (listing.storageLocationId as string | null) ?? null,
+  storageLocationId: String(listing.storageLocationId),
   storageLocationSnapshot: (listing.storageLocationSnapshot as unknown | null) ?? null,
   shippingFeeCount: Number(listing.shippingFeeCount),
   handlingFeeCount: Number(listing.handlingFeeCount),
@@ -80,30 +82,18 @@ export async function GET(request: Request, { params }: { params: { id?: string 
       return NextResponse.json({ error: "Listing id is required" }, { status: 400 });
     }
 
-    const listing = await listingClient.findUnique({ where: { id } });
+    const listing = await listingClient.findUnique({
+      where: { id },
+      include: { storageLocationRecord: true },
+    });
 
     if (!listing) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    const currentUserId = getCurrentUserId(request);
-    const isPublicListing =
-      listing.status === ListingStatus.PUBLISHED || listing.status === ListingStatus.SOLD;
-    const isOwner = currentUserId && listing.sellerUserId === currentUserId;
-
-    if (!isPublicListing && !isOwner) {
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
-    }
-
     const storageLocationSnapshot =
       resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
-      (listing.storageLocationId
-        ? toSnapshotFromMachineStorageLocation(
-            await prisma.machineStorageLocation.findFirst({
-              where: { id: listing.storageLocationId },
-            })
-          )
-        : null);
+      toSnapshotFromStorageLocation(listing.storageLocationRecord);
 
     const storageLocation = formatStorageLocationShort(
       storageLocationSnapshot,

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 
-const machineStorageLocationClient = prisma.machineStorageLocation;
+const storageLocationClient = prisma.storageLocation;
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -23,7 +23,7 @@ export async function PATCH(request: Request, context: { params: { id: string } 
   }
 
   try {
-    const existing = await machineStorageLocationClient.findFirst({
+    const existing = await storageLocationClient.findFirst({
       where: { id, ownerUserId, isActive: true },
     });
 
@@ -46,10 +46,11 @@ export async function PATCH(request: Request, context: { params: { id: string } 
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const updated = await machineStorageLocationClient.update({
+    const updated = await storageLocationClient.update({
       where: { id },
       data: {
         name: String(body.name),
+        address: (body.address as string | undefined) ?? undefined,
         postalCode: String(body.postalCode),
         prefecture: String(body.prefecture),
         city: String(body.city),
@@ -63,23 +64,21 @@ export async function PATCH(request: Request, context: { params: { id: string } 
       id: String(updated.id),
       ownerUserId: String(updated.ownerUserId),
       name: String(updated.name),
-      postalCode: String(updated.postalCode),
-      prefecture: String(updated.prefecture),
-      city: String(updated.city),
-      addressLine: String(updated.addressLine),
-      handlingFeePerUnit: Number(updated.handlingFeePerUnit),
-      shippingFeesByRegion: updated.shippingFeesByRegion,
+      address: (updated.address as string | null) ?? null,
+      postalCode: (updated.postalCode as string | null) ?? null,
+      prefecture: (updated.prefecture as string | null) ?? null,
+      city: (updated.city as string | null) ?? null,
+      addressLine: (updated.addressLine as string | null) ?? null,
+      handlingFeePerUnit: updated.handlingFeePerUnit === null ? null : Number(updated.handlingFeePerUnit),
+      shippingFeesByRegion: updated.shippingFeesByRegion ?? null,
       isActive: Boolean(updated.isActive),
       createdAt: new Date(updated.createdAt).toISOString(),
       updatedAt: new Date(updated.updatedAt).toISOString(),
     });
   } catch (error) {
-    console.error("Failed to update machine storage location", error);
+    console.error("Failed to update storage location", error);
     return NextResponse.json(
-      {
-        error: "Failed to update machine storage location",
-        detail: handleUnknownError(error),
-      },
+      { error: "Failed to update storage location", detail: handleUnknownError(error) },
       { status: 500 }
     );
   }
@@ -94,7 +93,7 @@ export async function DELETE(request: Request, context: { params: { id: string }
   }
 
   try {
-    const existing = await machineStorageLocationClient.findFirst({
+    const existing = await storageLocationClient.findFirst({
       where: { id, ownerUserId, isActive: true },
     });
 
@@ -102,7 +101,7 @@ export async function DELETE(request: Request, context: { params: { id: string }
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const updated = await machineStorageLocationClient.update({
+    const updated = await storageLocationClient.update({
       where: { id },
       data: { isActive: false },
     });
@@ -112,12 +111,9 @@ export async function DELETE(request: Request, context: { params: { id: string }
       isActive: Boolean(updated.isActive),
     });
   } catch (error) {
-    console.error("Failed to delete machine storage location", error);
+    console.error("Failed to delete storage location", error);
     return NextResponse.json(
-      {
-        error: "Failed to delete machine storage location",
-        detail: handleUnknownError(error),
-      },
+      { error: "Failed to delete storage location", detail: handleUnknownError(error) },
       { status: 500 }
     );
   }

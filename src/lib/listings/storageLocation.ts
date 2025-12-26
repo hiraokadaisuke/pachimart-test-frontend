@@ -1,12 +1,13 @@
 export type StorageLocationSnapshot = {
   id: string;
   name: string;
-  postalCode: string;
-  prefecture: string;
-  city: string;
-  addressLine: string;
-  handlingFeePerUnit: number;
-  shippingFeesByRegion: unknown;
+  address?: string;
+  postalCode?: string;
+  prefecture?: string;
+  city?: string;
+  addressLine?: string;
+  handlingFeePerUnit?: number;
+  shippingFeesByRegion?: unknown;
 };
 
 type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & {
@@ -115,10 +116,13 @@ export const buildStorageLocationSnapshot = (
 ): StorageLocationSnapshot => ({
   id: location.id,
   name: location.name,
-  postalCode: location.postalCode,
-  prefecture: location.prefecture,
-  city: location.city,
-  addressLine: location.addressLine,
-  handlingFeePerUnit: location.handlingFeePerUnit,
-  shippingFeesByRegion: location.shippingFeesByRegion,
+  ...(location.address ? { address: location.address } : {}),
+  ...(location.postalCode ? { postalCode: location.postalCode } : {}),
+  ...(location.prefecture ? { prefecture: location.prefecture } : {}),
+  ...(location.city ? { city: location.city } : {}),
+  ...(location.addressLine ? { addressLine: location.addressLine } : {}),
+  ...(location.handlingFeePerUnit !== undefined
+    ? { handlingFeePerUnit: location.handlingFeePerUnit }
+    : {}),
+  ...(location.shippingFeesByRegion ? { shippingFeesByRegion: location.shippingFeesByRegion } : {}),
 });

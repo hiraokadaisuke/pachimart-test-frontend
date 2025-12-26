@@ -25,21 +25,13 @@ type StorageLocationSeed = {
   id: string;
   ownerUserId: string;
   name: string;
-  address: string;
-  prefecture: string;
-  city: string;
-};
-
-type MachineStorageSeed = {
-  id: string;
-  ownerUserId: string;
-  name: string;
-  postalCode: string;
-  prefecture: string;
-  city: string;
-  addressLine: string;
-  handlingFeePerUnit: number;
-  shippingFeesByRegion: Prisma.JsonObject;
+  address?: string;
+  postalCode?: string;
+  prefecture?: string;
+  city?: string;
+  addressLine?: string;
+  handlingFeePerUnit?: number;
+  shippingFeesByRegion?: Prisma.JsonObject;
   isActive?: boolean;
 };
 
@@ -125,15 +117,15 @@ const STORAGE_LOCATIONS: StorageLocationSeed[] = [
   {
     id: "location_dev_user_1_1",
     ownerUserId: "dev_user_1",
-    name: "東京倉庫A",
-    address: "東京都江東区青海2-7-4",
+    name: "東京倉庫",
+    address: "東京都千代田区丸の内1-1-1",
     prefecture: "東京都",
-    city: "江東区",
+    city: "千代田区",
   },
   {
     id: "location_dev_user_1_2",
     ownerUserId: "dev_user_1",
-    name: "大阪保管庫",
+    name: "大阪支店倉庫",
     address: "大阪府大阪市北区梅田1-2-3",
     prefecture: "大阪府",
     city: "大阪市北区",
@@ -154,9 +146,6 @@ const STORAGE_LOCATIONS: StorageLocationSeed[] = [
     prefecture: "愛知県",
     city: "名古屋市中村区",
   },
-];
-
-const MACHINE_STORAGE_LOCATIONS: MachineStorageSeed[] = [
   {
     id: "machine_storage_dev_user_1_1",
     ownerUserId: "dev_user_1",
@@ -251,6 +240,28 @@ const MACHINE_STORAGE_LOCATIONS: MachineStorageSeed[] = [
   },
 ];
 
+const findStorageLocationSnapshot = (id: string): Prisma.JsonObject => {
+  const location = STORAGE_LOCATIONS.find((loc) => loc.id === id);
+
+  if (!location) {
+    throw new Error(`Storage location not found for snapshot: ${id}`);
+  }
+
+  const snapshot: Record<string, unknown> = {
+    id: location.id,
+    name: location.name,
+  };
+
+  if (location.address) snapshot.address = location.address;
+  if (location.postalCode) snapshot.postalCode = location.postalCode;
+  if (location.prefecture) snapshot.prefecture = location.prefecture;
+  if (location.city) snapshot.city = location.city;
+  if (location.addressLine) snapshot.addressLine = location.addressLine;
+  if (location.handlingFeePerUnit !== undefined) snapshot.handlingFeePerUnit = location.handlingFeePerUnit;
+  if (location.shippingFeesByRegion) snapshot.shippingFeesByRegion = location.shippingFeesByRegion;
+
+  return snapshot as Prisma.JsonObject;
+};
 const now = new Date();
 
 const LISTINGS: ListingSeed[] = [
@@ -272,7 +283,7 @@ const LISTINGS: ListingSeed[] = [
     pickupAvailable: true,
     storageLocation: "東京湾岸倉庫",
     storageLocationId: "machine_storage_dev_user_1_1",
-    storageLocationSnapshot: MACHINE_STORAGE_LOCATIONS[0] as Prisma.JsonObject,
+    storageLocationSnapshot: findStorageLocationSnapshot("machine_storage_dev_user_1_1"),
     shippingFeeCount: 1,
     handlingFeeCount: 1,
     allowPartial: false,
@@ -297,7 +308,7 @@ const LISTINGS: ListingSeed[] = [
     pickupAvailable: false,
     storageLocation: "埼玉メンテ倉庫",
     storageLocationId: "machine_storage_dev_user_1_2",
-    storageLocationSnapshot: MACHINE_STORAGE_LOCATIONS[1] as Prisma.JsonObject,
+    storageLocationSnapshot: findStorageLocationSnapshot("machine_storage_dev_user_1_2"),
     shippingFeeCount: 2,
     handlingFeeCount: 1,
     allowPartial: true,
@@ -322,7 +333,7 @@ const LISTINGS: ListingSeed[] = [
     pickupAvailable: true,
     storageLocation: "東京湾岸倉庫",
     storageLocationId: "machine_storage_dev_user_1_1",
-    storageLocationSnapshot: MACHINE_STORAGE_LOCATIONS[0] as Prisma.JsonObject,
+    storageLocationSnapshot: findStorageLocationSnapshot("machine_storage_dev_user_1_1"),
     shippingFeeCount: 1,
     handlingFeeCount: 1,
     allowPartial: false,
@@ -347,7 +358,7 @@ const LISTINGS: ListingSeed[] = [
     pickupAvailable: true,
     storageLocation: "福岡出庫センター",
     storageLocationId: "machine_storage_dev_user_2_1",
-    storageLocationSnapshot: MACHINE_STORAGE_LOCATIONS[2] as Prisma.JsonObject,
+    storageLocationSnapshot: findStorageLocationSnapshot("machine_storage_dev_user_2_1"),
     shippingFeeCount: 1,
     handlingFeeCount: 1,
     allowPartial: true,
@@ -372,7 +383,7 @@ const LISTINGS: ListingSeed[] = [
     pickupAvailable: false,
     storageLocation: "札幌北倉庫",
     storageLocationId: "machine_storage_dev_user_4_1",
-    storageLocationSnapshot: MACHINE_STORAGE_LOCATIONS[3] as Prisma.JsonObject,
+    storageLocationSnapshot: findStorageLocationSnapshot("machine_storage_dev_user_4_1"),
     shippingFeeCount: 2,
     handlingFeeCount: 2,
     allowPartial: true,
@@ -550,7 +561,6 @@ async function clearExistingData() {
   });
   await prisma.tradeNavi.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   await prisma.listing.deleteMany({ where: { sellerUserId: { in: DEV_USER_IDS } } });
-  await prisma.machineStorageLocation.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   await prisma.storageLocation.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   await prisma.buyerShippingAddress.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
 }
@@ -565,14 +575,6 @@ async function seedUsers() {
 async function seedStorageLocations() {
   for (const location of STORAGE_LOCATIONS) {
     await prisma.storageLocation.create({ data: location });
-  }
-}
-
-async function seedMachineStorageLocations() {
-  for (const location of MACHINE_STORAGE_LOCATIONS) {
-    await prisma.machineStorageLocation.create({
-      data: { ...location, isActive: location.isActive ?? true },
-    });
   }
 }
 
@@ -752,7 +754,6 @@ async function main() {
   await clearExistingData();
   await seedUsers();
   await seedStorageLocations();
-  await seedMachineStorageLocations();
   await seedBuyerShippingAddresses();
   const listings = await seedListings();
   const { tradeNavis, trades } = await seedTradeNavis(listings);

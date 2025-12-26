@@ -146,6 +146,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
+    if (listing.sellerUserId === buyerUserId) {
+      return NextResponse.json(
+        { error: "出品者は自分の出品に問い合わせできません" },
+        { status: 403 }
+      );
+    }
+
     const canUseInquiry =
       !listing.isNegotiable &&
       listing.unitPriceExclTax !== null &&

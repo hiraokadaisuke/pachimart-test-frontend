@@ -93,7 +93,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
     const fetchLocations = async () => {
       try {
         const response = await fetchWithDevHeader(
-          "/api/machine-storage-locations",
+          "/api/storage-locations",
           {},
           currentUser.id
         );
@@ -118,7 +118,9 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   );
 
   const storageLocationAddress = selectedStorageLocation
-    ? `〒${selectedStorageLocation.postalCode} ${selectedStorageLocation.prefecture}${selectedStorageLocation.city}${selectedStorageLocation.addressLine}`
+    ? `${selectedStorageLocation.postalCode ? `〒${selectedStorageLocation.postalCode} ` : ""}${
+        selectedStorageLocation.prefecture ?? ""
+      }${selectedStorageLocation.city ?? ""}${selectedStorageLocation.addressLine ?? ""}`.trim()
     : "";
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {

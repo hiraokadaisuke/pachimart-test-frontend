@@ -53,7 +53,6 @@ model User {
   tradesAsBuyer  Trade[]          @relation("TradeBuyer")
   messagesSent   Message[]        @relation("Sender")
   storageLocations StorageLocation[]
-  machineStorageLocations MachineStorageLocation[]
 }
 
 model TradeNavi {
@@ -118,7 +117,7 @@ model Listing {
   hasManual        Boolean        @default(false)
   pickupAvailable  Boolean        @default(false)
   storageLocation  String
-  storageLocationId String?
+  storageLocationId String
   storageLocationSnapshot Json?
   shippingFeeCount Int
   handlingFeeCount Int
@@ -127,42 +126,32 @@ model Listing {
   createdAt        DateTime       @default(now())
   updatedAt        DateTime       @updatedAt
 
+  storageLocationRecord StorageLocation @relation(fields: [storageLocationId], references: [id])
+
   @@index([sellerUserId])
   @@index([status])
   @@index([isVisible])
   @@index([updatedAt])
+  @@index([storageLocationId])
 }
 
 model StorageLocation {
-  id          String   @id @default(cuid())
-  ownerUserId String
-  name        String
-  address     String
-  prefecture  String?
-  city        String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  ownerUser User     @relation(fields: [ownerUserId], references: [id])
-
-  @@index([ownerUserId])
-}
-
-model MachineStorageLocation {
   id                  String   @id @default(cuid())
   ownerUserId         String
   name                String
-  postalCode          String
-  prefecture          String
-  city                String
-  addressLine         String
-  handlingFeePerUnit  Int
-  shippingFeesByRegion Json
+  address             String?
+  postalCode          String?
+  prefecture          String?
+  city                String?
+  addressLine         String?
+  handlingFeePerUnit  Int?
+  shippingFeesByRegion Json?
   isActive            Boolean  @default(true)
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
-  ownerUser User @relation(fields: [ownerUserId], references: [id])
+  ownerUser User     @relation(fields: [ownerUserId], references: [id])
+  listings  Listing[]
 
   @@index([ownerUserId])
   @@index([isActive])
