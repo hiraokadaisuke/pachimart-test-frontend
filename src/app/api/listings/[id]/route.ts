@@ -64,10 +64,9 @@ export async function GET(request: Request, { params }: { params: { id?: string 
     const currentUserId = getCurrentUserId(request);
     const isPublicListing =
       listing.status === ListingStatus.PUBLISHED || listing.status === ListingStatus.SOLD;
-
     const isOwner = currentUserId && listing.sellerUserId === currentUserId;
 
-    if ((!isPublicListing || !listing.isVisible) && !isOwner) {
+    if (!isPublicListing && !isOwner) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 

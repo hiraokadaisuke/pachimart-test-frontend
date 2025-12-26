@@ -1,4 +1,4 @@
-import { ListingStatus, RemovalStatus } from "@prisma/client";
+import { ListingStatus, Prisma, RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -62,12 +62,6 @@ type ListingDto = {
   note: string | null;
   createdAt: string;
   updatedAt: string;
-};
-
-type ListingQueryWhere = {
-  sellerUserId?: string;
-  status?: ListingStatus | { in: ListingStatus[] };
-  isVisible?: boolean;
 };
 
 const listingClient = prisma.listing;
@@ -197,19 +191,14 @@ const toDto = (listing: ListingRecord): ListingDto => ({
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-const parseVisibleOnly = (value: string | null): boolean | undefined => {
-  if (value === null) return undefined;
-  if (value.toLowerCase() === "false") return false;
-  if (value.toLowerCase() === "true") return true;
-  return undefined;
-};
-
 const parseListingStatus = (value: string | null): ListingStatus | undefined => {
   if (!value) return undefined;
   return Object.values(ListingStatus).includes(value as ListingStatus)
     ? (value as ListingStatus)
     : undefined;
 };
+
+const publicListingStatuses = [ListingStatus.PUBLISHED, ListingStatus.SOLD];
 
 const resolveStorageLocationSnapshot = async (
   listing: ListingRecord
@@ -258,7 +247,6 @@ export async function GET(request: Request) {
     const sellerUserIdParam = url.searchParams.get("sellerUserId") ?? undefined;
     const statusParam = url.searchParams.get("status");
     const status = parseListingStatus(statusParam);
-    const visibleOnly = parseVisibleOnly(url.searchParams.get("visibleOnly"));
     const currentUserId = getCurrentUserId(request);
 
     if (statusParam && !status) {
@@ -268,7 +256,15 @@ export async function GET(request: Request) {
       );
     }
 
-    const where: ListingQueryWhere = {};
+    const accessibleScopes: Prisma.ListingWhereInput[] = [
+      { status: { in: publicListingStatuses } },
+    ];
+
+    if (currentUserId) {
+      accessibleScopes.push({ sellerUserId: currentUserId });
+    }
+
+    const andConditions: Prisma.ListingWhereInput[] = [];
 
     if (sellerUserIdParam) {
       if (!currentUserId) {
@@ -279,27 +275,17 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      where.sellerUserId = currentUserId;
-
-      if (status) {
-        where.status = status;
-      }
-
-      if (visibleOnly !== undefined) {
-        where.isVisible = visibleOnly ? true : undefined;
-      }
-    } else {
-      where.isVisible = true;
-
-      if (status) {
-        if (status !== ListingStatus.PUBLISHED && status !== ListingStatus.SOLD) {
-          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-        }
-        where.status = status;
-      } else {
-        where.status = { in: [ListingStatus.PUBLISHED, ListingStatus.SOLD] };
-      }
+      andConditions.push({ sellerUserId: currentUserId });
     }
+
+    if (status) {
+      andConditions.push({ status });
+    }
+
+    const where: Prisma.ListingWhereInput = {
+      OR: accessibleScopes,
+      ...(andConditions.length ? { AND: andConditions } : {}),
+    };
 
     const listings = await listingClient.findMany({
       where,
