@@ -11,7 +11,7 @@ type MachineStorageLocation = {
   city: string | null;
   addressLine: string | null;
   handlingFeePerUnit: number | null;
-  shippingFeesByRegion: Prisma.JsonValue | null;
+  shippingFeesByRegion: Prisma.InputJsonValue | null;
   isActive: boolean | null;
   createdAt: Date;
   updatedAt: Date;
@@ -77,6 +77,7 @@ async function migrateMachineStorageLocations() {
   for (const location of machineLocations) {
     const duplicateId = await findDuplicateStorageLocation(location);
     const targetId = duplicateId ?? location.id;
+    const shippingFeesByRegion = location.shippingFeesByRegion ?? Prisma.DbNull;
 
     if (duplicateId) {
       await prisma.storageLocation.update({
@@ -88,7 +89,7 @@ async function migrateMachineStorageLocations() {
           city: location.city,
           addressLine: location.addressLine,
           handlingFeePerUnit: location.handlingFeePerUnit,
-          shippingFeesByRegion: location.shippingFeesByRegion,
+          shippingFeesByRegion,
           isActive: location.isActive ?? true,
           updatedAt: location.updatedAt,
         },
@@ -103,7 +104,7 @@ async function migrateMachineStorageLocations() {
           city: location.city,
           addressLine: location.addressLine,
           handlingFeePerUnit: location.handlingFeePerUnit,
-          shippingFeesByRegion: location.shippingFeesByRegion,
+          shippingFeesByRegion,
           isActive: location.isActive ?? true,
           updatedAt: location.updatedAt,
         },
@@ -116,7 +117,7 @@ async function migrateMachineStorageLocations() {
           city: location.city,
           addressLine: location.addressLine,
           handlingFeePerUnit: location.handlingFeePerUnit,
-          shippingFeesByRegion: location.shippingFeesByRegion,
+          shippingFeesByRegion,
           isActive: location.isActive ?? true,
           createdAt: location.createdAt,
           updatedAt: location.updatedAt,

@@ -497,7 +497,10 @@ export function SellForm({ showHeader = true }: SellFormProps) {
                     <div className="space-y-1 rounded border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-neutral-700">
                       <p className="font-semibold text-slate-800">{selectedStorageLocation.name}</p>
                       <p>{storageLocationAddress}</p>
-                      <p>出庫手数料（1台あたり）：{selectedStorageLocation.handlingFeePerUnit.toLocaleString("ja-JP")}円</p>
+                      <p>
+                        出庫手数料（1台あたり）：
+                        {(selectedStorageLocation.handlingFeePerUnit ?? 0).toLocaleString("ja-JP")}円
+                      </p>
                       <p className="text-[11px] text-neutral-500">送料は倉庫設定で確認できます。</p>
                     </div>
                   ) : null}
