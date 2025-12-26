@@ -68,8 +68,7 @@ async function migrateMachineStorageLocations() {
 
   const machineLocations = await fetchMachineStorageLocations();
   if (machineLocations.length === 0) {
-    console.log("MachineStorageLocation table is empty. Dropping table.");
-    await prisma.$executeRaw(Prisma.sql`DROP TABLE IF EXISTS "MachineStorageLocation";`);
+    console.log("MachineStorageLocation table is empty. Nothing to migrate.");
     return;
   }
 
@@ -125,16 +124,13 @@ async function migrateMachineStorageLocations() {
       });
     }
 
-    if (targetId !== location.id) {
-      await prisma.listing.updateMany({
-        where: { storageLocationId: location.id },
-        data: { storageLocationId: targetId },
-      });
-    }
+    await prisma.listing.updateMany({
+      where: { storageLocationId: location.id },
+      data: { storageLocationId: targetId },
+    });
   }
 
-  await prisma.$executeRaw(Prisma.sql`DROP TABLE IF EXISTS "MachineStorageLocation";`);
-  console.log("Migration complete. MachineStorageLocation table dropped.");
+  console.log("Migration complete. MachineStorageLocation table left intact for verification.");
 }
 
 migrateMachineStorageLocations()
