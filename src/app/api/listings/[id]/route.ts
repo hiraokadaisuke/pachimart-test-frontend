@@ -68,7 +68,7 @@ export async function GET(request: Request, { params }: { params: { id?: string 
     const isOwner = currentUserId && listing.sellerUserId === currentUserId;
 
     if ((!isPublicListing || !listing.isVisible) && !isOwner) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
     let storageLocationSnapshot = listing.storageLocationSnapshot as StorageLocationSnapshot | null;
