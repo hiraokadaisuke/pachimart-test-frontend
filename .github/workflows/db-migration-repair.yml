@@ -22,6 +22,10 @@ jobs:
 
       - name: Resolve failed initial migration
         run: npx prisma migrate resolve --schema prisma/schema.prisma --applied 0001_initial
+        env:
+          PRISMA_DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL || secrets.DATABASE_URL }}
 
       - name: Deploy pending migrations
         run: npx prisma migrate deploy --schema prisma/schema.prisma
+        env:
+          PRISMA_DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL || secrets.DATABASE_URL }}
