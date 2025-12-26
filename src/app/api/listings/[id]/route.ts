@@ -5,8 +5,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import {
-  buildStorageLocationSnapshot,
   formatStorageLocationShort,
+  resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
 } from "@/lib/listings/storageLocation";
 
@@ -17,6 +17,21 @@ const updateListingSchema = z.object({
   isVisible: z.boolean().optional(),
   note: z.string().optional().nullable(),
 });
+
+const toSnapshotFromStorageLocation = (location?: {
+  name: string;
+  address: string | null;
+  prefecture: string | null;
+  city: string | null;
+}): Partial<StorageLocationSnapshot> | null =>
+  location
+    ? {
+        name: location.name,
+        address: location.address ?? undefined,
+        prefecture: location.prefecture ?? undefined,
+        city: location.city ?? undefined,
+      }
+    : null;
 
 const toDto = (listing: any) => ({
   id: String(listing.id),
@@ -70,29 +85,18 @@ export async function GET(request: Request, { params }: { params: { id?: string 
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    let storageLocationSnapshot = listing.storageLocationSnapshot as StorageLocationSnapshot | null;
-    let storageLocation = String(listing.storageLocation ?? "");
+    const storageLocationSnapshot =
+      resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
+      (listing.storageLocationId
+        ? toSnapshotFromStorageLocation(await prisma.storageLocation.findUnique({
+            where: { id: listing.storageLocationId },
+          }))
+        : null);
 
-    if (!storageLocationSnapshot && listing.storageLocationId) {
-      const location = await prisma.machineStorageLocation.findUnique({
-        where: { id: String(listing.storageLocationId) },
-      });
-
-      if (location) {
-        storageLocationSnapshot = buildStorageLocationSnapshot({
-          id: String(location.id),
-          name: String(location.name),
-          postalCode: String(location.postalCode),
-          prefecture: String(location.prefecture),
-          city: String(location.city),
-          addressLine: String(location.addressLine),
-          handlingFeePerUnit: Number(location.handlingFeePerUnit),
-          shippingFeesByRegion: location.shippingFeesByRegion,
-        });
-      }
-    }
-
-    storageLocation = formatStorageLocationShort(storageLocationSnapshot, storageLocation);
+    const storageLocation = formatStorageLocationShort(
+      storageLocationSnapshot,
+      String(listing.storageLocation ?? "")
+    );
 
     return NextResponse.json(
       toDto({
