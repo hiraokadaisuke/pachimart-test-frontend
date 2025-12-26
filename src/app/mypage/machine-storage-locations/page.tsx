@@ -100,7 +100,7 @@ export default function MachineStorageLocationsPage() {
     setErrorMessage(null);
     try {
       const response = await fetchWithDevHeader(
-        "/api/machine-storage-locations",
+        "/api/storage-locations",
         {},
         currentUser.id
       );
@@ -207,7 +207,7 @@ export default function MachineStorageLocationsPage() {
     setErrorMessage(null);
     try {
       const response = await fetchWithDevHeader(
-        editingId ? `/api/machine-storage-locations/${editingId}` : "/api/machine-storage-locations",
+        editingId ? `/api/storage-locations/${editingId}` : "/api/storage-locations",
         {
           method: editingId ? "PATCH" : "POST",
           headers: {
@@ -242,7 +242,7 @@ export default function MachineStorageLocationsPage() {
     setErrorMessage(null);
     try {
       const response = await fetchWithDevHeader(
-        `/api/machine-storage-locations/${location.id}`,
+        `/api/storage-locations/${location.id}`,
         {
           method: "DELETE",
         },
