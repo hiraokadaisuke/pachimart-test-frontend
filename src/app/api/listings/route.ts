@@ -212,7 +212,7 @@ const toSnapshotFromMachineStorageLocation = (location?: {
   addressLine: string;
   handlingFeePerUnit: number;
   shippingFeesByRegion: unknown;
-}): StorageLocationSnapshotLike | null =>
+} | null): StorageLocationSnapshotLike | null =>
   location
     ? {
         id: location.id,
