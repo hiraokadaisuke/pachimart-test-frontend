@@ -201,12 +201,14 @@ const parseListingStatus = (value: string | null): ListingStatus | undefined => 
 
 const publicListingStatuses = [ListingStatus.PUBLISHED, ListingStatus.SOLD];
 
+type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
+
 const toSnapshotFromStorageLocation = (location?: {
   name: string;
   address: string | null;
   prefecture: string | null;
   city: string | null;
-}): Partial<StorageLocationSnapshot> | null =>
+}): StorageLocationSnapshotLike | null =>
   location
     ? {
         name: location.name,
@@ -344,7 +346,7 @@ export async function POST(request: Request) {
   const data = parsed.data;
 
   try {
-    const storageLocation = await prisma.storageLocation.findFirst({
+    const [storageLocation] = await prisma.storageLocation.findMany({
       where: { id: data.storageLocationId, ownerUserId: sellerUserId },
     });
 

@@ -18,12 +18,14 @@ const updateListingSchema = z.object({
   note: z.string().optional().nullable(),
 });
 
+type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
+
 const toSnapshotFromStorageLocation = (location?: {
   name: string;
   address: string | null;
   prefecture: string | null;
   city: string | null;
-}): Partial<StorageLocationSnapshot> | null =>
+}): StorageLocationSnapshotLike | null =>
   location
     ? {
         name: location.name,
@@ -88,9 +90,11 @@ export async function GET(request: Request, { params }: { params: { id?: string 
     const storageLocationSnapshot =
       resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
       (listing.storageLocationId
-        ? toSnapshotFromStorageLocation(await prisma.storageLocation.findUnique({
-            where: { id: listing.storageLocationId },
-          }))
+        ? toSnapshotFromStorageLocation(
+            (await prisma.storageLocation.findMany({
+              where: { id: listing.storageLocationId },
+            }))[0]
+          )
         : null);
 
     const storageLocation = formatStorageLocationShort(
