@@ -1,0 +1,27 @@
+name: DB Migration Repair
+
+on:
+  workflow_dispatch:
+
+jobs:
+  repair-migrations:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Resolve failed initial migration
+        run: npx prisma migrate resolve --schema prisma/schema.prisma --applied 0001_initial
+
+      - name: Deploy pending migrations
+        run: npx prisma migrate deploy --schema prisma/schema.prisma
