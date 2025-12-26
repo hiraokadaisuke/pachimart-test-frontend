@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 
+import { DEV_USERS } from "@/lib/dev-user/users";
+
 import MainContainer from "@/components/layout/MainContainer";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import { buildApiUrl } from "@/lib/http/apiBaseUrl";
@@ -59,7 +61,7 @@ const resolveInquiryStatus = (listing: Listing) => {
 };
 
 export default async function ProductDetailPage({ params }: { params: { listingId: string } }) {
-  const devUserId = cookies().get("dev_user_id")?.value;
+  const devUserId = cookies().get("dev_user_id")?.value ?? DEV_USERS.A.id;
 
   const listing = await fetchListing(params.listingId, devUserId);
 
