@@ -11,15 +11,15 @@ type SellFormProps = {
   showHeader?: boolean;
 };
 
-type MachineStorageLocation = {
+type StorageLocation = {
   id: string;
   name: string;
-  postalCode: string;
-  prefecture: string;
-  city: string;
-  addressLine: string;
-  handlingFeePerUnit: number;
-  shippingFeesByRegion: Record<string, number>;
+  postalCode: string | null;
+  prefecture: string | null;
+  city: string | null;
+  addressLine: string | null;
+  handlingFeePerUnit: number | null;
+  shippingFeesByRegion: Record<string, number> | null;
 };
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
@@ -60,7 +60,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   const [quantity, setQuantity] = useState<number | "">(1);
   const [price, setPrice] = useState<number | "">("");
   const [isNegotiable, setIsNegotiable] = useState(false);
-  const [storageLocations, setStorageLocations] = useState<MachineStorageLocation[]>([]);
+  const [storageLocations, setStorageLocations] = useState<StorageLocation[]>([]);
   const [selectedStorageLocationId, setSelectedStorageLocationId] = useState("");
   const [removalStatus, setRemovalStatus] = useState<"REMOVED" | "SCHEDULED">("SCHEDULED");
   const [removalDate, setRemovalDate] = useState("");
@@ -100,7 +100,7 @@ export function SellForm({ showHeader = true }: SellFormProps) {
         if (!response.ok) {
           throw new Error(`Failed to fetch storage locations: ${response.status}`);
         }
-        const data: MachineStorageLocation[] = await response.json();
+        const data: StorageLocation[] = await response.json();
         setStorageLocations(data);
         setLocationError(null);
       } catch (error) {
@@ -497,7 +497,10 @@ export function SellForm({ showHeader = true }: SellFormProps) {
                     <div className="space-y-1 rounded border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-neutral-700">
                       <p className="font-semibold text-slate-800">{selectedStorageLocation.name}</p>
                       <p>{storageLocationAddress}</p>
-                      <p>出庫手数料（1台あたり）：{selectedStorageLocation.handlingFeePerUnit.toLocaleString("ja-JP")}円</p>
+                      <p>
+                        出庫手数料（1台あたり）：
+                        {(selectedStorageLocation.handlingFeePerUnit ?? 0).toLocaleString("ja-JP")}円
+                      </p>
                       <p className="text-[11px] text-neutral-500">送料は倉庫設定で確認できます。</p>
                     </div>
                   ) : null}

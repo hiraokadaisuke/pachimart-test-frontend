@@ -51,8 +51,8 @@ const run = async () => {
   console.log("GET /api/listings?sellerUserId=dev_user_1");
   await requestJson(`/api/listings?sellerUserId=${sellerUserId}`);
 
-  console.log("GET /api/machine-storage-locations");
-  const storageLocations = (await requestJson("/api/machine-storage-locations", {
+  console.log("GET /api/storage-locations");
+  const storageLocations = (await requestJson("/api/storage-locations", {
     headers: {
       "x-dev-user-id": sellerUserId,
     },
@@ -60,7 +60,7 @@ const run = async () => {
   const storageLocationId = storageLocations[0]?.id;
 
   if (!storageLocationId) {
-    throw new Error("No machine storage locations available for smoke test.");
+    throw new Error("No storage locations available for smoke test.");
   }
 
   console.log("POST /api/listings");
