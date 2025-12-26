@@ -25,6 +25,7 @@ export async function PATCH(request: Request, context: { params: { id: string } 
   try {
     const existing = await storageLocationClient.findFirst({
       where: { id, ownerUserId, isActive: true },
+      select: { id: true, ownerUserId: true, isActive: true },
     });
 
     if (!existing) {
@@ -95,6 +96,7 @@ export async function DELETE(request: Request, context: { params: { id: string }
   try {
     const existing = await storageLocationClient.findFirst({
       where: { id, ownerUserId, isActive: true },
+      select: { id: true, ownerUserId: true, isActive: true },
     });
 
     if (!existing) {
