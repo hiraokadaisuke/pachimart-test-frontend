@@ -366,7 +366,7 @@ export async function POST(request: Request) {
     const storageLocationSnapshot = buildStorageLocationSnapshot({
       id: String(storageLocation.id),
       name: String(storageLocation.name),
-      address: storageLocation.address ?? undefined,
+      address: storageLocation.addressLine ?? undefined,
       postalCode: storageLocation.postalCode ?? undefined,
       prefecture: storageLocation.prefecture ?? undefined,
       city: storageLocation.city ?? undefined,
@@ -379,7 +379,7 @@ export async function POST(request: Request) {
     });
     const storageLocationLabel = formatStorageLocationShort(
       storageLocationSnapshot,
-      data.storageLocation ?? storageLocation.address ?? ""
+      data.storageLocation ?? storageLocation.addressLine ?? ""
     );
 
     const created = await listingClient.create({

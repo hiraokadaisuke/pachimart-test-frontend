@@ -574,7 +574,14 @@ async function seedUsers() {
 
 async function seedStorageLocations() {
   for (const location of STORAGE_LOCATIONS) {
-    await prisma.storageLocation.create({ data: location });
+    const { address, ...rest } = location;
+
+    await prisma.storageLocation.create({
+      data: {
+        ...rest,
+        addressLine: location.addressLine ?? address ?? null,
+      },
+    });
   }
 }
 

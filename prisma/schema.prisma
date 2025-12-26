@@ -139,11 +139,10 @@ model StorageLocation {
   id                  String   @id @default(cuid())
   ownerUserId         String
   name                String
-  address             String?
+  addressLine         String?  @map("address")
   postalCode          String?
   prefecture          String?
   city                String?
-  addressLine         String?
   handlingFeePerUnit  Int?
   shippingFeesByRegion Json?
   isActive            Boolean  @default(true)
