@@ -66,6 +66,7 @@ type InMemoryListing = {
   handlingFeeCount: number;
   allowPartial: boolean;
   note: string | null;
+  storageLocationRecord?: InMemoryStorageLocation | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -155,7 +156,13 @@ type InMemoryPrisma = {
       where?: { sellerUserId?: string; status?: ListingStatus | { in: ListingStatus[] }; isVisible?: boolean };
       orderBy?: { updatedAt?: "asc" | "desc" };
     }) => Promise<InMemoryListing[]>;
-    findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryListing | null>;
+    findUnique: ({
+      where,
+      include,
+    }: {
+      where: { id?: string | null };
+      include?: { storageLocationRecord?: boolean };
+    }) => Promise<InMemoryListing | null>;
     create: ({ data }: { data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
     update: ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
   };
@@ -402,12 +409,24 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
         return sorted.map((listing) => ({ ...listing }));
       },
-      findUnique: async ({ where }: { where: { id?: string | null } }) => {
+      findUnique: async ({
+        where,
+        include,
+      }: {
+        where: { id?: string | null };
+        include?: { storageLocationRecord?: boolean };
+      }) => {
         const id = where.id ?? null;
         if (!id) return null;
 
         const found = listings.find((listing) => listing.id === id) ?? null;
-        return found ? { ...found } : null;
+        if (!found) return null;
+
+        const storageLocationRecord = include?.storageLocationRecord
+          ? storageLocations.find((location) => location.id === found.storageLocationId) ?? null
+          : undefined;
+
+        return { ...found, storageLocationRecord };
       },
       create: async ({ data }: { data: Partial<InMemoryListing> }) => {
         const nowDate = now();
