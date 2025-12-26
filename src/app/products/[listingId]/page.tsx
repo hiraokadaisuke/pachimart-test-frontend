@@ -8,11 +8,7 @@ import { buildApiUrl } from "@/lib/http/apiBaseUrl";
 import type { Listing } from "@/lib/listings/types";
 import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
 
-async function fetchListing(listingId: string): Promise<Listing | null> {
-  const incomingHeaders = headers();
-  const devUserId =
-    incomingHeaders.get("x-dev-user-id") ?? incomingHeaders.get("x-dev-user-id".toLowerCase());
-
+async function fetchListing(listingId: string, devUserId?: string): Promise<Listing | null> {
   try {
     const response = await fetch(buildApiUrl(`/api/listings/${listingId}`), {
       cache: "no-store",
@@ -22,13 +18,13 @@ async function fetchListing(listingId: string): Promise<Listing | null> {
     if (response.status === 404) return null;
     if (!response.ok) {
       console.error("Failed to fetch listing detail", response.status);
-      throw new Error(`Failed to fetch listing: ${response.status}`);
+      return null;
     }
 
     return response.json();
   } catch (error) {
     console.error("Failed to fetch listing detail", error);
-    throw error;
+    return null;
   }
 }
 
@@ -63,7 +59,11 @@ const resolveInquiryStatus = (listing: Listing) => {
 };
 
 export default async function ProductDetailPage({ params }: { params: { listingId: string } }) {
-  const listing = await fetchListing(params.listingId);
+  const incomingHeaders = headers();
+  const devUserId =
+    incomingHeaders.get("x-dev-user-id") ?? incomingHeaders.get("x-dev-user-id".toLowerCase()) ?? undefined;
+
+  const listing = await fetchListing(params.listingId, devUserId);
 
   if (!listing) {
     notFound();
