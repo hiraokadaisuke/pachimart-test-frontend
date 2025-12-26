@@ -5,8 +5,8 @@ import { z } from "zod";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import {
-  buildStorageLocationSnapshot,
   formatStorageLocationShort,
+  resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
 } from "@/lib/listings/storageLocation";
 
@@ -149,7 +149,8 @@ const toRecord = (listing: unknown): ListingRecord => {
     hasNailSheet: Boolean(candidate.hasNailSheet),
     hasManual: Boolean(candidate.hasManual),
     pickupAvailable: Boolean(candidate.pickupAvailable),
-    storageLocation: String(candidate.storageLocation),
+    storageLocation:
+      typeof candidate.storageLocation === "string" ? candidate.storageLocation : "",
     storageLocationId: (candidate.storageLocationId as string | null) ?? null,
     storageLocationSnapshot: (candidate.storageLocationSnapshot as unknown | null) ?? null,
     shippingFeeCount: Number(candidate.shippingFeeCount),
@@ -200,46 +201,22 @@ const parseListingStatus = (value: string | null): ListingStatus | undefined => 
 
 const publicListingStatuses = [ListingStatus.PUBLISHED, ListingStatus.SOLD];
 
-const resolveStorageLocationSnapshot = async (
-  listing: ListingRecord
-): Promise<{ storageLocationSnapshot: StorageLocationSnapshot | null; storageLocation: string }> => {
-  if (listing.storageLocationSnapshot || !listing.storageLocationId) {
-    return {
-      storageLocationSnapshot: listing.storageLocationSnapshot as StorageLocationSnapshot | null,
-      storageLocation: formatStorageLocationShort(
-        listing.storageLocationSnapshot,
-        listing.storageLocation
-      ),
-    };
-  }
+type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
 
-  const location = await prisma.machineStorageLocation.findUnique({
-    where: { id: listing.storageLocationId },
-  });
-
-  if (!location) {
-    return {
-      storageLocationSnapshot: null,
-      storageLocation: formatStorageLocationShort(null, listing.storageLocation),
-    };
-  }
-
-  const snapshot = buildStorageLocationSnapshot({
-    id: String(location.id),
-    name: String(location.name),
-    postalCode: String(location.postalCode),
-    prefecture: String(location.prefecture),
-    city: String(location.city),
-    addressLine: String(location.addressLine),
-    handlingFeePerUnit: Number(location.handlingFeePerUnit),
-    shippingFeesByRegion: location.shippingFeesByRegion,
-  });
-
-  return {
-    storageLocationSnapshot: snapshot,
-    storageLocation: formatStorageLocationShort(snapshot, listing.storageLocation),
-  };
-};
+const toSnapshotFromStorageLocation = (location?: {
+  name: string;
+  address: string | null;
+  prefecture: string | null;
+  city: string | null;
+}): StorageLocationSnapshotLike | null =>
+  location
+    ? {
+        name: location.name,
+        address: location.address ?? undefined,
+        prefecture: location.prefecture ?? undefined,
+        city: location.city ?? undefined,
+      }
+    : null;
 
 export async function GET(request: Request) {
   try {
@@ -301,16 +278,33 @@ export async function GET(request: Request) {
     });
 
     const records = listings.map(toRecord);
-    const enriched = await Promise.all(
-      records.map(async (listing) => {
-        const resolved = await resolveStorageLocationSnapshot(listing);
-        return {
-          ...listing,
-          storageLocationSnapshot: resolved.storageLocationSnapshot ?? listing.storageLocationSnapshot,
-          storageLocation: resolved.storageLocation,
-        };
-      })
+    const storageLocationIds = records
+      .map((listing) => listing.storageLocationId)
+      .filter((id): id is string => Boolean(id));
+
+    const storageLocations = await prisma.storageLocation.findMany({
+      where: { id: { in: storageLocationIds } },
+    });
+
+    const storageLocationMap = new Map(
+      storageLocations.map((location) => [location.id, location])
     );
+
+    const enriched = records.map((listing) => {
+      const snapshot =
+        resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
+        toSnapshotFromStorageLocation(
+          listing.storageLocationId
+            ? storageLocationMap.get(listing.storageLocationId)
+            : undefined
+        );
+
+      return {
+        ...listing,
+        storageLocationSnapshot: snapshot,
+        storageLocation: formatStorageLocationShort(snapshot, listing.storageLocation),
+      };
+    });
 
     return NextResponse.json(enriched.map(toDto));
   } catch (error) {
@@ -352,8 +346,8 @@ export async function POST(request: Request) {
   const data = parsed.data;
 
   try {
-    const storageLocation = await prisma.machineStorageLocation.findFirst({
-      where: { id: data.storageLocationId, ownerUserId: sellerUserId, isActive: true },
+    const [storageLocation] = await prisma.storageLocation.findMany({
+      where: { id: data.storageLocationId, ownerUserId: sellerUserId },
     });
 
     if (!storageLocation) {
@@ -363,16 +357,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const storageLocationSnapshot = buildStorageLocationSnapshot({
+    const storageLocationSnapshot = {
       id: String(storageLocation.id),
       name: String(storageLocation.name),
-      postalCode: String(storageLocation.postalCode),
-      prefecture: String(storageLocation.prefecture),
-      city: String(storageLocation.city),
-      addressLine: String(storageLocation.addressLine),
-      handlingFeePerUnit: Number(storageLocation.handlingFeePerUnit),
-      shippingFeesByRegion: storageLocation.shippingFeesByRegion,
-    });
+      address: String(storageLocation.address),
+      prefecture: storageLocation.prefecture,
+      city: storageLocation.city,
+    };
     const storageLocationLabel = formatStorageLocationShort(
       storageLocationSnapshot,
       data.storageLocation ?? ""
