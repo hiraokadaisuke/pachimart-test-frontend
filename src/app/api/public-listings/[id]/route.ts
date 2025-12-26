@@ -6,6 +6,7 @@ import {
   resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
 } from "@/lib/listings/storageLocation";
+import { getCurrentUserId } from "@/lib/server/currentUser";
 import { prisma } from "@/lib/server/prisma";
 
 const listingClient = prisma.listing;
@@ -78,10 +79,12 @@ export async function GET(request: Request, { params }: { params: { id?: string 
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
+    const currentUserId = getCurrentUserId(request);
     const isPublicListing =
       listing.status === ListingStatus.PUBLISHED || listing.status === ListingStatus.SOLD;
+    const isOwner = currentUserId && listing.sellerUserId === currentUserId;
 
-    if (!isPublicListing) {
+    if (!isPublicListing && !isOwner) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
