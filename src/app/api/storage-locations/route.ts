@@ -25,6 +25,20 @@ export async function GET(request: Request) {
     const locations = await storageLocationClient.findMany({
       where: { ownerUserId, isActive: true },
       orderBy: { updatedAt: "desc" },
+      select: {
+        id: true,
+        ownerUserId: true,
+        name: true,
+        address: true,
+        prefecture: true,
+        city: true,
+        addressLine: true,
+        handlingFeePerUnit: true,
+        shippingFeesByRegion: true,
+        isActive: true,
+        createdAt: true,
+        updatedAt: true,
+      },
     });
 
     const response = locations.map((location: any) => ({
@@ -32,7 +46,7 @@ export async function GET(request: Request) {
       ownerUserId: String(location.ownerUserId),
       name: String(location.name),
       address: (location.address as string | null) ?? null,
-      postalCode: (location.postalCode as string | null) ?? null,
+      postalCode: null,
       prefecture: (location.prefecture as string | null) ?? null,
       city: (location.city as string | null) ?? null,
       addressLine: (location.addressLine as string | null) ?? null,
