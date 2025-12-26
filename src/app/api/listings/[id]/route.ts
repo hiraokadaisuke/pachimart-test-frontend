@@ -20,18 +20,26 @@ const updateListingSchema = z.object({
 
 type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
 
-const toSnapshotFromStorageLocation = (location?: {
+const toSnapshotFromMachineStorageLocation = (location?: {
+  id: string;
   name: string;
-  address: string | null;
-  prefecture: string | null;
-  city: string | null;
+  postalCode: string;
+  prefecture: string;
+  city: string;
+  addressLine: string;
+  handlingFeePerUnit: number;
+  shippingFeesByRegion: unknown;
 }): StorageLocationSnapshotLike | null =>
   location
     ? {
+        id: location.id,
         name: location.name,
-        address: location.address ?? undefined,
-        prefecture: location.prefecture ?? undefined,
-        city: location.city ?? undefined,
+        postalCode: location.postalCode,
+        prefecture: location.prefecture,
+        city: location.city,
+        addressLine: location.addressLine,
+        handlingFeePerUnit: location.handlingFeePerUnit,
+        shippingFeesByRegion: location.shippingFeesByRegion,
       }
     : null;
 
@@ -90,10 +98,10 @@ export async function GET(request: Request, { params }: { params: { id?: string 
     const storageLocationSnapshot =
       resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
       (listing.storageLocationId
-        ? toSnapshotFromStorageLocation(
-            (await prisma.storageLocation.findMany({
+        ? toSnapshotFromMachineStorageLocation(
+            await prisma.machineStorageLocation.findFirst({
               where: { id: listing.storageLocationId },
-            }))[0]
+            })
           )
         : null);
 

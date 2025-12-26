@@ -203,18 +203,26 @@ const publicListingStatuses = [ListingStatus.PUBLISHED, ListingStatus.SOLD];
 
 type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
 
-const toSnapshotFromStorageLocation = (location?: {
+const toSnapshotFromMachineStorageLocation = (location?: {
+  id: string;
   name: string;
-  address: string | null;
-  prefecture: string | null;
-  city: string | null;
+  postalCode: string;
+  prefecture: string;
+  city: string;
+  addressLine: string;
+  handlingFeePerUnit: number;
+  shippingFeesByRegion: unknown;
 }): StorageLocationSnapshotLike | null =>
   location
     ? {
+        id: location.id,
         name: location.name,
-        address: location.address ?? undefined,
-        prefecture: location.prefecture ?? undefined,
-        city: location.city ?? undefined,
+        postalCode: location.postalCode,
+        prefecture: location.prefecture,
+        city: location.city,
+        addressLine: location.addressLine,
+        handlingFeePerUnit: location.handlingFeePerUnit,
+        shippingFeesByRegion: location.shippingFeesByRegion,
       }
     : null;
 
@@ -282,7 +290,7 @@ export async function GET(request: Request) {
       .map((listing) => listing.storageLocationId)
       .filter((id): id is string => Boolean(id));
 
-    const storageLocations = await prisma.storageLocation.findMany({
+    const storageLocations = await prisma.machineStorageLocation.findMany({
       where: { id: { in: storageLocationIds } },
     });
 
@@ -293,7 +301,7 @@ export async function GET(request: Request) {
     const enriched = records.map((listing) => {
       const snapshot =
         resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
-        toSnapshotFromStorageLocation(
+        toSnapshotFromMachineStorageLocation(
           listing.storageLocationId
             ? storageLocationMap.get(listing.storageLocationId)
             : undefined
@@ -346,11 +354,11 @@ export async function POST(request: Request) {
   const data = parsed.data;
 
   try {
-    const [storageLocation] = await prisma.storageLocation.findMany({
+    const machineStorageLocation = await prisma.machineStorageLocation.findFirst({
       where: { id: data.storageLocationId, ownerUserId: sellerUserId },
     });
 
-    if (!storageLocation) {
+    if (!machineStorageLocation) {
       return NextResponse.json(
         { error: "保管場所が見つかりません。倉庫設定を確認してください。" },
         { status: 400 }
@@ -358,12 +366,15 @@ export async function POST(request: Request) {
     }
 
     const storageLocationSnapshot = {
-      id: String(storageLocation.id),
-      name: String(storageLocation.name),
-      address: String(storageLocation.address),
-      prefecture: storageLocation.prefecture,
-      city: storageLocation.city,
-    };
+      id: String(machineStorageLocation.id),
+      name: String(machineStorageLocation.name),
+      postalCode: String(machineStorageLocation.postalCode),
+      prefecture: String(machineStorageLocation.prefecture),
+      city: String(machineStorageLocation.city),
+      addressLine: String(machineStorageLocation.addressLine),
+      handlingFeePerUnit: Number(machineStorageLocation.handlingFeePerUnit),
+      shippingFeesByRegion: machineStorageLocation.shippingFeesByRegion,
+    } satisfies StorageLocationSnapshot;
     const storageLocationLabel = formatStorageLocationShort(
       storageLocationSnapshot,
       data.storageLocation ?? ""
