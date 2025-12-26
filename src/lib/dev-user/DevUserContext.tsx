@@ -13,6 +13,12 @@ type DevUserContextValue = {
 const DevUserContext = createContext<DevUserContextValue>({ current: "A", setCurrent: () => {} });
 
 const STORAGE_KEY = "dev_user_type";
+const DEV_USER_COOKIE_KEY = "dev_user_id";
+
+const setDevUserCookie = (userType: DevUserType) => {
+  if (typeof document === "undefined") return;
+  document.cookie = `${DEV_USER_COOKIE_KEY}=${DEV_USERS[userType].id}; path=/; samesite=lax`;
+};
 
 export function DevUserProvider({ children }: { children: React.ReactNode }) {
   const [current, setCurrentState] = useState<DevUserType>("A");
@@ -22,7 +28,10 @@ export function DevUserProvider({ children }: { children: React.ReactNode }) {
     const saved = window.localStorage.getItem(STORAGE_KEY);
     if (saved && saved in DEV_USERS) {
       setCurrentState(saved as DevUserType);
+      setDevUserCookie(saved as DevUserType);
+      return;
     }
+    setDevUserCookie("A");
   }, []);
 
   const setCurrent = (userType: DevUserType) => {
@@ -30,6 +39,7 @@ export function DevUserProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(STORAGE_KEY, userType);
     }
+    setDevUserCookie(userType);
   };
 
   return (
