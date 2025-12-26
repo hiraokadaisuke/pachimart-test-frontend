@@ -256,7 +256,12 @@ export async function GET(request: Request) {
       );
     }
 
-    const accessibleScopes: Prisma.ListingWhereInput[] = [
+    type ListingVisibilityWhere = {
+      sellerUserId?: string;
+      status?: ListingStatus | { in: ListingStatus[] };
+    };
+
+    const accessibleScopes: ListingVisibilityWhere[] = [
       { status: { in: publicListingStatuses } },
     ];
 
@@ -264,7 +269,7 @@ export async function GET(request: Request) {
       accessibleScopes.push({ sellerUserId: currentUserId });
     }
 
-    const andConditions: Prisma.ListingWhereInput[] = [];
+    const andConditions: ListingVisibilityWhere[] = [];
 
     if (sellerUserIdParam) {
       if (!currentUserId) {
@@ -282,9 +287,12 @@ export async function GET(request: Request) {
       andConditions.push({ status });
     }
 
-    const where: Prisma.ListingWhereInput = {
+    const where = {
       OR: accessibleScopes,
       ...(andConditions.length ? { AND: andConditions } : {}),
+    } satisfies Prisma.ListingWhereInput & {
+      sellerUserId?: string;
+      status?: ListingStatus | { in: ListingStatus[] };
     };
 
     const listings = await listingClient.findMany({
