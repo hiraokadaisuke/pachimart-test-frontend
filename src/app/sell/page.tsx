@@ -1,11 +1,5 @@
-import MyPageLayout from "@/components/layout/MyPageLayout";
-import { ExhibitSubTabs } from "@/components/exhibits/ExhibitSubTabs";
-import { SellForm } from "@/components/exhibits/SellForm";
+import { redirect } from "next/navigation";
 
 export default function SellPage() {
-  return (
-    <MyPageLayout subTabs={<ExhibitSubTabs activeTab="new" />} compact>
-      <SellForm />
-    </MyPageLayout>
-  );
+  redirect("/mypage/exhibits/new");
 }

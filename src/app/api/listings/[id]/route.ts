@@ -1,4 +1,4 @@
-import { ListingStatus, RemovalStatus } from "@prisma/client";
+import { ListingStatus, ListingType, RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -47,6 +47,7 @@ const toSnapshotFromStorageLocation = (location?: {
 
 const toDto = (listing: any) => ({
   id: String(listing.id),
+  type: listing.type as ListingType,
   sellerUserId: String(listing.sellerUserId),
   status: listing.status as ListingStatus,
   isVisible: Boolean(listing.isVisible),

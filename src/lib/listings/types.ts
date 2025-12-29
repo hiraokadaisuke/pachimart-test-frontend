@@ -1,5 +1,6 @@
 export type Listing = {
   id: string;
+  type: string;
   sellerUserId: string;
   status: string;
   isVisible: boolean;

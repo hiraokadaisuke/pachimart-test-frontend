@@ -1,4 +1,4 @@
-import { ListingStatus, Prisma, RemovalStatus } from "@prisma/client";
+import { ListingStatus, ListingType, Prisma, RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -13,6 +13,7 @@ import {
 
 type ListingRecord = {
   id: string;
+  type: ListingType;
   sellerUserId: string;
   status: ListingStatus;
   isVisible: boolean;
@@ -40,6 +41,7 @@ type ListingRecord = {
 
 type ListingDto = {
   id: string;
+  type: ListingType;
   sellerUserId: string;
   status: ListingStatus;
   isVisible: boolean;
@@ -69,6 +71,7 @@ const listingClient = prisma.listing;
 
 const createListingSchema = z
   .object({
+    type: z.nativeEnum(ListingType).default(ListingType.PACHINKO),
     kind: z.string().min(1, "kind is required"),
     maker: z.string().trim().min(1).optional().nullable(),
     machineName: z.string().trim().min(1).optional().nullable(),
@@ -132,6 +135,7 @@ const toRecord = (listing: unknown): ListingRecord => {
 
   return {
     id: String(candidate.id),
+    type: (candidate.type as ListingType) ?? ListingType.PACHINKO,
     sellerUserId: String(candidate.sellerUserId),
     status: candidate.status as ListingStatus,
     isVisible: Boolean(candidate.isVisible),
@@ -164,6 +168,7 @@ const toRecord = (listing: unknown): ListingRecord => {
 
 const toDto = (listing: ListingRecord): ListingDto => ({
   id: listing.id,
+  type: listing.type,
   sellerUserId: listing.sellerUserId,
   status: listing.status,
   isVisible: listing.isVisible,
@@ -377,18 +382,19 @@ export async function POST(request: Request) {
           : undefined,
       shippingFeesByRegion: storageLocation.shippingFeesByRegion ?? undefined,
     });
-    const storageLocationLabel = formatStorageLocationShort(
-      storageLocationSnapshot,
-      data.storageLocation ?? storageLocation.addressLine ?? ""
-    );
+      const storageLocationLabel = formatStorageLocationShort(
+        storageLocationSnapshot,
+        data.storageLocation ?? storageLocation.addressLine ?? ""
+      );
 
-    const created = await listingClient.create({
-      data: {
-        sellerUserId,
-        status: data.status ?? ListingStatus.DRAFT,
-        isVisible: data.isVisible ?? true,
-        kind: data.kind,
-        maker: data.maker ?? null,
+      const created = await listingClient.create({
+        data: {
+          sellerUserId,
+          status: data.status ?? ListingStatus.DRAFT,
+          isVisible: data.isVisible ?? true,
+          type: data.type ?? ListingType.PACHINKO,
+          kind: data.kind,
+          maker: data.maker ?? null,
         machineName: data.machineName ?? null,
         quantity: data.quantity,
         unitPriceExclTax: data.isNegotiable ? null : (data.unitPriceExclTax ?? null),

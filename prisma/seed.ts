@@ -1,5 +1,6 @@
 import {
   ListingStatus,
+  ListingType,
   MessageSenderRole,
   Prisma,
   PrismaClient,
@@ -37,6 +38,7 @@ type StorageLocationSeed = {
 
 type ListingSeed = {
   id: string;
+  type: ListingType;
   sellerUserId: string;
   status: ListingStatus;
   isVisible: boolean;
@@ -60,6 +62,18 @@ type ListingSeed = {
   note: string | null;
   createdAt?: Date;
   updatedAt?: Date;
+};
+
+type MakerSeed = {
+  id: string;
+  name: string;
+};
+
+type MachineModelSeed = {
+  id: string;
+  makerId: string;
+  type: ListingType;
+  name: string;
 };
 
 type BuyerShippingAddressSeed = {
@@ -240,6 +254,92 @@ const STORAGE_LOCATIONS: StorageLocationSeed[] = [
   },
 ];
 
+const MAKERS: MakerSeed[] = [
+  { id: "maker_sanyo", name: "三洋" },
+  { id: "maker_sammy", name: "Sammy" },
+  { id: "maker_kyoraku", name: "京楽" },
+  { id: "maker_sankyo", name: "SANKYO" },
+  { id: "maker_newgin", name: "ニューギン" },
+  { id: "maker_heiwa", name: "平和" },
+  { id: "maker_fuji", name: "藤商事" },
+  { id: "maker_oki", name: "OK!!" },
+  { id: "maker_daito", name: "大都技研" },
+  { id: "maker_yamasa", name: "ヤマサ" },
+];
+
+const MACHINE_MODELS: MachineModelSeed[] = [
+  { id: "model_sanyo_umi_special_a", makerId: "maker_sanyo", type: ListingType.PACHINKO, name: "海物語スペシャルA" },
+  { id: "model_sanyo_umi_special_b", makerId: "maker_sanyo", type: ListingType.PACHINKO, name: "海物語スペシャルB" },
+  { id: "model_sanyo_ginpara_x", makerId: "maker_sanyo", type: ListingType.PACHINKO, name: "ギンパラX" },
+  { id: "model_sanyo_ocean5", makerId: "maker_sanyo", type: ListingType.PACHINKO, name: "大海物語5" },
+  { id: "model_sanyo_okinawa_sakura", makerId: "maker_sanyo", type: ListingType.PACHINKO, name: "スーパー海物語IN沖縄桜" },
+  { id: "model_sanyo_marin_light", makerId: "maker_sanyo", type: ListingType.PACHINKO, name: "マリンライト" },
+  { id: "model_sanyo_umi_slot", makerId: "maker_sanyo", type: ListingType.SLOT, name: "海物語INジャパン" },
+  { id: "model_sanyo_beach_slot", makerId: "maker_sanyo", type: ListingType.SLOT, name: "ビーチストーリー" },
+
+  { id: "model_sammy_hokuto_muso_re", makerId: "maker_sammy", type: ListingType.PACHINKO, name: "北斗無双Re." },
+  { id: "model_sammy_hokuto_9", makerId: "maker_sammy", type: ListingType.PACHINKO, name: "北斗の拳9" },
+  { id: "model_sammy_disc_pachi", makerId: "maker_sammy", type: ListingType.PACHINKO, name: "ディスクバトル" },
+  { id: "model_sammy_disc_up2", makerId: "maker_sammy", type: ListingType.SLOT, name: "ディスクアップ2" },
+  { id: "model_sammy_hana_slot", makerId: "maker_sammy", type: ListingType.SLOT, name: "ハナビ通ライト" },
+  { id: "model_sammy_godrive", makerId: "maker_sammy", type: ListingType.SLOT, name: "ゴッドドライブ" },
+  { id: "model_sammy_hokuto_daito", makerId: "maker_sammy", type: ListingType.SLOT, name: "スマスロ北斗" },
+
+  { id: "model_kyoraku_shin_hanemono", makerId: "maker_kyoraku", type: ListingType.PACHINKO, name: "新はねものの源さん" },
+  { id: "model_kyoraku_oshimajo", makerId: "maker_kyoraku", type: ListingType.PACHINKO, name: "オシマジョ99" },
+  { id: "model_kyoraku_akb", makerId: "maker_kyoraku", type: ListingType.PACHINKO, name: "AKBフェスティバル" },
+  { id: "model_kyoraku_uma_musume", makerId: "maker_kyoraku", type: ListingType.PACHINKO, name: "ぱちんこウマ娘" },
+  { id: "model_kyoraku_garo_light", makerId: "maker_kyoraku", type: ListingType.PACHINKO, name: "牙狼ライトミドル" },
+
+  { id: "model_sankyo_vanguard", makerId: "maker_sankyo", type: ListingType.PACHINKO, name: "フィーバーヴァンガード" },
+  { id: "model_sankyo_macross4", makerId: "maker_sankyo", type: ListingType.PACHINKO, name: "マクロス4" },
+  { id: "model_sankyo_evangelion", makerId: "maker_sankyo", type: ListingType.PACHINKO, name: "エヴァンゲリオン咆哮" },
+  { id: "model_sankyo_gundam_uc", makerId: "maker_sankyo", type: ListingType.PACHINKO, name: "ガンダムUCライト" },
+  { id: "model_sankyo_ichiban", makerId: "maker_sankyo", type: ListingType.PACHINKO, name: "一番くじSP" },
+  { id: "model_sankyo_fever_slot", makerId: "maker_sankyo", type: ListingType.SLOT, name: "フィーバースロットR" },
+  { id: "model_sankyo_macross_slot", makerId: "maker_sankyo", type: ListingType.SLOT, name: "マクロスデルタ" },
+  { id: "model_sankyo_fairytale", makerId: "maker_sankyo", type: ListingType.SLOT, name: "フェアリーテイル極" },
+  { id: "model_sankyo_symphogear_slot", makerId: "maker_sankyo", type: ListingType.SLOT, name: "戦姫絶唱シンフォギア勇気" },
+
+  { id: "model_newgin_hanahana", makerId: "maker_newgin", type: ListingType.PACHINKO, name: "花の慶次～傾奇一転～" },
+  { id: "model_newgin_syogun", makerId: "maker_newgin", type: ListingType.PACHINKO, name: "真・花の慶次2黄金" },
+  { id: "model_newgin_tenka", makerId: "maker_newgin", type: ListingType.PACHINKO, name: "天下一閃琉球" },
+  { id: "model_newgin_shirogane", makerId: "maker_newgin", type: ListingType.PACHINKO, name: "慶次白銀の衝撃" },
+  { id: "model_newgin_kumamoto", makerId: "maker_newgin", type: ListingType.PACHINKO, name: "熊本応援ver." },
+  { id: "model_newgin_riot", makerId: "maker_newgin", type: ListingType.SLOT, name: "慶次ライオット" },
+  { id: "model_newgin_okoku", makerId: "maker_newgin", type: ListingType.SLOT, name: "花の慶次王" },
+
+  { id: "model_heiwa_lupin", makerId: "maker_heiwa", type: ListingType.PACHINKO, name: "ルパン三世 銭形" },
+  { id: "model_heiwa_sazae", makerId: "maker_heiwa", type: ListingType.PACHINKO, name: "黄門ちゃま極" },
+  { id: "model_heiwa_gaogao", makerId: "maker_heiwa", type: ListingType.PACHINKO, name: "ガオガオキング" },
+  { id: "model_heiwa_tiger", makerId: "maker_heiwa", type: ListingType.SLOT, name: "タイガー＆バニーSP" },
+  { id: "model_heiwa_tengoku", makerId: "maker_heiwa", type: ListingType.SLOT, name: "天竺RUSH" },
+
+  { id: "model_fuji_ring", makerId: "maker_fuji", type: ListingType.PACHINKO, name: "リング終焉" },
+  { id: "model_fuji_another", makerId: "maker_fuji", type: ListingType.PACHINKO, name: "アナザーゴッドポセイドン" },
+  { id: "model_fuji_psycho", makerId: "maker_fuji", type: ListingType.PACHINKO, name: "貞子怨念" },
+  { id: "model_fuji_higurashi_slot", makerId: "maker_fuji", type: ListingType.SLOT, name: "ひぐらしのなく頃に彩" },
+  { id: "model_fuji_akb_slot", makerId: "maker_fuji", type: ListingType.SLOT, name: "AKBエンジェル" },
+
+  { id: "model_oki_summer", makerId: "maker_oki", type: ListingType.PACHINKO, name: "沖きゅんサマー" },
+  { id: "model_oki_music", makerId: "maker_oki", type: ListingType.PACHINKO, name: "ミュージックコレクション" },
+  { id: "model_oki_momoyuki", makerId: "maker_oki", type: ListingType.SLOT, name: "桃ゆきチャンス" },
+  { id: "model_oki_lagoon", makerId: "maker_oki", type: ListingType.SLOT, name: "ラグーンダッシュ" },
+
+  { id: "model_daito_bancho3", makerId: "maker_daito", type: ListingType.SLOT, name: "押忍！番長3" },
+  { id: "model_daito_re_mirai", makerId: "maker_daito", type: ListingType.SLOT, name: "Re:みらいハイスクール" },
+  { id: "model_daito_hibana", makerId: "maker_daito", type: ListingType.SLOT, name: "ハイビスカスサンシャイン" },
+  { id: "model_daito_heavens", makerId: "maker_daito", type: ListingType.SLOT, name: "HEY!鏡RUSH" },
+  { id: "model_daito_samurai", makerId: "maker_daito", type: ListingType.SLOT, name: "サムライ学園" },
+  { id: "model_daito_monkey", makerId: "maker_daito", type: ListingType.SLOT, name: "モンキーターン疾風" },
+
+  { id: "model_yamasa_kikumon", makerId: "maker_yamasa", type: ListingType.SLOT, name: "きくもんDX" },
+  { id: "model_yamasa_gammamon", makerId: "maker_yamasa", type: ListingType.SLOT, name: "ガメラモンスター" },
+  { id: "model_yamasa_nobunaga", makerId: "maker_yamasa", type: ListingType.SLOT, name: "信長の野望烈風" },
+  { id: "model_yamasa_bingo", makerId: "maker_yamasa", type: ListingType.SLOT, name: "スーパービンゴ極" },
+  { id: "model_yamasa_sakura", makerId: "maker_yamasa", type: ListingType.SLOT, name: "サクラサクラ" },
+];
+
 const findStorageLocationSnapshot = (id: string): Prisma.JsonObject => {
   const location = STORAGE_LOCATIONS.find((loc) => loc.id === id);
 
@@ -267,6 +367,7 @@ const now = new Date();
 const LISTINGS: ListingSeed[] = [
   {
     id: "listing_dev_phone_ready",
+    type: ListingType.PACHINKO,
     sellerUserId: "dev_user_1",
     status: ListingStatus.PUBLISHED,
     isVisible: true,
@@ -292,6 +393,7 @@ const LISTINGS: ListingSeed[] = [
   },
   {
     id: "listing_dev_bundle",
+    type: ListingType.SLOT,
     sellerUserId: "dev_user_1",
     status: ListingStatus.PUBLISHED,
     isVisible: true,
@@ -317,6 +419,7 @@ const LISTINGS: ListingSeed[] = [
   },
   {
     id: "listing_dev_negotiable",
+    type: ListingType.SLOT,
     sellerUserId: "dev_user_1",
     status: ListingStatus.PUBLISHED,
     isVisible: true,
@@ -342,6 +445,7 @@ const LISTINGS: ListingSeed[] = [
   },
   {
     id: "listing_dev_comparison_buyer",
+    type: ListingType.PACHINKO,
     sellerUserId: "dev_user_2",
     status: ListingStatus.PUBLISHED,
     isVisible: true,
@@ -367,6 +471,7 @@ const LISTINGS: ListingSeed[] = [
   },
   {
     id: "listing_dev_sold_showcase",
+    type: ListingType.PACHINKO,
     sellerUserId: "dev_user_4",
     status: ListingStatus.SOLD,
     isVisible: true,
@@ -428,6 +533,7 @@ const toIsoString = (value: Date | null | undefined): string | null => {
 
 const buildListingSnapshot = (listing: ListingSeed) => ({
   listingId: listing.id,
+  type: listing.type,
   status: listing.status,
   isVisible: listing.isVisible,
   kind: listing.kind,
@@ -572,12 +678,29 @@ async function seedUsers() {
   }
 }
 
+async function seedMakers() {
+  for (const maker of MAKERS) {
+    await prisma.maker.upsert({ where: { id: maker.id }, update: maker, create: maker });
+  }
+}
+
+async function seedMachineModels() {
+  for (const model of MACHINE_MODELS) {
+    await prisma.machineModel.upsert({ where: { id: model.id }, update: model, create: model });
+  }
+}
+
 async function seedStorageLocations() {
   for (const location of STORAGE_LOCATIONS) {
     const { address, ...rest } = location;
 
-    await prisma.storageLocation.create({
-      data: {
+    await prisma.storageLocation.upsert({
+      where: { id: location.id },
+      update: {
+        ...rest,
+        addressLine: location.addressLine ?? address ?? null,
+      },
+      create: {
         ...rest,
         addressLine: location.addressLine ?? address ?? null,
       },
@@ -588,12 +711,16 @@ async function seedStorageLocations() {
 async function seedListings() {
   const createdListings = [] as ListingSeed[];
   for (const listing of LISTINGS) {
-    const created = await prisma.listing.create({
-      data: {
-        ...listing,
-        createdAt: listing.createdAt ?? now,
-        updatedAt: listing.updatedAt ?? listing.createdAt ?? now,
-      },
+    const data = {
+      ...listing,
+      createdAt: listing.createdAt ?? now,
+      updatedAt: listing.updatedAt ?? listing.createdAt ?? now,
+    } satisfies ListingSeed & { createdAt: Date; updatedAt: Date };
+
+    const created = await prisma.listing.upsert({
+      where: { id: listing.id },
+      update: data,
+      create: data,
     });
     createdListings.push({ ...listing, createdAt: created.createdAt, updatedAt: created.updatedAt });
   }
@@ -603,7 +730,11 @@ async function seedListings() {
 
 async function seedBuyerShippingAddresses() {
   for (const address of BUYER_SHIPPING_ADDRESSES) {
-    await prisma.buyerShippingAddress.create({ data: { ...address, isActive: true } });
+    await prisma.buyerShippingAddress.upsert({
+      where: { id: address.id },
+      update: { ...address, isActive: true },
+      create: { ...address, isActive: true },
+    });
   }
 }
 
@@ -760,6 +891,8 @@ async function main() {
   console.log(`Running seed for mode: ${seedMode}`);
   await clearExistingData();
   await seedUsers();
+  await seedMakers();
+  await seedMachineModels();
   await seedStorageLocations();
   await seedBuyerShippingAddresses();
   const listings = await seedListings();

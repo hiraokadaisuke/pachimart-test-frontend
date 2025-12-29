@@ -1,4 +1,4 @@
-import { ListingStatus, RemovalStatus } from "@prisma/client";
+import { ListingStatus, ListingType, RemovalStatus } from "@prisma/client";
 
 import {
   formatStorageLocationShort,
@@ -37,6 +37,7 @@ const toSnapshotFromStorageLocation = (location?: {
 
 const toDto = (listing: any): Listing => ({
   id: String(listing.id),
+  type: listing.type as ListingType,
   sellerUserId: String(listing.sellerUserId),
   status: listing.status as ListingStatus,
   isVisible: Boolean(listing.isVisible),

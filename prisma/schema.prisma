@@ -40,6 +40,11 @@ enum ListingStatus {
   SOLD
 }
 
+enum ListingType {
+  PACHINKO
+  SLOT
+}
+
 enum RemovalStatus {
   REMOVED
   SCHEDULED
@@ -123,6 +128,7 @@ model OnlineInquiry {
 
 model Listing {
   id               String         @id @default(cuid())
+  type             ListingType    @default(PACHINKO)
   sellerUserId     String
   status           ListingStatus  @default(DRAFT)
   isVisible        Boolean        @default(true)
@@ -154,6 +160,24 @@ model Listing {
   @@index([isVisible])
   @@index([updatedAt])
   @@index([storageLocationId])
+}
+
+model Maker {
+  id            String          @id @default(cuid())
+  name          String          @unique
+  machineModels MachineModel[]
+}
+
+model MachineModel {
+  id      String      @id @default(cuid())
+  makerId String
+  type    ListingType
+  name    String
+
+  maker Maker @relation(fields: [makerId], references: [id])
+
+  @@index([makerId])
+  @@index([type])
 }
 
 model StorageLocation {
