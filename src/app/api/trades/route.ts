@@ -1,4 +1,4 @@
-import { Prisma, TradeNaviStatus, TradeNaviType } from "@prisma/client";
+import { Prisma, NaviStatus, NaviType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -6,13 +6,13 @@ import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/trade/listingSnapshot";
 
-const tradeNaviClient = prisma.tradeNavi;
+const naviClient = prisma.navi;
 const listingClient = prisma.listing;
 
-type TradeNaviDto = {
+type NaviDto = {
   id: number;
-  status: TradeNaviStatus;
-  naviType: TradeNaviType;
+  status: NaviStatus;
+  naviType: NaviType;
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
@@ -22,10 +22,10 @@ type TradeNaviDto = {
   updatedAt: string;
 };
 
-type TradeNaviRecord = {
+type NaviRecord = {
   id: number;
-  status: TradeNaviStatus;
-  naviType: TradeNaviType;
+  status: NaviStatus;
+  naviType: NaviType;
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
@@ -49,13 +49,13 @@ const jsonValueSchema: z.ZodType<Prisma.JsonValue> = z.lazy(() =>
 const createTradeSchema = z.object({
   ownerUserId: z.string().min(1, "ownerUserId is required"),
   buyerUserId: z.string().min(1).optional(),
-  status: z.nativeEnum(TradeNaviStatus).optional(),
-  naviType: z.nativeEnum(TradeNaviType).optional(),
+  status: z.nativeEnum(NaviStatus).optional(),
+  naviType: z.nativeEnum(NaviType).optional(),
   payload: jsonValueSchema.optional(),
   listingId: z.string().min(1).optional(),
 });
 
-const toDto = (trade: TradeNaviRecord): TradeNaviDto => ({
+const toDto = (trade: NaviRecord): NaviDto => ({
   id: trade.id,
   status: trade.status,
   naviType: trade.naviType,
@@ -68,7 +68,7 @@ const toDto = (trade: TradeNaviRecord): TradeNaviDto => ({
   updatedAt: trade.updatedAt.toISOString(),
 });
 
-const toRecord = (trade: unknown): TradeNaviRecord => {
+const toRecord = (trade: unknown): NaviRecord => {
   if (!trade || typeof trade !== "object") {
     throw new Error("Trade result was not an object");
   }
@@ -88,8 +88,8 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
 
   return {
     id: Number(candidate.id),
-    status: candidate.status as TradeNaviStatus,
-    naviType: (candidate.naviType as TradeNaviType | undefined) ?? TradeNaviType.PHONE_AGREEMENT,
+    status: candidate.status as NaviStatus,
+    naviType: (candidate.naviType as NaviType | undefined) ?? NaviType.PHONE_AGREEMENT,
     ownerUserId: String(candidate.ownerUserId),
     buyerUserId: (candidate.buyerUserId as string | null) ?? null,
     listingId: (candidate.listingId as string | null) ?? null,
@@ -111,7 +111,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const trades = await tradeNaviClient.findMany({
+    const trades = await naviClient.findMany({
       where: {
         OR: [{ ownerUserId: currentUserId }, { buyerUserId: currentUserId }],
       },
@@ -179,14 +179,14 @@ export async function POST(request: Request) {
   const listingSnapshotInput = listingSnapshot ?? undefined;
 
   try {
-    const created = await tradeNaviClient.create({
+    const created = await naviClient.create({
       data: {
         ownerUserId: currentUserId,
         buyerUserId: buyerUserId ?? null,
         listingId: listingId ?? null,
         listingSnapshot: listingSnapshotInput as any,
-        status: status ?? TradeNaviStatus.DRAFT,
-        naviType: naviType ?? TradeNaviType.PHONE_AGREEMENT,
+        status: status ?? NaviStatus.DRAFT,
+        naviType: naviType ?? NaviType.PHONE_AGREEMENT,
         payload: (payload ?? null) as any,
       },
     });

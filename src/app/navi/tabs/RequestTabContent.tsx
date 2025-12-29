@@ -1,7 +1,7 @@
 "use client";
 
-import { TradeRequestEditor } from "@/components/trade-navi/TradeRequestEditor";
+import { NaviRequestEditor } from "@/components/navi/NaviRequestEditor";
 
 export function RequestTabContent() {
-  return <TradeRequestEditor />;
+  return <NaviRequestEditor />;
 }

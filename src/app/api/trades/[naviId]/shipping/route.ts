@@ -1,4 +1,4 @@
-import { Prisma, TradeNaviStatus, TradeNaviType } from "@prisma/client";
+import { Prisma, NaviStatus, NaviType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -23,10 +23,10 @@ const updateShippingSchema = z.object({
   contacts: z.array(contactSchema).optional(),
 });
 
-type TradeNaviRecord = {
+type NaviRecord = {
   id: number;
-  status: TradeNaviStatus;
-  naviType: TradeNaviType;
+  status: NaviStatus;
+  naviType: NaviType;
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
@@ -45,7 +45,7 @@ const parseNaviId = (value: string) => {
   return parsed;
 };
 
-const toRecord = (trade: unknown): TradeNaviRecord => {
+const toRecord = (trade: unknown): NaviRecord => {
   if (!trade || typeof trade !== "object") {
     throw new Error("Trade result was not an object");
   }
@@ -65,8 +65,8 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
 
   return {
     id: Number(candidate.id),
-    status: candidate.status as TradeNaviStatus,
-    naviType: (candidate.naviType as TradeNaviType | undefined) ?? TradeNaviType.PHONE_AGREEMENT,
+    status: candidate.status as NaviStatus,
+    naviType: (candidate.naviType as NaviType | undefined) ?? NaviType.PHONE_AGREEMENT,
     ownerUserId: String(candidate.ownerUserId),
     buyerUserId: (candidate.buyerUserId as string | null) ?? null,
     listingId: (candidate.listingId as string | null) ?? null,
@@ -77,7 +77,7 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
   };
 };
 
-const resolveBuyerUserId = (trade: TradeNaviRecord): string | null => {
+const resolveBuyerUserId = (trade: NaviRecord): string | null => {
   if (trade.buyerUserId) return trade.buyerUserId;
 
   if (trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)) {
@@ -124,7 +124,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
 
   try {
     const result = await (prisma as any).$transaction(async (tx: any) => {
-      const existing = await tx.tradeNavi.findUnique({ where: { id: naviId } as any });
+      const existing = await tx.navi.findUnique({ where: { id: naviId } as any });
 
       if (!existing) {
         return { updated: null };
@@ -152,7 +152,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         buyerContacts: contacts ?? (payload as Record<string, unknown>).buyerContacts,
       } satisfies Record<string, unknown>;
 
-      const updatedNavi = await tx.tradeNavi.update({
+      const updatedNavi = await tx.navi.update({
         where: { id: naviId } as any,
         data: { payload: updatedPayload as Prisma.JsonValue, updatedAt: new Date() },
       });

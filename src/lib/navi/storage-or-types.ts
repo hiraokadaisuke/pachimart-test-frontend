@@ -4,7 +4,7 @@ export type { NaviStatus } from "./types";
 
 const STORAGE_KEY = "trade_navis";
 
-export interface TradeNavi {
+export interface Navi {
   id: string;
   buyerId?: string | null;
   sellerId?: string;
@@ -22,20 +22,20 @@ export interface TradeNavi {
   buyerPending?: boolean;
 }
 
-export function loadAllNavis(): TradeNavi[] {
+export function loadAllNavis(): Navi[] {
   if (typeof window === "undefined") return [];
   const raw = window.localStorage.getItem(STORAGE_KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item): item is TradeNavi => Boolean(item?.id && item?.status && item?.conditions));
+    return parsed.filter((item): item is Navi => Boolean(item?.id && item?.status && item?.conditions));
   } catch {
     return [];
   }
 }
 
-export function saveAllNavis(navis: TradeNavi[]) {
+export function saveAllNavis(navis: Navi[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(navis));
 }

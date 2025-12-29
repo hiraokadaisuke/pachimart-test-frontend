@@ -2,11 +2,11 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { TradeNaviType } from "@prisma/client";
+import { NaviType } from "@prisma/client";
 
 import MyPageLayout from "@/components/layout/MyPageLayout";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { fetchTradeNaviById } from "@/lib/trade/api";
+import { fetchNaviById } from "@/lib/trade/api";
 import { findDevUserById } from "@/lib/dev-user/users";
 import {
   formatListingStorageLocation,
@@ -43,8 +43,8 @@ export default function InquiryDetailPage() {
   useEffect(() => {
     const loadInquiry = async () => {
       try {
-        const dto = await fetchTradeNaviById(inquiryId);
-        if (!dto || dto.naviType !== TradeNaviType.ONLINE_INQUIRY) {
+        const dto = await fetchNaviById(inquiryId);
+        if (!dto || dto.naviType !== NaviType.ONLINE_INQUIRY) {
           setRecord(null);
           return;
         }

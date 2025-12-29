@@ -1,12 +1,12 @@
 "use client";
 
 import MainContainer from "@/components/layout/MainContainer";
-import { TradeRequestEditor } from "@/components/trade-navi/TradeRequestEditor";
+import { NaviRequestEditor } from "@/components/navi/NaviRequestEditor";
 
 export default function TransactionNaviEditPage() {
   return (
     <MainContainer variant="wide">
-      <TradeRequestEditor />
+      <NaviRequestEditor />
     </MainContainer>
   );
 }

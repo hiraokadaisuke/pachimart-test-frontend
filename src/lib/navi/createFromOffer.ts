@@ -1,6 +1,6 @@
 import { QuoteResult } from "@/lib/quotes/calculateQuote";
 
-import { TradeConditions, TradeNaviDraft } from "./types";
+import { TradeConditions, NaviDraft } from "./types";
 
 export interface OfferInputForNavi {
   productId: string;
@@ -16,7 +16,7 @@ const getRandomDraftId = () => (typeof crypto !== "undefined" && crypto.randomUU
 export function createNaviDraftFromOffer(
   input: OfferInputForNavi,
   ownerUserId: string,
-): TradeNaviDraft {
+): NaviDraft {
   const id = getRandomDraftId();
 
   const conditions: TradeConditions = {

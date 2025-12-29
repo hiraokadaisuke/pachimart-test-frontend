@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
 import { deleteNaviDraft, createEmptyNaviDraft, loadNaviDraft } from "@/lib/navi/storage";
-import { type TradeConditions, type TradeNaviDraft } from "@/lib/navi/types";
+import { type TradeConditions, type NaviDraft } from "@/lib/navi/types";
 import {
   formatCurrency,
   useDummyNavi,
@@ -94,7 +94,7 @@ type ValidationErrors = {
 
 const buyerErrorMessage = "取引先が未設定です。このNaviを送信するには先に取引先を設定してください。";
 
-const validateDraft = (draft: TradeNaviDraft | null): ValidationErrors => {
+const validateDraft = (draft: NaviDraft | null): ValidationErrors => {
   const errors: ValidationErrors = {};
 
   if (!draft) {
@@ -136,7 +136,7 @@ const validateDraft = (draft: TradeNaviDraft | null): ValidationErrors => {
   return errors;
 };
 
-export function TradeRequestEditor() {
+export function NaviRequestEditor() {
   const searchParams = useSearchParams();
   const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
   const currentUser = useCurrentDevUser();
@@ -146,10 +146,10 @@ export function TradeRequestEditor() {
     return <OnlineInquiryCreator searchParams={safeSearchParams} currentUser={currentUser} />;
   }
 
-  return <StandardTradeRequestEditor searchParams={safeSearchParams} currentUser={currentUser} />;
+  return <StandardNaviRequestEditor searchParams={safeSearchParams} currentUser={currentUser} />;
 }
 
-function StandardTradeRequestEditor({
+function StandardNaviRequestEditor({
   searchParams,
   currentUser,
 }: {
@@ -162,7 +162,7 @@ function StandardTradeRequestEditor({
   const listingId = safeSearchParams.get("listingId");
 
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
-  const [draft, setDraft] = useState<TradeNaviDraft | null>(null);
+  const [draft, setDraft] = useState<NaviDraft | null>(null);
   const naviTargetId = draft?.productId ?? transactionId;
   const { buyerInfo, propertyInfo, currentConditions, updatedConditions } = useDummyNavi(naviTargetId);
   const [linkedListing, setLinkedListing] = useState<Listing | null>(null);
@@ -299,7 +299,7 @@ function StandardTradeRequestEditor({
     }
   }, [buyerCandidates, draft?.buyerId]);
 
-  const persistDraft = (updater: (prev: TradeNaviDraft) => TradeNaviDraft) => {
+  const persistDraft = (updater: (prev: NaviDraft) => NaviDraft) => {
     setDraft((prev) => {
       if (!prev) return prev;
       const nextDraft = updater(prev);
@@ -415,7 +415,7 @@ function StandardTradeRequestEditor({
     if (hasErrors || !draft) return;
 
     const now = new Date().toISOString();
-    const updatedDraft: TradeNaviDraft = {
+    const updatedDraft: NaviDraft = {
       ...draft,
       status: "sent_to_buyer",
       buyerPending: false,

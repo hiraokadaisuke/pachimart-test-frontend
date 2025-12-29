@@ -1,4 +1,4 @@
-import { TradeNaviDraft } from "./types";
+import { NaviDraft } from "./types";
 
 const STORAGE_KEY_PREFIX = "navi_draft_";
 
@@ -12,12 +12,12 @@ export function deleteNaviDraft(userId: string, draftId: string) {
   window.sessionStorage.removeItem(key);
 }
 
-export function saveNaviDraft(userId: string, draft: TradeNaviDraft) {
+export function saveNaviDraft(userId: string, draft: NaviDraft) {
   if (typeof window === "undefined") return;
   if (!draft.status) return;
   const key = getStorageKey(userId, draft.id);
   const now = new Date().toISOString();
-  const payload: TradeNaviDraft = {
+  const payload: NaviDraft = {
     ...draft,
     updatedAt: now,
     ownerUserId: userId,
@@ -27,13 +27,13 @@ export function saveNaviDraft(userId: string, draft: TradeNaviDraft) {
 
 export const saveNavi = saveNaviDraft;
 
-export function loadNaviDraft(userId: string, id: string): TradeNaviDraft | null {
+export function loadNaviDraft(userId: string, id: string): NaviDraft | null {
   if (typeof window === "undefined") return null;
   const key = getStorageKey(userId, id);
   const raw = window.sessionStorage.getItem(key);
   if (!raw) return null;
   try {
-    return JSON.parse(raw) as TradeNaviDraft;
+    return JSON.parse(raw) as NaviDraft;
   } catch {
     return null;
   }
@@ -41,10 +41,10 @@ export function loadNaviDraft(userId: string, id: string): TradeNaviDraft | null
 
 export const loadNavi = loadNaviDraft;
 
-export function loadAllNavis(userId: string): TradeNaviDraft[] {
+export function loadAllNavis(userId: string): NaviDraft[] {
   if (typeof window === "undefined") return [];
 
-  const drafts: TradeNaviDraft[] = [];
+  const drafts: NaviDraft[] = [];
 
   for (let i = 0; i < window.sessionStorage.length; i += 1) {
     const key = window.sessionStorage.key(i);
@@ -54,7 +54,7 @@ export function loadAllNavis(userId: string): TradeNaviDraft[] {
     if (!raw) continue;
 
     try {
-      const parsed = JSON.parse(raw) as TradeNaviDraft;
+      const parsed = JSON.parse(raw) as NaviDraft;
       if (!parsed?.id) continue;
       if (!parsed.status) continue;
       if (parsed.ownerUserId !== userId) continue;
@@ -70,13 +70,13 @@ export function loadAllNavis(userId: string): TradeNaviDraft[] {
 export function updateNaviStatus(
   userId: string,
   id: string,
-  status: TradeNaviDraft["status"]
-): TradeNaviDraft | null {
+  status: NaviDraft["status"]
+): NaviDraft | null {
   if (typeof window === "undefined") return null;
   const existing = loadNaviDraft(userId, id);
   if (!existing) return null;
 
-  const nextDraft: TradeNaviDraft = {
+  const nextDraft: NaviDraft = {
     ...existing,
     status,
     updatedAt: new Date().toISOString(),
@@ -86,7 +86,7 @@ export function updateNaviStatus(
   return nextDraft;
 }
 
-export function createEmptyNaviDraft(initial?: Partial<TradeNaviDraft>): TradeNaviDraft {
+export function createEmptyNaviDraft(initial?: Partial<NaviDraft>): NaviDraft {
   const id =
     initial?.id ?? (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `draft-${Date.now()}`);
   const now = new Date().toISOString();

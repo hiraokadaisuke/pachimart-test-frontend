@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { TradeNaviStatus, TradeNaviType } from "@prisma/client";
+import { NaviStatus, NaviType } from "@prisma/client";
 
 import { TradeRecord } from "@/lib/trade/types";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
@@ -20,7 +20,7 @@ import { getInProgressDescription } from "@/lib/trade/copy";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap, type TodoUiDef } from "@/lib/todo/todoUiMap";
-import { fetchTradeNavis, mapTradeNaviToTradeRecord, updateTradeStatus } from "@/lib/trade/api";
+import { fetchNavis, mapNaviToTradeRecord, updateTradeStatus } from "@/lib/trade/api";
 
 type TradeSectionWithInquiry = TodoUiDef["section"] | "onlineInquiry";
 
@@ -34,7 +34,7 @@ const ONLINE_INQUIRY_DESCRIPTION = {
 type TradeRow = {
   id: string;
   naviId?: number;
-  naviType?: TradeNaviType;
+  naviType?: NaviType;
   status: TradeStatusKey;
   updatedAt: string;
   partnerName: string;
@@ -64,7 +64,7 @@ type InquiryRow = {
   sellerUserId: string;
   buyerUserId: string;
   kind: "buy" | "sell";
-  status: TradeNaviStatus;
+  status: NaviStatus;
 };
 
 function formatDateTime(iso: string) {
@@ -96,7 +96,7 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   const kind = isSeller ? ("sell" as const) : ("buy" as const);
   const todo = getTodoPresentation(trade, kind === "buy" ? "buyer" : "seller");
   const section: TradeSectionWithInquiry =
-    trade.naviType === TradeNaviType.ONLINE_INQUIRY ? "onlineInquiry" : todo.section;
+    trade.naviType === NaviType.ONLINE_INQUIRY ? "onlineInquiry" : todo.section;
 
   return {
     id: trade.id,
@@ -132,7 +132,7 @@ function buildInquiryRowFromTrade(trade: TradeRecord, viewerId: string): Inquiry
   return {
     id: trade.naviId ? String(trade.naviId) : trade.id,
     naviId: trade.naviId,
-    status: TradeNaviStatus.SENT,
+    status: NaviStatus.SENT,
     partnerName: isBuyer ? trade.seller.companyName : trade.buyer.companyName,
     makerName: primaryItem?.maker ?? trade.makerName ?? "-",
     itemName: primaryItem?.itemName ?? trade.itemName ?? "商品",
@@ -165,14 +165,14 @@ export function InProgressTabContent() {
 
   const fetchApprovalRows = useCallback(async () => {
     try {
-      const apiTrades = await fetchTradeNavis();
+      const apiTrades = await fetchNavis();
       const mappedTrades = apiTrades
         .filter(
           (trade) =>
-            trade.status === TradeNaviStatus.SENT &&
+            trade.status === NaviStatus.SENT &&
             (trade.ownerUserId === currentUser.id || trade.buyerUserId === currentUser.id)
         )
-        .map((trade) => mapTradeNaviToTradeRecord(trade))
+        .map((trade) => mapNaviToTradeRecord(trade))
         .filter((trade): trade is TradeRecord => Boolean(trade));
 
       const rows = mappedTrades
@@ -183,8 +183,8 @@ export function InProgressTabContent() {
       setBuyerNaviApprovalRows(rows.filter((row) => row.kind === "buy"));
 
       const inquiryRows = apiTrades
-        .filter((trade) => trade.naviType === TradeNaviType.ONLINE_INQUIRY && trade.status === TradeNaviStatus.SENT)
-        .map((trade) => mapTradeNaviToTradeRecord(trade))
+        .filter((trade) => trade.naviType === NaviType.ONLINE_INQUIRY && trade.status === NaviStatus.SENT)
+        .map((trade) => mapNaviToTradeRecord(trade))
         .filter((trade): trade is TradeRecord => Boolean(trade))
         .map((trade) => buildInquiryRowFromTrade(trade, currentUser.id));
 
@@ -206,7 +206,7 @@ export function InProgressTabContent() {
     [currentUser.id, trades]
   );
 
-  const tradeNaviIds = useMemo(
+  const naviIds = useMemo(
     () =>
       new Set(
         mappedTradeRows
@@ -294,9 +294,9 @@ export function InProgressTabContent() {
       onlineInquiryRows.filter((inquiry) => {
         const naviId = toNumericNaviId(inquiry.naviId ?? inquiry.id);
         if (naviId === null) return true;
-        return !tradeNaviIds.has(naviId);
+        return !naviIds.has(naviId);
       }),
-    [onlineInquiryRows, tradeNaviIds]
+    [onlineInquiryRows, naviIds]
   );
 
   const filteredInquiryRows = useMemo(

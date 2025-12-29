@@ -10,9 +10,9 @@ import { getActorRole } from "@/lib/trade/navigation";
 import { canApprove, canCancel } from "@/lib/trade/permissions";
 import { addBuyerContact, ensureContactsLoaded, saveContactsToTrade, updateTradeShipping } from "@/lib/trade/storage";
 import {
-  fetchTradeNaviById,
+  fetchNaviById,
   fetchTradeRecordById,
-  mapTradeNaviToTradeRecord,
+  mapNaviToTradeRecord,
   saveTradeShippingInfo,
   updateTradeStatus,
 } from "@/lib/trade/api";
@@ -95,11 +95,11 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
           return;
         }
 
-        const navi = await fetchTradeNaviById(resolvedNaviId);
+        const navi = await fetchNaviById(resolvedNaviId);
 
         if (canceled) return;
 
-        const mapped = navi ? mapTradeNaviToTradeRecord(navi) : null;
+        const mapped = navi ? mapNaviToTradeRecord(navi) : null;
 
         if (!mapped || (mapped.sellerUserId !== currentUser.id && mapped.buyerUserId !== currentUser.id)) {
           console.error("Trade navi not found or access denied", resolvedNaviId);

@@ -1,4 +1,4 @@
-import { Prisma, TradeNaviType, TradeStatus } from "@prisma/client";
+import { Prisma, NaviType, TradeStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
@@ -45,7 +45,7 @@ const toRecord = (trade: unknown) => {
           buyerUserId: (naviCandidate.buyerUserId as string | null) ?? null,
           payload: (naviCandidate.payload as Prisma.JsonValue | null) ?? null,
           listingSnapshot: (naviCandidate.listingSnapshot as Prisma.JsonValue | null) ?? null,
-          naviType: (naviCandidate.naviType as TradeNaviType | null) ?? null,
+          naviType: (naviCandidate.naviType as NaviType | null) ?? null,
           createdAt: toDate(naviCandidate.createdAt),
           updatedAt: toDate(naviCandidate.updatedAt, toDate(naviCandidate.createdAt)),
         }

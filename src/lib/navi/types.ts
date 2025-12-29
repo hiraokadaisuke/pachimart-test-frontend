@@ -29,7 +29,7 @@ export type TradeConditions = {
   location?: string | null;
 };
 
-export type TradeNaviDraft = {
+export type NaviDraft = {
   id: string;
   ownerUserId: string;
   status: NaviStatus | null;

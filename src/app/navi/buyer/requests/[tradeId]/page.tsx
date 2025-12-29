@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 
 import MyPageLayout from "@/components/layout/MyPageLayout";
-import { StatementWorkspace } from "@/components/trade-navi/statement/StatementWorkspace";
+import { StatementWorkspace } from "@/components/navi/statement/StatementWorkspace";
 
 export default function BuyerRequestDetailPage() {
   const params = useParams<{ tradeId: string }>();

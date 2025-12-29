@@ -9,7 +9,7 @@ export async function fetchMessagesByNaviId(naviId: number): Promise<TradeMessag
     ? { "x-dev-user-id": currentUserId }
     : undefined;
 
-  const response = await fetchWithDevHeader(`/api/messages?tradeNaviId=${naviId}`, { headers });
+  const response = await fetchWithDevHeader(`/api/messages?naviId=${naviId}`, { headers });
 
   if (!response.ok) {
     const detail = await response.text();
@@ -41,7 +41,7 @@ export async function postMessage(naviId: number, payload: CreateMessageBody): P
         "Content-Type": "application/json",
         ...(currentUserId ? { "x-dev-user-id": currentUserId } : {}),
       },
-      body: JSON.stringify({ tradeNaviId: naviId, ...payload }),
+      body: JSON.stringify({ naviId, ...payload }),
     },
     currentUserId
   );

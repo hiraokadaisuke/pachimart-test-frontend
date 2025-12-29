@@ -4,8 +4,8 @@ import {
   Prisma,
   PrismaClient,
   RemovalStatus,
-  TradeNaviStatus,
-  TradeNaviType,
+  NaviStatus,
+  NaviType,
   TradeStatus,
 } from "@prisma/client";
 
@@ -559,7 +559,7 @@ async function clearExistingData() {
   await prisma.trade.deleteMany({
     where: { OR: [{ sellerUserId: { in: DEV_USER_IDS } }, { buyerUserId: { in: DEV_USER_IDS } }] },
   });
-  await prisma.tradeNavi.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
+  await prisma.navi.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   await prisma.listing.deleteMany({ where: { sellerUserId: { in: DEV_USER_IDS } } });
   await prisma.storageLocation.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   await prisma.buyerShippingAddress.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
@@ -607,7 +607,7 @@ async function seedBuyerShippingAddresses() {
   }
 }
 
-async function seedTradeNavis(listings: ListingSeed[]) {
+async function seedNavis(listings: ListingSeed[]) {
   const listingMap = new Map(listings.map((listing) => [listing.id, listing]));
 
   const phoneListing = listingMap.get("listing_dev_phone_ready");
@@ -615,7 +615,7 @@ async function seedTradeNavis(listings: ListingSeed[]) {
   const comparisonListing = listingMap.get("listing_dev_comparison_buyer");
 
   if (!phoneListing || !bundleListing || !comparisonListing) {
-    throw new Error("Required listings are missing for seeding trade navis");
+    throw new Error("Required listings are missing for seeding navis");
   }
 
   const phonePayload = buildPhoneAgreementPayload(phoneListing, "dev_user_1", "dev_user_2", {
@@ -624,10 +624,10 @@ async function seedTradeNavis(listings: ListingSeed[]) {
     memo: "電話ヒアリング済み、承認待ち",
   });
 
-  const phoneNavi = await prisma.tradeNavi.create({
+  const phoneNavi = await prisma.navi.create({
     data: {
-      status: TradeNaviStatus.SENT,
-      naviType: TradeNaviType.PHONE_AGREEMENT,
+      status: NaviStatus.SENT,
+      naviType: NaviType.PHONE_AGREEMENT,
       ownerUserId: "dev_user_1",
       buyerUserId: "dev_user_2",
       listingId: phoneListing.id,
@@ -664,10 +664,10 @@ async function seedTradeNavis(listings: ListingSeed[]) {
     updatedAt: now.toISOString(),
   } satisfies Prisma.JsonObject;
 
-  const onlineInquiryNavi = await prisma.tradeNavi.create({
+  const onlineInquiryNavi = await prisma.navi.create({
     data: {
-      status: TradeNaviStatus.SENT,
-      naviType: TradeNaviType.ONLINE_INQUIRY,
+      status: NaviStatus.SENT,
+      naviType: NaviType.ONLINE_INQUIRY,
       ownerUserId: comparisonListing.sellerUserId,
       buyerUserId: "dev_user_1",
       listingId: comparisonListing.id,
@@ -679,25 +679,25 @@ async function seedTradeNavis(listings: ListingSeed[]) {
   await prisma.message.createMany({
     data: [
       {
-        tradeNaviId: onlineInquiryNavi.id,
+        naviId: onlineInquiryNavi.id,
         senderUserId: "dev_user_1",
         senderRole: MessageSenderRole.buyer,
         body: "商品の状態を確認したいです。発送希望日は12/1です。",
       },
       {
-        tradeNaviId: onlineInquiryNavi.id,
+        naviId: onlineInquiryNavi.id,
         senderUserId: comparisonListing.sellerUserId,
         senderRole: MessageSenderRole.seller,
         body: "在庫ございます。送料込みの見積りをお送りします。",
       },
       {
-        tradeNaviId: onlineInquiryNavi.id,
+        naviId: onlineInquiryNavi.id,
         senderUserId: "dev_user_1",
         senderRole: MessageSenderRole.buyer,
         body: "ありがとうございます。支払条件は通常通りで問題ありません。",
       },
       {
-        tradeNaviId: onlineInquiryNavi.id,
+        naviId: onlineInquiryNavi.id,
         senderUserId: comparisonListing.sellerUserId,
         senderRole: MessageSenderRole.seller,
         body: "承知しました。発送準備を進めます。",
@@ -715,10 +715,10 @@ async function seedTradeNavis(listings: ListingSeed[]) {
     handler: "田中 担当",
   });
 
-  const approvedNavi = await prisma.tradeNavi.create({
+  const approvedNavi = await prisma.navi.create({
     data: {
-      status: TradeNaviStatus.APPROVED,
-      naviType: TradeNaviType.PHONE_AGREEMENT,
+      status: NaviStatus.APPROVED,
+      naviType: NaviType.PHONE_AGREEMENT,
       ownerUserId: "dev_user_1",
       buyerUserId: "dev_user_3",
       listingId: bundleListing.id,
@@ -742,7 +742,7 @@ async function seedTradeNavis(listings: ListingSeed[]) {
     data: { status: ListingStatus.SOLD, isVisible: true },
   });
 
-  return { tradeNavis: [phoneNavi, onlineInquiryNavi, approvedNavi], trades: [trade] };
+  return { navis: [phoneNavi, onlineInquiryNavi, approvedNavi], trades: [trade] };
 }
 
 async function main() {
@@ -763,9 +763,9 @@ async function main() {
   await seedStorageLocations();
   await seedBuyerShippingAddresses();
   const listings = await seedListings();
-  const { tradeNavis, trades } = await seedTradeNavis(listings);
+  const { navis, trades } = await seedNavis(listings);
 
-  console.log(`TradeNavi created: ${tradeNavis.length}`);
+  console.log(`Navi created: ${navis.length}`);
   console.log(`Trades created: ${trades.length}`);
 }
 

@@ -45,8 +45,8 @@ export const MY_PAGE_SUB_TABS: MyPageSubTabsConfig = {
   ],
   trade: [
     {
-      key: "tradeNavi",
-      label: "取引Navi",
+      key: "navi",
+      label: "ナビ",
       href: "/navi",
       matchPatterns: ["/navi"],
     },

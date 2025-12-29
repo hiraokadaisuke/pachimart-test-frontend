@@ -6,21 +6,21 @@ import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 
 const messageInputSchema = z.object({
-  tradeNaviId: z.number().int().positive(),
+  naviId: z.number().int().positive(),
   body: z.string().trim().min(1).max(2000),
 });
 
-const parseTradeNaviId = (value: string | number | null | undefined) => {
+const parseNaviId = (value: string | number | null | undefined) => {
   const parsed = Number(value);
   if (!Number.isInteger(parsed) || parsed <= 0) return null;
   return parsed;
 };
 
-const normalizeTradeNaviRecord = (tradeNavi: unknown) => {
-  if (!tradeNavi || typeof tradeNavi !== "object") return null;
+const normalizeNaviRecord = (navi: unknown) => {
+  if (!navi || typeof navi !== "object") return null;
 
-  const candidate = tradeNavi as Record<string, unknown>;
-  const id = parseTradeNaviId(candidate.id as string | number | null | undefined);
+  const candidate = navi as Record<string, unknown>;
+  const id = parseNaviId(candidate.id as string | number | null | undefined);
   if (!id) return null;
 
   const ownerUserId = typeof candidate.ownerUserId === "string" ? candidate.ownerUserId : null;
@@ -32,12 +32,12 @@ const normalizeTradeNaviRecord = (tradeNavi: unknown) => {
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-const authorizeTradeNaviAccess = async (tradeNaviId: number, currentUserId: string) => {
-  const navi = await prisma.tradeNavi.findUnique({ where: { id: tradeNaviId } });
-  const normalized = normalizeTradeNaviRecord(navi);
+const authorizeNaviAccess = async (naviId: number, currentUserId: string) => {
+  const navi = await prisma.navi.findUnique({ where: { id: naviId } });
+  const normalized = normalizeNaviRecord(navi);
 
   if (!normalized) {
-    return { error: NextResponse.json({ error: "TradeNavi not found" }, { status: 404 }) } as const;
+    return { error: NextResponse.json({ error: "Navi not found" }, { status: 404 }) } as const;
   }
 
   if (normalized.ownerUserId !== currentUserId && normalized.buyerUserId !== currentUserId) {
@@ -48,7 +48,7 @@ const authorizeTradeNaviAccess = async (tradeNaviId: number, currentUserId: stri
   return { senderRole } as const;
 };
 
-export async function handleGetMessages(request: Request, tradeNaviIdOverride?: string | number | null) {
+export async function handleGetMessages(request: Request, naviIdOverride?: string | number | null) {
   const currentUserId = getCurrentUserId(request);
 
   if (!currentUserId) {
@@ -56,18 +56,20 @@ export async function handleGetMessages(request: Request, tradeNaviIdOverride?: 
   }
 
   const searchParams = new URL(request.url).searchParams;
-  const tradeNaviId = parseTradeNaviId(tradeNaviIdOverride ?? searchParams.get("tradeNaviId"));
+  const naviId = parseNaviId(
+    naviIdOverride ?? searchParams.get("naviId") ?? searchParams.get("tradeNaviId")
+  );
 
-  if (!tradeNaviId) {
-    return NextResponse.json({ error: "Invalid tradeNaviId parameter" }, { status: 400 });
+  if (!naviId) {
+    return NextResponse.json({ error: "Invalid naviId parameter" }, { status: 400 });
   }
 
-  const authorization = await authorizeTradeNaviAccess(tradeNaviId, currentUserId);
+  const authorization = await authorizeNaviAccess(naviId, currentUserId);
   if ("error" in authorization) return authorization.error;
 
   try {
     const results = await prisma.message.findMany({
-      where: { tradeNaviId },
+      where: { naviId },
       orderBy: { createdAt: "asc" },
     });
 
@@ -83,7 +85,7 @@ export async function handleGetMessages(request: Request, tradeNaviIdOverride?: 
   }
 }
 
-export async function handlePostMessage(request: Request, tradeNaviIdOverride?: string | number | null) {
+export async function handlePostMessage(request: Request, naviIdOverride?: string | number | null) {
   const currentUserId = getCurrentUserId(request);
 
   if (!currentUserId) {
@@ -103,20 +105,20 @@ export async function handlePostMessage(request: Request, tradeNaviIdOverride?: 
   const base = typeof payload === "object" && payload !== null ? payload : {};
   const parsed = messageInputSchema.safeParse({
     ...(base as Record<string, unknown>),
-    tradeNaviId: tradeNaviIdOverride ?? (base as any)?.tradeNaviId,
+    naviId: naviIdOverride ?? (base as any)?.naviId ?? (base as any)?.tradeNaviId,
   });
 
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
 
-  const authorization = await authorizeTradeNaviAccess(parsed.data.tradeNaviId, currentUserId);
+  const authorization = await authorizeNaviAccess(parsed.data.naviId, currentUserId);
   if ("error" in authorization) return authorization.error;
 
   try {
     const created = await prisma.message.create({
       data: {
-        tradeNaviId: parsed.data.tradeNaviId,
+        naviId: parsed.data.naviId,
         senderUserId: currentUserId,
         senderRole: authorization.senderRole,
         body: parsed.data.body,
