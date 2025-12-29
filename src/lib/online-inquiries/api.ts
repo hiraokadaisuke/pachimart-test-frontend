@@ -15,6 +15,8 @@ const onlineInquiryListItemSchema = z.object({
   quantity: z.number(),
   totalAmount: z.number(),
   partnerName: z.string(),
+  buyerCompanyName: z.string().nullable(),
+  sellerCompanyName: z.string().nullable(),
 });
 
 const onlineInquiryDetailSchema = z.object({
