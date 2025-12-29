@@ -3,8 +3,8 @@ import { formatCurrency } from "@/lib/currency";
 
 export default function BalanceSummaryBar({ summary }: { summary: BalanceSummary }) {
   const items = [
-    { label: "購入予定残高", value: formatCurrency(summary.plannedPurchase) },
-    { label: "売却予定残高", value: formatCurrency(summary.plannedSales) },
+    { label: "購入予定金額", value: formatCurrency(summary.plannedPurchase) },
+    { label: "売却予定金額", value: formatCurrency(summary.plannedSales) },
     { label: "利用可能残高", value: formatCurrency(summary.available) },
   ];
 

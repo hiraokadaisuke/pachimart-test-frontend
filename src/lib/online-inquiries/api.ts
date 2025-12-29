@@ -46,6 +46,8 @@ export type OnlineInquiryDetail = z.infer<typeof onlineInquiryDetailSchema>;
 export type OnlineInquiryStatus = OnlineInquiryListItem["status"];
 export type OnlineInquiryAction = "accept" | "reject";
 
+const ONLINE_INQUIRY_UPDATED_EVENT = "online_inquiry_updated";
+
 export async function fetchOnlineInquiries(role: "buyer" | "seller"): Promise<OnlineInquiryListItem[]> {
   const response = await fetchWithDevHeader(`/api/online-inquiries?role=${role}`);
 
@@ -101,6 +103,10 @@ export async function respondOnlineInquiry(
 
   if (!parsed.success) {
     throw new Error(parsed.error.message);
+  }
+
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(ONLINE_INQUIRY_UPDATED_EVENT));
   }
 
   return parsed.data;

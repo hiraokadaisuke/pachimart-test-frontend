@@ -4,16 +4,16 @@ import { useMemo } from "react";
 
 import { PachipayInfoCard } from "@/components/pachipay/PachipayInfoCard";
 import { useBalance } from "@/lib/balance/BalanceContext";
+import { usePlannedAmounts } from "@/lib/balance/usePlannedAmounts";
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { dummyBalances } from "@/lib/dummyBalances";
 
 function BalanceSummaryCard({ summary }: { summary: BalanceSummary }) {
   const items = useMemo(
     () => [
-      { label: "購入予定残高", value: formatCurrency(summary.plannedPurchase) },
-      { label: "売却予定残高", value: formatCurrency(summary.plannedSales) },
+      { label: "購入予定金額", value: formatCurrency(summary.plannedPurchase) },
+      { label: "売却予定金額", value: formatCurrency(summary.plannedSales) },
       { label: "利用可能残高", value: formatCurrency(summary.available) },
     ],
     [summary.available, summary.plannedPurchase, summary.plannedSales]
@@ -36,10 +36,9 @@ function BalanceSummaryCard({ summary }: { summary: BalanceSummary }) {
 export default function BalancePage() {
   const currentUser = useCurrentDevUser();
   const { getBalance } = useBalance();
-  const baseBalanceSummary =
-    dummyBalances.find((balance) => balance.userId === currentUser.id) ?? dummyBalances[0];
+  const plannedAmounts = usePlannedAmounts(currentUser.id);
   const balanceSummary: BalanceSummary = {
-    ...baseBalanceSummary,
+    ...plannedAmounts,
     available: getBalance(currentUser.id),
   };
 
