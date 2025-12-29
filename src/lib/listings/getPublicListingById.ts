@@ -66,15 +66,17 @@ const toDto = (listing: any): Listing => ({
 });
 
 export const getPublicListingById = async (listingId: string): Promise<Listing | null> => {
-  const listing = await prisma.listing.findFirst({
+  const listing = await prisma.listing.findUnique({
     where: {
       id: listingId,
-      status: ListingStatus.PUBLISHED,
-      isVisible: true,
     },
   });
 
   if (!listing) {
+    return null;
+  }
+
+  if (listing.status !== ListingStatus.PUBLISHED || !listing.isVisible) {
     return null;
   }
 
