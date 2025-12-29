@@ -7,6 +7,7 @@ const onlineInquiryListItemSchema = z.object({
   listingId: z.string(),
   buyerUserId: z.string(),
   sellerUserId: z.string(),
+  status: z.enum(["PENDING", "ACCEPTED", "REJECTED"]),
   createdAt: z.string(),
   updatedAt: z.string(),
   makerName: z.string().nullable(),
@@ -21,6 +22,7 @@ const onlineInquiryDetailSchema = z.object({
   listingId: z.string(),
   buyerUserId: z.string(),
   sellerUserId: z.string(),
+  status: z.enum(["PENDING", "ACCEPTED", "REJECTED"]),
   buyerCompanyName: z.string(),
   sellerCompanyName: z.string(),
   makerName: z.string().nullable(),
@@ -39,6 +41,8 @@ const onlineInquiryDetailSchema = z.object({
 
 export type OnlineInquiryListItem = z.infer<typeof onlineInquiryListItemSchema>;
 export type OnlineInquiryDetail = z.infer<typeof onlineInquiryDetailSchema>;
+export type OnlineInquiryStatus = OnlineInquiryListItem["status"];
+export type OnlineInquiryAction = "accept" | "reject";
 
 export async function fetchOnlineInquiries(role: "buyer" | "seller"): Promise<OnlineInquiryListItem[]> {
   const response = await fetchWithDevHeader(`/api/online-inquiries?role=${role}`);
@@ -64,6 +68,30 @@ export async function fetchOnlineInquiryDetail(inquiryId: string): Promise<Onlin
 
   if (!response.ok) {
     throw new Error(`Failed to fetch online inquiry: ${response.status}`);
+  }
+
+  const json = (await response.json()) as unknown;
+  const parsed = onlineInquiryDetailSchema.safeParse(json);
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.message);
+  }
+
+  return parsed.data;
+}
+
+export async function respondOnlineInquiry(
+  inquiryId: string,
+  action: OnlineInquiryAction
+): Promise<OnlineInquiryDetail> {
+  const response = await fetchWithDevHeader(`/api/online-inquiries/${inquiryId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ action }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to update online inquiry: ${response.status}`);
   }
 
   const json = (await response.json()) as unknown;

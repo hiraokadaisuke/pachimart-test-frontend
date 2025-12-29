@@ -7,6 +7,7 @@ import {
   NaviStatus,
   NaviType,
   TradeStatus,
+  OnlineInquiryStatus,
 } from "@prisma/client";
 
 import { DEV_USERS } from "@/lib/dev-user/users";
@@ -55,6 +56,7 @@ type InMemoryOnlineInquiry = {
   contactPerson: string | null;
   desiredShipDate: string | null;
   desiredPaymentDate: string | null;
+  status: OnlineInquiryStatus;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -149,6 +151,13 @@ type InMemoryPrisma = {
     }) => Promise<InMemoryOnlineInquiry[]>;
     findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryOnlineInquiry | null>;
     create: ({ data }: { data: Partial<InMemoryOnlineInquiry> }) => Promise<InMemoryOnlineInquiry>;
+    update: ({
+      where,
+      data,
+    }: {
+      where: { id?: string | null };
+      data: Partial<InMemoryOnlineInquiry>;
+    }) => Promise<InMemoryOnlineInquiry>;
   };
   trade: {
     findMany: ({ where }?: { where?: { status?: TradeStatus } }) => Promise<(InMemoryTrade & {
@@ -438,12 +447,31 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           contactPerson: (data.contactPerson as string | null | undefined) ?? null,
           desiredShipDate: (data.desiredShipDate as string | null | undefined) ?? null,
           desiredPaymentDate: (data.desiredPaymentDate as string | null | undefined) ?? null,
+          status: (data.status as OnlineInquiryStatus | undefined) ?? OnlineInquiryStatus.PENDING,
           createdAt: nowDate,
           updatedAt: nowDate,
         };
 
         onlineInquiries.push(record);
         return { ...record };
+      },
+      update: async ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryOnlineInquiry> }) => {
+        const id = where.id ?? "";
+        const idx = onlineInquiries.findIndex((inquiry) => inquiry.id === id);
+
+        if (idx < 0) {
+          throw new Error("Online inquiry not found");
+        }
+
+        const updated: InMemoryOnlineInquiry = {
+          ...onlineInquiries[idx],
+          ...data,
+          status: (data.status as OnlineInquiryStatus | undefined) ?? onlineInquiries[idx].status,
+          updatedAt: now(),
+        };
+
+        onlineInquiries[idx] = updated;
+        return { ...updated };
       },
     },
     trade: {

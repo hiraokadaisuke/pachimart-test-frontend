@@ -20,8 +20,13 @@ import { getInProgressDescription } from "@/lib/trade/copy";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap, type TodoUiDef } from "@/lib/todo/todoUiMap";
-import { fetchNavis, mapNaviToTradeRecord, updateTradeStatus } from "@/lib/trade/api";
-import { fetchOnlineInquiries, type OnlineInquiryListItem } from "@/lib/online-inquiries/api";
+import { fetchNavis, mapNaviToTradeRecord } from "@/lib/trade/api";
+import {
+  fetchOnlineInquiries,
+  respondOnlineInquiry,
+  type OnlineInquiryListItem,
+  type OnlineInquiryStatus,
+} from "@/lib/online-inquiries/api";
 
 type TradeSectionWithInquiry = TodoUiDef["section"] | "onlineInquiry";
 
@@ -65,7 +70,7 @@ type InquiryRow = {
   sellerUserId: string;
   buyerUserId: string;
   kind: "buy" | "sell";
-  status: NaviStatus;
+  status: OnlineInquiryStatus;
 };
 
 function formatDateTime(iso: string) {
@@ -127,7 +132,7 @@ function buildInquiryRowFromDto(dto: OnlineInquiryListItem, kind: "buy" | "sell"
   return {
     id: dto.id,
     naviId: undefined,
-    status: NaviStatus.SENT,
+    status: dto.status,
     partnerName: dto.partnerName,
     makerName: dto.makerName ?? "-",
     itemName: dto.machineName ?? "商品",
@@ -183,32 +188,32 @@ export function InProgressTabContent() {
     }
   }, [currentUser.id]);
 
+  const loadInquiries = useCallback(async () => {
+    try {
+      const [buyer, seller] = await Promise.all([
+        fetchOnlineInquiries("buyer"),
+        fetchOnlineInquiries("seller"),
+      ]);
+
+      const rows = [
+        ...buyer.map((inquiry) => buildInquiryRowFromDto(inquiry, "buy")),
+        ...seller.map((inquiry) => buildInquiryRowFromDto(inquiry, "sell")),
+      ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+      setOnlineInquiryRows(rows);
+    } catch (error) {
+      console.error(error);
+      setOnlineInquiryRows([]);
+    }
+  }, []);
+
   useEffect(() => {
     fetchApprovalRows();
   }, [fetchApprovalRows]);
 
   useEffect(() => {
-    const loadInquiries = async () => {
-      try {
-        const [buyer, seller] = await Promise.all([
-          fetchOnlineInquiries("buyer"),
-          fetchOnlineInquiries("seller"),
-        ]);
-
-        const rows = [
-          ...buyer.map((inquiry) => buildInquiryRowFromDto(inquiry, "buy")),
-          ...seller.map((inquiry) => buildInquiryRowFromDto(inquiry, "sell")),
-        ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
-
-        setOnlineInquiryRows(rows);
-      } catch (error) {
-        console.error(error);
-        setOnlineInquiryRows([]);
-      }
-    };
-
     loadInquiries();
-  }, [currentUser.id]);
+  }, [loadInquiries]);
 
   const mappedTradeRows = useMemo(
     () => trades.map((trade) => buildTradeRow(trade, currentUser.id)),
@@ -311,6 +316,7 @@ export function InProgressTabContent() {
   const filteredInquiryRows = useMemo(
     () =>
       mappedInquiryRows
+        .filter((inquiry) => inquiry.status === "PENDING")
         .filter(
           (inquiry) => inquiry.sellerUserId === currentUser.id || inquiry.buyerUserId === currentUser.id
         )
@@ -346,22 +352,22 @@ export function InProgressTabContent() {
   const handleCancelInquiry = async (inquiryId: string | number | undefined) => {
     const targetId = resolveNaviId(inquiryId);
     if (!targetId) return;
-    await updateTradeStatus(targetId, "REJECTED").catch((error) => console.error(error));
-    fetchApprovalRows();
+    await respondOnlineInquiry(targetId, "reject").catch((error) => console.error(error));
+    loadInquiries();
   };
 
   const handleAcceptInquiry = async (inquiryId: string | number | undefined) => {
     const targetId = resolveNaviId(inquiryId);
     if (!targetId) return;
-    await updateTradeStatus(targetId, "APPROVED").catch((error) => console.error(error));
-    fetchApprovalRows();
+    await respondOnlineInquiry(targetId, "accept").catch((error) => console.error(error));
+    loadInquiries();
   };
 
   const handleDeclineInquiry = async (inquiryId: string | number | undefined) => {
     const targetId = resolveNaviId(inquiryId);
     if (!targetId) return;
-    await updateTradeStatus(targetId, "REJECTED").catch((error) => console.error(error));
-    fetchApprovalRows();
+    await respondOnlineInquiry(targetId, "reject").catch((error) => console.error(error));
+    loadInquiries();
   };
 
   const tradeColumnBase: NaviTableColumn[] = [
