@@ -9,6 +9,7 @@ import {
   updateInventoryRecord,
   updateInventoryStatuses,
   updateInventoryStatus,
+  type ListingStatusOption,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
 import type { InventoryStatusOption } from "@/types/purchaseInvoices";
@@ -55,7 +56,11 @@ const TRUNCATE_COLUMNS: Array<Column["key"]> = [
 
 const NUMERIC_COLUMNS: Array<Column["key"]> = ["quantity", "unitPrice", "saleUnitPrice"];
 
-const STATUS_OPTIONS: InventoryStatusOption[] = ["倉庫", "出品中", "売却済"];
+const STATUS_OPTIONS: Array<{ value: ListingStatusOption; label: string }> = [
+  { value: "listing", label: "出品" },
+  { value: "sold", label: "売却" },
+  { value: "not_listing", label: "非出品" },
+];
 
 const INITIAL_COLUMNS: Column[] = [
   { key: "id", label: "在庫ID", width: 88, minWidth: 64, visible: true },
@@ -67,12 +72,14 @@ const INITIAL_COLUMNS: Column[] = [
   { key: "quantity", label: "仕入数", width: 78, minWidth: 64, visible: true },
   { key: "unitPrice", label: "仕入単価", width: 90, minWidth: 72, visible: true },
   { key: "saleUnitPrice", label: "販売単価", width: 90, minWidth: 72, visible: true },
+  { key: "hasRemainingDebt", label: "残債", width: 70, minWidth: 60, visible: true },
   { key: "stockInDate", label: "入庫日", width: 96, minWidth: 70, visible: true },
   { key: "removeDate", label: "撤去日", width: 96, minWidth: 70, visible: true },
   { key: "warehouse", label: "保管先", width: 125, minWidth: 96, visible: true },
   { key: "supplier", label: "仕入先", width: 125, minWidth: 96, visible: true },
   { key: "staff", label: "担当者", width: 90, minWidth: 72, visible: true },
   { key: "status", label: "状況", width: 90, minWidth: 72, visible: true },
+  { key: "isConsignment", label: "委託", width: 70, minWidth: 56, visible: true },
   { key: "isVisible", label: "表示", width: 70, minWidth: 56, visible: true },
   { key: "note", label: "備考", width: 120, minWidth: 98, visible: true },
 ];
@@ -128,6 +135,22 @@ const matchesDateRange = (value: string | undefined, range: DateRange) => {
   return true;
 };
 
+const resolveListingStatus = (record: InventoryRecord): ListingStatusOption => {
+  if (record.listingStatus) return record.listingStatus;
+  const status = (record.status ?? record.stockStatus ?? "倉庫") as InventoryStatusOption;
+  if (status === "売却済") return "sold";
+  if (status === "出品中") return "listing";
+  return "not_listing";
+};
+
+const mapListingStatusToStockStatus = (status: ListingStatusOption): InventoryStatusOption => {
+  if (status === "sold") return "売却済";
+  if (status === "listing") return "出品中";
+  return "倉庫";
+};
+
+const statusLabelMap = new Map(STATUS_OPTIONS.map((option) => [option.value, option.label]));
+
 const buildEditForm = (record: InventoryRecord): Partial<InventoryRecord> => ({
   maker: record.maker ?? "",
   model: record.model ?? record.machineName ?? "",
@@ -136,14 +159,17 @@ const buildEditForm = (record: InventoryRecord): Partial<InventoryRecord> => ({
   quantity: record.quantity ?? 0,
   unitPrice: record.unitPrice ?? 0,
   saleUnitPrice: record.saleUnitPrice ?? 0,
+  hasRemainingDebt: record.hasRemainingDebt ?? false,
   stockInDate: record.stockInDate ?? record.arrivalDate ?? "",
   removeDate: record.removeDate ?? record.removalDate ?? "",
   warehouse: record.warehouse ?? record.storageLocation ?? "",
   supplier: record.supplier ?? "",
   staff: record.staff ?? record.buyerStaff ?? "",
-  status: (record.status ?? record.stockStatus ?? "倉庫") as InventoryStatusOption,
+  listingStatus: resolveListingStatus(record),
   note: record.note ?? record.notes ?? "",
   isVisible: record.isVisible ?? true,
+  isConsignment: record.isConsignment ?? record.consignment ?? false,
+  taxType: record.taxType ?? "exclusive",
   pattern: record.pattern ?? "",
 });
 
@@ -167,11 +193,16 @@ const buildPayload = (form: Partial<InventoryRecord>): Partial<InventoryRecord> 
   supplier: form.supplier?.trim() || undefined,
   staff: form.staff?.trim() || undefined,
   buyerStaff: form.staff?.trim() || undefined,
-  status: (form.status ?? "倉庫") as InventoryStatusOption,
-  stockStatus: (form.status ?? "倉庫") as InventoryStatusOption,
+  listingStatus: form.listingStatus,
+  status: mapListingStatusToStockStatus(form.listingStatus ?? "not_listing"),
+  stockStatus: mapListingStatusToStockStatus(form.listingStatus ?? "not_listing"),
   note: form.note?.trim() || undefined,
   notes: form.note?.trim() || undefined,
   isVisible: form.isVisible ?? true,
+  hasRemainingDebt: form.hasRemainingDebt ?? false,
+  isConsignment: form.isConsignment ?? false,
+  consignment: form.isConsignment ?? false,
+  taxType: form.taxType ?? "exclusive",
 });
 
 export default function InventoryPage() {
@@ -361,7 +392,7 @@ export default function InventoryPage() {
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b, "ja"));
   }, [selectedRecords]);
 
-  const handleStatusChange = (id: string, status: InventoryStatusOption) => {
+  const handleStatusChange = (id: string, status: ListingStatusOption) => {
     const updated = updateInventoryStatus(id, status);
     setRecords(updated);
   };
@@ -386,13 +417,14 @@ export default function InventoryPage() {
     setSelectedIds(new Set());
   };
 
-  const handleBulkUpdate = (status: InventoryStatusOption) => {
+  const handleBulkUpdate = (status: ListingStatusOption) => {
     if (selectedIds.size === 0) {
       alert("行を選択してください");
       return;
     }
 
-    const message = `${selectedIds.size}件を${status}に変更します。よろしいですか？`;
+    const statusLabel = statusLabelMap.get(status) ?? status;
+    const message = `${selectedIds.size}件を${statusLabel}に変更します。よろしいですか？`;
     const confirmed = window.confirm(message);
     if (!confirmed) return;
 
@@ -430,6 +462,8 @@ export default function InventoryPage() {
         return record.unitPrice != null ? record.unitPrice.toLocaleString() : "-";
       case "saleUnitPrice":
         return record.saleUnitPrice != null ? record.saleUnitPrice.toLocaleString() : "-";
+      case "hasRemainingDebt":
+        return record.hasRemainingDebt ? "有" : "無";
       case "stockInDate":
         return formatDate(record.stockInDate ?? record.arrivalDate);
       case "removeDate":
@@ -443,7 +477,9 @@ export default function InventoryPage() {
       case "staff":
         return record.staff ?? record.buyerStaff ?? "-";
       case "status":
-        return (record.status ?? record.stockStatus ?? "倉庫") as InventoryStatusOption;
+        return statusLabelMap.get(resolveListingStatus(record)) ?? "非出品";
+      case "isConsignment":
+        return record.isConsignment ?? record.consignment ? "○" : "-";
       case "isVisible":
         return record.isVisible === false ? "しない" : "する";
       case "note":
@@ -1067,23 +1103,23 @@ export default function InventoryPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleBulkUpdate("売却済")}
+                onClick={() => handleBulkUpdate("sold")}
                 disabled={selectedIds.size === 0}
                 className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                一括：売却済
+                一括：売却
               </button>
               <button
                 type="button"
-                onClick={() => handleBulkUpdate("出品中")}
+                onClick={() => handleBulkUpdate("listing")}
                 disabled={selectedIds.size === 0}
                 className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                一括：出品中
+                一括：出品
               </button>
               <button
                 type="button"
-                onClick={() => handleBulkUpdate("倉庫")}
+                onClick={() => handleBulkUpdate("not_listing")}
                 disabled={selectedIds.size === 0}
                 className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
@@ -1262,19 +1298,19 @@ export default function InventoryPage() {
                                 </td>
                                 <td className="border border-slate-300 px-2 py-1">
                                   <select
-                                    value={(form.status as InventoryStatusOption) ?? "倉庫"}
+                                    value={(form.listingStatus as ListingStatusOption) ?? "not_listing"}
                                     onChange={(event) =>
                                       handleBulkFormChange(
                                         record.id,
-                                        "status",
-                                        event.target.value as InventoryStatusOption,
+                                        "listingStatus",
+                                        event.target.value as ListingStatusOption,
                                       )
                                     }
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                                   >
                                     {STATUS_OPTIONS.map((option) => (
-                                      <option key={option} value={option}>
-                                        {option}
+                                      <option key={option.value} value={option.value}>
+                                        {option.label}
                                       </option>
                                     ))}
                                   </select>
@@ -1401,7 +1437,7 @@ export default function InventoryPage() {
                       </td>
                       {visibleColumns.map((col) => {
                         const fullText = getCellText(item, String(col.key));
-                        const statusValue = (item.status ?? item.stockStatus ?? "倉庫") as InventoryStatusOption;
+                        const statusValue = resolveListingStatus(item);
                         const shouldTruncate = TRUNCATE_COLUMNS.includes(col.key);
                         const displayText =
                           col.key === "id"
@@ -1422,13 +1458,13 @@ export default function InventoryPage() {
                               <select
                                 value={statusValue}
                                 onChange={(event) =>
-                                  handleStatusChange(item.id, event.target.value as InventoryStatusOption)
+                                  handleStatusChange(item.id, event.target.value as ListingStatusOption)
                                 }
                                 className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-xs"
                               >
                                 {STATUS_OPTIONS.map((option) => (
-                                  <option key={option} value={option}>
-                                    {option}
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
                                   </option>
                                 ))}
                               </select>

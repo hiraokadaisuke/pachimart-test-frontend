@@ -1,11 +1,17 @@
 import type { InventoryStatusOption } from "@/types/purchaseInvoices";
 
+export type ListingStatusOption = "listing" | "sold" | "not_listing";
+
 export type InventoryRecord = {
   id: string;
   createdAt: string;
   status: InventoryStatusOption;
   stockStatus?: InventoryStatusOption;
   isVisible?: boolean;
+  listingStatus?: ListingStatusOption;
+  hasRemainingDebt?: boolean;
+  taxType?: "inclusive" | "exclusive";
+  isConsignment?: boolean;
   purchaseInvoiceId?: string;
   maker?: string;
   model?: string;
@@ -68,13 +74,31 @@ const safeParse = <T,>(raw: string | null): T | null => {
   }
 };
 
+const mapStatusToListingStatus = (status?: InventoryStatusOption): ListingStatusOption => {
+  if (status === "売却済") return "sold";
+  if (status === "出品中") return "listing";
+  return "not_listing";
+};
+
+const mapListingStatusToStockStatus = (status: ListingStatusOption): InventoryStatusOption => {
+  if (status === "sold") return "売却済";
+  if (status === "listing") return "出品中";
+  return "倉庫";
+};
+
 const normalizeInventory = (record: InventoryRecord): InventoryRecord => {
-  const status = record.status ?? record.stockStatus ?? "倉庫";
+  const fallbackStatus = record.status ?? record.stockStatus ?? "倉庫";
+  const listingStatus = record.listingStatus ?? mapStatusToListingStatus(fallbackStatus);
+  const stockStatus = mapListingStatusToStockStatus(listingStatus);
   return {
     ...record,
-    status,
-    stockStatus: status,
+    status: stockStatus,
+    stockStatus,
+    listingStatus,
     isVisible: record.isVisible ?? true,
+    hasRemainingDebt: record.hasRemainingDebt ?? false,
+    taxType: record.taxType ?? "exclusive",
+    isConsignment: record.isConsignment ?? record.consignment ?? false,
   };
 };
 
@@ -111,17 +135,23 @@ export const addInventoryRecords = (records: InventoryRecord[]): InventoryRecord
   return updated;
 };
 
-export const updateInventoryStatus = (id: string, status: InventoryStatusOption): InventoryRecord[] => {
+export const updateInventoryStatus = (id: string, status: ListingStatusOption): InventoryRecord[] => {
   const current = loadInventoryRecords();
-  const updated = current.map((item) => (item.id === id ? { ...item, status, stockStatus: status } : item));
+  const stockStatus = mapListingStatusToStockStatus(status);
+  const updated = current.map((item) =>
+    item.id === id ? { ...item, listingStatus: status, status: stockStatus, stockStatus } : item,
+  );
   saveInventoryRecords(updated);
   return updated;
 };
 
-export const updateInventoryStatuses = (ids: string[], status: InventoryStatusOption): InventoryRecord[] => {
+export const updateInventoryStatuses = (ids: string[], status: ListingStatusOption): InventoryRecord[] => {
   const current = loadInventoryRecords();
   const targets = new Set(ids);
-  const updated = current.map((item) => (targets.has(item.id) ? { ...item, status, stockStatus: status } : item));
+  const stockStatus = mapListingStatusToStockStatus(status);
+  const updated = current.map((item) =>
+    targets.has(item.id) ? { ...item, listingStatus: status, status: stockStatus, stockStatus } : item,
+  );
   saveInventoryRecords(updated);
   return updated;
 };

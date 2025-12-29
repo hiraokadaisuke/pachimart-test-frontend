@@ -22,6 +22,9 @@ type SupplierInfo = {
   supplierPhone?: string;
   supplierFax?: string;
   inputDate: string;
+  isVisible: boolean;
+  taxType: "inclusive" | "exclusive";
+  isConsignment: boolean;
   notes: string;
   buyerStaff: string;
 };
@@ -41,13 +44,13 @@ type InventoryFormRow = {
   quantity: number;
   unitPrice: number;
   saleUnitPrice: number;
+  hasRemainingDebt: boolean;
   stockInDate: string;
   removeDate: string;
   pattern: string;
   warehouse: string;
   note: string;
-  sellNow: boolean;
-  isVisible: boolean;
+  listingStatus: "listing" | "sold" | "not_listing";
 };
 
 const MACHINE_CATALOG: MachineCatalogItem[] = [
@@ -72,19 +75,25 @@ const createBlankRow = (today: string): InventoryFormRow => ({
   quantity: 1,
   unitPrice: 0,
   saleUnitPrice: 0,
+  hasRemainingDebt: false,
   stockInDate: today,
   removeDate: "",
   pattern: "",
   warehouse: "",
   note: "",
-  sellNow: false,
-  isVisible: true,
+  listingStatus: "listing",
 });
 
 const todayString = () => new Date().toISOString().slice(0, 10);
 
 const getMakerOptions = (catalog: MachineCatalogItem[]) =>
   Array.from(new Set(catalog.map((item) => item.maker)));
+
+const mapListingStatusToStockStatus = (status: InventoryFormRow["listingStatus"]) => {
+  if (status === "sold") return "売却済";
+  if (status === "listing") return "出品中";
+  return "倉庫";
+};
 
 type MachineFieldOrder =
   | "kind"
@@ -94,12 +103,12 @@ type MachineFieldOrder =
   | "quantity"
   | "unitPrice"
   | "saleUnitPrice"
+  | "hasRemainingDebt"
   | "stockInDate"
   | "removeDate"
   | "pattern"
   | "warehouse"
-  | "isVisible"
-  | "sellNow";
+  | "listingStatus";
 
 type SupplierFieldOrder = "supplier" | "inputDate" | "buyerStaff";
 
@@ -110,6 +119,9 @@ export default function InventoryNewPage() {
   const [supplierInfo, setSupplierInfo] = useState<SupplierInfo>({
     supplier: "",
     inputDate: todayString(),
+    isVisible: true,
+    taxType: "exclusive",
+    isConsignment: false,
     notes: "",
     buyerStaff: "",
   });
@@ -129,12 +141,12 @@ export default function InventoryNewPage() {
     "h-7 w-full rounded-none border border-slate-600 bg-amber-50 px-1 text-sm text-neutral-900 focus:border-slate-800 focus:ring-0 focus:outline-none";
   const selectBase = `${inputBase} bg-amber-50`;
   const excelTh =
-    "border border-slate-700 bg-sky-300 px-2 py-1 text-xs font-bold text-slate-900";
+    "border border-slate-700 bg-slate-600 px-2 py-1 text-xs font-bold text-white";
   const excelTd = "border border-slate-600 px-2 py-1 align-top";
   const excelBtn =
     "h-8 rounded-none border border-slate-600 bg-slate-200 px-4 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] transition hover:bg-slate-100";
   const machineTableColGroup =
-    "40px 50px 110px 150px 70px 60px 80px 80px 90px 90px 60px 90px 60px 50px";
+    "40px 55px 120px 240px 80px 70px 90px 90px 70px 110px 110px 70px 100px 90px";
   const machineOrder: MachineFieldOrder[] = [
     "kind",
     "maker",
@@ -143,12 +155,12 @@ export default function InventoryNewPage() {
     "quantity",
     "unitPrice",
     "saleUnitPrice",
+    "hasRemainingDebt",
     "stockInDate",
     "removeDate",
     "pattern",
     "warehouse",
-    "isVisible",
-    "sellNow",
+    "listingStatus",
   ];
   const supplierOrder: SupplierFieldOrder[] = ["supplier", "inputDate", "buyerStaff"];
 
@@ -325,14 +337,20 @@ export default function InventoryNewPage() {
     const prepared: InventoryRecord[] = rows
       .filter((row) => row.maker || row.model)
       .map((row) => {
-        const status = row.sellNow ? "出品中" : "倉庫";
+        const listingStatus = row.listingStatus;
+        const status = mapListingStatusToStockStatus(listingStatus);
         const stockInDate = row.stockInDate || supplierInfo.inputDate || today;
         return {
           id: row.id || generateInventoryId(),
           createdAt: supplierInfo.inputDate || today,
           status,
           stockStatus: status,
-          isVisible: row.isVisible,
+          listingStatus,
+          isVisible: supplierInfo.isVisible,
+          hasRemainingDebt: row.hasRemainingDebt,
+          taxType: supplierInfo.taxType,
+          isConsignment: supplierInfo.isConsignment,
+          consignment: supplierInfo.isConsignment,
           maker: row.maker,
           model: row.model,
           machineName: row.model,
@@ -383,9 +401,8 @@ export default function InventoryNewPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1240px] space-y-2 px-2 pb-6 pt-2">
-      <div className="border-4 border-black p-2">
-        <div className="space-y-2 border-2 border-black p-3">
+    <div className="mx-auto max-w-[1500px] space-y-2 px-2 pb-6 pt-2">
+      <div className="space-y-2 p-3">
           <div className="flex items-end justify-between gap-4">
             <div>
               <h1 className="text-xl font-semibold text-neutral-900">在庫登録</h1>
@@ -398,7 +415,7 @@ export default function InventoryNewPage() {
             </div>
           </div>
 
-          <table className="w-full border-collapse table-fixed text-sm">
+          <table className="w-full border-collapse table-auto text-sm">
             <colgroup>
               <col className="w-[70px]" />
               <col className="w-[130px]" />
@@ -421,7 +438,16 @@ export default function InventoryNewPage() {
             </thead>
             <tbody>
               <tr className="bg-white">
-                <td className={`${excelTd} text-center text-xs text-neutral-500`}>—</td>
+                <td className={excelTd}>
+                  <select
+                    value={supplierInfo.isVisible ? "1" : "0"}
+                    onChange={(event) => handleSupplierChange("isVisible", event.target.value === "1")}
+                    className={`${selectBase} text-center`}
+                  >
+                    <option value="1">する</option>
+                    <option value="0">しない</option>
+                  </select>
+                </td>
                 <td className={excelTd}>
                   <input
                     type="date"
@@ -492,7 +518,18 @@ export default function InventoryNewPage() {
                     className="h-16 w-full rounded-none border border-slate-600 bg-amber-50 px-1 py-1 text-sm text-neutral-900 focus:border-slate-800 focus:ring-0 focus:outline-none"
                   />
                 </td>
-                <td className={`${excelTd} text-center text-xs text-neutral-500`}>—</td>
+                <td className={excelTd}>
+                  <select
+                    value={supplierInfo.taxType}
+                    onChange={(event) =>
+                      handleSupplierChange("taxType", event.target.value as SupplierInfo["taxType"])
+                    }
+                    className={`${selectBase} text-center`}
+                  >
+                    <option value="exclusive">税別</option>
+                    <option value="inclusive">税込</option>
+                  </select>
+                </td>
                 <td className={excelTd}>
                   <select
                     value={supplierInfo.buyerStaff}
@@ -509,12 +546,22 @@ export default function InventoryNewPage() {
                     ))}
                   </select>
                 </td>
-                <td className={`${excelTd} text-center text-xs text-neutral-500`}>—</td>
+                <td className={`${excelTd} text-center`}>
+                  <label className="flex items-center justify-center gap-1 text-[11px] text-neutral-700">
+                    <input
+                      type="checkbox"
+                      checked={supplierInfo.isConsignment}
+                      onChange={(event) => handleSupplierChange("isConsignment", event.target.checked)}
+                      className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
+                    />
+                    委託
+                  </label>
+                </td>
               </tr>
             </tbody>
           </table>
 
-          <table className="w-full border-collapse table-fixed text-sm">
+          <table className="w-full border-collapse table-auto text-sm">
             <colgroup>
               {machineTableColGroup.split(" ").map((width, index) => (
                 <col key={`machine-col-${index}`} style={{ width }} />
@@ -530,12 +577,12 @@ export default function InventoryNewPage() {
                 <th className={excelTh}>仕入数</th>
                 <th className={excelTh}>仕入単価</th>
                 <th className={excelTh}>販売単価</th>
+                <th className={excelTh}>残債</th>
                 <th className={excelTh}>入庫日</th>
                 <th className={excelTh}>撤去日</th>
                 <th className={excelTh}>柄</th>
                 <th className={excelTh}>保管先</th>
-                <th className={excelTh}>表示</th>
-                <th className={excelTh}>出品</th>
+                <th className={excelTh}>状況</th>
               </tr>
             </thead>
             <tbody>
@@ -595,7 +642,7 @@ export default function InventoryNewPage() {
                         onKeyDown={(event) => handleMachineEnter(event, index, "model")}
                         ref={registerFocus(focusKey(index, "model"))}
                         placeholder="機種名検索"
-                        className={inputBase}
+                        className={`${inputBase} min-w-[240px]`}
                       />
                       {suggestions.length > 0 && (
                         <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto border border-slate-400 bg-white">
@@ -669,6 +716,20 @@ export default function InventoryNewPage() {
                       />
                     </td>
                     <td className={excelTd}>
+                      <select
+                        value={row.hasRemainingDebt ? "1" : "0"}
+                        onChange={(event) =>
+                          handleRowChange(index, "hasRemainingDebt", event.target.value === "1")
+                        }
+                        onKeyDown={(event) => handleMachineEnter(event, index, "hasRemainingDebt")}
+                        ref={registerFocus(focusKey(index, "hasRemainingDebt"))}
+                        className={`${selectBase} text-center`}
+                      >
+                        <option value="0">無</option>
+                        <option value="1">有</option>
+                      </select>
+                    </td>
+                    <td className={excelTd}>
                       <input
                         type="date"
                         value={row.stockInDate}
@@ -714,30 +775,23 @@ export default function InventoryNewPage() {
                       </select>
                     </td>
                     <td className={`${excelTd} text-center`}>
-                      <label className="flex items-center justify-center gap-1 text-[11px] text-neutral-700">
-                        <input
-                          type="checkbox"
-                          checked={row.isVisible}
-                          onChange={(event) => handleRowChange(index, "isVisible", event.target.checked)}
-                          onKeyDown={(event) => handleMachineEnter(event, index, "isVisible")}
-                          ref={registerFocus(focusKey(index, "isVisible"))}
-                          className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
-                        />
-                        する
-                      </label>
-                    </td>
-                    <td className={`${excelTd} text-center`}>
-                      <label className="flex items-center justify-center gap-1 text-[11px] text-neutral-700">
-                        <input
-                          type="checkbox"
-                          checked={row.sellNow}
-                          onChange={(event) => handleRowChange(index, "sellNow", event.target.checked)}
-                          onKeyDown={(event) => handleMachineEnter(event, index, "sellNow")}
-                          ref={registerFocus(focusKey(index, "sellNow"))}
-                          className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
-                        />
-                        出品
-                      </label>
+                      <select
+                        value={row.listingStatus}
+                        onChange={(event) =>
+                          handleRowChange(
+                            index,
+                            "listingStatus",
+                            event.target.value as InventoryFormRow["listingStatus"],
+                          )
+                        }
+                        onKeyDown={(event) => handleMachineEnter(event, index, "listingStatus")}
+                        ref={registerFocus(focusKey(index, "listingStatus"))}
+                        className={`${selectBase} text-center`}
+                      >
+                        <option value="listing">出品</option>
+                        <option value="sold">売却</option>
+                        <option value="not_listing">非出品</option>
+                      </select>
                     </td>
                   </tr>
                 );
@@ -771,7 +825,6 @@ export default function InventoryNewPage() {
               確認
             </button>
           </div>
-        </div>
       </div>
     </div>
   );
