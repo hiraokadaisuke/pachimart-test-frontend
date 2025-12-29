@@ -645,10 +645,10 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white py-6">
+    <div className="min-h-screen bg-white py-6 mx-[1cm]">
       <div className="mx-auto max-w-[1600px] px-[38px]">
         <div className="p-3">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-300 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-300 pb-3">
             <div>
               <h1 className="text-2xl font-semibold text-neutral-900">在庫一覧</h1>
               <p className="text-xs text-neutral-600">登録された在庫の確認やステータス更新を行います。</p>
@@ -657,29 +657,29 @@ export default function InventoryPage() {
               <button
                 type="button"
                 onClick={handleResetData}
-                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-sm font-semibold text-neutral-700 shadow-[inset_0_1px_0_#fff]"
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-sm font-semibold text-neutral-700 shadow-[inset_0_1px_0_#fff]"
               >
                 データ初期化
               </button>
               <Link
                 href="/inventory/new"
-                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-sm font-semibold text-neutral-700 shadow-[inset_0_1px_0_#fff]"
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-sm font-semibold text-neutral-700 shadow-[inset_0_1px_0_#fff]"
               >
                 在庫を登録
               </Link>
             </div>
           </div>
 
-          <div className="mt-4 border-2 border-slate-300">
-            <div className="bg-[#7f9bb8] px-3 py-2 text-sm font-bold text-white">検索条件</div>
+          <div className="mt-4 border-2 border-gray-300">
+            <div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">検索条件</div>
             <form onSubmit={handleSearchSubmit} className="bg-white">
               <table className="w-full border-collapse text-sm">
                 <tbody>
                   <tr>
-                    <th className="w-32 border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="w-32 border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       P/S
                     </th>
-                    <td className="border border-slate-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-3 text-xs">
                         {["all", "P", "S"].map((value) => (
                           <label key={value} className="flex items-center gap-1">
@@ -700,10 +700,10 @@ export default function InventoryPage() {
                         ))}
                       </div>
                     </td>
-                    <th className="w-36 border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="w-36 border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       在庫入力日
                     </th>
-                    <td className="border border-slate-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-2 text-xs">
                         <input
                           type="date"
@@ -730,10 +730,10 @@ export default function InventoryPage() {
                         />
                       </div>
                     </td>
-                    <th className="w-28 border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="w-28 border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       入庫日
                     </th>
-                    <td className="border border-slate-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-2 text-xs">
                         <input
                           type="date"
@@ -762,10 +762,10 @@ export default function InventoryPage() {
                     </td>
                   </tr>
                   <tr>
-                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       メーカー
                     </th>
-                    <td className="relative border border-slate-300 px-2 py-1">
+                    <td className="relative border border-gray-300 px-2 py-1">
                       <input
                         value={searchDraft.maker}
                         onChange={(event) =>
@@ -776,7 +776,7 @@ export default function InventoryPage() {
                         className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
                       />
                       {showMakerSuggestions && makerOptions.length > 0 && (
-                        <div className="absolute left-0 top-full z-10 mt-1 w-full border border-slate-300 bg-white text-xs">
+                        <div className="absolute left-0 top-full z-10 mt-1 w-full border border-gray-300 bg-white text-xs">
                           {makerOptions
                             .filter((option) =>
                               option.toLowerCase().includes(searchDraft.maker.trim().toLowerCase()),
@@ -798,10 +798,10 @@ export default function InventoryPage() {
                         </div>
                       )}
                     </td>
-                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       機種名
                     </th>
-                    <td className="relative border border-slate-300 px-2 py-1">
+                    <td className="relative border border-gray-300 px-2 py-1">
                       <input
                         value={searchDraft.model}
                         onChange={(event) =>
@@ -812,7 +812,7 @@ export default function InventoryPage() {
                         className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
                       />
                       {showModelSuggestions && modelOptions.length > 0 && (
-                        <div className="absolute left-0 top-full z-10 mt-1 w-full border border-slate-300 bg-white text-xs">
+                        <div className="absolute left-0 top-full z-10 mt-1 w-full border border-gray-300 bg-white text-xs">
                           {modelOptions
                             .filter((option) =>
                               option.toLowerCase().includes(searchDraft.model.trim().toLowerCase()),
@@ -834,10 +834,10 @@ export default function InventoryPage() {
                         </div>
                       )}
                     </td>
-                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       仕入先
                     </th>
-                    <td className="border border-slate-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-2">
                         <input
                           value={searchDraft.supplier}
@@ -848,7 +848,7 @@ export default function InventoryPage() {
                         />
                         <button
                           type="button"
-                          className="border border-slate-300 bg-[#f7f3e9] px-2 py-0.5 text-xs font-semibold"
+                          className="border border-gray-300 bg-[#f7f3e9] px-2 py-0.5 text-xs font-semibold"
                         >
                           仕入先検索
                         </button>
@@ -856,10 +856,10 @@ export default function InventoryPage() {
                     </td>
                   </tr>
                   <tr>
-                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       仕入担当
                     </th>
-                    <td className="border border-slate-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1">
                       <input
                         value={searchDraft.staff}
                         onChange={(event) =>
@@ -868,10 +868,10 @@ export default function InventoryPage() {
                         className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
                       />
                     </td>
-                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       非表示物件
                     </th>
-                    <td className="border border-slate-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-3 text-xs">
                         {[
                           { value: "hide", label: "しない" },
@@ -895,10 +895,10 @@ export default function InventoryPage() {
                         ))}
                       </div>
                     </td>
-                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       在庫物件
                     </th>
-                    <td className="border border-slate-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-3 text-xs">
                         {[
                           { value: "show", label: "する" },
@@ -924,10 +924,10 @@ export default function InventoryPage() {
                     </td>
                   </tr>
                   <tr>
-                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       完了物件
                     </th>
-                    <td className="border border-slate-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-3 text-xs">
                         {[
                           { value: "show", label: "する" },
@@ -951,10 +951,10 @@ export default function InventoryPage() {
                         ))}
                       </div>
                     </td>
-                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       表示数
                     </th>
-                    <td className="border border-slate-300 px-2 py-1">
+                    <td className="border border-gray-300 px-2 py-1">
                       <select
                         value={searchDraft.displayCount}
                         onChange={(event) =>
@@ -971,33 +971,33 @@ export default function InventoryPage() {
                         <option value="200">200</option>
                       </select>
                     </td>
-                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
                       表示件数
                     </th>
-                    <td className="border border-slate-300 px-2 py-1 text-xs">
+                    <td className="border border-gray-300 px-2 py-1 text-xs">
                       {displayRecords.length} 件
                     </td>
                   </tr>
                 </tbody>
               </table>
-              <div className="flex flex-wrap items-center gap-2 border-t border-slate-300 px-3 py-2">
+              <div className="flex flex-wrap items-center gap-2 border-t border-gray-300 px-3 py-2">
                 <button
                   type="submit"
-                  className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                  className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
                 >
                   検索する
                 </button>
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                  className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
                 >
                   リセット
                 </button>
                 <button
                   type="button"
                   onClick={handleCsvDownload}
-                  className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                  className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
                 >
                   Download
                 </button>
@@ -1007,7 +1007,7 @@ export default function InventoryPage() {
                     type="button"
                     onClick={handleBulkEditOpen}
                     disabled={selectedIds.size === 0}
-                    className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+                    className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     編集
                   </button>
@@ -1016,7 +1016,7 @@ export default function InventoryPage() {
             </form>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border border-slate-300 px-2 py-2 text-xs">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border border-gray-300 px-2 py-2 text-xs">
             <div className="flex flex-wrap items-center gap-2 text-neutral-700">
               <span className="font-semibold">表示操作：</span>
               <span>ヘッダーをドラッグして並び替え</span>
@@ -1026,7 +1026,7 @@ export default function InventoryPage() {
                 type="button"
                 onClick={() => handleBulkUpdate("sold")}
                 disabled={selectedIds.size === 0}
-                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 一括：売却
               </button>
@@ -1034,7 +1034,7 @@ export default function InventoryPage() {
                 type="button"
                 onClick={() => handleBulkUpdate("listing")}
                 disabled={selectedIds.size === 0}
-                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 一括：出品
               </button>
@@ -1042,7 +1042,7 @@ export default function InventoryPage() {
                 type="button"
                 onClick={() => handleBulkUpdate("not_listing")}
                 disabled={selectedIds.size === 0}
-                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 一括：非出品
               </button>
@@ -1050,14 +1050,14 @@ export default function InventoryPage() {
                 type="button"
                 onClick={handleBulkEditOpen}
                 disabled={selectedIds.size === 0}
-                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 一括編集
               </button>
               <button
                 type="button"
                 onClick={() => setColumnEditorOpen(true)}
-                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff]"
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff]"
               >
                 表示項目編集
               </button>
@@ -1065,32 +1065,32 @@ export default function InventoryPage() {
           </div>
 
           {bulkEditOpen && (
-            <div className="mt-4 border-2 border-slate-300">
-              <div className="bg-[#7f9bb8] px-3 py-2 text-sm font-bold text-white">
+            <div className="mt-4 border-2 border-gray-300">
+              <div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">
                 一括編集 ({selectedIds.size}件)
               </div>
               <div className="space-y-4 bg-white p-3">
                 {groupedSelected.map(([supplier, items]) => (
-                  <div key={supplier} className="border-2 border-slate-300">
+                  <div key={supplier} className="border-2 border-gray-300">
                     <div className="bg-[#e8f5e9] px-2 py-1 text-xs font-semibold">仕入先: {supplier}</div>
                     <div className="overflow-x-auto">
                       <table className="w-full border-collapse text-xs">
-                        <thead className="bg-[#f1f5f9] text-left">
+                        <thead className="bg-slate-600 text-left text-white font-bold">
                           <tr>
-                            <th className="border border-slate-300 px-2 py-1">在庫ID</th>
-                            <th className="border border-slate-300 px-2 py-1">種別</th>
-                            <th className="border border-slate-300 px-2 py-1">メーカー</th>
-                            <th className="border border-slate-300 px-2 py-1">機種名</th>
-                            <th className="border border-slate-300 px-2 py-1">仕入数</th>
-                            <th className="border border-slate-300 px-2 py-1">仕入単価</th>
-                            <th className="border border-slate-300 px-2 py-1">販売単価</th>
-                            <th className="border border-slate-300 px-2 py-1">入庫日</th>
-                            <th className="border border-slate-300 px-2 py-1">撤去日</th>
-                            <th className="border border-slate-300 px-2 py-1">保管先</th>
-                            <th className="border border-slate-300 px-2 py-1">担当者</th>
-                            <th className="border border-slate-300 px-2 py-1">状況</th>
-                            <th className="border border-slate-300 px-2 py-1">表示</th>
-                            <th className="border border-slate-300 px-2 py-1">備考</th>
+                            <th className="border border-gray-300 px-2 py-1">在庫ID</th>
+                            <th className="border border-gray-300 px-2 py-1">種別</th>
+                            <th className="border border-gray-300 px-2 py-1">メーカー</th>
+                            <th className="border border-gray-300 px-2 py-1">機種名</th>
+                            <th className="border border-gray-300 px-2 py-1">仕入数</th>
+                            <th className="border border-gray-300 px-2 py-1">仕入単価</th>
+                            <th className="border border-gray-300 px-2 py-1">販売単価</th>
+                            <th className="border border-gray-300 px-2 py-1">入庫日</th>
+                            <th className="border border-gray-300 px-2 py-1">撤去日</th>
+                            <th className="border border-gray-300 px-2 py-1">保管先</th>
+                            <th className="border border-gray-300 px-2 py-1">担当者</th>
+                            <th className="border border-gray-300 px-2 py-1">状況</th>
+                            <th className="border border-gray-300 px-2 py-1">表示</th>
+                            <th className="border border-gray-300 px-2 py-1">備考</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -1098,8 +1098,8 @@ export default function InventoryPage() {
                             const form = bulkEditForms[record.id] ?? buildEditForm(record);
                             return (
                               <tr key={record.id} className="odd:bg-white even:bg-[#f8fafc]">
-                                <td className="border border-slate-300 px-2 py-1">{record.id}</td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">{record.id}</td>
+                                <td className="border border-gray-300 px-2 py-1">
                                   <select
                                     value={form.kind ?? ""}
                                     onChange={(event) =>
@@ -1116,7 +1116,7 @@ export default function InventoryPage() {
                                     <option value="S">S</option>
                                   </select>
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     value={form.maker ?? ""}
                                     onChange={(event) =>
@@ -1125,7 +1125,7 @@ export default function InventoryPage() {
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                                   />
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     value={form.model ?? ""}
                                     onChange={(event) =>
@@ -1134,7 +1134,7 @@ export default function InventoryPage() {
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                                   />
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     type="number"
                                     min={0}
@@ -1149,7 +1149,7 @@ export default function InventoryPage() {
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
                                   />
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     type="number"
                                     min={0}
@@ -1164,7 +1164,7 @@ export default function InventoryPage() {
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
                                   />
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     type="number"
                                     min={0}
@@ -1179,7 +1179,7 @@ export default function InventoryPage() {
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
                                   />
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     type="date"
                                     value={form.stockInDate ?? ""}
@@ -1189,7 +1189,7 @@ export default function InventoryPage() {
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                                   />
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     type="date"
                                     value={form.removeDate ?? ""}
@@ -1199,7 +1199,7 @@ export default function InventoryPage() {
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                                   />
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     value={form.warehouse ?? ""}
                                     onChange={(event) =>
@@ -1208,7 +1208,7 @@ export default function InventoryPage() {
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                                   />
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     value={form.staff ?? ""}
                                     onChange={(event) =>
@@ -1217,7 +1217,7 @@ export default function InventoryPage() {
                                     className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                                   />
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <select
                                     value={(form.listingStatus as ListingStatusOption) ?? "not_listing"}
                                     onChange={(event) =>
@@ -1236,7 +1236,7 @@ export default function InventoryPage() {
                                     ))}
                                   </select>
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <select
                                     value={form.isVisible === false ? "0" : "1"}
                                     onChange={(event) =>
@@ -1248,7 +1248,7 @@ export default function InventoryPage() {
                                     <option value="0">しない</option>
                                   </select>
                                 </td>
-                                <td className="border border-slate-300 px-2 py-1">
+                                <td className="border border-gray-300 px-2 py-1">
                                   <input
                                     value={form.note ?? ""}
                                     onChange={(event) =>
@@ -1266,7 +1266,7 @@ export default function InventoryPage() {
                   </div>
                 ))}
                 {groupedSelected.length === 0 && (
-                  <div className="border border-slate-300 px-4 py-6 text-center text-sm text-neutral-600">
+                  <div className="border border-gray-300 px-4 py-6 text-center text-sm text-neutral-600">
                     編集対象の在庫を選択してください。
                   </div>
                 )}
@@ -1274,14 +1274,14 @@ export default function InventoryPage() {
                   <button
                     type="button"
                     onClick={handleBulkEditClose}
-                    className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                    className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
                   >
                     閉じる
                   </button>
                   <button
                     type="button"
                     onClick={handleBulkSave}
-                    className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                    className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
                   >
                     一括保存
                   </button>
@@ -1291,15 +1291,15 @@ export default function InventoryPage() {
           )}
 
           <div ref={tableRef} className="mt-4 w-full overflow-x-auto">
-            <table className="min-w-full table-fixed border-collapse border-2 border-slate-300 text-[11px]">
-              <thead className="bg-[#7f9bb8] text-left font-semibold text-white">
+            <table className="min-w-full table-fixed border-collapse border-2 border-gray-300 text-[11px]">
+              <thead className="bg-slate-600 text-left font-semibold text-white">
                 <tr>
-                  <th className="w-10 border border-slate-300 px-1 py-1">
+                  <th className="w-10 border border-gray-300 px-1 py-1">
                     <input
                       type="checkbox"
                       checked={displayRecords.length > 0 && selectedIds.size === displayRecords.length}
                       onChange={(event) => handleSelectAll(event.target.checked)}
-                      className="h-4 w-4 border-slate-300"
+                      className="h-4 w-4 border-gray-300"
                     />
                   </th>
                   {visibleColumns.map((col) => (
@@ -1309,7 +1309,7 @@ export default function InventoryPage() {
                       onDragStart={() => handleDragStart(String(col.key))}
                       onDragOver={(event) => handleDragOver(event, String(col.key))}
                       onDrop={() => handleDrop(String(col.key))}
-                      className="relative select-none border border-slate-300 px-1 py-1"
+                      className="relative select-none border border-gray-300 px-1 py-1"
                       style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                     >
                       <span
@@ -1331,20 +1331,20 @@ export default function InventoryPage() {
                   <tr>
                     <td
                       colSpan={visibleColumns.length + 1}
-                      className="border border-slate-300 px-3 py-6 text-center text-sm text-neutral-600"
+                      className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600"
                     >
                       登録された在庫がありません。
                     </td>
                   </tr>
                 ) : (
                   displayRecords.map((item, index) => (
-                    <tr key={item.id} className="border-t border-slate-300 text-[11px] hover:bg-[#fffbe6]">
-                      <td className="w-10 border border-slate-300 px-1 py-0.5 align-middle">
+                    <tr key={item.id} className="border-t border-gray-300 text-[11px] hover:bg-[#fffbe6]">
+                      <td className="w-10 border border-gray-300 px-1 py-0.5 align-middle">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(item.id)}
                           onChange={() => handleSelectRow(item.id)}
-                          className="h-4 w-4 border-slate-300"
+                          className="h-4 w-4 border-gray-300"
                         />
                       </td>
                       {visibleColumns.map((col) => {
@@ -1359,7 +1359,7 @@ export default function InventoryPage() {
                         return (
                           <td
                             key={col.key}
-                            className={`border border-slate-300 px-1 py-0.5 align-middle text-neutral-800 ${
+                            className={`border border-gray-300 px-1 py-0.5 align-middle text-neutral-800 ${
                               numeric ? "text-right" : ""
                             } ${isDate || numeric ? "whitespace-nowrap" : ""} ${
                               shouldWrap ? "whitespace-normal break-words" : ""
@@ -1406,7 +1406,7 @@ export default function InventoryPage() {
                                       type="button"
                                       onClick={() => saveSaleEdit(item)}
                                       disabled={saleSavingId === item.id}
-                                      className="border border-slate-300 bg-[#f7f3e9] px-1 text-xs"
+                                      className="border border-gray-300 bg-[#f7f3e9] px-1 text-xs"
                                     >
                                       ✓
                                     </button>
@@ -1414,7 +1414,7 @@ export default function InventoryPage() {
                                       type="button"
                                       onClick={cancelSaleEdit}
                                       disabled={saleSavingId === item.id}
-                                      className="border border-slate-300 bg-[#f7f3e9] px-1 text-xs"
+                                      className="border border-gray-300 bg-[#f7f3e9] px-1 text-xs"
                                     >
                                       ×
                                     </button>
@@ -1460,8 +1460,8 @@ export default function InventoryPage() {
 
       {columnEditorOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg border-2 border-slate-300 bg-white">
-            <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
+          <div className="w-full max-w-lg border-2 border-gray-300 bg-white">
+            <div className="flex items-center justify-between border-b border-gray-300 px-4 py-3">
               <div>
                 <h3 className="text-base font-semibold text-neutral-900">表示項目を編集</h3>
                 <p className="text-xs text-neutral-600">チェックを外すと列が非表示になります。設定はブラウザに保存されます。</p>
@@ -1470,14 +1470,14 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={handleResetColumns}
-                  className="border border-slate-300 bg-[#f7f3e9] px-2 py-1 text-xs font-semibold"
+                  className="border border-gray-300 bg-[#f7f3e9] px-2 py-1 text-xs font-semibold"
                 >
                   初期化
                 </button>
                 <button
                   type="button"
                   onClick={() => setColumnEditorOpen(false)}
-                  className="border border-slate-300 bg-[#f7f3e9] px-2 py-1 text-xs font-semibold"
+                  className="border border-gray-300 bg-[#f7f3e9] px-2 py-1 text-xs font-semibold"
                 >
                   閉じる
                 </button>
@@ -1488,14 +1488,14 @@ export default function InventoryPage() {
                 {columns.map((col) => (
                   <label
                     key={col.key}
-                    className="flex items-center justify-between gap-3 border border-slate-300 px-3 py-2 text-sm text-neutral-800"
+                    className="flex items-center justify-between gap-3 border border-gray-300 px-3 py-2 text-sm text-neutral-800"
                   >
                     <span className="flex-1 truncate">{col.label}</span>
                     <input
                       type="checkbox"
                       checked={col.visible !== false}
                       onChange={(event) => toggleColumnVisibility(col.key, event.target.checked)}
-                      className="h-4 w-4 border-slate-300"
+                      className="h-4 w-4 border-gray-300"
                     />
                   </label>
                 ))}

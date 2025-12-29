@@ -8,10 +8,10 @@ import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-dat
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
 
-const labelCellClass = "bg-slate-200 text-center font-semibold text-slate-800";
+const labelCellClass = "bg-slate-100 text-center font-semibold text-slate-800";
 const borderCell = "border border-gray-300";
 const inputCellStyles =
-  "w-full rounded-sm border border-gray-300 bg-white px-3 py-2 text-sm shadow-inner focus:outline-none focus:ring-1 focus:ring-slate-400";
+  "w-full rounded-none border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400";
 
 export default function PurchaseInvoiceListPage() {
   const router = useRouter();
@@ -134,17 +134,17 @@ export default function PurchaseInvoiceListPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 mx-[1cm]">
       <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <span className="h-3.5 w-3.5 rounded-full bg-slate-800" aria-hidden />
-          <h1 className="text-xl font-bold text-slate-800">購入伝票一覧</h1>
+        <div className="flex items-center gap-3 bg-slate-600 px-3 py-2 text-white">
+          <span className="h-3.5 w-3.5 rounded-full bg-white" aria-hidden />
+          <h1 className="text-xl font-bold text-white">購入伝票一覧</h1>
         </div>
-        <div className="border-b border-dashed border-slate-400" />
+        <div className="border-b border-dashed border-gray-300" />
       </div>
 
-      <div className="overflow-hidden rounded-md border border-gray-300 bg-slate-50 shadow-sm">
-        <div className="bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800">検索条件</div>
+      <div className="overflow-hidden border border-gray-300 bg-white">
+        <div className="bg-slate-600 px-4 py-2 text-sm font-bold text-white">検索条件</div>
         <div className="overflow-x-auto">
           <table className="min-w-full table-fixed border-collapse text-sm text-neutral-800">
             <tbody>
@@ -191,7 +191,7 @@ export default function PurchaseInvoiceListPage() {
                       className={inputCellStyles}
                       placeholder="機種名"
                     />
-                    <span className="rounded-sm border border-gray-300 bg-white px-2 py-2 text-xs text-slate-700 shadow-inner">
+                    <span className="rounded-none border border-gray-300 bg-white px-2 py-2 text-xs text-slate-700">
                       🔍
                     </span>
                   </div>
@@ -244,7 +244,7 @@ export default function PurchaseInvoiceListPage() {
                     />
                     <button
                       type="button"
-                      className="whitespace-nowrap rounded-sm border border-amber-500 bg-amber-300 px-3 py-2 text-xs font-semibold text-amber-900 shadow-inner hover:bg-amber-200"
+                      className="whitespace-nowrap rounded-none border border-gray-300 bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
                     >
                       仕入先検索
                     </button>
@@ -257,14 +257,14 @@ export default function PurchaseInvoiceListPage() {
                   <div className="flex items-center justify-center gap-4">
                     <button
                       type="button"
-                      className="rounded-sm border border-amber-600 bg-amber-300 px-8 py-2 text-sm font-semibold text-amber-900 shadow-inner hover:bg-amber-200"
+                      className="rounded-none border border-gray-300 bg-slate-200 px-8 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
                     >
                       検索する
                     </button>
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="rounded-sm border border-slate-500 bg-slate-100 px-6 py-2 text-sm font-semibold text-slate-800 shadow-inner hover:bg-slate-200"
+                      className="rounded-none border border-gray-300 bg-slate-200 px-6 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
                     >
                       リセット
                     </button>
@@ -277,29 +277,29 @@ export default function PurchaseInvoiceListPage() {
       </div>
 
       <div className="space-y-3">
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 bg-slate-600 px-3 py-2 text-white">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-2 rounded-sm bg-slate-700" aria-hidden />
-            <h2 className="text-xl font-semibold text-slate-800">購入伝票リスト</h2>
+            <div className="h-10 w-2 rounded-sm bg-white" aria-hidden />
+            <h2 className="text-xl font-bold text-white">購入伝票リスト</h2>
           </div>
           <div className="ml-auto flex items-center gap-2 text-sm">
             <button
               type="button"
               onClick={handleDeleteSelected}
               disabled={selectedInvoiceIds.size === 0}
-              className="rounded-sm border border-slate-500 bg-slate-100 px-3 py-2 font-semibold text-slate-900 shadow-sm hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-none border border-gray-300 bg-slate-200 px-3 py-2 font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               選択を削除
             </button>
           </div>
         </div>
 
-        <div className="overflow-x-auto rounded-md border border-gray-300 bg-white shadow-sm">
+        <div className="overflow-x-auto border border-gray-300 bg-white">
           <table className="min-w-full table-fixed border-collapse text-sm text-neutral-800">
             <thead>
-              <tr className="border border-gray-400 bg-slate-200 text-left text-xs font-semibold uppercase tracking-wide text-slate-800">
+              <tr className="border border-gray-300 bg-slate-600 text-left text-xs font-bold uppercase tracking-wide text-white">
                 {["購入伝票ID", "伝票発行日", "メーカー名", "機種名", "仕入先", "入庫日", "担当", "合計金額", "選択", "詳細"].map((label) => (
-                  <th key={label} className="whitespace-nowrap border border-gray-400 px-3 py-3">
+                  <th key={label} className="whitespace-nowrap border border-gray-300 px-3 py-3">
                     <span className="inline-flex items-center gap-1">
                       {label}
                       <span className="text-[10px]">▲▼</span>
@@ -367,7 +367,7 @@ export default function PurchaseInvoiceListPage() {
                               }/${invoice.invoiceId}`,
                             )
                           }
-                          className="h-8 w-8 rounded-full border border-amber-600 bg-amber-300 text-lg font-bold text-amber-900 shadow hover:bg-amber-200"
+                        className="h-8 w-8 rounded-none border border-gray-300 bg-slate-200 text-lg font-bold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
                           aria-label="詳細"
                         >
                           +

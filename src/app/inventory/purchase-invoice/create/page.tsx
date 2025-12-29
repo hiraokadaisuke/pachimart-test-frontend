@@ -70,25 +70,25 @@ export default function PurchaseInvoiceCreatePage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-6 mx-[1cm]">
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-600 px-3 py-2 text-white">
         <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">購入伝票作成</h1>
-          <p className="text-sm text-neutral-600">未作成の在庫を選択して業者/ホール伝票登録へ進みます。</p>
+          <h1 className="text-2xl font-bold text-white">購入伝票作成</h1>
+          <p className="text-sm text-white/80 font-normal">未作成の在庫を選択して業者/ホール伝票登録へ進みます。</p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 border border-gray-300 bg-white px-3 py-2">
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleCreateDraft("vendor")}
-            className="rounded-md bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-amber-500"
+            className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
           >
             業者伝票登録
           </button>
           <button
             onClick={() => handleCreateDraft("hall")}
-            className="rounded-md bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-emerald-500"
+            className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
           >
             ホール伝票登録
           </button>
@@ -102,103 +102,103 @@ export default function PurchaseInvoiceCreatePage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="ID / メーカー / 機種 / 仕入先 / 担当"
-            className="w-72 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
+            className="w-72 border border-gray-300 bg-white px-2 py-1 text-sm focus:border-slate-600 focus:outline-none"
           />
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-        <table className="min-w-full table-fixed divide-y divide-slate-200 border-collapse text-sm">
-          <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-700">
+      <div className="overflow-x-auto border border-gray-300 bg-white">
+        <table className="min-w-full table-fixed border-collapse text-sm">
+          <thead className="bg-slate-600 text-left text-xs font-bold text-white">
             <tr>
-              <th className="w-[80px] px-3 py-3 font-semibold text-slate-700">選択</th>
-              <th className="w-[136px] px-3 py-3 font-semibold text-slate-700">在庫管理ID</th>
-              <th className="w-[130px] px-3 py-3 font-semibold text-slate-700">在庫入力日</th>
-              <th className="w-[136px] px-3 py-3 font-semibold text-slate-700">メーカー名</th>
-              <th className="w-[196px] px-3 py-3 font-semibold text-slate-700">機種名</th>
-              <th className="w-[96px] px-3 py-3 font-semibold text-slate-700">タイプ</th>
-              <th className="w-[90px] px-3 py-3 text-right font-semibold text-slate-700">仕入数</th>
-              <th className="w-[132px] px-3 py-3 text-right font-semibold text-slate-700">仕入単価</th>
-              <th className="w-[120px] px-3 py-3 font-semibold text-slate-700">入庫日</th>
-              <th className="w-[156px] px-3 py-3 font-semibold text-slate-700">仕入先</th>
-              <th className="w-[132px] px-3 py-3 font-semibold text-slate-700">仕入担当</th>
-              <th className="w-[124px] px-3 py-3 font-semibold text-slate-700">番号入力</th>
+              <th className="w-[80px] border border-gray-300 px-3 py-3">選択</th>
+              <th className="w-[136px] border border-gray-300 px-3 py-3">在庫管理ID</th>
+              <th className="w-[130px] border border-gray-300 px-3 py-3">在庫入力日</th>
+              <th className="w-[136px] border border-gray-300 px-3 py-3">メーカー名</th>
+              <th className="w-[196px] border border-gray-300 px-3 py-3">機種名</th>
+              <th className="w-[96px] border border-gray-300 px-3 py-3">タイプ</th>
+              <th className="w-[90px] border border-gray-300 px-3 py-3 text-right">仕入数</th>
+              <th className="w-[132px] border border-gray-300 px-3 py-3 text-right">仕入単価</th>
+              <th className="w-[120px] border border-gray-300 px-3 py-3">入庫日</th>
+              <th className="w-[156px] border border-gray-300 px-3 py-3">仕入先</th>
+              <th className="w-[132px] border border-gray-300 px-3 py-3">仕入担当</th>
+              <th className="w-[124px] border border-gray-300 px-3 py-3">番号入力</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody>
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={12} className="px-3 py-6 text-center text-sm text-neutral-600">
+                <td colSpan={12} className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600">
                   未作成の在庫がありません。
                 </td>
               </tr>
             ) : (
               filtered.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50">
-                  <td className="px-3 py-3">
+                  <td className="border border-gray-300 px-3 py-3">
                     <input
                       type="checkbox"
                       checked={selected[item.id] ?? false}
                       onChange={() => toggleSelect(item.id)}
-                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      className="h-4 w-4 rounded-none border-gray-300 text-slate-600 focus:ring-slate-600"
                     />
                   </td>
-                  <td className="px-3 py-3 font-mono text-sm text-neutral-900 whitespace-nowrap text-ellipsis">
+                  <td className="border border-gray-300 px-3 py-3 font-mono text-sm text-neutral-900 whitespace-nowrap text-ellipsis">
                     {item.id}
                   </td>
-                  <td className="px-3 py-3 text-neutral-800">
+                  <td className="border border-gray-300 px-3 py-3 text-neutral-800">
                     <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatDate(item.createdAt)}>
                       {formatDate(item.createdAt)}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-neutral-800">
+                  <td className="border border-gray-300 px-3 py-3 text-neutral-800">
                     <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.maker}>
                       {item.maker}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-neutral-800">
+                  <td className="border border-gray-300 px-3 py-3 text-neutral-800">
                     <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.machineName}>
                       {item.machineName}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-neutral-800">
+                  <td className="border border-gray-300 px-3 py-3 text-neutral-800">
                     <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.type}>
                       {item.type}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-right text-neutral-800">
+                  <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
                     <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={String(item.quantity)}>
                       {item.quantity}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-right text-neutral-800">
+                  <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
                     <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatCurrency(item.unitPrice)}>
                       {formatCurrency(item.unitPrice)}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-neutral-800">
+                  <td className="border border-gray-300 px-3 py-3 text-neutral-800">
                     <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={formatDate(item.arrivalDate)}>
                       {formatDate(item.arrivalDate)}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-neutral-800">
+                  <td className="border border-gray-300 px-3 py-3 text-neutral-800">
                     <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.supplier}>
                       {item.supplier}
                     </span>
                   </td>
-                  <td className="px-3 py-3 text-neutral-800">
+                  <td className="border border-gray-300 px-3 py-3 text-neutral-800">
                     <span className="block overflow-hidden text-ellipsis whitespace-nowrap" title={item.buyerStaff}>
                       {item.buyerStaff}
                     </span>
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="border border-gray-300 px-3 py-3">
                     <button
                       type="button"
                       onClick={() => handleSerialInput(item.id)}
-                      className={`flex h-9 w-full items-center justify-center rounded-md border px-3 text-xs font-semibold shadow-sm transition ${
+                      className={`flex h-9 w-full items-center justify-center rounded-none border px-3 text-xs font-semibold transition ${
                         completed[item.id]
-                          ? "border-green-200 bg-green-50 text-emerald-800 hover:bg-green-100"
-                          : "border-slate-200 bg-white text-slate-800 hover:bg-slate-50"
+                          ? "border-gray-300 bg-slate-100 text-slate-800 hover:bg-slate-50"
+                          : "border-gray-300 bg-white text-slate-800 hover:bg-slate-50"
                       }`}
                     >
                       +

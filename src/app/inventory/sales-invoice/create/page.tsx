@@ -7,7 +7,7 @@ import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-dat
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 
-const labelCellClass = "bg-slate-200 text-center font-semibold text-slate-800";
+const labelCellClass = "bg-slate-100 text-center font-semibold text-slate-800";
 const borderCell = "border border-gray-300";
 const inputCellStyles =
   "w-full rounded-none border border-gray-300 bg-white px-2 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400";
@@ -127,17 +127,17 @@ export default function SalesInvoiceCreatePage() {
   };
 
   return (
-    <div className="space-y-6 px-4">
+    <div className="space-y-6 mx-[1cm]">
       <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <span className="h-3.5 w-3.5 rounded-full bg-green-600" aria-hidden />
-          <h1 className="text-xl font-bold text-slate-800">販売伝票作成</h1>
+        <div className="flex items-center gap-3 bg-slate-600 px-3 py-2 text-white">
+          <span className="h-3.5 w-3.5 rounded-full bg-white" aria-hidden />
+          <h1 className="text-xl font-bold text-white">販売伝票作成</h1>
         </div>
-        <div className="border-b border-dashed border-slate-400" />
+        <div className="border-b border-dashed border-gray-300" />
       </div>
 
-      <div className="overflow-hidden border border-gray-400 bg-white shadow-sm">
-        <div className="bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-800">検索条件</div>
+      <div className="overflow-hidden border border-gray-300 bg-white">
+        <div className="bg-slate-600 px-4 py-2 text-sm font-bold text-white">検索条件</div>
         <div className="overflow-x-auto">
           <table className="min-w-full table-fixed border-collapse text-sm text-neutral-800">
             <tbody>
@@ -223,14 +223,14 @@ export default function SalesInvoiceCreatePage() {
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
-                      className="min-w-[96px] rounded-none border border-amber-500 bg-amber-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner"
+                      className="min-w-[96px] rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
                     >
                       検索
                     </button>
                     <button
                       type="button"
                       onClick={handleReset}
-                      className="min-w-[96px] rounded-none border border-amber-500 bg-amber-100 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner"
+                      className="min-w-[96px] rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
                     >
                       リセット
                     </button>
@@ -244,49 +244,49 @@ export default function SalesInvoiceCreatePage() {
 
       <div className="space-y-2">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2 rounded-sm border border-gray-400 bg-slate-100 px-3 py-2 text-sm font-semibold text-slate-800">
-            <span className="h-4 w-1 bg-slate-700" aria-hidden />
+          <div className="flex items-center gap-2 border border-gray-300 bg-slate-600 px-3 py-2 text-sm font-bold text-white">
+            <span className="h-4 w-1 bg-white" aria-hidden />
             <span>販売物件リスト</span>
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={navigateToVendorInvoice}
-              className="inline-flex items-center rounded-sm border border-amber-600 bg-amber-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-amber-300"
+              className="inline-flex items-center rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
             >
               業者伝票登録
             </button>
             <button
               type="button"
               onClick={navigateToHallInvoice}
-              className="inline-flex items-center rounded-sm border border-emerald-700 bg-emerald-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner hover:bg-emerald-300"
+              className="inline-flex items-center rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
             >
               ホール伝票登録
             </button>
           </div>
         </div>
-        <div className="overflow-x-auto border border-gray-400">
+        <div className="overflow-x-auto border border-gray-300">
           <table className="min-w-full border-collapse text-xs text-slate-900">
             <thead>
-              <tr className="bg-slate-200 text-center">
-                <th className="border border-gray-400 px-2 py-2">選択</th>
-                <th className="border border-gray-400 px-2 py-2">在庫ID ▲▼</th>
-                <th className="border border-gray-400 px-2 py-2">販売入力日 ▲▼</th>
-                <th className="border border-gray-400 px-2 py-2">メーカー ▲▼</th>
-                <th className="border border-gray-400 px-2 py-2">機種名 ▲▼</th>
-                <th className="border border-gray-400 px-2 py-2">区分</th>
-                <th className="border border-gray-400 px-2 py-2">タイプ</th>
-                <th className="border border-gray-400 px-2 py-2">仕入数</th>
-                <th className="border border-gray-400 px-2 py-2">販売単価</th>
-                <th className="border border-gray-400 px-2 py-2">販売先</th>
-                <th className="border border-gray-400 px-2 py-2">販売担当</th>
-                <th className="border border-gray-400 px-2 py-2">備考</th>
+              <tr className="bg-slate-600 text-center text-white font-bold">
+                <th className="border border-gray-300 px-2 py-2">選択</th>
+                <th className="border border-gray-300 px-2 py-2">在庫ID ▲▼</th>
+                <th className="border border-gray-300 px-2 py-2">販売入力日 ▲▼</th>
+                <th className="border border-gray-300 px-2 py-2">メーカー ▲▼</th>
+                <th className="border border-gray-300 px-2 py-2">機種名 ▲▼</th>
+                <th className="border border-gray-300 px-2 py-2">区分</th>
+                <th className="border border-gray-300 px-2 py-2">タイプ</th>
+                <th className="border border-gray-300 px-2 py-2">仕入数</th>
+                <th className="border border-gray-300 px-2 py-2">販売単価</th>
+                <th className="border border-gray-300 px-2 py-2">販売先</th>
+                <th className="border border-gray-300 px-2 py-2">販売担当</th>
+                <th className="border border-gray-300 px-2 py-2">備考</th>
               </tr>
             </thead>
             <tbody>
               {filteredRecords.length === 0 && (
                 <tr>
-                  <td colSpan={12} className="border border-gray-400 px-4 py-6 text-center text-sm text-slate-700">
+                  <td colSpan={12} className="border border-gray-300 px-4 py-6 text-center text-sm text-slate-700">
                     該当データがありません
                   </td>
                 </tr>
@@ -298,7 +298,7 @@ export default function SalesInvoiceCreatePage() {
                 const staff = record.buyerStaff ?? record.staff ?? "-";
                 return (
                   <tr key={record.id} className={`${rowColor} text-center`}>
-                    <td className="border border-gray-400 px-2 py-2">
+                    <td className="border border-gray-300 px-2 py-2">
                       <input
                         type="checkbox"
                         checked={selectedIds.has(record.id)}
@@ -306,19 +306,19 @@ export default function SalesInvoiceCreatePage() {
                         className="h-4 w-4"
                       />
                     </td>
-                    <td className="border border-gray-400 px-2 py-2 font-semibold text-slate-900">{record.id}</td>
-                    <td className="border border-gray-400 px-2 py-2">{formatDate(saleDate)}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-left">{record.maker ?? "-"}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-left">
+                    <td className="border border-gray-300 px-2 py-2 font-semibold text-slate-900">{record.id}</td>
+                    <td className="border border-gray-300 px-2 py-2">{formatDate(saleDate)}</td>
+                    <td className="border border-gray-300 px-2 py-2 text-left">{record.maker ?? "-"}</td>
+                    <td className="border border-gray-300 px-2 py-2 text-left">
                       {record.model ?? record.machineName ?? "-"}
                     </td>
-                    <td className="border border-gray-400 px-2 py-2">{record.kind ?? "-"}</td>
-                    <td className="border border-gray-400 px-2 py-2">{record.type ?? record.deviceType ?? "-"}</td>
-                    <td className="border border-gray-400 px-2 py-2">{record.quantity ?? "-"}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-right">{formatCurrency(record.saleUnitPrice)}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-left">{buyer}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-left">{staff}</td>
-                    <td className="border border-gray-400 px-2 py-2 text-left">{record.note ?? record.notes ?? "-"}</td>
+                    <td className="border border-gray-300 px-2 py-2">{record.kind ?? "-"}</td>
+                    <td className="border border-gray-300 px-2 py-2">{record.type ?? record.deviceType ?? "-"}</td>
+                    <td className="border border-gray-300 px-2 py-2">{record.quantity ?? "-"}</td>
+                    <td className="border border-gray-300 px-2 py-2 text-right">{formatCurrency(record.saleUnitPrice)}</td>
+                    <td className="border border-gray-300 px-2 py-2 text-left">{buyer}</td>
+                    <td className="border border-gray-300 px-2 py-2 text-left">{staff}</td>
+                    <td className="border border-gray-300 px-2 py-2 text-left">{record.note ?? record.notes ?? "-"}</td>
                   </tr>
                 );
               })}

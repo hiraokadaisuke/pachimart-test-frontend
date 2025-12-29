@@ -141,8 +141,8 @@ export default function InventoryNewPage() {
     "h-7 w-full rounded-none border border-slate-600 bg-amber-50 px-1 text-sm text-neutral-900 focus:border-slate-800 focus:ring-0 focus:outline-none";
   const selectBase = `${inputBase} bg-amber-50`;
   const excelTh =
-    "border border-slate-700 bg-slate-600 px-2 py-1 text-xs font-bold text-white";
-  const excelTd = "border border-slate-600 px-2 py-1 align-top";
+    "border border-gray-300 bg-slate-600 px-2 py-1 text-xs font-bold text-white";
+  const excelTd = "border border-gray-300 px-2 py-1 align-top";
   const excelBtn =
     "h-8 rounded-none border border-slate-600 bg-slate-200 px-4 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] transition hover:bg-slate-100";
   const machineTableColGroup =
@@ -401,7 +401,7 @@ export default function InventoryNewPage() {
   };
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-2 px-2 pb-6 pt-2">
+    <div className="mx-auto max-w-[1500px] space-y-2 px-2 pb-6 pt-2 mx-[1cm]">
       <div className="space-y-2 p-3">
           <div className="flex items-end justify-between gap-4">
             <div>
