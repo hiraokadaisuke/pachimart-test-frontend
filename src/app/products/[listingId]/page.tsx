@@ -3,41 +3,12 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 
 import { DEV_USERS } from "@/lib/dev-user/users";
+import { getPublicListingById } from "@/lib/listings/getPublicListingById";
 
 import MainContainer from "@/components/layout/MainContainer";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import { buildApiUrl } from "@/lib/http/apiBaseUrl";
 import type { Listing } from "@/lib/listings/types";
 import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
-
-type ListingFetchResult = { listing: Listing | null; notFound: boolean };
-
-async function fetchListing(
-  listingId: string,
-  devUserId?: string,
-  cookieHeader?: string
-): Promise<ListingFetchResult> {
-  try {
-    const response = await fetch(buildApiUrl(`/api/public-listings/${listingId}`), {
-      cache: "no-store",
-      headers: {
-        ...(devUserId ? { "x-dev-user-id": devUserId } : {}),
-        ...(cookieHeader ? { cookie: cookieHeader } : {}),
-      },
-    });
-
-    if (response.status === 404) return { listing: null, notFound: true };
-    if (!response.ok) {
-      console.error("Failed to fetch listing detail", response.status);
-      return { listing: null, notFound: false };
-    }
-
-    return { listing: await response.json(), notFound: false };
-  } catch (error) {
-    console.error("Failed to fetch listing detail", error);
-    return { listing: null, notFound: false };
-  }
-}
 
 const formatPrice = (listing: Listing) => {
   if (listing.isNegotiable || listing.unitPriceExclTax === null) {
@@ -62,26 +33,9 @@ const resolveInquiryStatus = (listing: Listing, isSellerViewing: boolean) => {
 export default async function ProductDetailPage({ params }: { params: { listingId: string } }) {
   const currentCookies = cookies();
   const devUserId = currentCookies.get("dev_user_id")?.value ?? DEV_USERS.A.id;
-  const cookieHeader = currentCookies.toString();
+  const listing = await getPublicListingById(params.listingId);
 
-  const { listing, notFound: listingMissing } = await fetchListing(
-    params.listingId,
-    devUserId,
-    cookieHeader
-  );
-
-  if (listingMissing) {
-    // NOTE: 404 は「Listing が存在しない場合のみ」。以前の seller 絞り込みでは到達していた。
-    notFound();
-  }
-
-  if (!listing) {
-    return (
-      <MainContainer>
-        <p className="text-[13px] text-neutral-700">商品情報の取得に失敗しました。時間をおいて再度お試しください。</p>
-      </MainContainer>
-    );
-  }
+  if (!listing) notFound();
 
   const isSellerViewing = listing.sellerUserId === devUserId;
   const inquiryStatus = resolveInquiryStatus(listing, isSellerViewing);
