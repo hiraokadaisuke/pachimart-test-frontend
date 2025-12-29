@@ -14,8 +14,14 @@ export type CompanyProfile = {
   note: string;
 };
 
+export type CompanyProfileEntry = CompanyProfile & {
+  id: string;
+  isPrimary?: boolean;
+};
+
 export type CompanyBranch = {
   id: string;
+  corporateId?: string;
   name: string;
   postalCode: string;
   prefecture: string;
@@ -32,6 +38,7 @@ export type CompanyStaff = {
   id: string;
   name: string;
   branchId?: string;
+  corporateId?: string;
 };
 
 export type SupplierBranch = {
@@ -68,11 +75,20 @@ export type SupplierCorporate = {
   branches: SupplierBranch[];
 };
 
+export type Warehouse = {
+  id: string;
+  name: string;
+  address: string;
+  category: "self" | "other";
+};
+
 export type MasterData = {
   suppliers: SupplierCorporate[];
   buyerStaffs: string[];
   warehouses: string[];
+  warehouseDetails: Warehouse[];
   companyProfile: CompanyProfile;
+  companyProfiles: CompanyProfileEntry[];
   companyBranches: CompanyBranch[];
   companyStaffs: CompanyStaff[];
 };
@@ -132,6 +148,7 @@ export const DEFAULT_MASTER_DATA: MasterData = {
   ],
   buyerStaffs: ["山田", "佐藤", "田中"],
   warehouses: ["東京第1倉庫", "埼玉倉庫", "大阪倉庫"],
+  warehouseDetails: [],
   companyProfile: {
     corporateName: "",
     postalCode: "",
@@ -145,6 +162,7 @@ export const DEFAULT_MASTER_DATA: MasterData = {
     representative: "",
     note: "",
   },
+  companyProfiles: [],
   companyBranches: [],
   companyStaffs: [],
 };
@@ -177,6 +195,18 @@ const isSupplierCorporate = (value: unknown): value is SupplierCorporate => {
   );
 };
 
+const isCompanyProfileEntry = (value: unknown): value is CompanyProfileEntry => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as CompanyProfileEntry;
+  return typeof candidate.id === "string" && typeof candidate.corporateName === "string";
+};
+
+const isWarehouseDetail = (value: unknown): value is Warehouse => {
+  if (!value || typeof value !== "object") return false;
+  const candidate = value as Warehouse;
+  return typeof candidate.id === "string" && typeof candidate.name === "string";
+};
+
 const migrateLegacySuppliers = (suppliers?: unknown): SupplierCorporate[] => {
   if (!Array.isArray(suppliers)) return DEFAULT_MASTER_DATA.suppliers;
   if (suppliers.every((item) => isSupplierCorporate(item))) {
@@ -189,15 +219,61 @@ const migrateLegacySuppliers = (suppliers?: unknown): SupplierCorporate[] => {
   });
 };
 
+const normalizeCompanyProfiles = (stored: MasterData): CompanyProfileEntry[] => {
+  if (Array.isArray(stored.companyProfiles) && stored.companyProfiles.every((item) => isCompanyProfileEntry(item))) {
+    const hasPrimary = stored.companyProfiles.some((profile) => profile.isPrimary);
+    if (hasPrimary) return stored.companyProfiles;
+    if (stored.companyProfiles.length === 0) return [];
+    return [{ ...stored.companyProfiles[0], isPrimary: true }, ...stored.companyProfiles.slice(1)];
+  }
+
+  return [
+    {
+      id: "company-primary",
+      isPrimary: true,
+      ...DEFAULT_MASTER_DATA.companyProfile,
+      ...(stored.companyProfile ?? {}),
+    },
+  ];
+};
+
+const normalizeWarehouses = (stored: MasterData): Warehouse[] => {
+  if (Array.isArray(stored.warehouseDetails) && stored.warehouseDetails.every((item) => isWarehouseDetail(item))) {
+    return stored.warehouseDetails;
+  }
+
+  if (Array.isArray(stored.warehouses)) {
+    return stored.warehouses.map((name) => ({
+      id: createMasterId("warehouse"),
+      name,
+      address: "",
+      category: "self",
+    }));
+  }
+
+  return DEFAULT_MASTER_DATA.warehouses.map((name) => ({
+    id: createMasterId("warehouse"),
+    name,
+    address: "",
+    category: "self",
+  }));
+};
+
 export const loadMasterData = (): MasterData => {
   const stored = readLocalStorage<MasterData>(MASTER_KEY);
   if (stored && Array.isArray(stored.buyerStaffs) && Array.isArray(stored.warehouses)) {
+    const companyProfiles = normalizeCompanyProfiles(stored);
+    const primaryProfile = companyProfiles.find((profile) => profile.isPrimary) ?? companyProfiles[0];
+    const warehouseDetails = normalizeWarehouses(stored);
     const migrated: MasterData = {
       ...stored,
       suppliers: migrateLegacySuppliers((stored as MasterData).suppliers),
+      warehouses: warehouseDetails.map((warehouse) => warehouse.name),
+      warehouseDetails,
+      companyProfiles,
       companyProfile: {
         ...DEFAULT_MASTER_DATA.companyProfile,
-        ...(stored.companyProfile ?? {}),
+        ...(primaryProfile ?? stored.companyProfile ?? {}),
       },
       companyBranches: stored.companyBranches ?? [],
       companyStaffs: stored.companyStaffs ?? [],
@@ -205,8 +281,21 @@ export const loadMasterData = (): MasterData => {
     writeLocalStorage(MASTER_KEY, migrated);
     return migrated;
   }
-  writeLocalStorage(MASTER_KEY, DEFAULT_MASTER_DATA);
-  return DEFAULT_MASTER_DATA;
+  const defaultWarehouses = normalizeWarehouses(DEFAULT_MASTER_DATA);
+  const defaultCompanyProfiles = normalizeCompanyProfiles(DEFAULT_MASTER_DATA);
+  const primaryProfile = defaultCompanyProfiles.find((profile) => profile.isPrimary) ?? defaultCompanyProfiles[0];
+  const seeded: MasterData = {
+    ...DEFAULT_MASTER_DATA,
+    warehouses: defaultWarehouses.map((warehouse) => warehouse.name),
+    warehouseDetails: defaultWarehouses,
+    companyProfiles: defaultCompanyProfiles,
+    companyProfile: {
+      ...DEFAULT_MASTER_DATA.companyProfile,
+      ...(primaryProfile ?? {}),
+    },
+  };
+  writeLocalStorage(MASTER_KEY, seeded);
+  return seeded;
 };
 
 export const saveMasterData = (data: MasterData): void => {
