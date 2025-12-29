@@ -82,10 +82,12 @@ export async function GET(request: Request) {
 
     const payload = inquiries.map((inquiry) => {
       const listing = listingMap.get(inquiry.listingId);
+      const buyerCompanyName = userMap.get(inquiry.buyerUserId) ?? null;
+      const sellerCompanyName = userMap.get(inquiry.sellerUserId) ?? null;
       const partnerName =
         role === "buyer"
-          ? userMap.get(inquiry.sellerUserId) ?? inquiry.sellerUserId
-          : userMap.get(inquiry.buyerUserId) ?? inquiry.buyerUserId;
+          ? sellerCompanyName ?? inquiry.sellerUserId
+          : buyerCompanyName ?? inquiry.buyerUserId;
 
       return {
         id: inquiry.id,
@@ -100,6 +102,8 @@ export async function GET(request: Request) {
         quantity: inquiry.quantity,
         totalAmount: calculateTotalAmount(listing?.unitPriceExclTax ?? null, inquiry.quantity),
         partnerName,
+        buyerCompanyName,
+        sellerCompanyName,
       };
     });
 

@@ -91,6 +91,30 @@ const toNumericNaviId = (value: string | number | undefined): number | null => {
   return Number.isInteger(parsed) ? parsed : null;
 };
 
+const resolveTradeKind = (
+  buyerUserId: string | undefined,
+  sellerUserId: string | undefined,
+  viewerId: string
+) => {
+  if (buyerUserId === viewerId) return "buy" as const;
+  if (sellerUserId === viewerId) return "sell" as const;
+  return "buy" as const;
+};
+
+const resolveCounterpartyName = (
+  params: {
+    buyerUserId: string | undefined;
+    sellerUserId: string | undefined;
+    buyerCompanyName?: string | null;
+    sellerCompanyName?: string | null;
+  },
+  viewerId: string
+) => {
+  if (params.buyerUserId === viewerId) return params.sellerCompanyName ?? "（未設定）";
+  if (params.sellerUserId === viewerId) return params.buyerCompanyName ?? "（未設定）";
+  return "（対象外）";
+};
+
 function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
   const primaryItem = trade.items[0];
@@ -98,8 +122,7 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   const updatedAtLabel = formatDateTime(trade.updatedAt ?? trade.createdAt ?? new Date().toISOString());
   const sellerId = trade.sellerUserId ?? trade.seller.userId ?? "seller";
   const buyerId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
-  const isSeller = sellerId === viewerId;
-  const kind = isSeller ? ("sell" as const) : ("buy" as const);
+  const kind = resolveTradeKind(buyerId, sellerId, viewerId);
   const todo = getTodoPresentation(trade, kind === "buy" ? "buyer" : "seller");
   const section: TradeSectionWithInquiry =
     trade.naviType === NaviType.ONLINE_INQUIRY ? "onlineInquiry" : todo.section;
@@ -111,7 +134,15 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
     status: todo.todoKind,
     section,
     updatedAt: updatedAtLabel,
-    partnerName: isSeller ? trade.buyer.companyName : trade.seller.companyName,
+    partnerName: resolveCounterpartyName(
+      {
+        buyerUserId: buyerId,
+        sellerUserId: sellerId,
+        buyerCompanyName: trade.buyer.companyName ?? trade.buyerName,
+        sellerCompanyName: trade.seller.companyName ?? trade.sellerName,
+      },
+      viewerId
+    ),
     makerName: primaryItem?.maker ?? "-",
     itemName: primaryItem?.itemName ?? "商品",
     quantity: totalQty,
@@ -126,14 +157,23 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   };
 }
 
-function buildInquiryRowFromDto(dto: OnlineInquiryListItem, kind: "buy" | "sell"): InquiryRow {
+function buildInquiryRowFromDto(dto: OnlineInquiryListItem, viewerId: string): InquiryRow {
   const updatedAtLabel = formatDateTime(dto.updatedAt ?? dto.createdAt);
+  const kind = resolveTradeKind(dto.buyerUserId, dto.sellerUserId, viewerId);
 
   return {
     id: dto.id,
     naviId: undefined,
     status: dto.status,
-    partnerName: dto.partnerName,
+    partnerName: resolveCounterpartyName(
+      {
+        buyerUserId: dto.buyerUserId,
+        sellerUserId: dto.sellerUserId,
+        buyerCompanyName: dto.buyerCompanyName,
+        sellerCompanyName: dto.sellerCompanyName,
+      },
+      viewerId
+    ),
     makerName: dto.makerName ?? "-",
     itemName: dto.machineName ?? "商品",
     quantity: dto.quantity,
@@ -197,8 +237,8 @@ export function InProgressTabContent() {
       ]);
 
       const rows = [
-        ...buyer.map((inquiry) => buildInquiryRowFromDto(inquiry, "buy")),
-        ...seller.map((inquiry) => buildInquiryRowFromDto(inquiry, "sell")),
+        ...buyer.map((inquiry) => buildInquiryRowFromDto(inquiry, currentUser.id)),
+        ...seller.map((inquiry) => buildInquiryRowFromDto(inquiry, currentUser.id)),
       ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
 
       setOnlineInquiryRows(rows);
@@ -206,7 +246,7 @@ export function InProgressTabContent() {
       console.error(error);
       setOnlineInquiryRows([]);
     }
-  }, []);
+  }, [currentUser.id]);
 
   useEffect(() => {
     fetchApprovalRows();
