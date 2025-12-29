@@ -1,7 +1,13 @@
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { type TradeRecord } from "./types";
 import { tradeDtoListSchema, transformTrade } from "./transform";
-import { getHistoryTradesForUser, getPurchaseHistoryForUser, getSalesHistoryForUser, getTradesForUser } from "./storage";
+import {
+  getHistoryTradesForUser,
+  getPurchaseHistoryForUser,
+  getSalesHistoryForUser,
+  getTradesForUser,
+} from "./storage";
+import { loadAcceptedOnlineInquiryTrades } from "./onlineInquiryTrades";
 
 async function loadTradesFromApi(): Promise<TradeRecord[]> {
   try {
@@ -45,18 +51,27 @@ export async function loadTradesForUser(userId: string): Promise<TradeRecord[]> 
 }
 
 export async function loadHistoryTradesForUser(userId: string): Promise<TradeRecord[]> {
-  const trades = await loadTradesFromApi();
-  return getHistoryTradesForUser(userId, trades);
+  const [trades, onlineInquiryTrades] = await Promise.all([
+    loadTradesFromApi(),
+    loadAcceptedOnlineInquiryTrades(),
+  ]);
+  return getHistoryTradesForUser(userId, [...trades, ...onlineInquiryTrades]);
 }
 
 export async function loadPurchaseHistoryForUser(userId: string): Promise<TradeRecord[]> {
-  const trades = await loadTradesFromApi();
-  return getPurchaseHistoryForUser(userId, trades);
+  const [trades, onlineInquiryTrades] = await Promise.all([
+    loadTradesFromApi(),
+    loadAcceptedOnlineInquiryTrades(),
+  ]);
+  return getPurchaseHistoryForUser(userId, [...trades, ...onlineInquiryTrades]);
 }
 
 export async function loadSalesHistoryForUser(userId: string): Promise<TradeRecord[]> {
-  const trades = await loadTradesFromApi();
-  return getSalesHistoryForUser(userId, trades);
+  const [trades, onlineInquiryTrades] = await Promise.all([
+    loadTradesFromApi(),
+    loadAcceptedOnlineInquiryTrades(),
+  ]);
+  return getSalesHistoryForUser(userId, [...trades, ...onlineInquiryTrades]);
 }
 
 export async function loadTradeById(tradeId: string): Promise<TradeRecord | null> {
