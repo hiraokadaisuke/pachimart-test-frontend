@@ -44,9 +44,11 @@ export default function Header() {
   const currentUser = useCurrentDevUser();
   const { getBalance } = useBalance();
   const plannedAmounts = usePlannedAmounts(currentUser.id);
+  const baseBalance = getBalance(currentUser.id);
+  const availableBalance = Math.max(0, baseBalance - plannedAmounts.plannedPurchase);
   const balanceSummary: BalanceSummary = {
     ...plannedAmounts,
-    available: getBalance(currentUser.id),
+    available: availableBalance,
   };
   const pathname = usePathname();
   const isProductsPage = pathname === "/products" || pathname?.startsWith("/products/");
@@ -108,7 +110,9 @@ export default function Header() {
           )}
           <div className="flex items-center gap-3 whitespace-nowrap">
             <div className="text-right text-[11px] leading-tight text-neutral-900">
-              <div className="font-semibold text-slate-900">購入予定金額 {formatCurrency(balanceSummary.plannedPurchase)}</div>
+              <div className="font-semibold text-slate-900">
+                購入予定金額 <span className="text-red-600">{formatCurrency(balanceSummary.plannedPurchase)}</span>
+              </div>
               <div className="font-semibold text-slate-900">売却予定金額 {formatCurrency(balanceSummary.plannedSales)}</div>
               <div className="font-semibold text-slate-900">利用可能残高 {formatCurrency(balanceSummary.available)}</div>
             </div>
