@@ -3,6 +3,7 @@ export type Listing = {
   sellerUserId: string;
   status: string;
   isVisible: boolean;
+  type: string;
   kind: string;
   maker: string | null;
   machineName: string | null;

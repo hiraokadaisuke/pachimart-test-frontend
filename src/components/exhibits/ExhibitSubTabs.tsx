@@ -6,7 +6,7 @@ type ExhibitTabKey = "active" | "new" | "draft";
 
 const EXHIBIT_TABS: SubTab[] = [
   { label: "出品中", href: "/mypage/exhibits" },
-  { label: "新規出品", href: "/sell" },
+  { label: "新規出品", href: "/mypage/exhibits/new" },
   { label: "下書き", href: "/mypage/exhibits?tab=draft" },
 ];
 
@@ -14,7 +14,7 @@ export function ExhibitSubTabs({ activeTab }: { activeTab: ExhibitTabKey }) {
   const tabs = EXHIBIT_TABS.map((tab) => ({
     ...tab,
     isActive:
-      tab.href === "/sell"
+      tab.href === "/mypage/exhibits/new"
         ? activeTab === "new"
         : tab.href.includes("draft")
           ? activeTab === "draft"

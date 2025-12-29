@@ -50,6 +50,7 @@ const toDto = (listing: any) => ({
   sellerUserId: String(listing.sellerUserId),
   status: listing.status as ListingStatus,
   isVisible: Boolean(listing.isVisible),
+  type: String(listing.type),
   kind: String(listing.kind),
   maker: listing.maker as string | null,
   machineName: listing.machineName as string | null,

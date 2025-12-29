@@ -9,7 +9,10 @@ import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 
 type SellFormProps = {
   showHeader?: boolean;
+  listingType: ListingType;
 };
+
+type ListingType = "PACHINKO" | "SLOT";
 
 type StorageLocation = {
   id: string;
@@ -20,6 +23,18 @@ type StorageLocation = {
   addressLine: string | null;
   handlingFeePerUnit: number | null;
   shippingFeesByRegion: Record<string, number> | null;
+};
+
+type MakerOption = {
+  id: string;
+  name: string;
+};
+
+type MachineModelOption = {
+  id: string;
+  makerId: string;
+  type: ListingType;
+  name: string;
 };
 
 const Section = ({ title, children }: { title: string; children: ReactNode }) => (
@@ -49,12 +64,17 @@ const FieldRow = ({
   </div>
 );
 
-export function SellForm({ showHeader = true }: SellFormProps) {
+const listingTypeLabels: Record<ListingType, string> = {
+  PACHINKO: "パチンコ",
+  SLOT: "スロット",
+};
+
+export function SellForm({ showHeader = true, listingType }: SellFormProps) {
   const router = useRouter();
   const currentUser = useCurrentDevUser();
 
   const [kind, setKind] = useState("本体");
-  const [maker, setMaker] = useState("メーカーA");
+  const [makerId, setMakerId] = useState("");
   const [machineName, setMachineName] = useState("");
   const [frameColor, setFrameColor] = useState("");
   const [quantity, setQuantity] = useState<number | "">(1);
@@ -62,6 +82,10 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   const [isNegotiable, setIsNegotiable] = useState(false);
   const [storageLocations, setStorageLocations] = useState<StorageLocation[]>([]);
   const [selectedStorageLocationId, setSelectedStorageLocationId] = useState("");
+  const [makers, setMakers] = useState<MakerOption[]>([]);
+  const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
+  const [isLoadingMasters, setIsLoadingMasters] = useState(false);
+  const [masterError, setMasterError] = useState<string | null>(null);
   const [removalStatus, setRemovalStatus] = useState<"REMOVED" | "SCHEDULED">("SCHEDULED");
   const [removalDate, setRemovalDate] = useState("");
   const [hasNailSheet, setHasNailSheet] = useState(false);
@@ -112,10 +136,75 @@ export function SellForm({ showHeader = true }: SellFormProps) {
     fetchLocations();
   }, [currentUser.id]);
 
+  useEffect(() => {
+    let isActive = true;
+
+    const fetchMasters = async () => {
+      setIsLoadingMasters(true);
+      try {
+        const response = await fetch(`/api/machine-masters?type=${listingType}`, {
+          cache: "no-store",
+        });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch master data: ${response.status}`);
+        }
+        const data = (await response.json()) as {
+          makers: MakerOption[];
+          machineModels: MachineModelOption[];
+        };
+        if (!isActive) return;
+        setMakers(data.makers);
+        setMachineModels(data.machineModels);
+        setMasterError(null);
+      } catch (error) {
+        console.error("Failed to fetch maker/model masters", error);
+        if (!isActive) return;
+        setMasterError("メーカー・機種マスタの取得に失敗しました。");
+      } finally {
+        if (isActive) {
+          setIsLoadingMasters(false);
+        }
+      }
+    };
+
+    fetchMasters();
+
+    return () => {
+      isActive = false;
+    };
+  }, [listingType]);
+
+  useEffect(() => {
+    if (!makerId && makers.length > 0) {
+      setMakerId(makers[0].id);
+    }
+  }, [makerId, makers]);
+
   const selectedStorageLocation = useMemo(
     () => storageLocations.find((location) => location.id === selectedStorageLocationId) ?? null,
     [selectedStorageLocationId, storageLocations]
   );
+
+  const selectedMaker = useMemo(
+    () => makers.find((maker) => maker.id === makerId) ?? null,
+    [makerId, makers]
+  );
+
+  const filteredModels = useMemo(
+    () => machineModels.filter((model) => model.makerId === makerId),
+    [machineModels, makerId]
+  );
+
+  useEffect(() => {
+    if (filteredModels.length === 0) {
+      setMachineName("");
+      return;
+    }
+
+    if (!filteredModels.some((model) => model.name === machineName)) {
+      setMachineName(filteredModels[0].name);
+    }
+  }, [filteredModels, machineName]);
 
   const storageLocationAddress = selectedStorageLocation
     ? `${selectedStorageLocation.postalCode ? `〒${selectedStorageLocation.postalCode} ` : ""}${
@@ -126,6 +215,11 @@ export function SellForm({ showHeader = true }: SellFormProps) {
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSubmitError(null);
+
+    if (!selectedMaker) {
+      setSubmitError("メーカーを選択してください。");
+      return;
+    }
 
     if (!machineName.trim()) {
       setSubmitError("機種名を入力してください。");
@@ -157,8 +251,9 @@ export function SellForm({ showHeader = true }: SellFormProps) {
     );
 
     const payload = {
+      type: listingType,
       kind,
-      maker,
+      maker: selectedMaker.name,
       machineName: machineName.trim(),
       quantity,
       unitPriceExclTax: isNegotiable ? null : (price as number),
@@ -219,6 +314,12 @@ export function SellForm({ showHeader = true }: SellFormProps) {
         <div className="flex-1 space-y-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             <Section title="基本情報">
+              <FieldRow label="遊技種別" required>
+                <div className="w-full rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
+                  {listingTypeLabels[listingType]}
+                </div>
+              </FieldRow>
+
               <FieldRow label="販売方法" required>
                 <div className="flex flex-wrap gap-4">
                   <label className="flex items-center gap-2">
@@ -280,23 +381,42 @@ export function SellForm({ showHeader = true }: SellFormProps) {
               <FieldRow label="メーカー" required>
                 <select
                   className="w-full rounded border border-slate-200 px-3 py-2"
-                  value={maker}
-                  onChange={(event) => setMaker(event.target.value)}
+                  value={makerId}
+                  onChange={(event) => setMakerId(event.target.value)}
+                  disabled={isLoadingMasters || makers.length === 0}
                 >
-                  <option>メーカーA</option>
-                  <option>メーカーB</option>
-                  <option>メーカーC</option>
+                  <option value="">
+                    {isLoadingMasters ? "メーカーを読み込み中..." : "メーカーを選択してください"}
+                  </option>
+                  {makers.map((makerOption) => (
+                    <option key={makerOption.id} value={makerOption.id}>
+                      {makerOption.name}
+                    </option>
+                  ))}
                 </select>
+                {masterError ? <p className="text-xs text-rose-600">{masterError}</p> : null}
               </FieldRow>
 
               <FieldRow label="機種名" required>
-                <input
-                  type="text"
+                <select
                   className="w-full rounded border border-slate-200 px-3 py-2"
-                  placeholder="機種名を入力"
                   value={machineName}
                   onChange={(event) => setMachineName(event.target.value)}
-                />
+                  disabled={!makerId || filteredModels.length === 0}
+                >
+                  <option value="">
+                    {makerId
+                      ? filteredModels.length === 0
+                        ? "機種が登録されていません"
+                        : "機種を選択してください"
+                      : "メーカーを先に選択してください"}
+                  </option>
+                  {filteredModels.map((model) => (
+                    <option key={model.id} value={model.name}>
+                      {model.name}
+                    </option>
+                  ))}
+                </select>
               </FieldRow>
 
               <FieldRow label="枠色">
