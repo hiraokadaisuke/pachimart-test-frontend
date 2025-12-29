@@ -126,7 +126,14 @@ type InMemoryPrisma = {
     update: ({ where, data }: { where: { id?: number | null }; data: Partial<InMemoryNavi> }) => Promise<InMemoryNavi>;
   };
   onlineInquiry: {
-    findMany: () => Promise<InMemoryOnlineInquiry[]>;
+    findMany: ({
+      where,
+      orderBy,
+    }?: {
+      where?: { buyerUserId?: string | null; sellerUserId?: string | null };
+      orderBy?: { updatedAt?: "asc" | "desc"; createdAt?: "asc" | "desc" }[];
+    }) => Promise<InMemoryOnlineInquiry[]>;
+    findUnique: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryOnlineInquiry | null>;
     create: ({ data }: { data: Partial<InMemoryOnlineInquiry> }) => Promise<InMemoryOnlineInquiry>;
   };
   trade: {
@@ -161,6 +168,10 @@ type InMemoryPrisma = {
           buyerUser: { id: string; companyName: string } | null;
         })
     >;
+  };
+  user: {
+    findMany: ({ where }?: { where?: { id?: { in?: string[] } } }) => Promise<{ id: string; companyName: string }[]>;
+    findUnique: ({ where }: { where: { id?: string | null } }) => Promise<{ id: string; companyName: string } | null>;
   };
   message: {
     findMany: ({ where, orderBy }?: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
@@ -339,8 +350,41 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       },
     },
     onlineInquiry: {
-      findMany: async () =>
-        [...onlineInquiries].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+      findMany: async ({ where, orderBy } = {}) => {
+        const filtered = onlineInquiries.filter((inquiry) => {
+          if (where?.buyerUserId && inquiry.buyerUserId !== where.buyerUserId) return false;
+          if (where?.sellerUserId && inquiry.sellerUserId !== where.sellerUserId) return false;
+          return true;
+        });
+
+        const sorters = orderBy?.length
+          ? orderBy
+          : ([{ updatedAt: "desc" }, { createdAt: "desc" }] as {
+              updatedAt?: "asc" | "desc";
+              createdAt?: "asc" | "desc";
+            }[]);
+
+        const sorted = [...filtered].sort((a, b) => {
+          for (const order of sorters) {
+            if (order.updatedAt) {
+              const diff = a.updatedAt.getTime() - b.updatedAt.getTime();
+              if (diff !== 0) return order.updatedAt === "desc" ? -diff : diff;
+            }
+            if (order.createdAt) {
+              const diff = a.createdAt.getTime() - b.createdAt.getTime();
+              if (diff !== 0) return order.createdAt === "desc" ? -diff : diff;
+            }
+          }
+          return 0;
+        });
+
+        return sorted.map((record) => ({ ...record }));
+      },
+      findUnique: async ({ where }: { where: { id?: string | null } }) => {
+        const id = where.id ?? "";
+        const found = onlineInquiries.find((inquiry) => inquiry.id === id);
+        return found ? { ...found } : null;
+      },
       create: async ({ data }: { data: Partial<InMemoryOnlineInquiry> }) => {
         const nowDate = now();
         const record: InMemoryOnlineInquiry = {
@@ -392,6 +436,18 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         }
 
         return result;
+      },
+    },
+    user: {
+      findMany: async ({ where } = {}) => {
+        const ids = where?.id?.in ?? null;
+        const records = ids ? ids.map((id) => userDirectory[id]).filter(Boolean) : Object.values(userDirectory);
+        return records.map((user) => ({ ...user }));
+      },
+      findUnique: async ({ where }: { where: { id?: string | null } }) => {
+        const id = where.id ?? "";
+        const found = userDirectory[id];
+        return found ? { ...found } : null;
       },
     },
     message: {
