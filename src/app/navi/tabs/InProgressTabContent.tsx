@@ -156,6 +156,7 @@ export function InProgressTabContent() {
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
   const [messageNaviId, setMessageNaviId] = useState<number | null>(null);
   const [messages, setMessages] = useState<TradeMessage[]>([]);
+  const [pendingInquiryIds, setPendingInquiryIds] = useState<Set<string>>(new Set());
 
   const keywordLower = keyword.toLowerCase();
 
@@ -345,29 +346,63 @@ export function InProgressTabContent() {
   );
 
   const resolveNaviId = (rowId: string | number | undefined) => {
-    const parsed = toNumericNaviId(rowId);
-    return parsed === null ? null : String(parsed);
+    if (typeof rowId === "string") return rowId;
+    if (typeof rowId === "number") return String(rowId);
+    return null;
   };
 
   const handleCancelInquiry = async (inquiryId: string | number | undefined) => {
     const targetId = resolveNaviId(inquiryId);
     if (!targetId) return;
-    await respondOnlineInquiry(targetId, "reject").catch((error) => console.error(error));
-    loadInquiries();
+    setPendingInquiryIds((prev) => new Set(prev).add(targetId));
+    try {
+      await respondOnlineInquiry(targetId, "reject");
+      await loadInquiries();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setPendingInquiryIds((prev) => {
+        const next = new Set(prev);
+        next.delete(targetId);
+        return next;
+      });
+    }
   };
 
   const handleAcceptInquiry = async (inquiryId: string | number | undefined) => {
     const targetId = resolveNaviId(inquiryId);
     if (!targetId) return;
-    await respondOnlineInquiry(targetId, "accept").catch((error) => console.error(error));
-    loadInquiries();
+    setPendingInquiryIds((prev) => new Set(prev).add(targetId));
+    try {
+      await respondOnlineInquiry(targetId, "accept");
+      await loadInquiries();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setPendingInquiryIds((prev) => {
+        const next = new Set(prev);
+        next.delete(targetId);
+        return next;
+      });
+    }
   };
 
   const handleDeclineInquiry = async (inquiryId: string | number | undefined) => {
     const targetId = resolveNaviId(inquiryId);
     if (!targetId) return;
-    await respondOnlineInquiry(targetId, "reject").catch((error) => console.error(error));
-    loadInquiries();
+    setPendingInquiryIds((prev) => new Set(prev).add(targetId));
+    try {
+      await respondOnlineInquiry(targetId, "reject");
+      await loadInquiries();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setPendingInquiryIds((prev) => {
+        const next = new Set(prev);
+        next.delete(targetId);
+        return next;
+      });
+    }
   };
 
   const tradeColumnBase: NaviTableColumn[] = [
@@ -532,18 +567,24 @@ export function InProgressTabContent() {
       key: "action",
       label: "操作",
       width: "120px",
-      render: (row: InquiryRow) => (
-        <button
-          type="button"
-          className="inline-flex w-full justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleCancelInquiry(row.naviId ?? row.id);
-          }}
-        >
-          キャンセル
-        </button>
-      ),
+      render: (row: InquiryRow) => {
+        const targetId = resolveNaviId(row.naviId ?? row.id);
+        const isPending = targetId ? pendingInquiryIds.has(targetId) : false;
+
+        return (
+          <button
+            type="button"
+            disabled={isPending}
+            className="inline-flex w-full justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleCancelInquiry(row.naviId ?? row.id);
+            }}
+          >
+            キャンセル
+          </button>
+        );
+      },
     },
   ];
 
@@ -553,30 +594,37 @@ export function InProgressTabContent() {
       key: "action",
       label: "操作",
       width: "180px",
-      render: (row: InquiryRow) => (
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className="inline-flex flex-1 justify-center rounded bg-indigo-700 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleAcceptInquiry(row.naviId ?? row.id);
-            }}
-          >
-            受諾
-          </button>
-          <button
-            type="button"
-            className="inline-flex flex-1 justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDeclineInquiry(row.naviId ?? row.id);
-            }}
-          >
-            見送り
-          </button>
-        </div>
-      ),
+      render: (row: InquiryRow) => {
+        const targetId = resolveNaviId(row.naviId ?? row.id);
+        const isPending = targetId ? pendingInquiryIds.has(targetId) : false;
+
+        return (
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={isPending}
+              className="inline-flex flex-1 justify-center rounded bg-indigo-700 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleAcceptInquiry(row.naviId ?? row.id);
+              }}
+            >
+              受諾
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              className="inline-flex flex-1 justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleDeclineInquiry(row.naviId ?? row.id);
+              }}
+            >
+              見送り
+            </button>
+          </div>
+        );
+      },
     },
   ];
 
