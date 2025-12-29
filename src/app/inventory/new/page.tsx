@@ -126,9 +126,15 @@ export default function InventoryNewPage() {
   );
   const focusMap = useRef<Map<string, HTMLElement>>(new Map());
   const inputBase =
-    "h-9 w-full rounded border border-slate-300 bg-white px-2 text-sm text-neutral-900 transition focus:border-sky-400 focus:ring-2 focus:ring-sky-400 focus:outline-none";
-  const machineGridTemplate =
-    "grid grid-cols-[46px,58px,116px,164px,88px,68px,86px,86px,106px,106px,68px,104px,78px,64px]";
+    "h-7 w-full rounded-none border border-slate-600 bg-amber-50 px-1 text-sm text-neutral-900 focus:border-slate-800 focus:ring-0 focus:outline-none";
+  const selectBase = `${inputBase} bg-amber-50`;
+  const excelTh =
+    "border border-slate-700 bg-sky-300 px-2 py-1 text-xs font-bold text-slate-900";
+  const excelTd = "border border-slate-600 px-2 py-1 align-top";
+  const excelBtn =
+    "h-8 rounded-none border border-slate-600 bg-slate-200 px-4 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] transition hover:bg-slate-100";
+  const machineTableColGroup =
+    "40px 50px 110px 150px 70px 60px 80px 80px 90px 90px 60px 90px 60px 50px";
   const machineOrder: MachineFieldOrder[] = [
     "kind",
     "maker",
@@ -377,409 +383,396 @@ export default function InventoryNewPage() {
   };
 
   return (
-    <div className="mx-auto max-w-screen-xl space-y-3">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-semibold text-neutral-900">在庫登録</h1>
-        <p className="text-sm text-neutral-600">仕入先情報を入力し、仕入機種を行ごとに追加してください。</p>
-      </div>
+    <div className="mx-auto max-w-[1240px] space-y-2 px-2 pb-6 pt-2">
+      <div className="border-4 border-black p-2">
+        <div className="space-y-2 border-2 border-black p-3">
+          <div className="flex items-end justify-between gap-4">
+            <div>
+              <h1 className="text-xl font-semibold text-neutral-900">在庫登録</h1>
+              <p className="text-xs text-neutral-600">仕入先情報を入力し、仕入機種を行ごとに追加してください。</p>
+            </div>
+            <div className="text-right text-xs text-neutral-700">
+              <div>集計情報：P {summary.pCount}台 / S {summary.sCount}台</div>
+              <div>購入金額 {summary.totalAmount.toLocaleString()}円</div>
+              <div className="mt-1 text-[11px] text-neutral-500">Enterで次フィールドへ</div>
+            </div>
+          </div>
 
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-          <div className="flex items-center gap-2 text-sm text-neutral-700">
-            <h2 className="text-lg font-semibold text-neutral-900">仕入先情報</h2>
-            <span className="rounded bg-slate-100 px-2 py-1">今日: {today}</span>
-          </div>
-          <div className="text-xs text-neutral-500">Enterで次フィールドにフォーカス</div>
-        </div>
-        <div>
-          <div className="grid grid-cols-[1.1fr,0.9fr,0.9fr,1.2fr] bg-slate-50 text-[12px] font-semibold text-slate-700">
-            <div className="px-4 py-2">仕入先</div>
-            <div className="px-4 py-2">在庫入力日</div>
-            <div className="px-4 py-2">仕入担当</div>
-            <div className="px-4 py-2">備考</div>
-          </div>
-          <div className="grid grid-cols-[1.1fr,0.9fr,0.9fr,1.2fr] items-stretch border-t border-slate-200 text-sm text-neutral-900">
-            <div className="flex flex-col gap-2 border-r border-slate-200 px-4 py-2">
-              <label className="flex items-center gap-2 text-xs font-semibold text-neutral-800">
-                <span className="whitespace-nowrap">法人</span>
-                <select
-                  value={selectedCorporateId}
-                  onChange={(event) => handleCorporateSelect(event.target.value)}
-                  onKeyDown={(event) => handleSupplierEnter(event, "supplier")}
-                  ref={registerFocus("supplier-supplier")}
-                  className={`${inputBase} shadow-none`}
-                >
-                  {masterData.suppliers.length === 0 && <option value="">仕入先を登録してください</option>}
-                  {masterData.suppliers.map((supplier) => (
-                    <option key={supplier.id} value={supplier.id}>
-                      {supplier.corporateName}（{supplier.category === "hall" ? "ホール" : "業者"}）
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {selectedCorporate?.category === "hall" && (
-                <label className="flex items-center gap-2 text-xs font-semibold text-neutral-800">
-                  <span className="whitespace-nowrap">支店・ホール</span>
+          <table className="w-full border-collapse table-fixed text-sm">
+            <colgroup>
+              <col className="w-[70px]" />
+              <col className="w-[130px]" />
+              <col className="w-[300px]" />
+              <col className="w-[210px]" />
+              <col className="w-[80px]" />
+              <col className="w-[130px]" />
+              <col className="w-[80px]" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th className={excelTh}>表示</th>
+                <th className={excelTh}>在庫入力日</th>
+                <th className={excelTh}>仕入先</th>
+                <th className={excelTh}>備考</th>
+                <th className={excelTh}>消費税</th>
+                <th className={excelTh}>仕入担当</th>
+                <th className={excelTh}>委託</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="bg-white">
+                <td className={`${excelTd} text-center text-xs text-neutral-500`}>—</td>
+                <td className={excelTd}>
+                  <input
+                    type="date"
+                    value={supplierInfo.inputDate}
+                    onChange={(event) => handleSupplierChange("inputDate", event.target.value)}
+                    onKeyDown={(event) => handleSupplierEnter(event, "inputDate")}
+                    ref={registerFocus("supplier-inputDate")}
+                    className={inputBase}
+                  />
+                </td>
+                <td className={excelTd}>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-1">
+                      <select
+                        value={selectedCorporateId}
+                        onChange={(event) => handleCorporateSelect(event.target.value)}
+                        onKeyDown={(event) => handleSupplierEnter(event, "supplier")}
+                        ref={registerFocus("supplier-supplier")}
+                        className={selectBase}
+                      >
+                        {masterData.suppliers.length === 0 && (
+                          <option value="">仕入先を登録してください</option>
+                        )}
+                        {masterData.suppliers.map((supplier) => (
+                          <option key={supplier.id} value={supplier.id}>
+                            {supplier.corporateName}（{supplier.category === "hall" ? "ホール" : "業者"}）
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="button"
+                        className="h-7 rounded-none border border-slate-600 bg-slate-100 px-2 text-[11px] text-slate-700 shadow-[inset_1px_1px_0px_0px_#ffffff]"
+                      >
+                        仕入先検索
+                      </button>
+                    </div>
+                    {selectedCorporate?.category === "hall" && (
+                      <select
+                        value={selectedBranchId}
+                        onChange={(event) => handleBranchSelect(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+                            event.preventDefault();
+                            focusTo("supplier-inputDate");
+                          }
+                        }}
+                        ref={registerFocus("supplier-branch")}
+                        className={selectBase}
+                      >
+                        {(selectedCorporate?.branches ?? []).map((branch) => (
+                          <option key={branch.id} value={branch.id}>
+                            {branch.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                    <div className="text-[10px] text-neutral-600">
+                      {selectedCorporate?.corporateName || "法人未選択"}
+                      {selectedBranch?.name ? ` / ${selectedBranch.name}` : ""}
+                    </div>
+                  </div>
+                </td>
+                <td className={excelTd}>
+                  <textarea
+                    value={supplierInfo.notes}
+                    onChange={(event) => handleSupplierChange("notes", event.target.value)}
+                    rows={3}
+                    className="h-16 w-full rounded-none border border-slate-600 bg-amber-50 px-1 py-1 text-sm text-neutral-900 focus:border-slate-800 focus:ring-0 focus:outline-none"
+                  />
+                </td>
+                <td className={`${excelTd} text-center text-xs text-neutral-500`}>—</td>
+                <td className={excelTd}>
                   <select
-                    value={selectedBranchId}
-                    onChange={(event) => handleBranchSelect(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-                        event.preventDefault();
-                        focusTo("supplier-inputDate");
-                      }
-                    }}
-                    ref={registerFocus("supplier-branch")}
-                    className={`${inputBase} shadow-none`}
+                    value={supplierInfo.buyerStaff}
+                    onChange={(event) => handleSupplierChange("buyerStaff", event.target.value)}
+                    onKeyDown={(event) => handleSupplierEnter(event, "buyerStaff")}
+                    ref={registerFocus("supplier-buyerStaff")}
+                    className={selectBase}
                   >
-                    {(selectedCorporate?.branches ?? []).map((branch) => (
-                      <option key={branch.id} value={branch.id}>
-                        {branch.name}
+                    <option value="">選択してください</option>
+                    {masterData.buyerStaffs.map((staff) => (
+                      <option key={staff} value={staff}>
+                        {staff}
                       </option>
                     ))}
                   </select>
-                </label>
-              )}
-              <div className="rounded border border-dashed border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-tight text-neutral-700">
-                <div className="flex items-center justify-between gap-2 whitespace-nowrap text-xs font-semibold text-neutral-800">
-                  <span>{selectedCorporate?.corporateName || "法人未選択"}</span>
-                  <span className="rounded bg-slate-200 px-2 py-0.5 text-[10px] text-neutral-700">
-                    {selectedCorporate?.category === "hall" ? "ホール" : "業者"}
-                  </span>
-                </div>
-                <div className="mt-1 whitespace-nowrap">〒{selectedCorporate?.postalCode || ""}</div>
-                <div className="whitespace-nowrap">{selectedCorporate?.address || "住所未登録"}</div>
-                {(selectedCorporate?.phone || selectedCorporate?.fax) && (
-                  <div className="flex gap-2 whitespace-nowrap">
-                    {selectedCorporate?.phone && <span>TEL {selectedCorporate.phone}</span>}
-                    {selectedCorporate?.fax && <span>FAX {selectedCorporate.fax}</span>}
-                  </div>
-                )}
-                {selectedBranch && (
-                  <div className="mt-2 space-y-0.5 rounded border border-slate-200 bg-white px-2 py-1">
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-800">
-                      <span>支店 / ホール</span>
-                      <span>{selectedBranch.name}</span>
-                    </div>
-                    <div className="whitespace-nowrap">〒{selectedBranch.postalCode}</div>
-                    <div className="whitespace-nowrap">{selectedBranch.address}</div>
-                    {(selectedBranch.phone || selectedBranch.fax) && (
-                      <div className="flex gap-2 whitespace-nowrap">
-                        {selectedBranch.phone && <span>TEL {selectedBranch.phone}</span>}
-                        {selectedBranch.fax && <span>FAX {selectedBranch.fax}</span>}
+                </td>
+                <td className={`${excelTd} text-center text-xs text-neutral-500`}>—</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <table className="w-full border-collapse table-fixed text-sm">
+            <colgroup>
+              {machineTableColGroup.split(" ").map((width, index) => (
+                <col key={`machine-col-${index}`} style={{ width }} />
+              ))}
+            </colgroup>
+            <thead>
+              <tr>
+                <th className={excelTh}>行</th>
+                <th className={excelTh}>種別</th>
+                <th className={excelTh}>メーカー名</th>
+                <th className={excelTh}>機種名</th>
+                <th className={excelTh}>タイプ</th>
+                <th className={excelTh}>仕入数</th>
+                <th className={excelTh}>仕入単価</th>
+                <th className={excelTh}>販売単価</th>
+                <th className={excelTh}>入庫日</th>
+                <th className={excelTh}>撤去日</th>
+                <th className={excelTh}>柄</th>
+                <th className={excelTh}>保管先</th>
+                <th className={excelTh}>表示</th>
+                <th className={excelTh}>出品</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row, index) => {
+                const makerList = row.kind ? makerOptionsByKind[row.kind] : makerOptions;
+                const suggestions = machineMatches(row.model, row.maker, row.kind);
+                return (
+                  <tr key={`row-${index}`} className="bg-white">
+                    <td className={`${excelTd} text-center text-[11px] text-neutral-700`}>
+                      <div className="flex flex-col items-center gap-1">
+                        <span className="font-semibold text-neutral-900">{index + 1}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRow(index)}
+                          className="rounded-none border border-slate-500 bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-700 disabled:opacity-40"
+                          disabled={rows.length <= 1}
+                        >
+                          削除
+                        </button>
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="border-r border-slate-200 px-4 py-2">
-              <input
-                type="date"
-                value={supplierInfo.inputDate}
-                onChange={(event) => handleSupplierChange("inputDate", event.target.value)}
-                onKeyDown={(event) => handleSupplierEnter(event, "inputDate")}
-                ref={registerFocus("supplier-inputDate")}
-                className={`${inputBase} shadow-none`}
-              />
-            </div>
-            <div className="border-r border-slate-200 px-4 py-2">
-              <select
-                value={supplierInfo.buyerStaff}
-                onChange={(event) => handleSupplierChange("buyerStaff", event.target.value)}
-                onKeyDown={(event) => handleSupplierEnter(event, "buyerStaff")}
-                ref={registerFocus("supplier-buyerStaff")}
-                className={`${inputBase} shadow-none`}
-              >
-                <option value="">選択してください</option>
-                {masterData.buyerStaffs.map((staff) => (
-                  <option key={staff} value={staff}>
-                    {staff}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="px-4 py-2">
-              <textarea
-                value={supplierInfo.notes}
-                onChange={(event) => handleSupplierChange("notes", event.target.value)}
-                rows={2}
-                className="h-[72px] w-full rounded border border-slate-300 bg-white px-3 py-2 text-sm text-neutral-900 focus:border-sky-400 focus:ring-2 focus:ring-sky-400 focus:outline-none"
-              />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <div className="rounded-lg border border-slate-200 bg-white px-4 py-2 shadow-sm">
-        <p className="text-sm font-semibold text-neutral-800">
-          集計：P {summary.pCount}台 / S {summary.sCount}台 ・ 購入金額 {summary.totalAmount.toLocaleString()}円
-        </p>
-      </div>
-
-      <section className="rounded-xl border border-slate-200 bg-white shadow-sm">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-neutral-900">仕入機種</h2>
-            <span className="rounded bg-slate-100 px-2 py-1 text-xs text-neutral-700">110%でも1画面収まるコンパクト配置</span>
-          </div>
-          <div className="flex flex-wrap gap-2 text-sm">
-            <button
-              type="button"
-              onClick={handleAddRow}
-              className="h-9 rounded border border-slate-300 bg-white px-3 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              空行追加
-            </button>
-            <button
-              type="button"
-              onClick={handleDuplicateRow}
-              className="h-9 rounded border border-slate-300 bg-white px-3 font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-            >
-              同一行追加
-            </button>
-          </div>
-        </div>
-
-        <div className="max-w-full">
-          <div className={`${machineGridTemplate} bg-slate-50 px-2 py-2 text-[12px] font-semibold text-slate-700`}>
-            <div className="text-center">行</div>
-            <div className="text-center">種別</div>
-            <div className="text-center">メーカー</div>
-            <div className="text-center">機種名</div>
-            <div className="text-center">タイプ</div>
-            <div className="text-center">仕入数</div>
-            <div className="text-center">仕入単価</div>
-            <div className="text-center">販売単価</div>
-            <div className="text-center">入庫日</div>
-            <div className="text-center">撤去日</div>
-            <div className="text-center">柄</div>
-            <div className="text-center">保管先</div>
-            <div className="text-center">表示</div>
-            <div className="text-center">出品</div>
-          </div>
-
-          <div className="divide-y divide-slate-200">
-            {rows.map((row, index) => {
-              const makerList = row.kind ? makerOptionsByKind[row.kind] : makerOptions;
-              const suggestions = machineMatches(row.model, row.maker, row.kind);
-              return (
-                <div
-                  key={`row-${index}`}
-                  className={`${machineGridTemplate} items-center bg-white px-2 py-1 text-sm text-neutral-900 transition hover:bg-sky-50 focus-within:bg-sky-50`}
-                >
-                  <div className="flex items-center justify-between gap-2 pr-2 text-xs text-neutral-600">
-                    <span className="font-semibold text-neutral-900">{index + 1}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteRow(index)}
-                      className="rounded border border-slate-200 px-2 py-1 text-[11px] font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-40"
-                      disabled={rows.length <= 1}
-                    >
-                      削除
-                    </button>
-                  </div>
-                  <div className="pr-2">
-                    <select
-                      value={row.kind}
-                      onChange={(event) => handleRowChange(index, "kind", event.target.value as InventoryFormRow["kind"])}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "kind")}
-                      ref={registerFocus(focusKey(index, "kind"))}
-                      className={`${inputBase} text-center`}
-                    >
-                      <option value="">-</option>
-                      <option value="P">P</option>
-                      <option value="S">S</option>
-                    </select>
-                  </div>
-                  <div className="pr-2">
-                    <select
-                      value={row.maker}
-                      onChange={(event) => handleRowChange(index, "maker", event.target.value)}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "maker")}
-                      ref={registerFocus(focusKey(index, "maker"))}
-                      className={`${inputBase}`}
-                    >
-                      <option value="">選択</option>
-                      {makerList.map((maker) => (
-                        <option key={maker} value={maker}>
-                          {maker}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="relative pr-2">
-                    <input
-                      value={row.model}
-                      onChange={(event) => handleRowChange(index, "model", event.target.value)}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "model")}
-                      ref={registerFocus(focusKey(index, "model"))}
-                      placeholder="機種名検索"
-                      className={`${inputBase}`}
-                    />
-                    {suggestions.length > 0 && (
-                      <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto rounded-md border border-slate-200 bg-white shadow-lg">
-                        {suggestions.map((machine) => (
-                          <button
-                            key={`${machine.maker}-${machine.title}`}
-                            type="button"
-                            onClick={() => {
-                              handleRowChange(index, "model", machine.title);
-                              handleRowChange(index, "maker", machine.maker);
-                              handleRowChange(index, "kind", machine.kind);
-                            }}
-                            className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-slate-50"
-                          >
-                            <span>{machine.title}</span>
-                            <span className="text-[11px] text-neutral-500">{machine.maker}</span>
-                          </button>
+                    </td>
+                    <td className={excelTd}>
+                      <select
+                        value={row.kind}
+                        onChange={(event) =>
+                          handleRowChange(index, "kind", event.target.value as InventoryFormRow["kind"])
+                        }
+                        onKeyDown={(event) => handleMachineEnter(event, index, "kind")}
+                        ref={registerFocus(focusKey(index, "kind"))}
+                        className={`${selectBase} text-center`}
+                      >
+                        <option value="">-</option>
+                        <option value="P">P</option>
+                        <option value="S">S</option>
+                      </select>
+                    </td>
+                    <td className={excelTd}>
+                      <select
+                        value={row.maker}
+                        onChange={(event) => handleRowChange(index, "maker", event.target.value)}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "maker")}
+                        ref={registerFocus(focusKey(index, "maker"))}
+                        className={selectBase}
+                      >
+                        <option value="">選択</option>
+                        {makerList.map((maker) => (
+                          <option key={maker} value={maker}>
+                            {maker}
+                          </option>
                         ))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="pr-2">
-                    <select
-                      value={row.type}
-                      onChange={(event) => handleRowChange(index, "type", event.target.value as InventoryFormRow["type"])}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "type")}
-                      ref={registerFocus(focusKey(index, "type"))}
-                      className={inputBase}
-                    >
-                      <option value="">選択</option>
-                      {DEVICE_TYPES.map((type) => (
-                        <option key={type} value={type}>
-                          {type}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="pr-2">
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.quantity}
-                      onChange={(event) => handleRowChange(index, "quantity", Number(event.target.value))}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "quantity")}
-                      ref={registerFocus(focusKey(index, "quantity"))}
-                      className={`${inputBase} text-right`}
-                    />
-                  </div>
-                  <div className="pr-2">
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.unitPrice}
-                      onChange={(event) => handleRowChange(index, "unitPrice", Number(event.target.value))}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "unitPrice")}
-                      ref={registerFocus(focusKey(index, "unitPrice"))}
-                      className={`${inputBase} text-right`}
-                    />
-                  </div>
-                  <div className="pr-2">
-                    <input
-                      type="number"
-                      min={0}
-                      value={row.saleUnitPrice}
-                      onChange={(event) => handleRowChange(index, "saleUnitPrice", Number(event.target.value))}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "saleUnitPrice")}
-                      ref={registerFocus(focusKey(index, "saleUnitPrice"))}
-                      className={`${inputBase} text-right`}
-                    />
-                  </div>
-                  <div className="pr-2">
-                    <input
-                      type="date"
-                      value={row.stockInDate}
-                      onChange={(event) => handleRowChange(index, "stockInDate", event.target.value)}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "stockInDate")}
-                      ref={registerFocus(focusKey(index, "stockInDate"))}
-                      className={inputBase}
-                    />
-                  </div>
-                  <div className="pr-2">
-                    <input
-                      type="date"
-                      value={row.removeDate}
-                      onChange={(event) => handleRowChange(index, "removeDate", event.target.value)}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "removeDate")}
-                      ref={registerFocus(focusKey(index, "removeDate"))}
-                      className={inputBase}
-                    />
-                  </div>
-                  <div className="pr-2">
-                    <input
-                      value={row.pattern}
-                      onChange={(event) => handleRowChange(index, "pattern", event.target.value)}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "pattern")}
-                      ref={registerFocus(focusKey(index, "pattern"))}
-                      className={inputBase}
-                    />
-                  </div>
-                  <div className="pr-2">
-                    <select
-                      value={row.warehouse}
-                      onChange={(event) => handleRowChange(index, "warehouse", event.target.value)}
-                      onKeyDown={(event) => handleMachineEnter(event, index, "warehouse")}
-                      ref={registerFocus(focusKey(index, "warehouse"))}
-                      className={inputBase}
-                    >
-                      <option value="">選択</option>
-                      {masterData.warehouses.map((warehouse) => (
-                        <option key={warehouse} value={warehouse}>
-                          {warehouse}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <label className="flex h-9 w-full items-center justify-center gap-2 rounded border border-slate-300 bg-white px-2 text-sm shadow-sm">
+                      </select>
+                    </td>
+                    <td className={`${excelTd} relative`}>
                       <input
-                        type="checkbox"
-                        checked={row.isVisible}
-                        onChange={(event) => handleRowChange(index, "isVisible", event.target.checked)}
-                        onKeyDown={(event) => handleMachineEnter(event, index, "isVisible")}
-                        ref={registerFocus(focusKey(index, "isVisible"))}
-                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
+                        value={row.model}
+                        onChange={(event) => handleRowChange(index, "model", event.target.value)}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "model")}
+                        ref={registerFocus(focusKey(index, "model"))}
+                        placeholder="機種名検索"
+                        className={inputBase}
                       />
-                      <span className="text-[12px] text-neutral-700">する</span>
-                    </label>
-                  </div>
-                  <div className="flex items-center justify-center">
-                    <label className="flex h-9 w-full items-center justify-center gap-2 rounded border border-slate-300 bg-white px-2 text-sm shadow-sm">
+                      {suggestions.length > 0 && (
+                        <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto border border-slate-400 bg-white">
+                          {suggestions.map((machine) => (
+                            <button
+                              key={`${machine.maker}-${machine.title}`}
+                              type="button"
+                              onClick={() => {
+                                handleRowChange(index, "model", machine.title);
+                                handleRowChange(index, "maker", machine.maker);
+                                handleRowChange(index, "kind", machine.kind);
+                              }}
+                              className="flex w-full items-center justify-between px-2 py-1 text-left text-[12px] hover:bg-slate-100"
+                            >
+                              <span>{machine.title}</span>
+                              <span className="text-[10px] text-neutral-500">{machine.maker}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td className={excelTd}>
+                      <select
+                        value={row.type}
+                        onChange={(event) =>
+                          handleRowChange(index, "type", event.target.value as InventoryFormRow["type"])
+                        }
+                        onKeyDown={(event) => handleMachineEnter(event, index, "type")}
+                        ref={registerFocus(focusKey(index, "type"))}
+                        className={selectBase}
+                      >
+                        <option value="">選択</option>
+                        {DEVICE_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className={excelTd}>
                       <input
-                        type="checkbox"
-                        checked={row.sellNow}
-                        onChange={(event) => handleRowChange(index, "sellNow", event.target.checked)}
-                        onKeyDown={(event) => handleMachineEnter(event, index, "sellNow")}
-                        ref={registerFocus(focusKey(index, "sellNow"))}
-                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
+                        type="number"
+                        min={0}
+                        value={row.quantity}
+                        onChange={(event) => handleRowChange(index, "quantity", Number(event.target.value))}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "quantity")}
+                        ref={registerFocus(focusKey(index, "quantity"))}
+                        className={`${inputBase} text-right`}
                       />
-                      <span className="text-[12px] text-neutral-700">出品</span>
-                    </label>
-                  </div>
-                </div>
-              );
-            })}
+                    </td>
+                    <td className={excelTd}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.unitPrice}
+                        onChange={(event) => handleRowChange(index, "unitPrice", Number(event.target.value))}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "unitPrice")}
+                        ref={registerFocus(focusKey(index, "unitPrice"))}
+                        className={`${inputBase} text-right`}
+                      />
+                    </td>
+                    <td className={excelTd}>
+                      <input
+                        type="number"
+                        min={0}
+                        value={row.saleUnitPrice}
+                        onChange={(event) => handleRowChange(index, "saleUnitPrice", Number(event.target.value))}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "saleUnitPrice")}
+                        ref={registerFocus(focusKey(index, "saleUnitPrice"))}
+                        className={`${inputBase} text-right`}
+                      />
+                    </td>
+                    <td className={excelTd}>
+                      <input
+                        type="date"
+                        value={row.stockInDate}
+                        onChange={(event) => handleRowChange(index, "stockInDate", event.target.value)}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "stockInDate")}
+                        ref={registerFocus(focusKey(index, "stockInDate"))}
+                        className={inputBase}
+                      />
+                    </td>
+                    <td className={excelTd}>
+                      <input
+                        type="date"
+                        value={row.removeDate}
+                        onChange={(event) => handleRowChange(index, "removeDate", event.target.value)}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "removeDate")}
+                        ref={registerFocus(focusKey(index, "removeDate"))}
+                        className={inputBase}
+                      />
+                    </td>
+                    <td className={excelTd}>
+                      <input
+                        value={row.pattern}
+                        onChange={(event) => handleRowChange(index, "pattern", event.target.value)}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "pattern")}
+                        ref={registerFocus(focusKey(index, "pattern"))}
+                        className={inputBase}
+                      />
+                    </td>
+                    <td className={excelTd}>
+                      <select
+                        value={row.warehouse}
+                        onChange={(event) => handleRowChange(index, "warehouse", event.target.value)}
+                        onKeyDown={(event) => handleMachineEnter(event, index, "warehouse")}
+                        ref={registerFocus(focusKey(index, "warehouse"))}
+                        className={selectBase}
+                      >
+                        <option value="">選択</option>
+                        {masterData.warehouses.map((warehouse) => (
+                          <option key={warehouse} value={warehouse}>
+                            {warehouse}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className={`${excelTd} text-center`}>
+                      <label className="flex items-center justify-center gap-1 text-[11px] text-neutral-700">
+                        <input
+                          type="checkbox"
+                          checked={row.isVisible}
+                          onChange={(event) => handleRowChange(index, "isVisible", event.target.checked)}
+                          onKeyDown={(event) => handleMachineEnter(event, index, "isVisible")}
+                          ref={registerFocus(focusKey(index, "isVisible"))}
+                          className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
+                        />
+                        する
+                      </label>
+                    </td>
+                    <td className={`${excelTd} text-center`}>
+                      <label className="flex items-center justify-center gap-1 text-[11px] text-neutral-700">
+                        <input
+                          type="checkbox"
+                          checked={row.sellNow}
+                          onChange={(event) => handleRowChange(index, "sellNow", event.target.checked)}
+                          onKeyDown={(event) => handleMachineEnter(event, index, "sellNow")}
+                          ref={registerFocus(focusKey(index, "sellNow"))}
+                          className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
+                        />
+                        出品
+                      </label>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={handleAddRow} className={excelBtn}>
+                空行追加
+              </button>
+              <button type="button" onClick={handleDuplicateRow} className={excelBtn}>
+                同一行追加
+              </button>
+            </div>
+            <div className="text-xs text-neutral-600">
+              今日: <span className="font-semibold text-neutral-800">{today}</span>
+            </div>
+          </div>
+
+          <div className="mt-4 flex items-center justify-center gap-4">
+            <button type="button" onClick={() => router.back()} className={`${excelBtn} bg-slate-300`}>
+              戻る
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className={`${excelBtn} border-yellow-700 bg-yellow-300 text-yellow-900`}
+            >
+              確認
+            </button>
           </div>
         </div>
-
-        <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 px-4 py-3">
-          <button
-            type="button"
-            onClick={() => router.back()}
-            className="h-9 rounded border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-          >
-            戻る
-          </button>
-          <button
-            type="button"
-            onClick={handleSubmit}
-            className="h-9 rounded bg-sky-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500"
-          >
-            確認
-          </button>
-        </div>
-      </section>
+      </div>
     </div>
   );
 }
