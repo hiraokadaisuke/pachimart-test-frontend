@@ -24,6 +24,7 @@ import { deriveTradeStatusFromTodos } from "./deriveStatus";
 export const TRADE_STORAGE_KEY = "trade_records_v1";
 const CONTACT_STORAGE_PREFIX = "buyerContacts:";
 const CREDITED_TRADE_IDS_KEY = "credited_trade_ids";
+const TRADE_UPDATED_EVENT = "trade_records_updated";
 
 const companyDirectory: Record<string, CompanyProfile> = Object.values(DEV_USERS).reduce(
   (acc, user) => {
@@ -231,6 +232,7 @@ function normalizeTrade(trade: TradeRecord): TradeRecord {
 function writeTradesToStorage(trades: TradeRecord[]) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(TRADE_STORAGE_KEY, JSON.stringify(trades));
+  window.dispatchEvent(new Event(TRADE_UPDATED_EVENT));
 }
 
 function mergeSeedTrades(stored: TradeRecord[]): TradeRecord[] {

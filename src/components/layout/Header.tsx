@@ -7,8 +7,8 @@ import { Suspense, useState } from "react";
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
 import { useBalance } from "@/lib/balance/BalanceContext";
+import { usePlannedAmounts } from "@/lib/balance/usePlannedAmounts";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { dummyBalances } from "@/lib/dummyBalances";
 import { InventorySearchBar } from "../inventory/InventorySearchBar";
 
 const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
@@ -28,12 +28,6 @@ const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
   { label: "設定", href: "/mypage/settings", matchPrefixes: ["/mypage/user", "/mypage/company", "/mypage/machine-storage-locations", "/mypage/pachi-notification-settings", "/mypage/settings"] },
 ];
 
-const fallbackBalanceSummary: BalanceSummary = {
-  plannedPurchase: 1_000_000,
-  plannedSales: 2_000_000,
-  available: 1_500_000,
-};
-
 const searchTabs = ["パチンコ", "スロット"];
 
 const isActiveLink = (pathname: string | null, href: string, matchPrefixes?: string[]) => {
@@ -49,10 +43,9 @@ const isActiveLink = (pathname: string | null, href: string, matchPrefixes?: str
 export default function Header() {
   const currentUser = useCurrentDevUser();
   const { getBalance } = useBalance();
-  const baseBalanceSummary =
-    dummyBalances.find((balance) => balance.userId === currentUser.id) ?? fallbackBalanceSummary;
+  const plannedAmounts = usePlannedAmounts(currentUser.id);
   const balanceSummary: BalanceSummary = {
-    ...baseBalanceSummary,
+    ...plannedAmounts,
     available: getBalance(currentUser.id),
   };
   const pathname = usePathname();
@@ -115,8 +108,8 @@ export default function Header() {
           )}
           <div className="flex items-center gap-3 whitespace-nowrap">
             <div className="text-right text-[11px] leading-tight text-neutral-900">
-              <div className="font-semibold text-slate-900">購入予定残高 {formatCurrency(balanceSummary.plannedPurchase)}</div>
-              <div className="font-semibold text-slate-900">売却予定残高 {formatCurrency(balanceSummary.plannedSales)}</div>
+              <div className="font-semibold text-slate-900">購入予定金額 {formatCurrency(balanceSummary.plannedPurchase)}</div>
+              <div className="font-semibold text-slate-900">売却予定金額 {formatCurrency(balanceSummary.plannedSales)}</div>
               <div className="font-semibold text-slate-900">利用可能残高 {formatCurrency(balanceSummary.available)}</div>
             </div>
             <div className="flex items-center gap-2">
