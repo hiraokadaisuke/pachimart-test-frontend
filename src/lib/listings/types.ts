@@ -14,8 +14,8 @@ export type Listing = {
   hasNailSheet: boolean;
   hasManual: boolean;
   pickupAvailable: boolean;
-  storageLocation: string;
-  storageLocationId: string;
+  storageLocation: string | null;
+  storageLocationId: string | null;
   storageLocationSnapshot: unknown | null;
   shippingFeeCount: number;
   handlingFeeCount: number;

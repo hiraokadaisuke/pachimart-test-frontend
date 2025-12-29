@@ -56,8 +56,10 @@ const toDto = (listing: any) => ({
   hasNailSheet: Boolean(listing.hasNailSheet),
   hasManual: Boolean(listing.hasManual),
   pickupAvailable: Boolean(listing.pickupAvailable),
-  storageLocation: String(listing.storageLocation),
-  storageLocationId: String(listing.storageLocationId),
+  storageLocation:
+    typeof listing.storageLocation === "string" ? listing.storageLocation : null,
+  storageLocationId:
+    typeof listing.storageLocationId === "string" ? listing.storageLocationId : null,
   storageLocationSnapshot: (listing.storageLocationSnapshot as unknown | null) ?? null,
   shippingFeeCount: Number(listing.shippingFeeCount),
   handlingFeeCount: Number(listing.handlingFeeCount),
@@ -89,7 +91,7 @@ export async function GET(request: Request, { params }: { params: { id?: string 
 
     const storageLocation = formatStorageLocationShort(
       storageLocationSnapshot,
-      String(listing.storageLocation ?? "")
+      typeof listing.storageLocation === "string" ? listing.storageLocation : undefined
     );
 
     return NextResponse.json(
