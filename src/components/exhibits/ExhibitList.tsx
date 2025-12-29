@@ -335,7 +335,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                         : null;
                 const storageLocationLabel = formatStorageLocationShort(
                   listing.storageLocationSnapshot,
-                  listing.storageLocation
+                  listing.storageLocation ?? undefined
                 );
 
                 return (

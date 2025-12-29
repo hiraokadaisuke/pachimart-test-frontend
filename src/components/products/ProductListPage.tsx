@@ -113,7 +113,10 @@ export default function ProductListPage() {
         label: "保管場所",
         width: "180px",
         render: (row: Listing) =>
-          formatStorageLocationShort(row.storageLocationSnapshot, row.storageLocation),
+          formatStorageLocationShort(
+            row.storageLocationSnapshot,
+            row.storageLocation ?? undefined
+          ),
       },
       {
         key: "allowPartial",
@@ -141,7 +144,7 @@ export default function ProductListPage() {
       const machineName = listing.machineName?.toLowerCase() ?? "";
       const storageLocation = formatStorageLocationShort(
         listing.storageLocationSnapshot,
-        listing.storageLocation
+        listing.storageLocation ?? undefined
       ).toLowerCase();
 
       return (

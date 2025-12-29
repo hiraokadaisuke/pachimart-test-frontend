@@ -10,23 +10,25 @@ import { buildApiUrl } from "@/lib/http/apiBaseUrl";
 import type { Listing } from "@/lib/listings/types";
 import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
 
-async function fetchListing(listingId: string, devUserId?: string): Promise<Listing | null> {
+type ListingFetchResult = { listing: Listing | null; notFound: boolean };
+
+async function fetchListing(listingId: string, devUserId?: string): Promise<ListingFetchResult> {
   try {
     const response = await fetch(buildApiUrl(`/api/public-listings/${listingId}`), {
       cache: "no-store",
       headers: devUserId ? { "x-dev-user-id": devUserId } : undefined,
     });
 
-    if (response.status === 404) return null;
+    if (response.status === 404) return { listing: null, notFound: true };
     if (!response.ok) {
       console.error("Failed to fetch listing detail", response.status);
-      return null;
+      return { listing: null, notFound: false };
     }
 
-    return response.json();
+    return { listing: await response.json(), notFound: false };
   } catch (error) {
     console.error("Failed to fetch listing detail", error);
-    return null;
+    return { listing: null, notFound: false };
   }
 }
 
@@ -47,30 +49,25 @@ const resolveInquiryStatus = (listing: Listing, isSellerViewing: boolean) => {
     return { available: false as const, reason: "成約済みのため受付できません" };
   }
 
-  const isAvailable =
-    !listing.isNegotiable &&
-    listing.unitPriceExclTax !== null &&
-    Boolean(listing.storageLocation) &&
-    listing.shippingFeeCount !== undefined;
-
-  if (isAvailable) {
-    return { available: true as const, reason: "" };
-  }
-
-  const reason = listing.isNegotiable || listing.unitPriceExclTax === null
-    ? "応相談のためオンライン問い合わせは利用できません"
-    : "必要な情報が不足しているためオンライン問い合わせは利用できません";
-
-  return { available: false as const, reason };
+  return { available: true as const, reason: "" };
 };
 
 export default async function ProductDetailPage({ params }: { params: { listingId: string } }) {
   const devUserId = cookies().get("dev_user_id")?.value ?? DEV_USERS.A.id;
 
-  const listing = await fetchListing(params.listingId, devUserId);
+  const { listing, notFound: listingMissing } = await fetchListing(params.listingId, devUserId);
+
+  if (listingMissing) {
+    // NOTE: 404 は「Listing が存在しない場合のみ」。以前の seller 絞り込みでは到達していた。
+    notFound();
+  }
 
   if (!listing) {
-    notFound();
+    return (
+      <MainContainer>
+        <p className="text-[13px] text-neutral-700">商品情報の取得に失敗しました。時間をおいて再度お試しください。</p>
+      </MainContainer>
+    );
   }
 
   const isSellerViewing = listing.sellerUserId === devUserId;
@@ -102,7 +99,10 @@ export default async function ProductDetailPage({ params }: { params: { listingI
               <DetailRow label="単価" value={formatPrice(listing)} />
               <DetailRow
                 label="保管場所"
-                value={formatStorageLocationFull(listing.storageLocationSnapshot, listing.storageLocation)}
+                value={formatStorageLocationFull(
+                  listing.storageLocationSnapshot,
+                  listing.storageLocation ?? undefined
+                )}
               />
             </div>
           </div>

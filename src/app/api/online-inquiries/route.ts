@@ -1,4 +1,11 @@
-import { MessageSenderRole, Prisma, PrismaClient, TradeNaviStatus, TradeNaviType } from "@prisma/client";
+import {
+  ListingStatus,
+  MessageSenderRole,
+  Prisma,
+  PrismaClient,
+  TradeNaviStatus,
+  TradeNaviType,
+} from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -153,17 +160,11 @@ export async function POST(request: Request) {
       );
     }
 
-    const canUseInquiry =
-      !listing.isNegotiable &&
-      listing.unitPriceExclTax !== null &&
-      Boolean(listing.storageLocation) &&
-      listing.shippingFeeCount !== undefined;
-
-    if (!canUseInquiry) {
-      const reason = listing.isNegotiable || listing.unitPriceExclTax === null
-        ? "応相談のためオンライン問い合わせは利用できません"
-        : "必要な情報が不足しているためオンライン問い合わせは利用できません";
-      return NextResponse.json({ error: reason }, { status: 400 });
+    if (listing.status === ListingStatus.SOLD) {
+      return NextResponse.json(
+        { error: "成約済みのためオンライン問い合わせは利用できません" },
+        { status: 400 }
+      );
     }
 
     const snapshot = buildListingSnapshot(listing as Record<string, unknown>);
