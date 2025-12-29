@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
@@ -33,6 +34,7 @@ type CorporateFormState = {
   postalCode: string;
   prefecture: string;
   city: string;
+  addressLine: string;
   phone: string;
   fax: string;
   email: string;
@@ -46,6 +48,7 @@ type BranchFormState = {
   postalCode: string;
   prefecture: string;
   city: string;
+  addressLine: string;
   representative: string;
   contactPerson: string;
   phone: string;
@@ -61,6 +64,7 @@ const createEmptyCorporateForm = (): CorporateFormState => ({
   postalCode: "",
   prefecture: "",
   city: "",
+  addressLine: "",
   phone: "",
   fax: "",
   email: "",
@@ -74,6 +78,7 @@ const createEmptyBranchForm = (): BranchFormState => ({
   postalCode: "",
   prefecture: "",
   city: "",
+  addressLine: "",
   representative: "",
   contactPerson: "",
   phone: "",
@@ -81,7 +86,8 @@ const createEmptyBranchForm = (): BranchFormState => ({
   type: "branch",
 });
 
-const buildAddress = (prefecture: string, city: string) => `${prefecture}${city}`.trim();
+  const buildAddress = (prefecture: string, city: string, addressLine: string) =>
+    `${prefecture}${city}${addressLine}`.trim();
 
 function InventorySettingsContent() {
   const router = useRouter();
@@ -100,6 +106,36 @@ function InventorySettingsContent() {
   const [corporateFilterInput, setCorporateFilterInput] = useState<string>("");
   const [lastAutoFilledPostal, setLastAutoFilledPostal] = useState<string>("");
   const postalLookupRef = useRef<AbortController | null>(null);
+  const focusMap = useRef<Map<string, HTMLElement>>(new Map());
+
+  const corporateFieldOrder = [
+    "corporate-category",
+    "corporate-name",
+    "corporate-nameKana",
+    "corporate-postalCode",
+    "corporate-prefecture",
+    "corporate-city",
+    "corporate-addressLine",
+    "corporate-representative",
+    "corporate-phone",
+    "corporate-fax",
+    "corporate-email",
+  ];
+
+  const branchFieldOrder = [
+    "branch-corporateId",
+    "branch-name",
+    "branch-nameKana",
+    "branch-postalCode",
+    "branch-prefecture",
+    "branch-city",
+    "branch-addressLine",
+    "branch-representative",
+    "branch-contactPerson",
+    "branch-phone",
+    "branch-fax",
+    "branch-type",
+  ];
 
   const mode = useMemo(() => {
     const value = searchParams?.get("mode");
@@ -163,6 +199,33 @@ function InventorySettingsContent() {
     saveMasterData(next);
   };
 
+  const registerFocus = (key: string) => (element: HTMLElement | null) => {
+    if (!element) {
+      focusMap.current.delete(key);
+      return;
+    }
+    focusMap.current.set(key, element);
+  };
+
+  const focusTo = (key: string) => {
+    const target = focusMap.current.get(key);
+    if (!target) return;
+    target.focus();
+    if (target instanceof HTMLInputElement) {
+      target.select();
+    }
+  };
+
+  const handleEnterNext = (event: React.KeyboardEvent<HTMLElement>, order: string[], currentKey: string) => {
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    const currentIndex = order.indexOf(currentKey);
+    if (currentIndex === -1) return;
+    const nextKey = order[currentIndex + 1];
+    if (!nextKey) return;
+    focusTo(nextKey);
+  };
+
   const updateQuery = (nextMode: "customer" | "company", nextTab?: "corp" | "branch") => {
     const params = new URLSearchParams(searchParams?.toString() ?? "");
     params.set("mode", nextMode);
@@ -222,7 +285,11 @@ function InventorySettingsContent() {
     const corporateName = corporateForm.corporateName.trim();
     if (!corporateName) return;
 
-    const address = buildAddress(corporateForm.prefecture.trim(), corporateForm.city.trim());
+    const address = buildAddress(
+      corporateForm.prefecture.trim(),
+      corporateForm.city.trim(),
+      corporateForm.addressLine.trim(),
+    );
     if (editingCorporateId) {
       const nextSuppliers = masterData.suppliers.map((supplier) => {
         if (supplier.id !== editingCorporateId) return supplier;
@@ -235,6 +302,7 @@ function InventorySettingsContent() {
           postalCode: corporateForm.postalCode.trim(),
           prefecture: corporateForm.prefecture.trim(),
           city: corporateForm.city.trim(),
+          addressLine: corporateForm.addressLine.trim(),
           address,
           phone: corporateForm.phone.trim(),
           fax: corporateForm.fax.trim(),
@@ -253,6 +321,7 @@ function InventorySettingsContent() {
         postalCode: corporateForm.postalCode.trim(),
         prefecture: corporateForm.prefecture.trim(),
         city: corporateForm.city.trim(),
+        addressLine: corporateForm.addressLine.trim(),
         address,
         phone: corporateForm.phone.trim(),
         fax: corporateForm.fax.trim(),
@@ -279,6 +348,7 @@ function InventorySettingsContent() {
       postalCode: supplier.postalCode ?? "",
       prefecture: supplier.prefecture ?? "",
       city: supplier.city ?? supplier.address ?? "",
+      addressLine: supplier.addressLine ?? "",
       phone: supplier.phone ?? "",
       fax: supplier.fax ?? "",
       email: supplier.email ?? "",
@@ -305,7 +375,11 @@ function InventorySettingsContent() {
     const name = branchForm.name.trim();
     if (!name) return;
 
-    const address = buildAddress(branchForm.prefecture.trim(), branchForm.city.trim());
+    const address = buildAddress(
+      branchForm.prefecture.trim(),
+      branchForm.city.trim(),
+      branchForm.addressLine.trim(),
+    );
     const nextBranch: SupplierBranch = {
       id: editingBranchId ?? createMasterId("branch"),
       name,
@@ -313,6 +387,7 @@ function InventorySettingsContent() {
       postalCode: branchForm.postalCode.trim(),
       prefecture: branchForm.prefecture.trim(),
       city: branchForm.city.trim(),
+      addressLine: branchForm.addressLine.trim(),
       address,
       representative: branchForm.representative.trim(),
       contactPerson: branchForm.contactPerson.trim(),
@@ -358,6 +433,7 @@ function InventorySettingsContent() {
       postalCode: branch.postalCode ?? "",
       prefecture: branch.prefecture ?? "",
       city: branch.city ?? branch.address ?? "",
+      addressLine: branch.addressLine ?? "",
       representative: branch.representative ?? "",
       contactPerson: branch.contactPerson ?? "",
       phone: branch.phone ?? "",
@@ -389,6 +465,7 @@ function InventorySettingsContent() {
       supplier.postalCode ?? "",
       supplier.prefecture ?? "",
       supplier.city ?? "",
+      supplier.addressLine ?? "",
       supplier.address ?? "",
       supplier.phone ?? "",
       supplier.fax ?? "",
@@ -409,6 +486,7 @@ function InventorySettingsContent() {
           branch.postalCode ?? "",
           branch.prefecture ?? "",
           branch.city ?? "",
+          branch.addressLine ?? "",
           branch.address ?? "",
           branch.phone ?? "",
           branch.fax ?? "",
@@ -533,6 +611,10 @@ function InventorySettingsContent() {
                               onChange={(event) =>
                                 handleCorporateFormChange("category", event.target.value as SupplierCategory)
                               }
+                              onKeyDown={(event) =>
+                                handleEnterNext(event, corporateFieldOrder, "corporate-category")
+                              }
+                              ref={registerFocus("corporate-category")}
                               className={inputBase}
                             >
                               <option value="vendor">業者</option>
@@ -558,6 +640,8 @@ function InventorySettingsContent() {
                             <input
                               value={corporateForm.corporateName}
                               onChange={(event) => handleCorporateFormChange("corporateName", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-name")}
+                              ref={registerFocus("corporate-name")}
                               className={inputBase}
                               placeholder="例: サンプル商事"
                             />
@@ -567,6 +651,8 @@ function InventorySettingsContent() {
                             <input
                               value={corporateForm.corporateNameKana}
                               onChange={(event) => handleCorporateFormChange("corporateNameKana", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-nameKana")}
+                              ref={registerFocus("corporate-nameKana")}
                               className={inputBase}
                             />
                           </td>
@@ -577,6 +663,10 @@ function InventorySettingsContent() {
                             <input
                               value={corporateForm.postalCode}
                               onChange={(event) => handleCorporateFormChange("postalCode", event.target.value)}
+                              onKeyDown={(event) =>
+                                handleEnterNext(event, corporateFieldOrder, "corporate-postalCode")
+                              }
+                              ref={registerFocus("corporate-postalCode")}
                               className={inputBase}
                               placeholder="例: 123-4567"
                             />
@@ -586,6 +676,10 @@ function InventorySettingsContent() {
                             <input
                               value={corporateForm.prefecture}
                               onChange={(event) => handleCorporateFormChange("prefecture", event.target.value)}
+                              onKeyDown={(event) =>
+                                handleEnterNext(event, corporateFieldOrder, "corporate-prefecture")
+                              }
+                              ref={registerFocus("corporate-prefecture")}
                               className={inputBase}
                             />
                           </td>
@@ -596,9 +690,25 @@ function InventorySettingsContent() {
                             <input
                               value={corporateForm.city}
                               onChange={(event) => handleCorporateFormChange("city", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-city")}
+                              ref={registerFocus("corporate-city")}
                               className={inputBase}
                             />
                           </td>
+                          <th className={tableHeader}>番地・建物名</th>
+                          <td className={tableCell}>
+                            <input
+                              value={corporateForm.addressLine}
+                              onChange={(event) => handleCorporateFormChange("addressLine", event.target.value)}
+                              onKeyDown={(event) =>
+                                handleEnterNext(event, corporateFieldOrder, "corporate-addressLine")
+                              }
+                              ref={registerFocus("corporate-addressLine")}
+                              className={inputBase}
+                            />
+                          </td>
+                        </tr>
+                        <tr>
                           <th className={tableHeader}>代表者</th>
                           <td className={tableCell}>
                             <input
@@ -606,39 +716,45 @@ function InventorySettingsContent() {
                               onChange={(event) =>
                                 handleCorporateFormChange("corporateRepresentative", event.target.value)
                               }
+                              onKeyDown={(event) =>
+                                handleEnterNext(event, corporateFieldOrder, "corporate-representative")
+                              }
+                              ref={registerFocus("corporate-representative")}
                               className={inputBase}
                             />
                           </td>
-                        </tr>
-                        <tr>
                           <th className={tableHeader}>電話番号</th>
                           <td className={tableCell}>
                             <input
                               value={corporateForm.phone}
                               onChange={(event) => handleCorporateFormChange("phone", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>FAX番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.fax}
-                              onChange={(event) => handleCorporateFormChange("fax", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-phone")}
+                              ref={registerFocus("corporate-phone")}
                               className={inputBase}
                             />
                           </td>
                         </tr>
                         <tr>
+                          <th className={tableHeader}>FAX番号</th>
+                          <td className={tableCell}>
+                            <input
+                              value={corporateForm.fax}
+                              onChange={(event) => handleCorporateFormChange("fax", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-fax")}
+                              ref={registerFocus("corporate-fax")}
+                              className={inputBase}
+                            />
+                          </td>
                           <th className={tableHeader}>mailアドレス</th>
                           <td className={tableCell}>
                             <input
                               value={corporateForm.email}
                               onChange={(event) => handleCorporateFormChange("email", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-email")}
+                              ref={registerFocus("corporate-email")}
                               className={inputBase}
                             />
                           </td>
-                          <th className={tableHeader}> </th>
-                          <td className={tableCell} />
                         </tr>
                       </tbody>
                     </table>
@@ -709,7 +825,11 @@ function InventorySettingsContent() {
                               <td className={tableCell}>{supplier.category === "hall" ? "ホール" : "業者"}</td>
                               <td className={tableCell}>{supplier.postalCode || "-"}</td>
                               <td className={tableCell}>{supplier.prefecture || "-"}</td>
-                              <td className={tableCell}>{supplier.city || supplier.address || "-"}</td>
+                              <td className={tableCell}>
+                                {supplier.city || supplier.addressLine
+                                  ? `${supplier.city ?? ""}${supplier.addressLine ?? ""}`
+                                  : supplier.address || "-"}
+                              </td>
                               <td className={tableCell}>{supplier.corporateRepresentative || "-"}</td>
                               <td className={tableCell}>{supplier.phone || "-"}</td>
                               <td className={tableCell}>{supplier.fax || "-"}</td>
@@ -763,6 +883,8 @@ function InventorySettingsContent() {
                             <select
                               value={branchForm.corporateId}
                               onChange={(event) => handleBranchFormChange("corporateId", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-corporateId")}
+                              ref={registerFocus("branch-corporateId")}
                               className={inputBase}
                             >
                               <option value="">法人を選択</option>
@@ -780,6 +902,8 @@ function InventorySettingsContent() {
                             <input
                               value={branchForm.name}
                               onChange={(event) => handleBranchFormChange("name", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-name")}
+                              ref={registerFocus("branch-name")}
                               className={inputBase}
                               placeholder="例: 本店"
                             />
@@ -789,6 +913,8 @@ function InventorySettingsContent() {
                             <input
                               value={branchForm.nameKana}
                               onChange={(event) => handleBranchFormChange("nameKana", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-nameKana")}
+                              ref={registerFocus("branch-nameKana")}
                               className={inputBase}
                             />
                           </td>
@@ -799,6 +925,8 @@ function InventorySettingsContent() {
                             <input
                               value={branchForm.postalCode}
                               onChange={(event) => handleBranchFormChange("postalCode", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-postalCode")}
+                              ref={registerFocus("branch-postalCode")}
                               className={inputBase}
                             />
                           </td>
@@ -807,6 +935,8 @@ function InventorySettingsContent() {
                             <input
                               value={branchForm.prefecture}
                               onChange={(event) => handleBranchFormChange("prefecture", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-prefecture")}
+                              ref={registerFocus("branch-prefecture")}
                               className={inputBase}
                             />
                           </td>
@@ -817,42 +947,62 @@ function InventorySettingsContent() {
                             <input
                               value={branchForm.city}
                               onChange={(event) => handleBranchFormChange("city", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-city")}
+                              ref={registerFocus("branch-city")}
                               className={inputBase}
                             />
                           </td>
+                          <th className={tableHeader}>番地・建物名</th>
+                          <td className={tableCell}>
+                            <input
+                              value={branchForm.addressLine}
+                              onChange={(event) => handleBranchFormChange("addressLine", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-addressLine")}
+                              ref={registerFocus("branch-addressLine")}
+                              className={inputBase}
+                            />
+                          </td>
+                        </tr>
+                        <tr>
                           <th className={tableHeader}>代表者</th>
                           <td className={tableCell}>
                             <input
                               value={branchForm.representative}
                               onChange={(event) => handleBranchFormChange("representative", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-representative")}
+                              ref={registerFocus("branch-representative")}
                               className={inputBase}
                             />
                           </td>
-                        </tr>
-                        <tr>
                           <th className={tableHeader}>担当者</th>
                           <td className={tableCell}>
                             <input
                               value={branchForm.contactPerson}
                               onChange={(event) => handleBranchFormChange("contactPerson", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>電話番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.phone}
-                              onChange={(event) => handleBranchFormChange("phone", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-contactPerson")}
+                              ref={registerFocus("branch-contactPerson")}
                               className={inputBase}
                             />
                           </td>
                         </tr>
                         <tr>
+                          <th className={tableHeader}>電話番号</th>
+                          <td className={tableCell}>
+                            <input
+                              value={branchForm.phone}
+                              onChange={(event) => handleBranchFormChange("phone", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-phone")}
+                              ref={registerFocus("branch-phone")}
+                              className={inputBase}
+                            />
+                          </td>
                           <th className={tableHeader}>FAX番号</th>
                           <td className={tableCell}>
                             <input
                               value={branchForm.fax}
                               onChange={(event) => handleBranchFormChange("fax", event.target.value)}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-fax")}
+                              ref={registerFocus("branch-fax")}
                               className={inputBase}
                             />
                           </td>
@@ -861,6 +1011,8 @@ function InventorySettingsContent() {
                             <select
                               value={branchForm.type}
                               onChange={(event) => handleBranchFormChange("type", event.target.value as "hall" | "branch")}
+                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-type")}
+                              ref={registerFocus("branch-type")}
                               className={inputBase}
                             >
                               <option value="hall">ホール</option>
@@ -938,7 +1090,11 @@ function InventorySettingsContent() {
                               <td className={tableCell}>{branch.type === "hall" ? "ホール" : "支店"}</td>
                               <td className={tableCell}>{branch.postalCode || "-"}</td>
                               <td className={tableCell}>{branch.prefecture || "-"}</td>
-                              <td className={tableCell}>{branch.city || branch.address || "-"}</td>
+                              <td className={tableCell}>
+                                {branch.city || branch.addressLine
+                                  ? `${branch.city ?? ""}${branch.addressLine ?? ""}`
+                                  : branch.address || "-"}
+                              </td>
                               <td className={tableCell}>{branch.representative || "-"}</td>
                               <td className={tableCell}>{branch.contactPerson || "-"}</td>
                               <td className={tableCell}>{branch.phone || "-"}</td>

@@ -7,6 +7,7 @@ export type SupplierBranch = {
   postalCode: string;
   prefecture?: string;
   city?: string;
+  addressLine?: string;
   address: string;
   representative?: string;
   contactPerson?: string;
@@ -24,6 +25,7 @@ export type SupplierCorporate = {
   postalCode: string;
   prefecture?: string;
   city?: string;
+  addressLine?: string;
   address: string;
   phone?: string;
   fax?: string;
@@ -58,6 +60,7 @@ const buildDefaultSupplier = (
   postalCode: "",
   prefecture: "",
   city: "",
+  addressLine: "",
   address: "",
   phone: "",
   fax: "",
@@ -71,6 +74,7 @@ const buildDefaultSupplier = (
       postalCode: "",
       prefecture: "",
       city: "",
+      addressLine: "",
       address: "",
       representative: "",
       contactPerson: "",
