@@ -45,16 +45,9 @@ type SearchFilters = {
 const RESERVED_SELECTION_WIDTH = 48;
 const COLUMN_SETTINGS_KEY = "inventory_table_columns_v1";
 
-const TRUNCATE_COLUMNS: Array<Column["key"]> = [
-  "maker",
-  "model",
-  "warehouse",
-  "supplier",
-  "staff",
-  "note",
-];
-
 const NUMERIC_COLUMNS: Array<Column["key"]> = ["quantity", "unitPrice", "saleUnitPrice"];
+const DATE_COLUMNS: Array<Column["key"]> = ["createdAt", "stockInDate", "removeDate"];
+const WRAP_COLUMNS: Array<Column["key"]> = ["maker", "model", "warehouse", "supplier", "staff", "note"];
 
 const STATUS_OPTIONS: Array<{ value: ListingStatusOption; label: string }> = [
   { value: "listing", label: "出品" },
@@ -63,25 +56,25 @@ const STATUS_OPTIONS: Array<{ value: ListingStatusOption; label: string }> = [
 ];
 
 const INITIAL_COLUMNS: Column[] = [
-  { key: "id", label: "在庫ID", width: 88, minWidth: 64, visible: true },
-  { key: "createdAt", label: "在庫入力日", width: 98, minWidth: 70, visible: true },
-  { key: "maker", label: "メーカー名", width: 100, minWidth: 72, visible: true },
-  { key: "model", label: "機種名", width: 150, minWidth: 110, visible: true },
-  { key: "kind", label: "種別", width: 52, minWidth: 48, visible: true },
-  { key: "type", label: "タイプ", width: 60, minWidth: 50, visible: true },
-  { key: "quantity", label: "仕入数", width: 78, minWidth: 64, visible: true },
-  { key: "unitPrice", label: "仕入単価", width: 90, minWidth: 72, visible: true },
-  { key: "saleUnitPrice", label: "販売単価", width: 90, minWidth: 72, visible: true },
-  { key: "hasRemainingDebt", label: "残債", width: 70, minWidth: 60, visible: true },
-  { key: "stockInDate", label: "入庫日", width: 96, minWidth: 70, visible: true },
-  { key: "removeDate", label: "撤去日", width: 96, minWidth: 70, visible: true },
-  { key: "warehouse", label: "保管先", width: 125, minWidth: 96, visible: true },
-  { key: "supplier", label: "仕入先", width: 125, minWidth: 96, visible: true },
-  { key: "staff", label: "担当者", width: 90, minWidth: 72, visible: true },
-  { key: "status", label: "状況", width: 90, minWidth: 72, visible: true },
-  { key: "isConsignment", label: "委託", width: 70, minWidth: 56, visible: true },
-  { key: "isVisible", label: "表示", width: 70, minWidth: 56, visible: true },
-  { key: "note", label: "備考", width: 120, minWidth: 98, visible: true },
+  { key: "id", label: "管理ID", width: 64, minWidth: 52, visible: true },
+  { key: "createdAt", label: "入力日", width: 72, minWidth: 64, visible: true },
+  { key: "maker", label: "メーカー", width: 96, minWidth: 72, visible: true },
+  { key: "model", label: "機種名", width: 160, minWidth: 140, visible: true },
+  { key: "kind", label: "種別", width: 48, minWidth: 44, visible: true },
+  { key: "type", label: "タイプ", width: 54, minWidth: 48, visible: true },
+  { key: "quantity", label: "仕入数", width: 68, minWidth: 56, visible: true },
+  { key: "unitPrice", label: "仕単", width: 70, minWidth: 60, visible: true },
+  { key: "saleUnitPrice", label: "販単", width: 70, minWidth: 60, visible: true },
+  { key: "hasRemainingDebt", label: "残債", width: 54, minWidth: 48, visible: true },
+  { key: "stockInDate", label: "入庫日", width: 72, minWidth: 64, visible: true },
+  { key: "removeDate", label: "撤去日", width: 72, minWidth: 64, visible: true },
+  { key: "warehouse", label: "保管先", width: 108, minWidth: 88, visible: true },
+  { key: "supplier", label: "仕入先", width: 108, minWidth: 88, visible: true },
+  { key: "staff", label: "担当", width: 72, minWidth: 64, visible: true },
+  { key: "status", label: "状況", width: 76, minWidth: 64, visible: true },
+  { key: "isConsignment", label: "委託", width: 52, minWidth: 48, visible: true },
+  { key: "isVisible", label: "表示", width: 52, minWidth: 48, visible: true },
+  { key: "note", label: "備考", width: 120, minWidth: 96, visible: true },
 ];
 
 const defaultFilters: SearchFilters = {
@@ -98,22 +91,14 @@ const defaultFilters: SearchFilters = {
   displayCount: "all",
 };
 
-const truncateText = (text: string) => {
-  if (!text) return "-";
-  if (text.length <= 10) return text;
-  return `${text.slice(0, 8)}...`;
-};
-
-const shortenId = (id: string) => {
-  if (id.length <= 10) return id;
-  return `${id.slice(0, 5)}...${id.slice(-3)}`;
-};
-
 const formatDate = (value?: string) => {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("ja-JP");
+  const year = parsed.getFullYear().toString().slice(-2);
+  const month = String(parsed.getMonth() + 1).padStart(2, "0");
+  const day = String(parsed.getDate()).padStart(2, "0");
+  return `${year}/${month}/${day}`;
 };
 
 const toDateOnly = (value: string) => {
@@ -150,6 +135,18 @@ const mapListingStatusToStockStatus = (status: ListingStatusOption): InventorySt
 };
 
 const statusLabelMap = new Map(STATUS_OPTIONS.map((option) => [option.value, option.label]));
+
+const buildManagementId = (index: number) => {
+  const globalIndex = index + 1;
+  const group = Math.floor((globalIndex - 1) / 9999) + 1;
+  const sequence = ((globalIndex - 1) % 9999) + 1;
+  return {
+    group,
+    sequence,
+    label: `${group}-${sequence}`,
+    isSplit: sequence >= 100,
+  };
+};
 
 const buildEditForm = (record: InventoryRecord): Partial<InventoryRecord> => ({
   maker: record.maker ?? "",
@@ -543,83 +540,6 @@ export default function InventoryPage() {
     setRecords([]);
   };
 
-  const applyResize = (index: number, targetWidth: number) => {
-    setColumns((prev) => {
-      const next = prev.map((col) => ({ ...col }));
-      const minWidth = next[index].minWidth;
-      next[index].width = Math.max(minWidth, targetWidth);
-
-      if (!containerWidth) return next;
-
-      const visibleIndices = next
-        .map((col, idx) => ({ idx, col }))
-        .filter(({ col }) => col.visible !== false)
-        .map(({ idx }) => idx);
-
-      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH, 0);
-
-      let total = visibleIndices.reduce((sum, idx) => sum + next[idx].width, 0);
-      if (total <= availableWidth) return next;
-
-      let excess = total - availableWidth;
-      const adjustable = visibleIndices
-        .map((idx) => ({ idx, room: next[idx].width - next[idx].minWidth }))
-        .filter(({ idx, room }) => idx !== index && room > 0);
-
-      for (const item of adjustable) {
-        if (excess <= 0) break;
-        const reduce = Math.min(item.room, excess);
-        next[item.idx].width -= reduce;
-        excess -= reduce;
-      }
-
-      if (excess > 0) {
-        const target = next[index];
-        const reducible = Math.max(target.width - target.minWidth, 0);
-        const reduce = Math.min(reducible, excess);
-        target.width -= reduce;
-        excess -= reduce;
-      }
-
-      if (excess > 0) {
-        next[index].width = Math.max(minWidth, next[index].width - excess);
-      }
-
-      total = visibleIndices.reduce((sum, idx) => sum + next[idx].width, 0);
-      if (total > availableWidth) {
-        const scale = availableWidth / total;
-        return next.map((col, idx) =>
-          visibleIndices.includes(idx)
-            ? { ...col, width: Math.max(col.minWidth, Math.floor(col.width * scale)) }
-            : col,
-        );
-      }
-
-      return next;
-    });
-  };
-
-  const handleResizeStart = (event: React.MouseEvent, index: number) => {
-    event.preventDefault();
-    event.stopPropagation();
-    if (index < 0) return;
-    const startX = event.clientX;
-    const startWidth = columns[index].width;
-
-    const onMove = (moveEvent: MouseEvent) => {
-      const delta = moveEvent.clientX - startX;
-      applyResize(index, startWidth + delta);
-    };
-
-    const onUp = () => {
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
-    };
-
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
-  };
-
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     setSearchFilters(searchDraft);
@@ -676,10 +596,13 @@ export default function InventoryPage() {
 
   const handleCsvDownload = () => {
     const headers = visibleColumns.map((col) => col.label);
-    const rows = displayRecords.map((record) =>
+    const rows = displayRecords.map((record, index) =>
       visibleColumns
         .map((col) => {
-          const value = getCellText(record, String(col.key));
+          const value =
+            col.key === "id"
+              ? buildManagementId(index).label
+              : getCellText(record, String(col.key));
           const normalized = value ?? "";
           return `"${String(normalized).replace(/"/g, '""')}"`;
         })
@@ -1097,8 +1020,6 @@ export default function InventoryPage() {
             <div className="flex flex-wrap items-center gap-2 text-neutral-700">
               <span className="font-semibold">表示操作：</span>
               <span>ヘッダーをドラッグして並び替え</span>
-              <span className="mx-1">|</span>
-              <span>右端ハンドルで列幅調整</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <button
@@ -1370,10 +1291,10 @@ export default function InventoryPage() {
           )}
 
           <div ref={tableRef} className="mt-4 w-full overflow-x-auto">
-            <table className="min-w-full table-fixed border-collapse whitespace-nowrap border-2 border-slate-300 text-[13px]">
+            <table className="min-w-full table-fixed border-collapse border-2 border-slate-300 text-[11px]">
               <thead className="bg-[#7f9bb8] text-left font-semibold text-white">
                 <tr>
-                  <th className="w-10 border border-slate-300 px-2 py-2">
+                  <th className="w-10 border border-slate-300 px-1 py-1">
                     <input
                       type="checkbox"
                       checked={displayRecords.length > 0 && selectedIds.size === displayRecords.length}
@@ -1381,37 +1302,28 @@ export default function InventoryPage() {
                       className="h-4 w-4 border-slate-300"
                     />
                   </th>
-                  {visibleColumns.map((col) => {
-                    const columnIndex = columns.findIndex((c) => c.key === col.key);
-                    return (
-                      <th
-                        key={col.key}
-                        draggable
-                        onDragStart={() => handleDragStart(String(col.key))}
-                        onDragOver={(event) => handleDragOver(event, String(col.key))}
-                        onDrop={() => handleDrop(String(col.key))}
-                        className="relative select-none border border-slate-300 px-2 py-2"
-                        style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
+                  {visibleColumns.map((col) => (
+                    <th
+                      key={col.key}
+                      draggable
+                      onDragStart={() => handleDragStart(String(col.key))}
+                      onDragOver={(event) => handleDragOver(event, String(col.key))}
+                      onDrop={() => handleDrop(String(col.key))}
+                      className="relative select-none border border-slate-300 px-1 py-1"
+                      style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
+                    >
+                      <span
+                        className={`block px-0.5 py-0.5 ${dragOver?.key === col.key ? "bg-white/20" : ""}`}
                       >
-                        <div className="flex items-center justify-between gap-1 whitespace-nowrap">
-                          <span
-                            className={`flex-1 truncate px-1 py-0.5 ${dragOver?.key === col.key ? "bg-white/20" : ""}`}
-                          >
-                            {col.label}
-                          </span>
-                          <span
-                            className="h-6 w-1 cursor-col-resize bg-white/70"
-                            onMouseDown={(event) => handleResizeStart(event, columnIndex)}
-                          />
-                        </div>
-                        {dragOver && dragOver.key === col.key && (
-                          <div
-                            className={`absolute inset-y-1 ${dragOver.position === "left" ? "left-1" : "right-1"} w-0.5 bg-white`}
-                          />
-                        )}
-                      </th>
-                    );
-                  })}
+                        {col.label}
+                      </span>
+                      {dragOver && dragOver.key === col.key && (
+                        <div
+                          className={`absolute inset-y-1 ${dragOver.position === "left" ? "left-1" : "right-1"} w-0.5 bg-white`}
+                        />
+                      )}
+                    </th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
@@ -1425,9 +1337,9 @@ export default function InventoryPage() {
                     </td>
                   </tr>
                 ) : (
-                  displayRecords.map((item) => (
-                    <tr key={item.id} className="border-t border-slate-300 text-[13px] hover:bg-[#fffbe6]">
-                      <td className="w-10 border border-slate-300 px-2 py-1 align-middle">
+                  displayRecords.map((item, index) => (
+                    <tr key={item.id} className="border-t border-slate-300 text-[11px] hover:bg-[#fffbe6]">
+                      <td className="w-10 border border-slate-300 px-1 py-0.5 align-middle">
                         <input
                           type="checkbox"
                           checked={selectedIds.has(item.id)}
@@ -1438,21 +1350,22 @@ export default function InventoryPage() {
                       {visibleColumns.map((col) => {
                         const fullText = getCellText(item, String(col.key));
                         const statusValue = resolveListingStatus(item);
-                        const shouldTruncate = TRUNCATE_COLUMNS.includes(col.key);
-                        const displayText =
-                          col.key === "id"
-                            ? shortenId(fullText)
-                            : shouldTruncate
-                              ? truncateText(fullText)
-                              : fullText;
+                        const managementId = col.key === "id" ? buildManagementId(index) : null;
+                        const displayText = col.key === "id" ? managementId?.label ?? fullText : fullText;
                         const numeric = NUMERIC_COLUMNS.includes(col.key);
+                        const isDate = DATE_COLUMNS.includes(col.key);
+                        const shouldWrap = WRAP_COLUMNS.includes(col.key);
 
                         return (
                           <td
                             key={col.key}
-                            className={`border border-slate-300 px-2 py-1 align-middle text-neutral-800 ${numeric ? "text-right" : ""}`}
+                            className={`border border-slate-300 px-1 py-0.5 align-middle text-neutral-800 ${
+                              numeric ? "text-right" : ""
+                            } ${isDate || numeric ? "whitespace-nowrap" : ""} ${
+                              shouldWrap ? "whitespace-normal break-words" : ""
+                            }`}
                             style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
-                            title={shouldTruncate || col.key === "id" ? fullText : undefined}
+                            title={col.key === "id" ? item.id : undefined}
                           >
                             {col.key === "status" ? (
                               <select
@@ -1519,10 +1432,17 @@ export default function InventoryPage() {
                                   <p className="text-[10px] text-red-600">{saleErrors[item.id]}</p>
                                 )}
                               </div>
+                            ) : col.key === "id" && managementId ? (
+                              managementId.isSplit ? (
+                                <span className="flex flex-col items-center leading-tight">
+                                  <span>{`${managementId.group}-`}</span>
+                                  <span>{managementId.sequence}</span>
+                                </span>
+                              ) : (
+                                <span className="block text-center">{managementId.label}</span>
+                              )
                             ) : (
-                              <span
-                                className={`block max-w-full ${shouldTruncate ? "truncate" : ""} ${numeric ? "tabular-nums" : ""}`}
-                              >
+                              <span className={`block max-w-full ${numeric ? "tabular-nums" : ""}`}>
                                 {displayText}
                               </span>
                             )}
