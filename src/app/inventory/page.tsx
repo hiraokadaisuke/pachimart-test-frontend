@@ -128,11 +128,11 @@ const matchesDateRange = (value: string | undefined, range: DateRange) => {
   return true;
 };
 
-const buildEditForm = (record: InventoryRecord) => ({
+const buildEditForm = (record: InventoryRecord): Partial<InventoryRecord> => ({
   maker: record.maker ?? "",
   model: record.model ?? record.machineName ?? "",
-  kind: record.kind ?? "",
-  type: (record.type as InventoryRecord["type"]) ?? "",
+  kind: record.kind,
+  type: record.type ?? record.deviceType ?? "",
   quantity: record.quantity ?? 0,
   unitPrice: record.unitPrice ?? 0,
   saleUnitPrice: record.saleUnitPrice ?? 0,
