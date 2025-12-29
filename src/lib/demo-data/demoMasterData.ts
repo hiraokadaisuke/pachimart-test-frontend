@@ -1,5 +1,39 @@
 export type SupplierCategory = "vendor" | "hall";
 
+export type CompanyProfile = {
+  corporateName: string;
+  postalCode: string;
+  prefecture: string;
+  city: string;
+  addressLine?: string;
+  addressLine2?: string;
+  phone: string;
+  fax: string;
+  title: string;
+  representative: string;
+  note: string;
+};
+
+export type CompanyBranch = {
+  id: string;
+  name: string;
+  postalCode: string;
+  prefecture: string;
+  city: string;
+  addressLine?: string;
+  addressLine2?: string;
+  phone: string;
+  fax: string;
+  manager: string;
+  note: string;
+};
+
+export type CompanyStaff = {
+  id: string;
+  name: string;
+  branchId?: string;
+};
+
 export type SupplierBranch = {
   id: string;
   name: string;
@@ -38,6 +72,9 @@ export type MasterData = {
   suppliers: SupplierCorporate[];
   buyerStaffs: string[];
   warehouses: string[];
+  companyProfile: CompanyProfile;
+  companyBranches: CompanyBranch[];
+  companyStaffs: CompanyStaff[];
 };
 
 const MASTER_KEY = "demo_inventory_master_v2";
@@ -95,6 +132,21 @@ export const DEFAULT_MASTER_DATA: MasterData = {
   ],
   buyerStaffs: ["山田", "佐藤", "田中"],
   warehouses: ["東京第1倉庫", "埼玉倉庫", "大阪倉庫"],
+  companyProfile: {
+    corporateName: "",
+    postalCode: "",
+    prefecture: "",
+    city: "",
+    addressLine: "",
+    addressLine2: "",
+    phone: "",
+    fax: "",
+    title: "",
+    representative: "",
+    note: "",
+  },
+  companyBranches: [],
+  companyStaffs: [],
 };
 
 const readLocalStorage = <T,>(key: string): T | null => {
@@ -143,6 +195,12 @@ export const loadMasterData = (): MasterData => {
     const migrated: MasterData = {
       ...stored,
       suppliers: migrateLegacySuppliers((stored as MasterData).suppliers),
+      companyProfile: {
+        ...DEFAULT_MASTER_DATA.companyProfile,
+        ...(stored.companyProfile ?? {}),
+      },
+      companyBranches: stored.companyBranches ?? [],
+      companyStaffs: stored.companyStaffs ?? [],
     };
     writeLocalStorage(MASTER_KEY, migrated);
     return migrated;
