@@ -106,7 +106,7 @@ export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const router = useRouter();
-  const { deductBalance } = useBalance();
+  const { deductBalance, getBalance } = useBalance();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("inProgress");
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -163,8 +163,8 @@ export function InProgressTabContent() {
       if (row.status === "application_approved") {
         const paymentAmount = row.totalAmount;
 
-        const deducted = deductBalance(row.buyerUserId, paymentAmount);
-        if (!deducted) {
+        const currentBalance = getBalance(row.buyerUserId);
+        if (currentBalance < paymentAmount) {
           console.error("Insufficient balance to mark trade as paid", {
             tradeId: row.id,
             buyerUserId: row.buyerUserId,
@@ -176,6 +176,16 @@ export function InProgressTabContent() {
         const updated = markTradePaid(row.id, currentUser.id);
         if (!updated) {
           console.error("Failed to mark trade as paid", { tradeId: row.id });
+          return;
+        }
+
+        const deducted = deductBalance(row.buyerUserId, paymentAmount);
+        if (!deducted) {
+          console.error("Failed to deduct balance after marking trade as paid", {
+            tradeId: row.id,
+            buyerUserId: row.buyerUserId,
+            paymentAmount,
+          });
           return;
         }
 
@@ -208,7 +218,7 @@ export function InProgressTabContent() {
       saveTradeRecord(advanced);
       setTrades((prev) => prev.map((trade) => (trade.id === advanced.id ? advanced : trade)));
     },
-    [currentUser.id, deductBalance, trades]
+    [currentUser.id, deductBalance, getBalance, trades]
   );
 
   useEffect(() => {
@@ -457,4 +467,3 @@ export function InProgressTabContent() {
     </section>
   );
 }
-
