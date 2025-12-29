@@ -15,9 +15,10 @@ import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { getInProgressDescription } from "@/lib/trade/copy";
 import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
 import { loadAcceptedOnlineInquiryTrades } from "@/lib/trade/onlineInquiryTrades";
+import { markTradePaid, saveTradeRecord } from "@/lib/trade/storage";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { TradeRecord } from "@/lib/trade/types";
-import { getTodoPresentation } from "@/lib/trade/todo";
+import { advanceTradeTodo, getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
 
 const SECTION_LABELS = {
@@ -152,10 +153,33 @@ export function InProgressTabContent() {
 
   const handleCompleteTodo = useCallback(
     (tradeId: string, todoKind: TradeStatusKey) => {
-      console.warn("Todo completion is not supported for fetched trades", { tradeId, todoKind });
-      refreshTrades();
+      const targetTrade = trades.find((trade) => trade.id === tradeId);
+      if (!targetTrade) {
+        console.error("Trade not found for todo completion", { tradeId, todoKind });
+        return;
+      }
+
+      let updated: TradeRecord | null = null;
+
+      if (todoKind === "application_approved") {
+        updated = markTradePaid(tradeId, currentUser.id);
+      }
+
+      if (!updated) {
+        updated = advanceTradeTodo(targetTrade, todoKind, currentUser.id);
+        if (updated) {
+          saveTradeRecord(updated);
+        }
+      }
+
+      if (!updated) {
+        console.error("Failed to advance trade todo", { tradeId, todoKind });
+        return;
+      }
+
+      setTrades((prev) => prev.map((trade) => (trade.id === tradeId ? updated : trade)));
     },
-    [refreshTrades]
+    [currentUser.id, trades]
   );
 
   useEffect(() => {
