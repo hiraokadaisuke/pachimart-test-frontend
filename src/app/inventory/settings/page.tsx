@@ -876,7 +876,7 @@ function InventorySettingsContent() {
                   <div className="border-t border-gray-400">
                     <div className="overflow-x-auto">
                       <table className="min-w-full border-collapse text-sm">
-                        <thead>
+                        <tbody>
                           <tr>
                             <th className={tableHeader}>区分</th>
                             <th className={tableHeader}>非表示</th>
@@ -886,14 +886,7 @@ function InventorySettingsContent() {
                             <th className={tableHeader}>都道府県</th>
                             <th className={tableHeader}>市区町村（住所）</th>
                             <th className={tableHeader}>番地・建物名</th>
-                            <th className={tableHeader}>代表者</th>
-                            <th className={tableHeader}>電話番号</th>
-                            <th className={tableHeader}>FAX番号</th>
-                            <th className={tableHeader}>mailアドレス</th>
-                            <th className={tableHeader}>操作</th>
                           </tr>
-                        </thead>
-                        <tbody>
                           <tr>
                             <td className={tableCell}>
                               <select
@@ -982,6 +975,15 @@ function InventorySettingsContent() {
                                 className={inputBase}
                               />
                             </td>
+                          </tr>
+                          <tr>
+                            <th className={tableHeader}>代表者</th>
+                            <th className={tableHeader}>電話番号</th>
+                            <th className={tableHeader}>FAX番号</th>
+                            <th className={tableHeader}>mailアドレス</th>
+                            <th className={tableHeader}>操作</th>
+                          </tr>
+                          <tr>
                             <td className={tableCell}>
                               <input
                                 value={corporateForm.corporateRepresentative}
@@ -1148,7 +1150,7 @@ function InventorySettingsContent() {
                       </label>
                       <div className="overflow-x-auto">
                         <table className="min-w-full border-collapse text-sm">
-                          <thead>
+                          <tbody>
                             <tr>
                               <th className={tableHeader}>法人名</th>
                               <th className={tableHeader}>支店・ホール名</th>
@@ -1157,15 +1159,7 @@ function InventorySettingsContent() {
                               <th className={tableHeader}>都道府県</th>
                               <th className={tableHeader}>市区町村（住所）</th>
                               <th className={tableHeader}>番地・建物名</th>
-                              <th className={tableHeader}>代表者</th>
-                              <th className={tableHeader}>担当者</th>
-                              <th className={tableHeader}>電話番号</th>
-                              <th className={tableHeader}>FAX番号</th>
-                              <th className={tableHeader}>種別</th>
-                              <th className={tableHeader}>操作</th>
                             </tr>
-                          </thead>
-                          <tbody>
                             <tr>
                               <td className={tableCell}>
                                 <select
@@ -1238,6 +1232,16 @@ function InventorySettingsContent() {
                                   className={inputBase}
                                 />
                               </td>
+                            </tr>
+                            <tr>
+                              <th className={tableHeader}>代表者</th>
+                              <th className={tableHeader}>担当者</th>
+                              <th className={tableHeader}>電話番号</th>
+                              <th className={tableHeader}>FAX番号</th>
+                              <th className={tableHeader}>種別</th>
+                              <th className={tableHeader}>操作</th>
+                            </tr>
+                            <tr>
                               <td className={tableCell}>
                                 <input
                                   value={branchForm.representative}
