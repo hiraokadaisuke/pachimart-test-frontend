@@ -4,9 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { PachipayInfoCard } from "@/components/pachipay/PachipayInfoCard";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
-import { calculateStatementTotals } from "@/lib/trade/calcTotals";
-import { TradeRecord } from "@/lib/trade/types";
+import { listLedgerEntries, type LedgerEntry } from "@/lib/balance/ledger";
 
 type CashflowTransaction = {
   id: string;
@@ -17,23 +15,33 @@ type CashflowTransaction = {
 
 export function HistoryTabContent() {
   const currentUser = useCurrentDevUser();
-  const [trades, setTrades] = useState<TradeRecord[]>([]);
+  const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([]);
 
   useEffect(() => {
-    loadAllTradesWithApi().then(setTrades).catch((error) => console.error(error));
-  }, []);
+    const syncLedger = () => {
+      setLedgerEntries(listLedgerEntries(currentUser.id));
+    };
+
+    syncLedger();
+    if (typeof window !== "undefined") {
+      window.addEventListener("ledger_updated", syncLedger);
+      window.addEventListener("storage", syncLedger);
+      return () => {
+        window.removeEventListener("ledger_updated", syncLedger);
+        window.removeEventListener("storage", syncLedger);
+      };
+    }
+    return;
+  }, [currentUser.id]);
 
   const myTransactions = useMemo(
-    () => buildTransactionsFromTrades(trades, currentUser.id),
-    [currentUser.id, trades]
+    () => buildTransactionsFromLedger(ledgerEntries),
+    [ledgerEntries]
   );
 
   return (
     <div className="space-y-6">
-      <PachipayInfoCard
-        title="入出金履歴"
-        description="入金・出金の履歴をまとめて表示するスタブです。詳細や検索条件は今後拡張予定です。"
-      />
+      <PachipayInfoCard title="入出金履歴" description="入金・出金の履歴をまとめて表示します。" />
 
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
         <table className="min-w-full table-auto text-sm text-slate-800">
@@ -66,38 +74,24 @@ export function HistoryTabContent() {
   );
 }
 
-function buildTransactionsFromTrades(trades: TradeRecord[], userId: string): CashflowTransaction[] {
-  const entries: Array<CashflowTransaction & { sortValue: number }> = trades
-    .filter((trade) => trade.sellerUserId === userId || trade.buyerUserId === userId)
-    .map((trade) => {
-      const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
-      const isSeller = trade.sellerUserId === userId;
-      const rawDate =
-        trade.paymentDate ??
-        trade.completedAt ??
-        trade.updatedAt ??
-        trade.contractDate ??
-        trade.createdAt ??
-        new Date().toISOString();
-      const dateObject = new Date(rawDate);
-      const sortValue = dateObject.getTime();
-
-      return {
-        id: `${trade.id}-${isSeller ? "sell" : "buy"}`,
-        date: formatDate(dateObject),
-        kind: isSeller ? "入金" : "出金",
-        amount: totals.total,
-        sortValue,
-      };
-    });
-
-  return entries
-    .sort((a, b) => (Number.isNaN(b.sortValue) ? -1 : Number.isNaN(a.sortValue) ? 1 : b.sortValue - a.sortValue))
-    .map(({ sortValue, ...rest }) => rest);
-}
-
 function formatDate(value: Date) {
   if (Number.isNaN(value.getTime())) return "-";
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${value.getFullYear()}-${pad(value.getMonth() + 1)}-${pad(value.getDate())}`;
+}
+
+function buildTransactionsFromLedger(entries: LedgerEntry[]): CashflowTransaction[] {
+  return [...entries]
+    .map((entry) => {
+      const dateObject = new Date(entry.createdAt);
+      return {
+        id: entry.id,
+        date: formatDate(dateObject),
+        kind: entry.amount >= 0 ? ("入金" as const) : ("出金" as const),
+        amount: Math.abs(entry.amount),
+        sortValue: dateObject.getTime(),
+      };
+    })
+    .sort((a, b) => (Number.isNaN(b.sortValue) ? -1 : Number.isNaN(a.sortValue) ? 1 : b.sortValue - a.sortValue))
+    .map(({ sortValue, ...rest }) => rest);
 }

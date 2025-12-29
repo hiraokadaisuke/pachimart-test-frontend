@@ -21,6 +21,7 @@ import { advanceTradeTodo, getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
 import { useBalance } from "@/lib/balance/BalanceContext";
 import { markTradeCompleted, markTradePaid, saveTradeRecord } from "@/lib/trade/storage";
+import { addLedgerEntry } from "@/lib/balance/ledger";
 
 const SECTION_LABELS = {
   approval: todoUiMap["application_sent"],
@@ -189,6 +190,12 @@ export function InProgressTabContent() {
           return;
         }
 
+        addLedgerEntry(row.buyerUserId, {
+          kind: "PAYMENT",
+          amount: -paymentAmount,
+          tradeId: row.id,
+        });
+
         setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
         return;
       }
@@ -200,6 +207,13 @@ export function InProgressTabContent() {
           console.error("Failed to mark trade as completed", { tradeId: row.id });
           return;
         }
+
+        const saleAmount = row.totalAmount;
+        addLedgerEntry(row.sellerUserId, {
+          kind: "SALE",
+          amount: saleAmount,
+          tradeId: row.id,
+        });
 
         setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
         return;
