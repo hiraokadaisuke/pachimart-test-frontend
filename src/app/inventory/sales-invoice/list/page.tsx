@@ -100,7 +100,7 @@ const initialInvoices: SalesInvoiceRow[] = [
 ];
 
 const inputCell =
-  "w-full rounded-none border border-gray-400 bg-white px-2 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-900";
+  "w-full rounded-none border border-gray-300 bg-white px-2 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-600";
 
 export default function SalesInvoiceListPage() {
   const [invoices, setInvoices] = useState<SalesInvoiceRow[]>(initialInvoices);
@@ -194,23 +194,23 @@ export default function SalesInvoiceListPage() {
 
   const formatCurrency = (value: number) => value.toLocaleString("ja-JP");
 
-  const searchRowClass = "border border-black";
-  const headerCellClass = "border border-black px-3 py-2 text-sm";
+  const searchRowClass = "border border-gray-300";
+  const headerCellClass = "border border-gray-300 px-3 py-2 text-sm";
 
   return (
-    <div className="space-y-5 px-4 py-3 text-slate-900">
+    <div className="space-y-5 py-3 text-slate-900 mx-[1cm]">
       <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <span className="h-3.5 w-3.5 rounded-full bg-green-600" aria-hidden />
-          <h1 className="text-xl font-bold">販売伝票一覧</h1>
+        <div className="flex items-center gap-3 bg-slate-600 px-3 py-2 text-white">
+          <span className="h-3.5 w-3.5 rounded-full bg-white" aria-hidden />
+          <h1 className="text-xl font-bold text-white">販売伝票一覧</h1>
         </div>
-        <div className="border-b border-dashed border-gray-500" />
+        <div className="border-b border-dashed border-gray-300" />
       </div>
 
-      <div className="overflow-hidden border border-black bg-white shadow-sm">
+      <div className="overflow-hidden border border-gray-300 bg-white">
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-emerald-900 text-white">
+            <tr className="bg-slate-600 text-white font-bold">
               <th className={`${headerCellClass} w-32`}>ID</th>
               <th className={`${headerCellClass} w-64`}>メーカー</th>
               <th className={`${headerCellClass} w-64`}>機種名</th>
@@ -259,7 +259,7 @@ export default function SalesInvoiceListPage() {
                   </select>
                   <button
                     type="button"
-                    className="min-w-[32px] border border-gray-500 bg-white px-3 py-1 text-xs font-semibold text-slate-800 shadow-inner"
+                    className="min-w-[32px] border border-gray-300 bg-white px-3 py-1 text-xs font-semibold text-slate-800"
                   >
                     🔍
                   </button>
@@ -271,7 +271,7 @@ export default function SalesInvoiceListPage() {
 
         <table className="w-full border-collapse text-sm">
           <thead>
-            <tr className="bg-emerald-900 text-white">
+            <tr className="bg-slate-600 text-white font-bold">
               <th className={`${headerCellClass} w-32`}>表示数</th>
               <th className={`${headerCellClass} w-56`}>伝票発行日</th>
               <th className={`${headerCellClass} w-56`}>販売担当</th>
@@ -326,7 +326,7 @@ export default function SalesInvoiceListPage() {
                   />
                   <button
                     type="button"
-                    className="min-w-[96px] border border-gray-600 bg-white px-4 py-1 text-xs font-semibold text-slate-800 shadow-inner"
+                    className="min-w-[96px] border border-gray-300 bg-white px-4 py-1 text-xs font-semibold text-slate-800"
                   >
                     販売先検索
                   </button>
@@ -336,83 +336,83 @@ export default function SalesInvoiceListPage() {
           </tbody>
         </table>
 
-        <div className="flex justify-center gap-6 border-t border-black bg-slate-100 px-4 py-3">
+        <div className="flex justify-center gap-6 border-t border-gray-300 bg-slate-100 px-4 py-3">
           <button
             type="button"
             onClick={handleSearch}
-            className="min-w-[120px] border border-gray-700 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-inner"
+            className="min-w-[120px] border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff]"
           >
             検索する
           </button>
           <button
             type="button"
             onClick={handleReset}
-            className="min-w-[120px] border border-amber-600 bg-amber-200 px-4 py-2 text-sm font-semibold text-slate-900 shadow-inner"
+            className="min-w-[120px] border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff]"
           >
             リセット
           </button>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 rounded-sm border border-gray-500 bg-slate-100 px-3 py-2 text-sm font-semibold">
-        <span className="h-4 w-1 bg-emerald-800" aria-hidden />
+      <div className="flex items-center gap-2 border border-gray-300 bg-slate-600 px-3 py-2 text-sm font-bold text-white">
+        <span className="h-4 w-1 bg-white" aria-hidden />
         <span>販売伝票リスト</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm text-slate-900">
-        <span className="rounded-sm border border-gray-600 bg-white px-3 py-1 shadow-inner">PAGE:[ 1 ] 1-7番目表示</span>
+        <span className="border border-gray-300 bg-white px-3 py-1">PAGE:[ 1 ] 1-7番目表示</span>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
         <button
           type="button"
           onClick={handleDelete}
-          className="rounded-sm border border-gray-700 bg-white px-3 py-1 shadow-inner"
+          className="border border-gray-300 bg-white px-3 py-1"
         >
           削除
         </button>
         <button
           type="button"
-          className="rounded-sm border border-gray-700 bg-white px-3 py-1 shadow-inner"
+          className="border border-gray-300 bg-white px-3 py-1"
         >
           結合
         </button>
         <button
           type="button"
           onClick={handleSelectPage}
-          className="rounded-sm border border-gray-700 bg-white px-3 py-1 shadow-inner"
+          className="border border-gray-300 bg-white px-3 py-1"
         >
           ページ内全選択
         </button>
         <button
           type="button"
           onClick={handleClearSelection}
-          className="rounded-sm border border-gray-700 bg-white px-3 py-1 shadow-inner"
+          className="border border-gray-300 bg-white px-3 py-1"
         >
           全解除
         </button>
       </div>
 
-      <div className="overflow-x-auto border border-black bg-white shadow-sm">
+      <div className="overflow-x-auto border border-gray-300 bg-white">
         <table className="min-w-full border-collapse text-sm text-slate-900">
           <thead>
-            <tr className="bg-emerald-900 text-white">
-              <th className="border border-black px-3 py-2 text-left">販売伝票ID</th>
-              <th className="border border-black px-3 py-2 text-left">伝票発行日</th>
-              <th className="border border-black px-3 py-2 text-left">メーカー名</th>
-              <th className="border border-black px-3 py-2 text-left">機種名</th>
-              <th className="border border-black px-3 py-2 text-left">販売先</th>
-              <th className="border border-black px-3 py-2 text-left">区分</th>
-              <th className="border border-black px-3 py-2 text-left">担当</th>
-              <th className="border border-black px-3 py-2 text-right">合計金額</th>
-              <th className="border border-black px-3 py-2 text-center">選択</th>
-              <th className="border border-black px-3 py-2 text-center">詳細</th>
+            <tr className="bg-slate-600 text-white font-bold">
+              <th className="border border-gray-300 px-3 py-2 text-left">販売伝票ID</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">伝票発行日</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">メーカー名</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">機種名</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">販売先</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">区分</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">担当</th>
+              <th className="border border-gray-300 px-3 py-2 text-right">合計金額</th>
+              <th className="border border-gray-300 px-3 py-2 text-center">選択</th>
+              <th className="border border-gray-300 px-3 py-2 text-center">詳細</th>
             </tr>
           </thead>
           <tbody>
             {filteredInvoices.length === 0 && (
               <tr>
-                <td colSpan={10} className="border border-black px-4 py-8 text-center text-sm text-slate-700">
+                <td colSpan={10} className="border border-gray-300 px-4 py-8 text-center text-sm text-slate-700">
                   該当データがありません。
                 </td>
               </tr>
@@ -426,15 +426,15 @@ export default function SalesInvoiceListPage() {
               const typeLabel = invoice.type === "vendor" ? "業者" : invoice.type === "hall" ? "ホール" : "-";
               return (
                 <tr key={invoice.id} className={`${rowColor}`}>
-                  <td className="border border-black px-3 py-2 font-semibold">{invoice.id}</td>
-                  <td className="border border-black px-3 py-2">{invoice.issueDate.replaceAll("-", "/")}</td>
-                  <td className="border border-black px-3 py-2">{invoice.maker}</td>
-                  <td className="border border-black px-3 py-2">{invoice.model}</td>
-                  <td className="border border-black px-3 py-2">{invoice.customer}</td>
-                  <td className="border border-black px-3 py-2">{typeLabel}</td>
-                  <td className="border border-black px-3 py-2">{invoice.staff}</td>
-                  <td className="border border-black px-3 py-2 text-right">{formatCurrency(invoice.totalAmount)}</td>
-                  <td className="border border-black px-3 py-2 text-center">
+                  <td className="border border-gray-300 px-3 py-2 font-semibold">{invoice.id}</td>
+                  <td className="border border-gray-300 px-3 py-2">{invoice.issueDate.replaceAll("-", "/")}</td>
+                  <td className="border border-gray-300 px-3 py-2">{invoice.maker}</td>
+                  <td className="border border-gray-300 px-3 py-2">{invoice.model}</td>
+                  <td className="border border-gray-300 px-3 py-2">{invoice.customer}</td>
+                  <td className="border border-gray-300 px-3 py-2">{typeLabel}</td>
+                  <td className="border border-gray-300 px-3 py-2">{invoice.staff}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right">{formatCurrency(invoice.totalAmount)}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-center">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(invoice.id)}
@@ -442,10 +442,10 @@ export default function SalesInvoiceListPage() {
                       className="h-4 w-4"
                     />
                   </td>
-                  <td className="border border-black px-3 py-2 text-center">
+                  <td className="border border-gray-300 px-3 py-2 text-center">
                     <Link
                       href={detailHref}
-                      className="inline-flex h-7 w-7 items-center justify-center rounded-sm border border-orange-600 bg-orange-300 text-base font-bold text-slate-900 shadow-inner"
+                      className="inline-flex h-7 w-7 items-center justify-center border border-gray-300 bg-slate-200 text-base font-bold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff]"
                     >
                       ＋
                     </Link>
@@ -458,7 +458,7 @@ export default function SalesInvoiceListPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm text-slate-900">
-        <span className="rounded-sm border border-gray-600 bg-white px-3 py-1 shadow-inner">PAGE:[ 1 ] 1-7番目表示</span>
+        <span className="border border-gray-300 bg-white px-3 py-1">PAGE:[ 1 ] 1-7番目表示</span>
       </div>
     </div>
   );
