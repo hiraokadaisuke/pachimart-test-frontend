@@ -689,7 +689,15 @@ async function clearExistingData() {
   await prisma.navi.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   await prisma.listing.deleteMany({ where: { sellerUserId: { in: DEV_USER_IDS } } });
   await prisma.storageLocation.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
-  await prisma.buyerShippingAddress.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
+  try {
+    await prisma.buyerShippingAddress.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021") {
+      console.warn("BuyerShippingAddress table not found. Skipping deleteMany.");
+    } else {
+      throw error;
+    }
+  }
 }
 
 async function seedUsers() {
@@ -773,8 +781,16 @@ async function seedListings() {
 }
 
 async function seedBuyerShippingAddresses() {
-  for (const address of BUYER_SHIPPING_ADDRESSES) {
-    await prisma.buyerShippingAddress.create({ data: { ...address, isActive: true } });
+  try {
+    for (const address of BUYER_SHIPPING_ADDRESSES) {
+      await prisma.buyerShippingAddress.create({ data: { ...address, isActive: true } });
+    }
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021") {
+      console.warn("BuyerShippingAddress table not found. Skipping seed.");
+    } else {
+      throw error;
+    }
   }
 }
 
