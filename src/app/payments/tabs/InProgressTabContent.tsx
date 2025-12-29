@@ -14,6 +14,7 @@ import type { TradeMessage } from "@/lib/messages/transform";
 import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { getInProgressDescription } from "@/lib/trade/copy";
 import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
+import { loadAcceptedOnlineInquiryTrades } from "@/lib/trade/onlineInquiryTrades";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { TradeRecord } from "@/lib/trade/types";
 import { getTodoPresentation } from "@/lib/trade/todo";
@@ -134,7 +135,11 @@ export function InProgressTabContent() {
 
   const refreshTrades = useCallback(async () => {
     try {
-      const data = await loadAllTradesWithApi();
+      const [navis, inquiries] = await Promise.all([
+        loadAllTradesWithApi(),
+        loadAcceptedOnlineInquiryTrades(),
+      ]);
+      const data = [...navis, ...inquiries];
       const ownedTrades = data.filter(
         (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
       );
