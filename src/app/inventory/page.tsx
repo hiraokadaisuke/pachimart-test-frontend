@@ -22,8 +22,26 @@ type Column = {
   order?: number;
 };
 
+type DateRange = {
+  from: string;
+  to: string;
+};
+
+type SearchFilters = {
+  kind: "all" | "P" | "S";
+  createdAt: DateRange;
+  stockInDate: DateRange;
+  maker: string;
+  model: string;
+  supplier: string;
+  staff: string;
+  showHidden: "show" | "hide";
+  showStock: "show" | "hide";
+  showCompleted: "show" | "hide";
+  displayCount: "all" | "50" | "100" | "200";
+};
+
 const RESERVED_SELECTION_WIDTH = 48;
-const ACTIONS_COLUMN_WIDTH = 96;
 const COLUMN_SETTINGS_KEY = "inventory_table_columns_v1";
 
 const TRUNCATE_COLUMNS: Array<Column["key"]> = [
@@ -40,24 +58,38 @@ const NUMERIC_COLUMNS: Array<Column["key"]> = ["quantity", "unitPrice", "saleUni
 const STATUS_OPTIONS: InventoryStatusOption[] = ["倉庫", "出品中", "売却済"];
 
 const INITIAL_COLUMNS: Column[] = [
-  { key: "id", label: "在庫ID", width: 96, minWidth: 68, visible: true },
-  { key: "createdAt", label: "在庫入力日", width: 96, minWidth: 70, visible: true },
-  { key: "maker", label: "メーカー名", width: 96, minWidth: 76, visible: true },
-  { key: "model", label: "機種名", width: 148, minWidth: 110, visible: true },
-  { key: "kind", label: "種別", width: 60, minWidth: 48, visible: true },
-  { key: "type", label: "タイプ", width: 68, minWidth: 50, visible: true },
-  { key: "quantity", label: "仕入数", width: 82, minWidth: 64, visible: true },
-  { key: "unitPrice", label: "仕入単価", width: 96, minWidth: 72, visible: true },
-  { key: "saleUnitPrice", label: "販売単価", width: 96, minWidth: 72, visible: true },
-  { key: "stockInDate", label: "入庫日", width: 92, minWidth: 70, visible: true },
-  { key: "removeDate", label: "撤去日", width: 92, minWidth: 70, visible: true },
-  { key: "warehouse", label: "保管先", width: 126, minWidth: 96, visible: true },
-  { key: "supplier", label: "仕入先", width: 126, minWidth: 96, visible: true },
-  { key: "staff", label: "担当者", width: 94, minWidth: 72, visible: true },
-  { key: "status", label: "状況", width: 96, minWidth: 74, visible: true },
-  { key: "isVisible", label: "表示", width: 74, minWidth: 56, visible: true },
-  { key: "note", label: "備考", width: 130, minWidth: 98, visible: true },
+  { key: "id", label: "在庫ID", width: 88, minWidth: 64, visible: true },
+  { key: "createdAt", label: "在庫入力日", width: 98, minWidth: 70, visible: true },
+  { key: "maker", label: "メーカー名", width: 100, minWidth: 72, visible: true },
+  { key: "model", label: "機種名", width: 150, minWidth: 110, visible: true },
+  { key: "kind", label: "種別", width: 52, minWidth: 48, visible: true },
+  { key: "type", label: "タイプ", width: 60, minWidth: 50, visible: true },
+  { key: "quantity", label: "仕入数", width: 78, minWidth: 64, visible: true },
+  { key: "unitPrice", label: "仕入単価", width: 90, minWidth: 72, visible: true },
+  { key: "saleUnitPrice", label: "販売単価", width: 90, minWidth: 72, visible: true },
+  { key: "stockInDate", label: "入庫日", width: 96, minWidth: 70, visible: true },
+  { key: "removeDate", label: "撤去日", width: 96, minWidth: 70, visible: true },
+  { key: "warehouse", label: "保管先", width: 125, minWidth: 96, visible: true },
+  { key: "supplier", label: "仕入先", width: 125, minWidth: 96, visible: true },
+  { key: "staff", label: "担当者", width: 90, minWidth: 72, visible: true },
+  { key: "status", label: "状況", width: 90, minWidth: 72, visible: true },
+  { key: "isVisible", label: "表示", width: 70, minWidth: 56, visible: true },
+  { key: "note", label: "備考", width: 120, minWidth: 98, visible: true },
 ];
+
+const defaultFilters: SearchFilters = {
+  kind: "all",
+  createdAt: { from: "", to: "" },
+  stockInDate: { from: "", to: "" },
+  maker: "",
+  model: "",
+  supplier: "",
+  staff: "",
+  showHidden: "hide",
+  showStock: "show",
+  showCompleted: "show",
+  displayCount: "all",
+};
 
 const truncateText = (text: string) => {
   if (!text) return "-";
@@ -77,18 +109,90 @@ const formatDate = (value?: string) => {
   return parsed.toLocaleDateString("ja-JP");
 };
 
+const toDateOnly = (value: string) => {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+};
+
+const matchesDateRange = (value: string | undefined, range: DateRange) => {
+  if (!range.from && !range.to) return true;
+  if (!value) return false;
+  const target = toDateOnly(value);
+  if (!target) return false;
+  const fromDate = range.from ? toDateOnly(range.from) : null;
+  const toDate = range.to ? toDateOnly(range.to) : null;
+
+  if (fromDate && target < fromDate) return false;
+  if (toDate && target > toDate) return false;
+  return true;
+};
+
+const buildEditForm = (record: InventoryRecord): Partial<InventoryRecord> => ({
+  maker: record.maker ?? "",
+  model: record.model ?? record.machineName ?? "",
+  kind: record.kind,
+  type: record.type ?? record.deviceType ?? "",
+  quantity: record.quantity ?? 0,
+  unitPrice: record.unitPrice ?? 0,
+  saleUnitPrice: record.saleUnitPrice ?? 0,
+  stockInDate: record.stockInDate ?? record.arrivalDate ?? "",
+  removeDate: record.removeDate ?? record.removalDate ?? "",
+  warehouse: record.warehouse ?? record.storageLocation ?? "",
+  supplier: record.supplier ?? "",
+  staff: record.staff ?? record.buyerStaff ?? "",
+  status: (record.status ?? record.stockStatus ?? "倉庫") as InventoryStatusOption,
+  note: record.note ?? record.notes ?? "",
+  isVisible: record.isVisible ?? true,
+  pattern: record.pattern ?? "",
+});
+
+const buildPayload = (form: Partial<InventoryRecord>): Partial<InventoryRecord> => ({
+  maker: form.maker?.trim() || undefined,
+  model: form.model?.trim() || undefined,
+  machineName: form.model?.trim() || undefined,
+  kind: form.kind ?? undefined,
+  type: form.type ?? undefined,
+  quantity: typeof form.quantity === "number" ? form.quantity : Number(form.quantity ?? 0),
+  unitPrice: typeof form.unitPrice === "number" ? form.unitPrice : Number(form.unitPrice ?? 0),
+  saleUnitPrice:
+    typeof form.saleUnitPrice === "number" ? form.saleUnitPrice : Number(form.saleUnitPrice ?? 0),
+  stockInDate: form.stockInDate || undefined,
+  arrivalDate: form.stockInDate || undefined,
+  removeDate: form.removeDate || undefined,
+  removalDate: form.removeDate || undefined,
+  pattern: form.pattern?.trim() || undefined,
+  warehouse: form.warehouse?.trim() || undefined,
+  storageLocation: form.warehouse?.trim() || undefined,
+  supplier: form.supplier?.trim() || undefined,
+  staff: form.staff?.trim() || undefined,
+  buyerStaff: form.staff?.trim() || undefined,
+  status: (form.status ?? "倉庫") as InventoryStatusOption,
+  stockStatus: (form.status ?? "倉庫") as InventoryStatusOption,
+  note: form.note?.trim() || undefined,
+  notes: form.note?.trim() || undefined,
+  isVisible: form.isVisible ?? true,
+});
+
 export default function InventoryPage() {
   const [records, setRecords] = useState<InventoryRecord[]>([]);
   const [columns, setColumns] = useState<Column[]>(INITIAL_COLUMNS);
-  const [searchTerm, setSearchTerm] = useState("");
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState<{ key: string; position: "left" | "right" } | null>(null);
   const tableRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState<number>(0);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [columnEditorOpen, setColumnEditorOpen] = useState(false);
-  const [editingRecord, setEditingRecord] = useState<InventoryRecord | null>(null);
-  const [editingForm, setEditingForm] = useState<Partial<InventoryRecord> | null>(null);
+  const [searchDraft, setSearchDraft] = useState<SearchFilters>(defaultFilters);
+  const [searchFilters, setSearchFilters] = useState<SearchFilters>(defaultFilters);
+  const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const [bulkEditForms, setBulkEditForms] = useState<Record<string, Partial<InventoryRecord>>>({});
+  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
+  const [saleDraft, setSaleDraft] = useState<string>("");
+  const [saleSavingId, setSaleSavingId] = useState<string | null>(null);
+  const [saleErrors, setSaleErrors] = useState<Record<string, string>>({});
+  const [showMakerSuggestions, setShowMakerSuggestions] = useState(false);
+  const [showModelSuggestions, setShowModelSuggestions] = useState(false);
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
@@ -133,7 +237,7 @@ export default function InventoryPage() {
     setColumns((prev) => {
       const visible = prev.filter((col) => col.visible !== false);
       const total = visible.reduce((sum, col) => sum + col.width, 0);
-      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH - ACTIONS_COLUMN_WIDTH, 0);
+      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH, 0);
       if (total <= availableWidth) return prev;
       const scale = availableWidth / total;
       return prev.map((col) => ({
@@ -158,19 +262,104 @@ export default function InventoryPage() {
 
   const visibleColumns = useMemo(() => columns.filter((col) => col.visible !== false), [columns]);
 
-  const filtered = useMemo(() => {
-    const keyword = searchTerm.trim().toLowerCase();
+  const makerOptions = useMemo(
+    () => Array.from(new Set(records.map((item) => item.maker).filter(Boolean))) as string[],
+    [records],
+  );
+
+  const modelOptions = useMemo(() => {
+    const targetRecords = searchDraft.maker
+      ? records.filter((item) => item.maker === searchDraft.maker)
+      : records;
+    return Array.from(
+      new Set(
+        targetRecords
+          .map((item) => item.model ?? item.machineName)
+          .filter(Boolean),
+      ),
+    ) as string[];
+  }, [records, searchDraft.maker]);
+
+  const filteredRecords = useMemo(() => {
+    const keywordMaker = searchFilters.maker.trim().toLowerCase();
+    const keywordModel = searchFilters.model.trim().toLowerCase();
+    const keywordSupplier = searchFilters.supplier.trim().toLowerCase();
+    const keywordStaff = searchFilters.staff.trim().toLowerCase();
+    const showHidden = searchFilters.showHidden === "show";
+    const showStock = searchFilters.showStock === "show";
+    const showCompleted = searchFilters.showCompleted === "show";
+
     const sorted = [...records].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
 
-    if (!keyword) return sorted;
-
     return sorted.filter((item) => {
-      const target = `${item.maker ?? ""} ${item.model ?? item.machineName ?? ""} ${item.supplier ?? ""}`;
-      return target.toLowerCase().includes(keyword);
+      if (searchFilters.kind !== "all" && item.kind !== searchFilters.kind) {
+        return false;
+      }
+
+      if (!showHidden && item.isVisible === false) {
+        return false;
+      }
+
+      const statusValue = (item.status ?? item.stockStatus ?? "倉庫") as InventoryStatusOption;
+      const isCompleted = statusValue === "売却済";
+      const isStock = !isCompleted;
+
+      if (!showStock && isStock) return false;
+      if (!showCompleted && isCompleted) return false;
+
+      if (keywordMaker && !(item.maker ?? "").toLowerCase().includes(keywordMaker)) {
+        return false;
+      }
+
+      const modelValue = item.model ?? item.machineName ?? "";
+      if (keywordModel && !modelValue.toLowerCase().includes(keywordModel)) {
+        return false;
+      }
+
+      if (keywordSupplier && !(item.supplier ?? "").toLowerCase().includes(keywordSupplier)) {
+        return false;
+      }
+
+      if (keywordStaff && !(item.staff ?? item.buyerStaff ?? "").toLowerCase().includes(keywordStaff)) {
+        return false;
+      }
+
+      if (!matchesDateRange(item.createdAt, searchFilters.createdAt)) return false;
+
+      const stockInValue = item.stockInDate ?? item.arrivalDate;
+      if (!matchesDateRange(stockInValue, searchFilters.stockInDate)) return false;
+
+      return true;
     });
-  }, [records, searchTerm]);
+  }, [records, searchFilters]);
+
+  const displayRecords = useMemo(() => {
+    if (searchFilters.displayCount === "all") return filteredRecords;
+    return filteredRecords.slice(0, Number(searchFilters.displayCount));
+  }, [filteredRecords, searchFilters.displayCount]);
+
+  useEffect(() => {
+    const allowed = new Set(displayRecords.map((record) => record.id));
+    setSelectedIds((prev) => new Set([...prev].filter((id) => allowed.has(id))));
+  }, [displayRecords]);
+
+  const selectedRecords = useMemo(
+    () => records.filter((record) => selectedIds.has(record.id)),
+    [records, selectedIds],
+  );
+
+  const groupedSelected = useMemo(() => {
+    const groups = new Map<string, InventoryRecord[]>();
+    selectedRecords.forEach((record) => {
+      const supplier = record.supplier?.trim() || "未設定";
+      const current = groups.get(supplier) ?? [];
+      current.push(record);
+      groups.set(supplier, current);
+    });
+    return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b, "ja"));
+  }, [selectedRecords]);
 
   const handleStatusChange = (id: string, status: InventoryStatusOption) => {
     const updated = updateInventoryStatus(id, status);
@@ -191,7 +380,7 @@ export default function InventoryPage() {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedIds(new Set(filtered.map((item) => item.id)));
+      setSelectedIds(new Set(displayRecords.map((item) => item.id)));
       return;
     }
     setSelectedIds(new Set());
@@ -219,68 +408,6 @@ export default function InventoryPage() {
 
   const handleVisibilityChange = (id: string, visible: boolean) => {
     handleUpdateRecord(id, { isVisible: visible });
-  };
-
-  const openEditor = (record: InventoryRecord) => {
-    setEditingRecord(record);
-    setEditingForm({
-      maker: record.maker ?? "",
-      model: record.model ?? record.machineName ?? "",
-      kind: record.kind,
-      type: (record.type as InventoryRecord["type"]) ?? "",
-      quantity: record.quantity ?? 0,
-      unitPrice: record.unitPrice ?? 0,
-      saleUnitPrice: record.saleUnitPrice ?? 0,
-      stockInDate: record.stockInDate ?? record.arrivalDate ?? "",
-      removeDate: record.removeDate ?? record.removalDate ?? "",
-      warehouse: record.warehouse ?? record.storageLocation ?? "",
-      supplier: record.supplier ?? "",
-      staff: record.staff ?? record.buyerStaff ?? "",
-      status: (record.status ?? "倉庫") as InventoryStatusOption,
-      note: record.note ?? record.notes ?? "",
-      isVisible: record.isVisible ?? true,
-      pattern: record.pattern ?? "",
-    });
-  };
-
-  const closeEditor = () => {
-    setEditingRecord(null);
-    setEditingForm(null);
-  };
-
-  const handleEditSubmit = () => {
-    if (!editingRecord || !editingForm) return;
-    const payload: Partial<InventoryRecord> = {
-      maker: editingForm.maker?.trim() || undefined,
-      model: editingForm.model?.trim() || undefined,
-      machineName: editingForm.model?.trim() || undefined,
-      kind: editingForm.kind ?? undefined,
-      type: editingForm.type ?? undefined,
-      quantity: typeof editingForm.quantity === "number" ? editingForm.quantity : Number(editingForm.quantity ?? 0),
-      unitPrice:
-        typeof editingForm.unitPrice === "number" ? editingForm.unitPrice : Number(editingForm.unitPrice ?? 0),
-      saleUnitPrice:
-        typeof editingForm.saleUnitPrice === "number"
-          ? editingForm.saleUnitPrice
-          : Number(editingForm.saleUnitPrice ?? 0),
-      stockInDate: editingForm.stockInDate || undefined,
-      arrivalDate: editingForm.stockInDate || undefined,
-      removeDate: editingForm.removeDate || undefined,
-      removalDate: editingForm.removeDate || undefined,
-      pattern: editingForm.pattern?.trim() || undefined,
-      warehouse: editingForm.warehouse?.trim() || undefined,
-      storageLocation: editingForm.warehouse?.trim() || undefined,
-      supplier: editingForm.supplier?.trim() || undefined,
-      staff: editingForm.staff?.trim() || undefined,
-      buyerStaff: editingForm.staff?.trim() || undefined,
-      status: (editingForm.status ?? "倉庫") as InventoryStatusOption,
-      stockStatus: (editingForm.status ?? "倉庫") as InventoryStatusOption,
-      note: editingForm.note?.trim() || undefined,
-      notes: editingForm.note?.trim() || undefined,
-      isVisible: editingForm.isVisible ?? true,
-    };
-    handleUpdateRecord(editingRecord.id, payload);
-    closeEditor();
   };
 
   const getCellText = (record: InventoryRecord, key: string) => {
@@ -315,6 +442,8 @@ export default function InventoryPage() {
         return record.supplier ?? "-";
       case "staff":
         return record.staff ?? record.buyerStaff ?? "-";
+      case "status":
+        return (record.status ?? record.stockStatus ?? "倉庫") as InventoryStatusOption;
       case "isVisible":
         return record.isVisible === false ? "しない" : "する";
       case "note":
@@ -391,7 +520,7 @@ export default function InventoryPage() {
         .filter(({ col }) => col.visible !== false)
         .map(({ idx }) => idx);
 
-      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH - ACTIONS_COLUMN_WIDTH, 0);
+      const availableWidth = Math.max(containerWidth - RESERVED_SELECTION_WIDTH, 0);
 
       let total = visibleIndices.reduce((sum, idx) => sum + next[idx].width, 0);
       if (total <= availableWidth) return next;
@@ -455,227 +584,928 @@ export default function InventoryPage() {
     window.addEventListener("mouseup", onUp);
   };
 
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    setSearchFilters(searchDraft);
+    setSelectedIds(new Set());
+  };
+
+  const handleResetFilters = () => {
+    setSearchDraft(defaultFilters);
+    setSearchFilters(defaultFilters);
+    setSelectedIds(new Set());
+  };
+
+  const handleBulkEditOpen = () => {
+    if (selectedIds.size === 0) return;
+    setBulkEditForms(() => {
+      const next: Record<string, Partial<InventoryRecord>> = {};
+      selectedRecords.forEach((record) => {
+        next[record.id] = buildEditForm(record);
+      });
+      return next;
+    });
+    setBulkEditOpen(true);
+  };
+
+  const handleBulkEditClose = () => {
+    setBulkEditOpen(false);
+  };
+
+  const handleBulkFormChange = <K extends keyof InventoryRecord>(
+    id: string,
+    key: K,
+    value: InventoryRecord[K],
+  ) => {
+    setBulkEditForms((prev) => ({
+      ...prev,
+      [id]: {
+        ...prev[id],
+        [key]: value,
+      },
+    }));
+  };
+
+  const handleBulkSave = () => {
+    let updatedRecords = records;
+    selectedRecords.forEach((record) => {
+      const form = bulkEditForms[record.id];
+      if (!form) return;
+      updatedRecords = updateInventoryRecord(record.id, buildPayload(form));
+    });
+    setRecords(updatedRecords);
+    setBulkEditOpen(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleCsvDownload = () => {
+    const headers = visibleColumns.map((col) => col.label);
+    const rows = displayRecords.map((record) =>
+      visibleColumns
+        .map((col) => {
+          const value = getCellText(record, String(col.key));
+          const normalized = value ?? "";
+          return `"${String(normalized).replace(/"/g, '""')}"`;
+        })
+        .join(","),
+    );
+
+    const csvContent = [headers.join(","), ...rows].join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "inventory.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const startSaleEdit = (record: InventoryRecord) => {
+    setEditingSaleId(record.id);
+    setSaleDraft(record.saleUnitPrice != null ? String(record.saleUnitPrice) : "");
+    setSaleErrors((prev) => ({ ...prev, [record.id]: "" }));
+  };
+
+  const cancelSaleEdit = () => {
+    setEditingSaleId(null);
+    setSaleDraft("");
+  };
+
+  const saveSaleEdit = (record: InventoryRecord) => {
+    const normalized = saleDraft.replace(/,/g, "").trim();
+    if (normalized && Number.isNaN(Number(normalized))) {
+      setSaleErrors((prev) => ({ ...prev, [record.id]: "数値で入力してください。" }));
+      return;
+    }
+    setSaleSavingId(record.id);
+    const nextValue = normalized === "" ? undefined : Number(normalized);
+    handleUpdateRecord(record.id, { saleUnitPrice: nextValue });
+    setSaleSavingId(null);
+    setEditingSaleId(null);
+    setSaleDraft("");
+  };
+
   return (
-    <div className="space-y-6 px-0">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold text-neutral-900">在庫一覧</h1>
-          <p className="text-sm text-neutral-600">登録された在庫の確認やステータス更新、表示項目を調整できます。</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handleResetData}
-            className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50"
-          >
-            データ初期化
-          </button>
-          <Link
-            href="/inventory/new"
-            className="rounded-md bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow hover:bg-sky-500"
-          >
-            在庫を登録
-          </Link>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
-        <div className="flex flex-wrap items-center gap-2 text-sm text-neutral-700">
-          <span className="font-semibold">表示操作：</span>
-          <span>ヘッダーをドラッグして並び替え</span>
-          <span className="ml-2">|</span>
-          <span>右端ハンドルで列幅調整</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => handleBulkUpdate("売却済")}
-              disabled={selectedIds.size === 0}
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              一括：売却済
-            </button>
-            <button
-              type="button"
-              onClick={() => handleBulkUpdate("出品中")}
-              disabled={selectedIds.size === 0}
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              一括：出品中
-            </button>
-            <button
-              type="button"
-              onClick={() => handleBulkUpdate("倉庫")}
-              disabled={selectedIds.size === 0}
-              className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              一括：倉庫
-            </button>
-          </div>
-          <button
-            type="button"
-            onClick={() => setColumnEditorOpen(true)}
-            className="rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-          >
-            表示項目編集
-          </button>
-          <div className="flex items-center gap-2">
-            <label htmlFor="inventory-search" className="text-sm text-neutral-700">
-              検索 / 絞り込み
-            </label>
-            <input
-              id="inventory-search"
-              value={searchTerm}
-              onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="メーカー名 / 機種名 / 仕入先"
-              className="w-64 rounded-md border border-slate-300 px-3 py-2 text-sm shadow-sm focus:border-sky-500 focus:outline-none"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div ref={tableRef} className="w-full overflow-x-auto">
-        <table className="min-w-full table-fixed border-collapse whitespace-nowrap border border-slate-300 text-[13px]">
-          <thead className="bg-slate-50 text-left font-semibold text-slate-700">
-            <tr>
-              <th className="w-10 border border-slate-300 px-3 py-2">
-                <input
-                  type="checkbox"
-                  checked={filtered.length > 0 && selectedIds.size === filtered.length}
-                  onChange={(event) => handleSelectAll(event.target.checked)}
-                  className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
-                />
-              </th>
-              {visibleColumns.map((col) => {
-                const columnIndex = columns.findIndex((c) => c.key === col.key);
-                return (
-                  <th
-                    key={col.key}
-                    draggable
-                    onDragStart={() => handleDragStart(String(col.key))}
-                    onDragOver={(event) => handleDragOver(event, String(col.key))}
-                    onDrop={() => handleDrop(String(col.key))}
-                    className="relative select-none border border-slate-300 px-2 py-2"
-                    style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
-                  >
-                    <div className="flex items-center justify-between gap-1 whitespace-nowrap">
-                      <span
-                        className={`flex-1 truncate rounded px-2 py-1 ${dragOver?.key === col.key ? "bg-sky-50" : ""}`}
-                      >
-                        {col.label}
-                      </span>
-                      <span
-                        className="h-6 w-1 cursor-col-resize rounded bg-slate-300"
-                        onMouseDown={(event) => handleResizeStart(event, columnIndex)}
-                      />
-                    </div>
-                    {dragOver && dragOver.key === col.key && (
-                      <div
-                        className={`absolute inset-y-1 ${dragOver.position === "left" ? "left-1" : "right-1"} w-0.5 bg-sky-500`}
-                      />
-                    )}
-                  </th>
-                );
-              })}
-              <th
-                className="border border-slate-300 px-3 py-2 text-center"
-                style={{ width: `${ACTIONS_COLUMN_WIDTH}px` }}
+    <div className="min-h-screen bg-white py-6">
+      <div className="mx-auto max-w-[1600px] px-[38px]">
+        <div className="p-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-300 pb-3">
+            <div>
+              <h1 className="text-2xl font-semibold text-neutral-900">在庫一覧</h1>
+              <p className="text-xs text-neutral-600">登録された在庫の確認やステータス更新を行います。</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={handleResetData}
+                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-sm font-semibold text-neutral-700 shadow-[inset_0_1px_0_#fff]"
               >
-                編集
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={visibleColumns.length + 2} className="border border-slate-300 px-3 py-6 text-center text-sm text-neutral-600">
-                  登録された在庫がありません。
-                </td>
-              </tr>
-            ) : (
-              filtered.map((item) => (
-                <tr key={item.id} className="border-t border-slate-200 text-[13px] hover:bg-sky-50">
-                  <td className="w-10 border border-slate-300 px-3 py-2 align-middle">
+                データ初期化
+              </button>
+              <Link
+                href="/inventory/new"
+                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-sm font-semibold text-neutral-700 shadow-[inset_0_1px_0_#fff]"
+              >
+                在庫を登録
+              </Link>
+            </div>
+          </div>
+
+          <div className="mt-4 border-2 border-slate-300">
+            <div className="bg-[#7f9bb8] px-3 py-2 text-sm font-bold text-white">検索条件</div>
+            <form onSubmit={handleSearchSubmit} className="bg-white">
+              <table className="w-full border-collapse text-sm">
+                <tbody>
+                  <tr>
+                    <th className="w-32 border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      P/S
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1">
+                      <div className="flex items-center gap-3 text-xs">
+                        {["all", "P", "S"].map((value) => (
+                          <label key={value} className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              name="kind"
+                              value={value}
+                              checked={searchDraft.kind === value}
+                              onChange={() =>
+                                setSearchDraft((prev) => ({
+                                  ...prev,
+                                  kind: value as SearchFilters["kind"],
+                                }))
+                              }
+                            />
+                            <span>{value === "all" ? "全て" : value}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </td>
+                    <th className="w-36 border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      在庫入力日
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1">
+                      <div className="flex items-center gap-2 text-xs">
+                        <input
+                          type="date"
+                          value={searchDraft.createdAt.from}
+                          onChange={(event) =>
+                            setSearchDraft((prev) => ({
+                              ...prev,
+                              createdAt: { ...prev.createdAt, from: event.target.value },
+                            }))
+                          }
+                          className="w-full max-w-[130px] border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                        />
+                        <span>〜</span>
+                        <input
+                          type="date"
+                          value={searchDraft.createdAt.to}
+                          onChange={(event) =>
+                            setSearchDraft((prev) => ({
+                              ...prev,
+                              createdAt: { ...prev.createdAt, to: event.target.value },
+                            }))
+                          }
+                          className="w-full max-w-[130px] border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                        />
+                      </div>
+                    </td>
+                    <th className="w-28 border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      入庫日
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1">
+                      <div className="flex items-center gap-2 text-xs">
+                        <input
+                          type="date"
+                          value={searchDraft.stockInDate.from}
+                          onChange={(event) =>
+                            setSearchDraft((prev) => ({
+                              ...prev,
+                              stockInDate: { ...prev.stockInDate, from: event.target.value },
+                            }))
+                          }
+                          className="w-full max-w-[130px] border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                        />
+                        <span>〜</span>
+                        <input
+                          type="date"
+                          value={searchDraft.stockInDate.to}
+                          onChange={(event) =>
+                            setSearchDraft((prev) => ({
+                              ...prev,
+                              stockInDate: { ...prev.stockInDate, to: event.target.value },
+                            }))
+                          }
+                          className="w-full max-w-[130px] border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                        />
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      メーカー
+                    </th>
+                    <td className="relative border border-slate-300 px-2 py-1">
+                      <input
+                        value={searchDraft.maker}
+                        onChange={(event) =>
+                          setSearchDraft((prev) => ({ ...prev, maker: event.target.value }))
+                        }
+                        onFocus={() => setShowMakerSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowMakerSuggestions(false), 150)}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
+                      />
+                      {showMakerSuggestions && makerOptions.length > 0 && (
+                        <div className="absolute left-0 top-full z-10 mt-1 w-full border border-slate-300 bg-white text-xs">
+                          {makerOptions
+                            .filter((option) =>
+                              option.toLowerCase().includes(searchDraft.maker.trim().toLowerCase()),
+                            )
+                            .slice(0, 6)
+                            .map((option) => (
+                              <button
+                                key={option}
+                                type="button"
+                                className="block w-full px-2 py-1 text-left hover:bg-[#fff4d6]"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() =>
+                                  setSearchDraft((prev) => ({ ...prev, maker: option }))
+                                }
+                              >
+                                {option}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </td>
+                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      機種名
+                    </th>
+                    <td className="relative border border-slate-300 px-2 py-1">
+                      <input
+                        value={searchDraft.model}
+                        onChange={(event) =>
+                          setSearchDraft((prev) => ({ ...prev, model: event.target.value }))
+                        }
+                        onFocus={() => setShowModelSuggestions(true)}
+                        onBlur={() => setTimeout(() => setShowModelSuggestions(false), 150)}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
+                      />
+                      {showModelSuggestions && modelOptions.length > 0 && (
+                        <div className="absolute left-0 top-full z-10 mt-1 w-full border border-slate-300 bg-white text-xs">
+                          {modelOptions
+                            .filter((option) =>
+                              option.toLowerCase().includes(searchDraft.model.trim().toLowerCase()),
+                            )
+                            .slice(0, 6)
+                            .map((option) => (
+                              <button
+                                key={option}
+                                type="button"
+                                className="block w-full px-2 py-1 text-left hover:bg-[#fff4d6]"
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() =>
+                                  setSearchDraft((prev) => ({ ...prev, model: option }))
+                                }
+                              >
+                                {option}
+                              </button>
+                            ))}
+                        </div>
+                      )}
+                    </td>
+                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      仕入先
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1">
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={searchDraft.supplier}
+                          onChange={(event) =>
+                            setSearchDraft((prev) => ({ ...prev, supplier: event.target.value }))
+                          }
+                          className="flex-1 border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
+                        />
+                        <button
+                          type="button"
+                          className="border border-slate-300 bg-[#f7f3e9] px-2 py-0.5 text-xs font-semibold"
+                        >
+                          仕入先検索
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      仕入担当
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1">
+                      <input
+                        value={searchDraft.staff}
+                        onChange={(event) =>
+                          setSearchDraft((prev) => ({ ...prev, staff: event.target.value }))
+                        }
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
+                      />
+                    </td>
+                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      非表示物件
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1">
+                      <div className="flex items-center gap-3 text-xs">
+                        {[
+                          { value: "hide", label: "しない" },
+                          { value: "show", label: "する" },
+                        ].map((option) => (
+                          <label key={option.value} className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              name="hidden"
+                              value={option.value}
+                              checked={searchDraft.showHidden === option.value}
+                              onChange={() =>
+                                setSearchDraft((prev) => ({
+                                  ...prev,
+                                  showHidden: option.value as SearchFilters["showHidden"],
+                                }))
+                              }
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </td>
+                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      在庫物件
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1">
+                      <div className="flex items-center gap-3 text-xs">
+                        {[
+                          { value: "show", label: "する" },
+                          { value: "hide", label: "しない" },
+                        ].map((option) => (
+                          <label key={option.value} className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              name="stock"
+                              value={option.value}
+                              checked={searchDraft.showStock === option.value}
+                              onChange={() =>
+                                setSearchDraft((prev) => ({
+                                  ...prev,
+                                  showStock: option.value as SearchFilters["showStock"],
+                                }))
+                              }
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      完了物件
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1">
+                      <div className="flex items-center gap-3 text-xs">
+                        {[
+                          { value: "show", label: "する" },
+                          { value: "hide", label: "しない" },
+                        ].map((option) => (
+                          <label key={option.value} className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              name="completed"
+                              value={option.value}
+                              checked={searchDraft.showCompleted === option.value}
+                              onChange={() =>
+                                setSearchDraft((prev) => ({
+                                  ...prev,
+                                  showCompleted: option.value as SearchFilters["showCompleted"],
+                                }))
+                              }
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </td>
+                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      表示数
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1">
+                      <select
+                        value={searchDraft.displayCount}
+                        onChange={(event) =>
+                          setSearchDraft((prev) => ({
+                            ...prev,
+                            displayCount: event.target.value as SearchFilters["displayCount"],
+                          }))
+                        }
+                        className="border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
+                      >
+                        <option value="all">全件</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="200">200</option>
+                      </select>
+                    </td>
+                    <th className="border border-slate-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      表示件数
+                    </th>
+                    <td className="border border-slate-300 px-2 py-1 text-xs">
+                      {displayRecords.length} 件
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="flex flex-wrap items-center gap-2 border-t border-slate-300 px-3 py-2">
+                <button
+                  type="submit"
+                  className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                >
+                  検索する
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetFilters}
+                  className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                >
+                  リセット
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCsvDownload}
+                  className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                >
+                  Download
+                </button>
+                <div className="ml-auto flex items-center gap-2">
+                  <span className="text-xs text-neutral-700">選択: {selectedIds.size}件</span>
+                  <button
+                    type="button"
+                    onClick={handleBulkEditOpen}
+                    disabled={selectedIds.size === 0}
+                    className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    編集
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border border-slate-300 px-2 py-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 text-neutral-700">
+              <span className="font-semibold">表示操作：</span>
+              <span>ヘッダーをドラッグして並び替え</span>
+              <span className="mx-1">|</span>
+              <span>右端ハンドルで列幅調整</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleBulkUpdate("売却済")}
+                disabled={selectedIds.size === 0}
+                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                一括：売却済
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBulkUpdate("出品中")}
+                disabled={selectedIds.size === 0}
+                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                一括：出品中
+              </button>
+              <button
+                type="button"
+                onClick={() => handleBulkUpdate("倉庫")}
+                disabled={selectedIds.size === 0}
+                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                一括：非出品
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkEditOpen}
+                disabled={selectedIds.size === 0}
+                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                一括編集
+              </button>
+              <button
+                type="button"
+                onClick={() => setColumnEditorOpen(true)}
+                className="border border-slate-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff]"
+              >
+                表示項目編集
+              </button>
+            </div>
+          </div>
+
+          {bulkEditOpen && (
+            <div className="mt-4 border-2 border-slate-300">
+              <div className="bg-[#7f9bb8] px-3 py-2 text-sm font-bold text-white">
+                一括編集 ({selectedIds.size}件)
+              </div>
+              <div className="space-y-4 bg-white p-3">
+                {groupedSelected.map(([supplier, items]) => (
+                  <div key={supplier} className="border-2 border-slate-300">
+                    <div className="bg-[#e8f5e9] px-2 py-1 text-xs font-semibold">仕入先: {supplier}</div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse text-xs">
+                        <thead className="bg-[#f1f5f9] text-left">
+                          <tr>
+                            <th className="border border-slate-300 px-2 py-1">在庫ID</th>
+                            <th className="border border-slate-300 px-2 py-1">種別</th>
+                            <th className="border border-slate-300 px-2 py-1">メーカー</th>
+                            <th className="border border-slate-300 px-2 py-1">機種名</th>
+                            <th className="border border-slate-300 px-2 py-1">仕入数</th>
+                            <th className="border border-slate-300 px-2 py-1">仕入単価</th>
+                            <th className="border border-slate-300 px-2 py-1">販売単価</th>
+                            <th className="border border-slate-300 px-2 py-1">入庫日</th>
+                            <th className="border border-slate-300 px-2 py-1">撤去日</th>
+                            <th className="border border-slate-300 px-2 py-1">保管先</th>
+                            <th className="border border-slate-300 px-2 py-1">担当者</th>
+                            <th className="border border-slate-300 px-2 py-1">状況</th>
+                            <th className="border border-slate-300 px-2 py-1">表示</th>
+                            <th className="border border-slate-300 px-2 py-1">備考</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {items.map((record) => {
+                            const form = bulkEditForms[record.id] ?? buildEditForm(record);
+                            return (
+                              <tr key={record.id} className="odd:bg-white even:bg-[#f8fafc]">
+                                <td className="border border-slate-300 px-2 py-1">{record.id}</td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <select
+                                    value={form.kind ?? ""}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(
+                                        record.id,
+                                        "kind",
+                                        event.target.value as InventoryRecord["kind"],
+                                      )
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  >
+                                    <option value="">-</option>
+                                    <option value="P">P</option>
+                                    <option value="S">S</option>
+                                  </select>
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    value={form.maker ?? ""}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(record.id, "maker", event.target.value)
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  />
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    value={form.model ?? ""}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(record.id, "model", event.target.value)
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  />
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={form.quantity ?? 0}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(
+                                        record.id,
+                                        "quantity",
+                                        Number(event.target.value),
+                                      )
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
+                                  />
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={form.unitPrice ?? 0}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(
+                                        record.id,
+                                        "unitPrice",
+                                        Number(event.target.value),
+                                      )
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
+                                  />
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    type="number"
+                                    min={0}
+                                    value={form.saleUnitPrice ?? 0}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(
+                                        record.id,
+                                        "saleUnitPrice",
+                                        Number(event.target.value),
+                                      )
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
+                                  />
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    type="date"
+                                    value={form.stockInDate ?? ""}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(record.id, "stockInDate", event.target.value)
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  />
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    type="date"
+                                    value={form.removeDate ?? ""}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(record.id, "removeDate", event.target.value)
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  />
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    value={form.warehouse ?? ""}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(record.id, "warehouse", event.target.value)
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  />
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    value={form.staff ?? ""}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(record.id, "staff", event.target.value)
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  />
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <select
+                                    value={(form.status as InventoryStatusOption) ?? "倉庫"}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(
+                                        record.id,
+                                        "status",
+                                        event.target.value as InventoryStatusOption,
+                                      )
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  >
+                                    {STATUS_OPTIONS.map((option) => (
+                                      <option key={option} value={option}>
+                                        {option}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <select
+                                    value={form.isVisible === false ? "0" : "1"}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(record.id, "isVisible", event.target.value === "1")
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  >
+                                    <option value="1">する</option>
+                                    <option value="0">しない</option>
+                                  </select>
+                                </td>
+                                <td className="border border-slate-300 px-2 py-1">
+                                  <input
+                                    value={form.note ?? ""}
+                                    onChange={(event) =>
+                                      handleBulkFormChange(record.id, "note", event.target.value)
+                                    }
+                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                                  />
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+                {groupedSelected.length === 0 && (
+                  <div className="border border-slate-300 px-4 py-6 text-center text-sm text-neutral-600">
+                    編集対象の在庫を選択してください。
+                  </div>
+                )}
+                <div className="flex justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={handleBulkEditClose}
+                    className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                  >
+                    閉じる
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleBulkSave}
+                    className="border border-slate-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff]"
+                  >
+                    一括保存
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={tableRef} className="mt-4 w-full overflow-x-auto">
+            <table className="min-w-full table-fixed border-collapse whitespace-nowrap border-2 border-slate-300 text-[13px]">
+              <thead className="bg-[#7f9bb8] text-left font-semibold text-white">
+                <tr>
+                  <th className="w-10 border border-slate-300 px-2 py-2">
                     <input
                       type="checkbox"
-                      checked={selectedIds.has(item.id)}
-                      onChange={() => handleSelectRow(item.id)}
-                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
+                      checked={displayRecords.length > 0 && selectedIds.size === displayRecords.length}
+                      onChange={(event) => handleSelectAll(event.target.checked)}
+                      className="h-4 w-4 border-slate-300"
                     />
-                  </td>
+                  </th>
                   {visibleColumns.map((col) => {
-                    const fullText = getCellText(item, String(col.key));
-                    const statusValue = (item.status ?? item.stockStatus ?? "倉庫") as InventoryStatusOption;
-                    const shouldTruncate = TRUNCATE_COLUMNS.includes(col.key);
-                    const displayText =
-                      col.key === "id"
-                        ? shortenId(fullText)
-                        : shouldTruncate
-                          ? truncateText(fullText)
-                          : fullText;
-                    const numeric = NUMERIC_COLUMNS.includes(col.key);
-
+                    const columnIndex = columns.findIndex((c) => c.key === col.key);
                     return (
-                      <td
+                      <th
                         key={col.key}
-                        className={`border border-slate-300 px-2 py-2 align-middle text-neutral-800 ${numeric ? "text-right" : ""}`}
+                        draggable
+                        onDragStart={() => handleDragStart(String(col.key))}
+                        onDragOver={(event) => handleDragOver(event, String(col.key))}
+                        onDrop={() => handleDrop(String(col.key))}
+                        className="relative select-none border border-slate-300 px-2 py-2"
                         style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
-                        title={shouldTruncate || col.key === "id" ? fullText : undefined}
                       >
-                        {col.key === "status" ? (
-                          <select
-                            value={statusValue}
-                            onChange={(event) => handleStatusChange(item.id, event.target.value as InventoryStatusOption)}
-                            className="w-full rounded-md border border-slate-300 px-2 py-1 text-[13px] shadow-sm focus:border-sky-500 focus:outline-none"
-                          >
-                            {STATUS_OPTIONS.map((option) => (
-                              <option key={option} value={option}>
-                                {option}
-                              </option>
-                            ))}
-                          </select>
-                        ) : col.key === "isVisible" ? (
-                          <div className="flex items-center justify-center">
-                            <select
-                              value={item.isVisible === false ? "0" : "1"}
-                              onChange={(event) => handleVisibilityChange(item.id, event.target.value === "1")}
-                              className="w-[72px] rounded-md border border-slate-300 px-1 py-1 text-[13px] shadow-sm focus:border-sky-500 focus:outline-none"
-                            >
-                              <option value="1">する</option>
-                              <option value="0">しない</option>
-                            </select>
-                          </div>
-                        ) : (
+                        <div className="flex items-center justify-between gap-1 whitespace-nowrap">
                           <span
-                            className={`block max-w-full ${shouldTruncate ? "truncate" : ""} ${numeric ? "tabular-nums" : ""}`}
+                            className={`flex-1 truncate px-1 py-0.5 ${dragOver?.key === col.key ? "bg-white/20" : ""}`}
                           >
-                            {displayText}
+                            {col.label}
                           </span>
+                          <span
+                            className="h-6 w-1 cursor-col-resize bg-white/70"
+                            onMouseDown={(event) => handleResizeStart(event, columnIndex)}
+                          />
+                        </div>
+                        {dragOver && dragOver.key === col.key && (
+                          <div
+                            className={`absolute inset-y-1 ${dragOver.position === "left" ? "left-1" : "right-1"} w-0.5 bg-white`}
+                          />
                         )}
-                      </td>
+                      </th>
                     );
                   })}
-                  <td className="border border-slate-300 px-3 py-2 text-center align-middle">
-                    <button
-                      type="button"
-                      onClick={() => openEditor(item)}
-                      className="inline-flex h-8 items-center justify-center rounded border border-slate-300 px-3 text-xs font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-                    >
-                      編集
-                    </button>
-                  </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              </thead>
+              <tbody>
+                {displayRecords.length === 0 ? (
+                  <tr>
+                    <td
+                      colSpan={visibleColumns.length + 1}
+                      className="border border-slate-300 px-3 py-6 text-center text-sm text-neutral-600"
+                    >
+                      登録された在庫がありません。
+                    </td>
+                  </tr>
+                ) : (
+                  displayRecords.map((item) => (
+                    <tr key={item.id} className="border-t border-slate-300 text-[13px] hover:bg-[#fffbe6]">
+                      <td className="w-10 border border-slate-300 px-2 py-1 align-middle">
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(item.id)}
+                          onChange={() => handleSelectRow(item.id)}
+                          className="h-4 w-4 border-slate-300"
+                        />
+                      </td>
+                      {visibleColumns.map((col) => {
+                        const fullText = getCellText(item, String(col.key));
+                        const statusValue = (item.status ?? item.stockStatus ?? "倉庫") as InventoryStatusOption;
+                        const shouldTruncate = TRUNCATE_COLUMNS.includes(col.key);
+                        const displayText =
+                          col.key === "id"
+                            ? shortenId(fullText)
+                            : shouldTruncate
+                              ? truncateText(fullText)
+                              : fullText;
+                        const numeric = NUMERIC_COLUMNS.includes(col.key);
+
+                        return (
+                          <td
+                            key={col.key}
+                            className={`border border-slate-300 px-2 py-1 align-middle text-neutral-800 ${numeric ? "text-right" : ""}`}
+                            style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
+                            title={shouldTruncate || col.key === "id" ? fullText : undefined}
+                          >
+                            {col.key === "status" ? (
+                              <select
+                                value={statusValue}
+                                onChange={(event) =>
+                                  handleStatusChange(item.id, event.target.value as InventoryStatusOption)
+                                }
+                                className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-xs"
+                              >
+                                {STATUS_OPTIONS.map((option) => (
+                                  <option key={option} value={option}>
+                                    {option}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : col.key === "isVisible" ? (
+                              <div className="flex items-center justify-center">
+                                <select
+                                  value={item.isVisible === false ? "0" : "1"}
+                                  onChange={(event) => handleVisibilityChange(item.id, event.target.value === "1")}
+                                  className="w-[70px] border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-xs"
+                                >
+                                  <option value="1">する</option>
+                                  <option value="0">しない</option>
+                                </select>
+                              </div>
+                            ) : col.key === "saleUnitPrice" ? (
+                              <div className="space-y-1">
+                                {editingSaleId === item.id ? (
+                                  <div className="flex items-center gap-1">
+                                    <input
+                                      value={saleDraft}
+                                      onChange={(event) => setSaleDraft(event.target.value)}
+                                      className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right text-xs"
+                                      disabled={saleSavingId === item.id}
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => saveSaleEdit(item)}
+                                      disabled={saleSavingId === item.id}
+                                      className="border border-slate-300 bg-[#f7f3e9] px-1 text-xs"
+                                    >
+                                      ✓
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={cancelSaleEdit}
+                                      disabled={saleSavingId === item.id}
+                                      className="border border-slate-300 bg-[#f7f3e9] px-1 text-xs"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => startSaleEdit(item)}
+                                    className="w-full text-right hover:bg-[#fff4d6]"
+                                  >
+                                    {displayText}
+                                  </button>
+                                )}
+                                {saleErrors[item.id] && (
+                                  <p className="text-[10px] text-red-600">{saleErrors[item.id]}</p>
+                                )}
+                              </div>
+                            ) : (
+                              <span
+                                className={`block max-w-full ${shouldTruncate ? "truncate" : ""} ${numeric ? "tabular-nums" : ""}`}
+                              >
+                                {displayText}
+                              </span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {columnEditorOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
-          <div className="w-full max-w-lg rounded-lg border border-slate-200 bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
+          <div className="w-full max-w-lg border-2 border-slate-300 bg-white">
+            <div className="flex items-center justify-between border-b border-slate-300 px-4 py-3">
               <div>
                 <h3 className="text-base font-semibold text-neutral-900">表示項目を編集</h3>
                 <p className="text-xs text-neutral-600">チェックを外すと列が非表示になります。設定はブラウザに保存されます。</p>
@@ -684,14 +1514,14 @@ export default function InventoryPage() {
                 <button
                   type="button"
                   onClick={handleResetColumns}
-                  className="rounded border border-slate-200 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="border border-slate-300 bg-[#f7f3e9] px-2 py-1 text-xs font-semibold"
                 >
                   初期化
                 </button>
                 <button
                   type="button"
                   onClick={() => setColumnEditorOpen(false)}
-                  className="rounded border border-slate-300 px-2 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                  className="border border-slate-300 bg-[#f7f3e9] px-2 py-1 text-xs font-semibold"
                 >
                   閉じる
                 </button>
@@ -702,233 +1532,18 @@ export default function InventoryPage() {
                 {columns.map((col) => (
                   <label
                     key={col.key}
-                    className="flex items-center justify-between gap-3 rounded border border-slate-200 px-3 py-2 text-sm text-neutral-800 shadow-sm"
+                    className="flex items-center justify-between gap-3 border border-slate-300 px-3 py-2 text-sm text-neutral-800"
                   >
                     <span className="flex-1 truncate">{col.label}</span>
                     <input
                       type="checkbox"
                       checked={col.visible !== false}
                       onChange={(event) => toggleColumnVisibility(col.key, event.target.checked)}
-                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-400"
+                      className="h-4 w-4 border-slate-300"
                     />
                   </label>
                 ))}
               </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {editingRecord && editingForm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-3xl rounded-lg border border-slate-200 bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <div>
-                <p className="text-xs font-semibold text-slate-500">{editingRecord.id}</p>
-                <h3 className="text-lg font-semibold text-neutral-900">在庫を編集</h3>
-              </div>
-              <button
-                type="button"
-                onClick={closeEditor}
-                className="rounded border border-slate-300 px-3 py-1 text-sm font-semibold text-slate-700 hover:bg-slate-50"
-              >
-                閉じる
-              </button>
-            </div>
-            <div className="max-h-[70vh] space-y-4 overflow-y-auto px-4 py-4 text-sm text-neutral-800">
-              <div className="grid grid-cols-3 gap-3">
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">種別</span>
-                  <select
-                    value={editingForm.kind ?? ""}
-                    onChange={(event) =>
-                      setEditingForm((prev) =>
-                        prev ? { ...prev, kind: event.target.value as InventoryRecord["kind"] } : prev,
-                      )
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  >
-                    <option value="">-</option>
-                    <option value="P">P</option>
-                    <option value="S">S</option>
-                  </select>
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">メーカー</span>
-                  <input
-                    value={editingForm.maker ?? ""}
-                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, maker: event.target.value } : prev))}
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">機種名</span>
-                  <input
-                    value={editingForm.model ?? ""}
-                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, model: event.target.value } : prev))}
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">タイプ</span>
-                  <input
-                    value={(editingForm.type as string) ?? ""}
-                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, type: event.target.value } : prev))}
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">仕入数</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={editingForm.quantity ?? 0}
-                    onChange={(event) =>
-                      setEditingForm((prev) => (prev ? { ...prev, quantity: Number(event.target.value) } : prev))
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">仕入単価</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={editingForm.unitPrice ?? 0}
-                    onChange={(event) =>
-                      setEditingForm((prev) => (prev ? { ...prev, unitPrice: Number(event.target.value) } : prev))
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">販売単価</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={editingForm.saleUnitPrice ?? 0}
-                    onChange={(event) =>
-                      setEditingForm((prev) => (prev ? { ...prev, saleUnitPrice: Number(event.target.value) } : prev))
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">入庫日</span>
-                  <input
-                    type="date"
-                    value={editingForm.stockInDate ?? ""}
-                    onChange={(event) =>
-                      setEditingForm((prev) => (prev ? { ...prev, stockInDate: event.target.value } : prev))
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">撤去日</span>
-                  <input
-                    type="date"
-                    value={editingForm.removeDate ?? ""}
-                    onChange={(event) =>
-                      setEditingForm((prev) => (prev ? { ...prev, removeDate: event.target.value } : prev))
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">柄</span>
-                  <input
-                    value={editingForm.pattern ?? ""}
-                    onChange={(event) =>
-                      setEditingForm((prev) => (prev ? { ...prev, pattern: event.target.value } : prev))
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">保管先</span>
-                  <input
-                    value={editingForm.warehouse ?? ""}
-                    onChange={(event) =>
-                      setEditingForm((prev) => (prev ? { ...prev, warehouse: event.target.value } : prev))
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">仕入先</span>
-                  <input
-                    value={editingForm.supplier ?? ""}
-                    onChange={(event) =>
-                      setEditingForm((prev) => (prev ? { ...prev, supplier: event.target.value } : prev))
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">担当者</span>
-                  <input
-                    value={editingForm.staff ?? ""}
-                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, staff: event.target.value } : prev))}
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">状況</span>
-                  <select
-                    value={(editingForm.status as InventoryStatusOption) ?? "倉庫"}
-                    onChange={(event) =>
-                      setEditingForm((prev) =>
-                        prev ? { ...prev, status: event.target.value as InventoryStatusOption } : prev,
-                      )
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  >
-                    {STATUS_OPTIONS.map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">備考</span>
-                  <input
-                    value={editingForm.note ?? ""}
-                    onChange={(event) => setEditingForm((prev) => (prev ? { ...prev, note: event.target.value } : prev))}
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </label>
-                <label className="space-y-1">
-                  <span className="text-xs text-neutral-600">表示</span>
-                  <select
-                    value={editingForm.isVisible === false ? "0" : "1"}
-                    onChange={(event) =>
-                      setEditingForm((prev) => (prev ? { ...prev, isVisible: event.target.value === "1" } : prev))
-                    }
-                    className="w-full rounded border border-slate-300 px-2 py-2 text-sm focus:border-sky-500 focus:outline-none"
-                  >
-                    <option value="1">する</option>
-                    <option value="0">しない</option>
-                  </select>
-                </label>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-slate-200 px-4 py-3">
-              <button
-                type="button"
-                onClick={closeEditor}
-                className="h-9 rounded border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50"
-              >
-                キャンセル
-              </button>
-              <button
-                type="button"
-                onClick={handleEditSubmit}
-                className="h-9 rounded bg-sky-600 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-500"
-              >
-                保存
-              </button>
             </div>
           </div>
         </div>
