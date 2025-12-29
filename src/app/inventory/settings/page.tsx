@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import {
@@ -10,12 +10,14 @@ import {
   loadMasterData,
   saveMasterData,
   type CompanyBranch,
+  type CompanyProfileEntry,
   type CompanyProfile,
   type CompanyStaff,
   type MasterData,
   type SupplierBranch,
   type SupplierCategory,
   type SupplierCorporate,
+  type Warehouse,
 } from "@/lib/demo-data/demoMasterData";
 
 const buildAddress = (prefecture: string, city: string, addressLine: string) =>
@@ -51,7 +53,10 @@ type BranchFormState = {
   type: "hall" | "branch";
 };
 
+type CompanyProfileFormState = CompanyProfileEntry;
+
 type CompanyBranchFormState = {
+  corporateId: string;
   name: string;
   postalCode: string;
   prefecture: string;
@@ -64,8 +69,15 @@ type CompanyBranchFormState = {
 };
 
 type CompanyStaffFormState = {
+  corporateId: string;
   branchId: string;
   name: string;
+};
+
+type WarehouseFormState = {
+  name: string;
+  address: string;
+  category: "self" | "other";
 };
 
 type ConfirmRow = {
@@ -112,7 +124,24 @@ const createEmptyBranchForm = (): BranchFormState => ({
   type: "branch",
 });
 
+const createEmptyCompanyProfileEntry = (isPrimary = false): CompanyProfileFormState => ({
+  id: createMasterId("company-profile"),
+  isPrimary,
+  corporateName: "",
+  postalCode: "",
+  prefecture: "",
+  city: "",
+  addressLine: "",
+  addressLine2: "",
+  phone: "",
+  fax: "",
+  title: "",
+  representative: "",
+  note: "",
+});
+
 const createEmptyCompanyBranchForm = (): CompanyBranchFormState => ({
+  corporateId: "",
   name: "",
   postalCode: "",
   prefecture: "",
@@ -125,12 +154,36 @@ const createEmptyCompanyBranchForm = (): CompanyBranchFormState => ({
 });
 
 const createEmptyCompanyStaffForm = (): CompanyStaffFormState => ({
+  corporateId: "",
   branchId: "",
   name: "",
 });
 
+const createEmptyWarehouseForm = (): WarehouseFormState => ({
+  name: "",
+  address: "",
+  category: "self",
+});
+
 const buildCompanyAddressLine = (profile: Pick<CompanyProfile, "addressLine2" | "addressLine">) =>
   profile.addressLine2?.trim() || profile.addressLine?.trim() || "";
+
+const ensurePrimaryProfile = (profiles: CompanyProfileEntry[]) => {
+  if (profiles.length === 0) {
+    return [createEmptyCompanyProfileEntry(true)];
+  }
+  const [first, ...rest] = profiles;
+  return [
+    { ...first, isPrimary: true },
+    ...rest.map((profile) => ({ ...profile, isPrimary: false })),
+  ];
+};
+
+const buildCompanyProfileForms = (profiles: CompanyProfileEntry[]): CompanyProfileFormState[] =>
+  ensurePrimaryProfile(profiles).map((profile) => ({
+    ...profile,
+    addressLine2: buildCompanyAddressLine(profile),
+  }));
 
 const syncBuyerStaffs = (existing: string[], staffs: CompanyStaff[]) => {
   const next = new Set(existing.map((name) => name.trim()).filter(Boolean));
@@ -157,12 +210,17 @@ function InventorySettingsContent() {
   const [corporateFilterInput, setCorporateFilterInput] = useState<string>("");
   const [lastAutoFilledPostal, setLastAutoFilledPostal] = useState<string>("");
   const [companyTab, setCompanyTab] = useState<"profile" | "branches" | "staffs" | "warehouses">("profile");
-  const [companyProfileForm, setCompanyProfileForm] = useState<CompanyProfile>(DEFAULT_MASTER_DATA.companyProfile);
+  const [companyProfileForms, setCompanyProfileForms] = useState<CompanyProfileFormState[]>(() =>
+    buildCompanyProfileForms(DEFAULT_MASTER_DATA.companyProfiles),
+  );
   const [isCompanyProfileEditing, setIsCompanyProfileEditing] = useState(false);
   const [companyBranchForm, setCompanyBranchForm] = useState<CompanyBranchFormState>(createEmptyCompanyBranchForm());
   const [editingCompanyBranchId, setEditingCompanyBranchId] = useState<string | null>(null);
   const [companyStaffForm, setCompanyStaffForm] = useState<CompanyStaffFormState>(createEmptyCompanyStaffForm());
   const [editingCompanyStaffId, setEditingCompanyStaffId] = useState<string | null>(null);
+  const [warehouseForm, setWarehouseForm] = useState<WarehouseFormState>(createEmptyWarehouseForm());
+  const [editingWarehouseId, setEditingWarehouseId] = useState<string | null>(null);
+  const [draggingWarehouseId, setDraggingWarehouseId] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<ConfirmModalState | null>(null);
   const postalLookupRef = useRef<AbortController | null>(null);
   const focusMap = useRef<Map<string, HTMLElement>>(new Map());
@@ -215,10 +273,7 @@ function InventorySettingsContent() {
       ...prev,
       corporateId: prev.corporateId || firstCorporateId,
     }));
-    setCompanyProfileForm({
-      ...loaded.companyProfile,
-      addressLine2: buildCompanyAddressLine(loaded.companyProfile),
-    });
+    setCompanyProfileForms(buildCompanyProfileForms(loaded.companyProfiles));
   }, []);
 
   useEffect(() => {
@@ -262,6 +317,39 @@ function InventorySettingsContent() {
     setMasterData(next);
     saveMasterData(next);
   };
+
+  const companyProfiles = useMemo(() => {
+    if (masterData.companyProfiles.length > 0) return masterData.companyProfiles;
+    return [
+      {
+        id: "company-primary",
+        isPrimary: true,
+        ...masterData.companyProfile,
+      },
+    ];
+  }, [masterData.companyProfile, masterData.companyProfiles]);
+
+  const primaryCompanyProfile = companyProfiles.find((profile) => profile.isPrimary) ?? companyProfiles[0];
+  const primaryCompanyProfileId = primaryCompanyProfile?.id ?? "company-primary";
+
+  const getCompanyNameById = (id?: string) =>
+    companyProfiles.find((profile) => profile.id === id)?.corporateName ||
+    primaryCompanyProfile?.corporateName ||
+    "-";
+
+  const getBranchCorporateId = (branchId?: string) => {
+    const branch = masterData.companyBranches.find((candidate) => candidate.id === branchId);
+    return branch?.corporateId ?? primaryCompanyProfileId;
+  };
+
+  useEffect(() => {
+    setCompanyBranchForm((prev) =>
+      prev.corporateId ? prev : { ...prev, corporateId: primaryCompanyProfileId },
+    );
+    setCompanyStaffForm((prev) =>
+      prev.corporateId ? prev : { ...prev, corporateId: primaryCompanyProfileId },
+    );
+  }, [primaryCompanyProfileId]);
 
   const registerFocus = (key: string) => (element: HTMLElement | null) => {
     if (!element) {
@@ -310,8 +398,20 @@ function InventorySettingsContent() {
     setBranchForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleCompanyProfileFormChange = <K extends keyof CompanyProfile>(key: K, value: CompanyProfile[K]) => {
-    setCompanyProfileForm((prev) => ({ ...prev, [key]: value }));
+  const handleCompanyProfileFormChange = <K extends keyof CompanyProfileFormState>(
+    id: string,
+    key: K,
+    value: CompanyProfileFormState[K],
+  ) => {
+    setCompanyProfileForms((prev) => prev.map((profile) => (profile.id === id ? { ...profile, [key]: value } : profile)));
+  };
+
+  const handleCompanyProfileAdd = () => {
+    setCompanyProfileForms((prev) => [...ensurePrimaryProfile(prev), createEmptyCompanyProfileEntry(false)]);
+  };
+
+  const handleCompanyProfileRemove = (id: string) => {
+    setCompanyProfileForms((prev) => prev.filter((profile) => profile.id !== id));
   };
 
   const handleCompanyBranchFormChange = <K extends keyof CompanyBranchFormState>(
@@ -326,6 +426,10 @@ function InventorySettingsContent() {
     value: CompanyStaffFormState[K],
   ) => {
     setCompanyStaffForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleWarehouseFormChange = <K extends keyof WarehouseFormState>(key: K, value: WarehouseFormState[K]) => {
+    setWarehouseForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const resetCorporateForm = () => {
@@ -343,21 +447,29 @@ function InventorySettingsContent() {
   };
 
   const resetCompanyProfileForm = () => {
-    setCompanyProfileForm({
-      ...masterData.companyProfile,
-      addressLine2: buildCompanyAddressLine(masterData.companyProfile),
-    });
+    setCompanyProfileForms(buildCompanyProfileForms(masterData.companyProfiles));
     setIsCompanyProfileEditing(false);
   };
 
   const resetCompanyBranchForm = () => {
-    setCompanyBranchForm(createEmptyCompanyBranchForm());
+    setCompanyBranchForm((prev) => ({
+      ...createEmptyCompanyBranchForm(),
+      corporateId: prev.corporateId,
+    }));
     setEditingCompanyBranchId(null);
   };
 
   const resetCompanyStaffForm = () => {
-    setCompanyStaffForm(createEmptyCompanyStaffForm());
+    setCompanyStaffForm((prev) => ({
+      ...createEmptyCompanyStaffForm(),
+      corporateId: prev.corporateId,
+    }));
     setEditingCompanyStaffId(null);
+  };
+
+  const resetWarehouseForm = () => {
+    setWarehouseForm(createEmptyWarehouseForm());
+    setEditingWarehouseId(null);
   };
 
   const openConfirmModal = (state: Omit<ConfirmModalState, "stage">) => {
@@ -545,46 +657,86 @@ function InventorySettingsContent() {
   };
 
   const handleCompanyProfileEdit = () => {
-    setCompanyProfileForm({
-      ...masterData.companyProfile,
-      addressLine2: buildCompanyAddressLine(masterData.companyProfile),
-    });
+    setCompanyProfileForms(buildCompanyProfileForms(masterData.companyProfiles));
     setIsCompanyProfileEditing(true);
   };
 
   const handleCompanyProfileSave = () => {
-    const normalized: CompanyProfile = {
-      corporateName: companyProfileForm.corporateName.trim(),
-      postalCode: companyProfileForm.postalCode.trim(),
-      prefecture: companyProfileForm.prefecture.trim(),
-      city: companyProfileForm.city.trim(),
-      addressLine: companyProfileForm.addressLine2?.trim() ?? "",
-      addressLine2: companyProfileForm.addressLine2?.trim() ?? "",
-      phone: companyProfileForm.phone.trim(),
-      fax: companyProfileForm.fax.trim(),
-      title: companyProfileForm.title.trim(),
-      representative: companyProfileForm.representative.trim(),
-      note: companyProfileForm.note.trim(),
+    const [primaryProfile, ...restProfiles] = ensurePrimaryProfile(companyProfileForms).map((profile) => ({
+      ...profile,
+      corporateName: profile.corporateName.trim(),
+      postalCode: profile.postalCode.trim(),
+      prefecture: profile.prefecture.trim(),
+      city: profile.city.trim(),
+      addressLine: profile.addressLine2?.trim() ?? "",
+      addressLine2: profile.addressLine2?.trim() ?? "",
+      phone: profile.phone.trim(),
+      fax: profile.fax.trim(),
+      title: profile.title.trim(),
+      representative: profile.representative.trim(),
+      note: profile.note.trim(),
+    }));
+
+    const hasAnyValue = (profile: CompanyProfileFormState) =>
+      Boolean(
+        profile.corporateName ||
+          profile.postalCode ||
+          profile.prefecture ||
+          profile.city ||
+          profile.addressLine2 ||
+          profile.phone ||
+          profile.fax ||
+          profile.title ||
+          profile.representative ||
+          profile.note,
+      );
+
+    const normalizedProfiles = [
+      primaryProfile,
+      ...restProfiles.filter((profile) => hasAnyValue(profile)),
+    ];
+
+    const rows = normalizedProfiles.flatMap((profile, index) => {
+      const labelPrefix = profile.isPrimary ? "代表法人" : `グループ会社${index}`;
+      return [
+        { label: `${labelPrefix} 法人名`, value: profile.corporateName || "-" },
+        { label: `${labelPrefix} 郵便番号`, value: profile.postalCode || "-" },
+        { label: `${labelPrefix} 都道府県`, value: profile.prefecture || "-" },
+        { label: `${labelPrefix} 市区町村`, value: profile.city || "-" },
+        { label: `${labelPrefix} 番地・ビル名`, value: profile.addressLine2 || "-" },
+        { label: `${labelPrefix} 電話番号`, value: profile.phone || "-" },
+        { label: `${labelPrefix} FAX番号`, value: profile.fax || "-" },
+        { label: `${labelPrefix} 役職`, value: profile.title || "-" },
+        { label: `${labelPrefix} 代表名`, value: profile.representative || "-" },
+        { label: `${labelPrefix} 備考`, value: profile.note || "-" },
+      ];
+    });
+
+    const primaryNormalized: CompanyProfile = {
+      corporateName: primaryProfile.corporateName,
+      postalCode: primaryProfile.postalCode,
+      prefecture: primaryProfile.prefecture,
+      city: primaryProfile.city,
+      addressLine: primaryProfile.addressLine,
+      addressLine2: primaryProfile.addressLine2,
+      phone: primaryProfile.phone,
+      fax: primaryProfile.fax,
+      title: primaryProfile.title,
+      representative: primaryProfile.representative,
+      note: primaryProfile.note,
     };
 
     openConfirmModal({
       title: "法人情報 確認",
-      rows: [
-        { label: "管理者法人名", value: normalized.corporateName || "-" },
-        { label: "郵便番号", value: normalized.postalCode || "-" },
-        { label: "都道府県", value: normalized.prefecture || "-" },
-        { label: "市区町村", value: normalized.city || "-" },
-        { label: "番地・ビル名", value: normalized.addressLine2 || "-" },
-        { label: "電話番号", value: normalized.phone || "-" },
-        { label: "FAX番号", value: normalized.fax || "-" },
-        { label: "役職", value: normalized.title || "-" },
-        { label: "代表名", value: normalized.representative || "-" },
-        { label: "備考", value: normalized.note || "-" },
-      ],
+      rows,
       actionLabel: masterData.companyProfile.corporateName ? "更新" : "登録",
       completeMessage: "法人情報の登録が完了しました。",
       onConfirm: () => {
-        updateStorage({ ...masterData, companyProfile: normalized });
+        updateStorage({
+          ...masterData,
+          companyProfiles: normalizedProfiles,
+          companyProfile: primaryNormalized,
+        });
         setIsCompanyProfileEditing(false);
       },
     });
@@ -596,6 +748,7 @@ function InventorySettingsContent() {
 
     const normalized: CompanyBranch = {
       id: editingCompanyBranchId ?? createMasterId("company-branch"),
+      corporateId: companyBranchForm.corporateId || primaryCompanyProfileId,
       name,
       postalCode: companyBranchForm.postalCode.trim(),
       prefecture: companyBranchForm.prefecture.trim(),
@@ -615,15 +768,14 @@ function InventorySettingsContent() {
     openConfirmModal({
       title: editingCompanyBranchId ? "ホール・支店更新 確認" : "ホール・支店登録 確認",
       rows: [
-        { label: "管理者法人名", value: masterData.companyProfile.corporateName || "-" },
-        { label: "管理者支店名", value: normalized.name || "-" },
+        { label: "法人名", value: getCompanyNameById(normalized.corporateId) },
+        { label: "ホール・支店名", value: normalized.name || "-" },
         { label: "郵便番号", value: normalized.postalCode || "-" },
         { label: "都道府県", value: normalized.prefecture || "-" },
         { label: "市区町村", value: normalized.city || "-" },
         { label: "番地・ビル名", value: normalized.addressLine2 || "-" },
         { label: "電話番号", value: normalized.phone || "-" },
         { label: "FAX番号", value: normalized.fax || "-" },
-        { label: "責任者", value: normalized.manager || "-" },
         { label: "備考", value: normalized.note || "-" },
       ],
       actionLabel: editingCompanyBranchId ? "更新" : "登録",
@@ -637,6 +789,7 @@ function InventorySettingsContent() {
 
   const handleCompanyBranchEdit = (branch: CompanyBranch) => {
     setCompanyBranchForm({
+      corporateId: branch.corporateId ?? primaryCompanyProfileId,
       name: branch.name,
       postalCode: branch.postalCode ?? "",
       prefecture: branch.prefecture ?? "",
@@ -675,6 +828,7 @@ function InventorySettingsContent() {
       id: editingCompanyStaffId ?? createMasterId("company-staff"),
       name,
       branchId: companyStaffForm.branchId || undefined,
+      corporateId: companyStaffForm.corporateId || primaryCompanyProfileId,
     };
 
     const nextStaffs = editingCompanyStaffId
@@ -686,7 +840,7 @@ function InventorySettingsContent() {
     openConfirmModal({
       title: editingCompanyStaffId ? "担当者更新 確認" : "担当者登録 確認",
       rows: [
-        { label: "法人名", value: masterData.companyProfile.corporateName || "-" },
+        { label: "法人名", value: getCompanyNameById(normalized.corporateId) },
         { label: "ホール・支店", value: branchName },
         { label: "名前", value: normalized.name || "-" },
       ],
@@ -705,6 +859,7 @@ function InventorySettingsContent() {
 
   const handleCompanyStaffEdit = (staff: CompanyStaff) => {
     setCompanyStaffForm({
+      corporateId: staff.corporateId ?? getBranchCorporateId(staff.branchId),
       branchId: staff.branchId ?? "",
       name: staff.name,
     });
@@ -722,6 +877,62 @@ function InventorySettingsContent() {
     if (editingCompanyStaffId === staffId) {
       resetCompanyStaffForm();
     }
+  };
+
+  const updateWarehouseStorage = (nextWarehouses: Warehouse[]) => {
+    updateStorage({
+      ...masterData,
+      warehouseDetails: nextWarehouses,
+      warehouses: nextWarehouses.map((warehouse) => warehouse.name),
+    });
+  };
+
+  const handleWarehouseSubmit = () => {
+    const name = warehouseForm.name.trim();
+    if (!name) return;
+
+    const normalized: Warehouse = {
+      id: editingWarehouseId ?? createMasterId("warehouse"),
+      name,
+      address: warehouseForm.address.trim(),
+      category: warehouseForm.category,
+    };
+
+    const nextWarehouses = editingWarehouseId
+      ? masterData.warehouseDetails.map((warehouse) => (warehouse.id === editingWarehouseId ? normalized : warehouse))
+      : [...masterData.warehouseDetails, normalized];
+
+    updateWarehouseStorage(nextWarehouses);
+    resetWarehouseForm();
+  };
+
+  const handleWarehouseEdit = (warehouse: Warehouse) => {
+    setWarehouseForm({
+      name: warehouse.name,
+      address: warehouse.address ?? "",
+      category: warehouse.category ?? "self",
+    });
+    setEditingWarehouseId(warehouse.id);
+  };
+
+  const handleWarehouseDelete = (warehouseId: string) => {
+    if (!window.confirm("この倉庫を削除しますか？")) return;
+    const nextWarehouses = masterData.warehouseDetails.filter((warehouse) => warehouse.id !== warehouseId);
+    updateWarehouseStorage(nextWarehouses);
+    if (editingWarehouseId === warehouseId) {
+      resetWarehouseForm();
+    }
+  };
+
+  const handleWarehouseReorder = (targetId: string) => {
+    if (!draggingWarehouseId || draggingWarehouseId === targetId) return;
+    const sourceIndex = masterData.warehouseDetails.findIndex((warehouse) => warehouse.id === draggingWarehouseId);
+    const targetIndex = masterData.warehouseDetails.findIndex((warehouse) => warehouse.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+    const next = [...masterData.warehouseDetails];
+    const [moved] = next.splice(sourceIndex, 1);
+    next.splice(targetIndex, 0, moved);
+    updateWarehouseStorage(next);
   };
 
   const corporateFilter = corporateSearchTerm.trim().toLowerCase();
@@ -771,8 +982,12 @@ function InventorySettingsContent() {
     return supplier.corporateName.toLowerCase().includes(corporateSelectFilter);
   });
 
-  const sectionHeader = "bg-gray-200 px-3 py-2 text-sm font-semibold text-slate-800";
-  const tableHeader = "border border-gray-400 bg-green-600 px-2 py-1 text-xs font-bold text-white";
+  const staffBranchOptions = masterData.companyBranches.filter(
+    (branch) => getBranchCorporateId(branch.id) === companyStaffForm.corporateId,
+  );
+
+  const sectionHeader = "bg-slate-600 px-3 py-2 text-sm font-semibold text-white";
+  const tableHeader = "border border-gray-400 bg-slate-600 px-2 py-1 text-xs font-bold text-white";
   const tableCell = "border border-gray-400 px-2 py-1 text-sm";
   const inputBase =
     "w-full border border-gray-400 bg-white px-2 py-1 text-sm focus:border-gray-700 focus:outline-none";
@@ -783,9 +998,7 @@ function InventorySettingsContent() {
   const dangerButton =
     "rounded-none border border-red-400 bg-red-100 px-3 py-1 text-sm font-semibold text-red-700";
   const mutedText = "text-sm text-slate-600";
-  const compactContainer = "max-w-[1200px] mx-auto w-full";
-
-  const companyName = masterData.companyProfile.corporateName || "-";
+  const compactContainer = "mx-auto w-full max-w-[1200px]";
 
   const renderConfirmModal = () => {
     if (!confirmModal) return null;
@@ -846,40 +1059,43 @@ function InventorySettingsContent() {
   return (
     <div className="space-y-6">
       {mode === "customer" ? (
-        <section className="border border-gray-400 bg-white">
-          <div className="flex flex-wrap gap-2 border-b border-gray-400 bg-gray-200 px-3 py-3">
-            <button
-              type="button"
-              onClick={() => updateQuery("corp")}
-              className={`rounded-none border border-gray-500 px-4 py-2 text-sm font-semibold transition ${
-                tab === "corp" ? "bg-emerald-200 text-emerald-900" : "bg-gray-100 text-gray-700"
-              }`}
-            >
-              法人設定
-            </button>
-            <button
-              type="button"
-              onClick={() => updateQuery("branch")}
-              className={`rounded-none border border-gray-500 px-4 py-2 text-sm font-semibold transition ${
-                tab === "branch" ? "bg-emerald-200 text-emerald-900" : "bg-gray-100 text-gray-700"
-              }`}
-            >
-              ホール・支店設定
-            </button>
-          </div>
+        <div className={compactContainer}>
+          <section className="border border-gray-400 bg-white">
+            <div className="flex flex-wrap gap-2 border-b border-gray-400 bg-gray-200 px-3 py-3">
+              <button
+                type="button"
+                onClick={() => updateQuery("corp")}
+                className={`rounded-none border border-gray-500 px-4 py-2 text-sm font-semibold transition ${
+                  tab === "corp" ? "bg-emerald-200 text-emerald-900" : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                法人設定
+              </button>
+              <button
+                type="button"
+                onClick={() => updateQuery("branch")}
+                className={`rounded-none border border-gray-500 px-4 py-2 text-sm font-semibold transition ${
+                  tab === "branch" ? "bg-emerald-200 text-emerald-900" : "bg-gray-100 text-gray-700"
+                }`}
+              >
+                ホール・支店設定
+              </button>
+            </div>
 
-          <div className="space-y-4 p-4">
+            <div className="space-y-4 p-4">
             {tab === "corp" ? (
               <section className="space-y-4">
                 <div className="border border-gray-400 bg-white">
                   <div className={sectionHeader}>法人設定（取引先）</div>
                   <div className="border-t border-gray-400">
+                    <div className="border-b border-gray-300 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      ENTERを押すと次の項目に遷移します。
+                    </div>
                     <div className="overflow-x-auto">
                       <table className="min-w-full border-collapse text-sm">
                         <tbody>
                           <tr>
                             <th className={tableHeader}>区分</th>
-                            <th className={tableHeader}>非表示</th>
                             <th className={tableHeader}>取引先名</th>
                             <th className={tableHeader}>取引先名カナ</th>
                             <th className={tableHeader}>郵便番号</th>
@@ -901,17 +1117,6 @@ function InventorySettingsContent() {
                                 <option value="vendor">業者</option>
                                 <option value="hall">ホール</option>
                               </select>
-                            </td>
-                            <td className={tableCell}>
-                              <label className="flex items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  checked={corporateForm.isHidden}
-                                  onChange={(event) => handleCorporateFormChange("isHidden", event.target.checked)}
-                                  className="h-4 w-4 border border-gray-500"
-                                />
-                                <span className="text-xs text-slate-700">一覧から隠す</span>
-                              </label>
                             </td>
                             <td className={tableCell}>
                               <input
@@ -1138,6 +1343,9 @@ function InventorySettingsContent() {
                 <div className="border border-gray-400 bg-white">
                   <div className={sectionHeader}>ホール・支店設定</div>
                   <div className="border-t border-gray-400">
+                    <div className="border-b border-gray-300 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                      ENTERを押すと次の項目に遷移します。
+                    </div>
                     <div className="space-y-3 p-3">
                       <label className="flex flex-wrap items-center gap-2 text-sm">
                         <span className="text-xs text-slate-700">法人名検索</span>
@@ -1407,8 +1615,9 @@ function InventorySettingsContent() {
                 </div>
               </section>
             )}
-          </div>
-        </section>
+            </div>
+          </section>
+        </div>
       ) : (
         <section className="space-y-4">
           <div className={`${compactContainer} grid gap-2 sm:grid-cols-2 lg:grid-cols-4`}>
@@ -1434,111 +1643,163 @@ function InventorySettingsContent() {
           {companyTab === "profile" && (
             <div className={`${compactContainer} space-y-4`}>
               <div className="border border-gray-400 bg-white">
-                <div className="flex items-center justify-between border-b border-gray-400 bg-gray-200 px-3 py-2">
-                  <h3 className="text-sm font-semibold text-slate-800">法人情報</h3>
-                  {!isCompanyProfileEditing && (
-                    <button type="button" onClick={handleCompanyProfileEdit} className={secondaryButton}>
-                      編集
-                    </button>
-                  )}
+                <div className={`${sectionHeader} flex items-center justify-between border-b border-gray-400`}>
+                  <h3 className="text-sm font-semibold text-white">法人情報</h3>
+                  <div className="flex items-center gap-2">
+                    {isCompanyProfileEditing ? (
+                      <button type="button" onClick={handleCompanyProfileAdd} className={secondaryButton}>
+                        追加
+                      </button>
+                    ) : (
+                      <button type="button" onClick={handleCompanyProfileEdit} className={secondaryButton}>
+                        編集
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {isCompanyProfileEditing ? (
                   <div className="border-t border-gray-400">
-                    <table className="w-full table-fixed border-collapse text-sm">
-                      <tbody>
-                        <tr>
-                          <th className={`${tableHeader} w-[220px]`}>管理者法人名</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.corporateName}
-                              onChange={(event) => handleCompanyProfileFormChange("corporateName", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={`${tableHeader} w-[220px]`}>郵便番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.postalCode}
-                              onChange={(event) => handleCompanyProfileFormChange("postalCode", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={`${tableHeader} w-[220px]`}>都道府県</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.prefecture}
-                              onChange={(event) => handleCompanyProfileFormChange("prefecture", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={`${tableHeader} w-[220px]`}>市区町村</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.city}
-                              onChange={(event) => handleCompanyProfileFormChange("city", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={`${tableHeader} w-[220px]`}>番地・ビル名</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.addressLine2 ?? ""}
-                              onChange={(event) => handleCompanyProfileFormChange("addressLine2", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={`${tableHeader} w-[220px]`}>電話番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.phone}
-                              onChange={(event) => handleCompanyProfileFormChange("phone", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={`${tableHeader} w-[220px]`}>FAX番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.fax}
-                              onChange={(event) => handleCompanyProfileFormChange("fax", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={`${tableHeader} w-[220px]`}>役職</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.title}
-                              onChange={(event) => handleCompanyProfileFormChange("title", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={`${tableHeader} w-[220px]`}>代表名</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.representative}
-                              onChange={(event) => handleCompanyProfileFormChange("representative", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={`${tableHeader} w-[220px]`}>備考</th>
-                          <td className={tableCell}>
-                            <input
-                              value={companyProfileForm.note}
-                              onChange={(event) => handleCompanyProfileFormChange("note", event.target.value)}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-[1200px] border-collapse text-sm">
+                        <tbody>
+                          {companyProfileForms.map((profile, index) => (
+                            <Fragment key={profile.id}>
+                              <tr>
+                                <th className={tableHeader}>区分</th>
+                                <th className={tableHeader}>法人名</th>
+                                <th className={tableHeader}>郵便番号</th>
+                                <th className={tableHeader}>都道府県</th>
+                                <th className={tableHeader}>市区町村</th>
+                                <th className={tableHeader}>番地・ビル名</th>
+                                <th className={tableHeader}>電話番号</th>
+                              </tr>
+                              <tr className="odd:bg-white even:bg-slate-50">
+                                <td className={tableCell}>
+                                  <span className="text-xs font-semibold text-slate-700">
+                                    {index === 0 ? "代表法人" : `グループ会社${index}`}
+                                  </span>
+                                </td>
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.corporateName}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "corporateName", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.postalCode}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "postalCode", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.prefecture}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "prefecture", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.city}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "city", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.addressLine2 ?? ""}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "addressLine2", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.phone}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "phone", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                              </tr>
+                              <tr>
+                                <th className={tableHeader}>FAX番号</th>
+                                <th className={tableHeader}>役職</th>
+                                <th className={tableHeader}>代表者名</th>
+                                <th className={tableHeader} colSpan={3}>
+                                  備考
+                                </th>
+                                <th className={tableHeader}>操作</th>
+                              </tr>
+                              <tr className="odd:bg-white even:bg-slate-50">
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.fax}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "fax", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.title}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "title", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.representative}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "representative", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={tableCell} colSpan={3}>
+                                  <input
+                                    value={profile.note}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "note", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={`${tableCell} text-center`}>
+                                  {index === 0 ? (
+                                    <span className="text-xs text-slate-500">固定</span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCompanyProfileRemove(profile.id)}
+                                      className={dangerButton}
+                                    >
+                                      削除
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            </Fragment>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                     <div className="flex items-center justify-end gap-2 border-t border-gray-400 px-3 py-2">
                       <button type="button" onClick={resetCompanyProfileForm} className={secondaryButton}>
                         キャンセル
@@ -1550,88 +1811,60 @@ function InventorySettingsContent() {
                   </div>
                 ) : (
                   <div className="border-t border-gray-400">
-                    <table className="w-full table-fixed border-collapse text-sm">
-                      <tbody>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            管理者法人名
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">{companyName}</td>
-                        </tr>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            郵便番号
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">
-                            {masterData.companyProfile.postalCode || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            都道府県
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">
-                            {masterData.companyProfile.prefecture || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            市区町村
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">
-                            {masterData.companyProfile.city || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            番地・ビル名
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">
-                            {buildCompanyAddressLine(masterData.companyProfile) || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            電話番号
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">
-                            {masterData.companyProfile.phone || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            FAX番号
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">
-                            {masterData.companyProfile.fax || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            役職
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">
-                            {masterData.companyProfile.title || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            代表名
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">
-                            {masterData.companyProfile.representative || "-"}
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
-                            備考
-                          </th>
-                          <td className="border border-gray-400 px-3 py-2 text-sm">
-                            {masterData.companyProfile.note || "-"}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-[1200px] border-collapse text-sm">
+                        <tbody>
+                          {companyProfiles.length === 0 ? (
+                            <tr>
+                              <td colSpan={7} className="border border-gray-400 px-3 py-4 text-center text-sm">
+                                法人情報が登録されていません。
+                              </td>
+                            </tr>
+                          ) : (
+                            companyProfiles.map((profile, index) => (
+                              <Fragment key={profile.id}>
+                                <tr>
+                                  <th className={tableHeader}>区分</th>
+                                  <th className={tableHeader}>法人名</th>
+                                  <th className={tableHeader}>郵便番号</th>
+                                  <th className={tableHeader}>都道府県</th>
+                                  <th className={tableHeader}>市区町村</th>
+                                  <th className={tableHeader}>番地・ビル名</th>
+                                  <th className={tableHeader}>電話番号</th>
+                                </tr>
+                                <tr className="odd:bg-white even:bg-slate-50">
+                                  <td className={tableCell}>
+                                    {index === 0 ? "代表法人" : `グループ会社${index}`}
+                                  </td>
+                                  <td className={tableCell}>{profile.corporateName || "-"}</td>
+                                  <td className={tableCell}>{profile.postalCode || "-"}</td>
+                                  <td className={tableCell}>{profile.prefecture || "-"}</td>
+                                  <td className={tableCell}>{profile.city || "-"}</td>
+                                  <td className={tableCell}>{buildCompanyAddressLine(profile) || "-"}</td>
+                                  <td className={tableCell}>{profile.phone || "-"}</td>
+                                </tr>
+                                <tr>
+                                  <th className={tableHeader}>FAX番号</th>
+                                  <th className={tableHeader}>役職</th>
+                                  <th className={tableHeader}>代表者名</th>
+                                  <th className={tableHeader} colSpan={4}>
+                                    備考
+                                  </th>
+                                </tr>
+                                <tr className="odd:bg-white even:bg-slate-50">
+                                  <td className={tableCell}>{profile.fax || "-"}</td>
+                                  <td className={tableCell}>{profile.title || "-"}</td>
+                                  <td className={tableCell}>{profile.representative || "-"}</td>
+                                  <td className={tableCell} colSpan={4}>
+                                    {profile.note || "-"}
+                                  </td>
+                                </tr>
+                              </Fragment>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1643,103 +1876,112 @@ function InventorySettingsContent() {
               <div className="border border-gray-400 bg-white">
                 <div className={sectionHeader}>ホール・支店設定</div>
                 <div className="border-t border-gray-400">
-                  <table className="w-full table-fixed border-collapse text-sm">
-                    <tbody>
-                      <tr>
-                        <th className={`${tableHeader} w-[220px]`}>管理者法人名</th>
-                        <td className={tableCell}>{companyName}</td>
-                        <th className={`${tableHeader} w-[220px]`}>管理者支店名</th>
-                        <td className={tableCell}>
-                          <input
-                            value={companyBranchForm.name}
-                            onChange={(event) => handleCompanyBranchFormChange("name", event.target.value)}
-                            className={inputBase}
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className={`${tableHeader} w-[220px]`}>郵便番号</th>
-                        <td className={tableCell}>
-                          <input
-                            value={companyBranchForm.postalCode}
-                            onChange={(event) => handleCompanyBranchFormChange("postalCode", event.target.value)}
-                            className={inputBase}
-                          />
-                        </td>
-                        <th className={`${tableHeader} w-[220px]`}>都道府県</th>
-                        <td className={tableCell}>
-                          <input
-                            value={companyBranchForm.prefecture}
-                            onChange={(event) => handleCompanyBranchFormChange("prefecture", event.target.value)}
-                            className={inputBase}
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className={`${tableHeader} w-[220px]`}>市区町村</th>
-                        <td className={tableCell}>
-                          <input
-                            value={companyBranchForm.city}
-                            onChange={(event) => handleCompanyBranchFormChange("city", event.target.value)}
-                            className={inputBase}
-                          />
-                        </td>
-                        <th className={`${tableHeader} w-[220px]`}>番地・ビル名</th>
-                        <td className={tableCell}>
-                          <input
-                            value={companyBranchForm.addressLine2}
-                            onChange={(event) => handleCompanyBranchFormChange("addressLine2", event.target.value)}
-                            className={inputBase}
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className={`${tableHeader} w-[220px]`}>電話番号</th>
-                        <td className={tableCell}>
-                          <input
-                            value={companyBranchForm.phone}
-                            onChange={(event) => handleCompanyBranchFormChange("phone", event.target.value)}
-                            className={inputBase}
-                          />
-                        </td>
-                        <th className={`${tableHeader} w-[220px]`}>FAX番号</th>
-                        <td className={tableCell}>
-                          <input
-                            value={companyBranchForm.fax}
-                            onChange={(event) => handleCompanyBranchFormChange("fax", event.target.value)}
-                            className={inputBase}
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className={`${tableHeader} w-[220px]`}>責任者</th>
-                        <td className={tableCell}>
-                          <input
-                            value={companyBranchForm.manager}
-                            onChange={(event) => handleCompanyBranchFormChange("manager", event.target.value)}
-                            className={inputBase}
-                          />
-                        </td>
-                        <th className={`${tableHeader} w-[220px]`}>備考</th>
-                        <td className={tableCell}>
-                          <input
-                            value={companyBranchForm.note}
-                            onChange={(event) => handleCompanyBranchFormChange("note", event.target.value)}
-                            className={inputBase}
-                          />
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div className="flex items-center justify-end gap-2 border-t border-gray-400 px-3 py-2">
-                    {editingCompanyBranchId && (
-                      <button type="button" onClick={resetCompanyBranchForm} className={secondaryButton}>
-                        新規入力へ戻す
-                      </button>
-                    )}
-                    <button type="button" onClick={handleCompanyBranchSubmit} className={buttonBase}>
-                      {editingCompanyBranchId ? "更新" : "登録"}
-                    </button>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-[1200px] border-collapse text-sm">
+                      <thead>
+                        <tr>
+                          <th className={tableHeader}>法人名</th>
+                          <th className={tableHeader}>ホール・支店名</th>
+                          <th className={tableHeader}>郵便番号</th>
+                          <th className={tableHeader}>都道府県</th>
+                          <th className={tableHeader}>市区町村</th>
+                          <th className={tableHeader}>番地・ビル名</th>
+                          <th className={tableHeader}>電話番号</th>
+                          <th className={tableHeader}>FAX番号</th>
+                          <th className={tableHeader}>備考</th>
+                          <th className={tableHeader}>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className={tableCell}>
+                            {companyProfiles.length > 1 ? (
+                              <select
+                                value={companyBranchForm.corporateId}
+                                onChange={(event) => handleCompanyBranchFormChange("corporateId", event.target.value)}
+                                className={inputBase}
+                              >
+                                {companyProfiles.map((profile) => (
+                                  <option key={profile.id} value={profile.id}>
+                                    {profile.corporateName || "-"}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className={mutedText}>{getCompanyNameById(companyBranchForm.corporateId)}</span>
+                            )}
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={companyBranchForm.name}
+                              onChange={(event) => handleCompanyBranchFormChange("name", event.target.value)}
+                              className={inputBase}
+                            />
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={companyBranchForm.postalCode}
+                              onChange={(event) => handleCompanyBranchFormChange("postalCode", event.target.value)}
+                              className={inputBase}
+                            />
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={companyBranchForm.prefecture}
+                              onChange={(event) => handleCompanyBranchFormChange("prefecture", event.target.value)}
+                              className={inputBase}
+                            />
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={companyBranchForm.city}
+                              onChange={(event) => handleCompanyBranchFormChange("city", event.target.value)}
+                              className={inputBase}
+                            />
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={companyBranchForm.addressLine2}
+                              onChange={(event) => handleCompanyBranchFormChange("addressLine2", event.target.value)}
+                              className={inputBase}
+                            />
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={companyBranchForm.phone}
+                              onChange={(event) => handleCompanyBranchFormChange("phone", event.target.value)}
+                              className={inputBase}
+                            />
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={companyBranchForm.fax}
+                              onChange={(event) => handleCompanyBranchFormChange("fax", event.target.value)}
+                              className={inputBase}
+                            />
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={companyBranchForm.note}
+                              onChange={(event) => handleCompanyBranchFormChange("note", event.target.value)}
+                              className={inputBase}
+                            />
+                          </td>
+                          <td className={`${tableCell} min-w-[160px]`}>
+                            <div className="flex flex-col gap-1">
+                              {editingCompanyBranchId && (
+                                <button type="button" onClick={resetCompanyBranchForm} className={secondaryButton}>
+                                  新規入力へ戻す
+                                </button>
+                              )}
+                              <button type="button" onClick={handleCompanyBranchSubmit} className={buttonBase}>
+                                {editingCompanyBranchId ? "更新" : "登録"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -1751,27 +1993,26 @@ function InventorySettingsContent() {
                   <table className="min-w-full border-collapse text-xs">
                     <thead>
                       <tr>
-                        <th className={tableHeader}>管理者法人名</th>
-                        <th className={tableHeader}>管理者支店名</th>
+                        <th className={tableHeader}>法人名</th>
+                        <th className={tableHeader}>ホール・支店名</th>
                         <th className={tableHeader}>郵便番号</th>
                         <th className={tableHeader}>住所</th>
                         <th className={tableHeader}>電話番号</th>
                         <th className={tableHeader}>FAX番号</th>
-                        <th className={tableHeader}>責任者</th>
                         <th className={tableHeader}>操作</th>
                       </tr>
                     </thead>
                     <tbody>
                       {masterData.companyBranches.length === 0 ? (
                         <tr>
-                          <td colSpan={8} className="border border-gray-400 px-3 py-4 text-center text-sm">
+                          <td colSpan={7} className="border border-gray-400 px-3 py-4 text-center text-sm">
                             登録済みホール・支店がありません。
                           </td>
                         </tr>
                       ) : (
                         masterData.companyBranches.map((branch) => (
                           <tr key={branch.id} className="odd:bg-white even:bg-slate-50">
-                            <td className={tableCell}>{companyName}</td>
+                            <td className={tableCell}>{getCompanyNameById(branch.corporateId)}</td>
                             <td className={tableCell}>{branch.name}</td>
                             <td className={tableCell}>{branch.postalCode || "-"}</td>
                             <td className={tableCell}>
@@ -1781,7 +2022,6 @@ function InventorySettingsContent() {
                             </td>
                             <td className={tableCell}>{branch.phone || "-"}</td>
                             <td className={tableCell}>{branch.fax || "-"}</td>
-                            <td className={tableCell}>{branch.manager || "-"}</td>
                             <td className={`${tableCell} whitespace-nowrap`}>
                               <div className="flex items-center gap-2">
                                 <button
@@ -1815,59 +2055,90 @@ function InventorySettingsContent() {
               <div className="border border-gray-400 bg-white">
                 <div className={sectionHeader}>担当者設定</div>
                 <div className="border-t border-gray-400">
-                  <table className="w-full table-fixed border-collapse text-sm">
-                    <tbody>
-                      <tr>
-                        <th className={`${tableHeader} w-[220px]`}>法人名</th>
-                        <td className={tableCell}>{companyName}</td>
-                        <th className={`${tableHeader} w-[220px]`}>ホール・支店</th>
-                        <td className={tableCell}>
-                          {masterData.companyBranches.length > 0 ? (
-                            <select
-                              value={companyStaffForm.branchId}
-                              onChange={(event) => handleCompanyStaffFormChange("branchId", event.target.value)}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-[900px] border-collapse text-sm">
+                      <thead>
+                        <tr>
+                          <th className={tableHeader}>法人名</th>
+                          <th className={tableHeader}>ホール・支店</th>
+                          <th className={tableHeader}>名前</th>
+                          <th className={tableHeader}>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className={tableCell}>
+                            {companyProfiles.length > 1 ? (
+                              <select
+                                value={companyStaffForm.corporateId}
+                                onChange={(event) => {
+                                  const nextCorporateId = event.target.value;
+                                  setCompanyStaffForm((prev) => ({
+                                    ...prev,
+                                    corporateId: nextCorporateId,
+                                    branchId:
+                                      getBranchCorporateId(prev.branchId) === nextCorporateId ? prev.branchId : "",
+                                  }));
+                                }}
+                                className={inputBase}
+                              >
+                                {companyProfiles.map((profile) => (
+                                  <option key={profile.id} value={profile.id}>
+                                    {profile.corporateName || "-"}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className={mutedText}>{getCompanyNameById(companyStaffForm.corporateId)}</span>
+                            )}
+                          </td>
+                          <td className={tableCell}>
+                            {staffBranchOptions.length > 0 ? (
+                              <select
+                                value={companyStaffForm.branchId}
+                                onChange={(event) => handleCompanyStaffFormChange("branchId", event.target.value)}
+                                className={inputBase}
+                              >
+                                <option value="">未選択</option>
+                                {staffBranchOptions.map((branch) => (
+                                  <option key={branch.id} value={branch.id}>
+                                    {branch.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className={mutedText}>-</span>
+                            )}
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={companyStaffForm.name}
+                              onChange={(event) => handleCompanyStaffFormChange("name", event.target.value)}
                               className={inputBase}
-                            >
-                              <option value="">未選択</option>
-                              {masterData.companyBranches.map((branch) => (
-                                <option key={branch.id} value={branch.id}>
-                                  {branch.name}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className={mutedText}>-</span>
-                          )}
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className={`${tableHeader} w-[220px]`}>名前</th>
-                        <td className={tableCell} colSpan={3}>
-                          <input
-                            value={companyStaffForm.name}
-                            onChange={(event) => handleCompanyStaffFormChange("name", event.target.value)}
-                            className={inputBase}
-                            placeholder="担当者名を入力"
-                          />
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                              placeholder="担当者名を入力"
+                            />
+                          </td>
+                          <td className={`${tableCell} min-w-[160px]`}>
+                            <div className="flex flex-col gap-1">
+                              {editingCompanyStaffId && (
+                                <button type="button" onClick={resetCompanyStaffForm} className={secondaryButton}>
+                                  新規入力へ戻す
+                                </button>
+                              )}
+                              <button type="button" onClick={handleCompanyStaffSubmit} className={buttonBase}>
+                                {editingCompanyStaffId ? "更新" : "登録"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                   <div className="flex items-center justify-between gap-2 border-t border-gray-400 px-3 py-2">
                     <div className="text-xs text-slate-600">
-                      {masterData.companyProfile.corporateName
+                      {primaryCompanyProfile?.corporateName
                         ? ""
                         : "法人情報が未登録です。先に法人情報を登録してください。"}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {editingCompanyStaffId && (
-                        <button type="button" onClick={resetCompanyStaffForm} className={secondaryButton}>
-                          新規入力へ戻す
-                        </button>
-                      )}
-                      <button type="button" onClick={handleCompanyStaffSubmit} className={buttonBase}>
-                        {editingCompanyStaffId ? "更新" : "登録"}
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -1899,7 +2170,7 @@ function InventorySettingsContent() {
                             masterData.companyBranches.find((branch) => branch.id === staff.branchId)?.name ?? "-";
                           return (
                             <tr key={staff.id} className="odd:bg-white even:bg-slate-50">
-                              <td className={tableCell}>{companyName}</td>
+                              <td className={tableCell}>{getCompanyNameById(staff.corporateId)}</td>
                               <td className={tableCell}>{branchName}</td>
                               <td className={tableCell}>{staff.name}</td>
                               <td className={`${tableCell} whitespace-nowrap`}>
@@ -1932,8 +2203,137 @@ function InventorySettingsContent() {
           )}
 
           {companyTab === "warehouses" && (
-            <div className={`${compactContainer} border border-gray-400 bg-white px-4 py-6 text-center text-sm text-gray-600`}>
-              準備中
+            <div className={`${compactContainer} space-y-4`}>
+              <div className="border border-gray-400 bg-white">
+                <div className={sectionHeader}>倉庫設定</div>
+                <div className="border-t border-gray-400">
+                  <div className="overflow-x-auto">
+                    <table className="min-w-[900px] border-collapse text-sm">
+                      <thead>
+                        <tr>
+                          <th className={tableHeader}>保管先倉庫名</th>
+                          <th className={tableHeader}>保管先倉庫住所</th>
+                          <th className={tableHeader}>区分</th>
+                          <th className={tableHeader}>操作</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td className={tableCell}>
+                            <input
+                              value={warehouseForm.name}
+                              onChange={(event) => handleWarehouseFormChange("name", event.target.value)}
+                              className={inputBase}
+                              placeholder="例: 東京第1倉庫"
+                            />
+                          </td>
+                          <td className={tableCell}>
+                            <input
+                              value={warehouseForm.address}
+                              onChange={(event) => handleWarehouseFormChange("address", event.target.value)}
+                              className={inputBase}
+                              placeholder="例: 東京都港区..."
+                            />
+                          </td>
+                          <td className={tableCell}>
+                            <select
+                              value={warehouseForm.category}
+                              onChange={(event) =>
+                                handleWarehouseFormChange("category", event.target.value as WarehouseFormState["category"])
+                              }
+                              className={inputBase}
+                            >
+                              <option value="self">自社</option>
+                              <option value="other">他社</option>
+                            </select>
+                          </td>
+                          <td className={`${tableCell} min-w-[160px]`}>
+                            <div className="flex flex-col gap-1">
+                              {editingWarehouseId && (
+                                <button type="button" onClick={resetWarehouseForm} className={secondaryButton}>
+                                  新規入力へ戻す
+                                </button>
+                              )}
+                              <button type="button" onClick={handleWarehouseSubmit} className={buttonBase}>
+                                {editingWarehouseId ? "更新" : "登録"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border border-gray-400 bg-white">
+                <div className={sectionHeader}>登録済み倉庫一覧</div>
+                <div className="flex flex-wrap items-center justify-between gap-2 border-t border-gray-400 px-3 py-2 text-sm">
+                  <span>件数: {masterData.warehouseDetails.length}</span>
+                  <span className="text-xs text-slate-600">ドラッグ&ドロップで並び替えできます。</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border-collapse text-xs">
+                    <thead>
+                      <tr>
+                        <th className={`${tableHeader} w-[80px]`}>並び替え</th>
+                        <th className={tableHeader}>保管先倉庫名</th>
+                        <th className={tableHeader}>保管先倉庫住所</th>
+                        <th className={tableHeader}>区分</th>
+                        <th className={tableHeader}>操作</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {masterData.warehouseDetails.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="border border-gray-400 px-3 py-4 text-center text-sm">
+                            登録済み倉庫がありません。
+                          </td>
+                        </tr>
+                      ) : (
+                        masterData.warehouseDetails.map((warehouse) => (
+                          <tr
+                            key={warehouse.id}
+                            draggable
+                            onDragStart={() => setDraggingWarehouseId(warehouse.id)}
+                            onDragOver={(event) => event.preventDefault()}
+                            onDrop={() => handleWarehouseReorder(warehouse.id)}
+                            onDragEnd={() => setDraggingWarehouseId(null)}
+                            className={`odd:bg-white even:bg-slate-50 ${
+                              draggingWarehouseId === warehouse.id ? "opacity-60" : ""
+                            }`}
+                          >
+                            <td className={`${tableCell} text-center text-lg text-slate-500`}>
+                              <span className="cursor-grab">≡</span>
+                            </td>
+                            <td className={tableCell}>{warehouse.name}</td>
+                            <td className={tableCell}>{warehouse.address || "-"}</td>
+                            <td className={tableCell}>{warehouse.category === "self" ? "自社" : "他社"}</td>
+                            <td className={`${tableCell} whitespace-nowrap`}>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleWarehouseEdit(warehouse)}
+                                  className={secondaryButton}
+                                >
+                                  編集
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleWarehouseDelete(warehouse.id)}
+                                  className={dangerButton}
+                                >
+                                  削除
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
           )}
         </section>
