@@ -175,6 +175,7 @@ model StorageLocation {
 
   @@index([ownerUserId])
   @@index([isActive])
+  @@unique([name, ownerUserId])
 }
 
 model BuyerShippingAddress {
