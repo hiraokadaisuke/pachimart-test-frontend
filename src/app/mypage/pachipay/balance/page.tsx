@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 
 import { PachipayInfoCard } from "@/components/pachipay/PachipayInfoCard";
+import { useBalance } from "@/lib/balance/BalanceContext";
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
@@ -34,8 +35,13 @@ function BalanceSummaryCard({ summary }: { summary: BalanceSummary }) {
 
 export default function BalancePage() {
   const currentUser = useCurrentDevUser();
-  const balanceSummary: BalanceSummary =
+  const { getBalance } = useBalance();
+  const baseBalanceSummary =
     dummyBalances.find((balance) => balance.userId === currentUser.id) ?? dummyBalances[0];
+  const balanceSummary: BalanceSummary = {
+    ...baseBalanceSummary,
+    available: getBalance(currentUser.id),
+  };
 
   return (
     <div className="space-y-6">
