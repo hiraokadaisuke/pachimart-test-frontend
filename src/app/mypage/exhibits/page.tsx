@@ -31,7 +31,7 @@ function ExhibitHubContent() {
       <ExhibitSubTabs activeTab={activeTab === "draft" ? "draft" : "active"} />
 
       {activeTab === "active" && (
-        <ExhibitList status="出品中" onNewExhibit={() => router.push("/sell")} />
+        <ExhibitList status="出品中" onNewExhibit={() => router.push("/mypage/exhibits/new")} />
       )}
       {activeTab === "draft" && <ExhibitList status="下書き" />}
     </main>

@@ -1,4 +1,4 @@
-import { ListingStatus, Prisma, RemovalStatus } from "@prisma/client";
+import { ListingStatus, ListingType, Prisma, RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -16,6 +16,7 @@ type ListingRecord = {
   sellerUserId: string;
   status: ListingStatus;
   isVisible: boolean;
+  type: ListingType;
   kind: string;
   maker: string | null;
   machineName: string | null;
@@ -43,6 +44,7 @@ type ListingDto = {
   sellerUserId: string;
   status: ListingStatus;
   isVisible: boolean;
+  type: ListingType;
   kind: string;
   maker: string | null;
   machineName: string | null;
@@ -69,6 +71,7 @@ const listingClient = prisma.listing;
 
 const createListingSchema = z
   .object({
+    type: z.nativeEnum(ListingType),
     kind: z.string().min(1, "kind is required"),
     maker: z.string().trim().min(1).optional().nullable(),
     machineName: z.string().trim().min(1).optional().nullable(),
@@ -135,6 +138,7 @@ const toRecord = (listing: unknown): ListingRecord => {
     sellerUserId: String(candidate.sellerUserId),
     status: candidate.status as ListingStatus,
     isVisible: Boolean(candidate.isVisible),
+    type: candidate.type as ListingType,
     kind: String(candidate.kind),
     maker: (candidate.maker as string | null) ?? null,
     machineName: (candidate.machineName as string | null) ?? null,
@@ -167,6 +171,7 @@ const toDto = (listing: ListingRecord): ListingDto => ({
   sellerUserId: listing.sellerUserId,
   status: listing.status,
   isVisible: listing.isVisible,
+  type: listing.type,
   kind: listing.kind,
   maker: listing.maker,
   machineName: listing.machineName,
@@ -387,6 +392,7 @@ export async function POST(request: Request) {
         sellerUserId,
         status: data.status ?? ListingStatus.DRAFT,
         isVisible: data.isVisible ?? true,
+        type: data.type,
         kind: data.kind,
         maker: data.maker ?? null,
         machineName: data.machineName ?? null,
