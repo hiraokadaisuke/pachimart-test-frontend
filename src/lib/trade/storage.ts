@@ -1,5 +1,6 @@
 import { NaviDraft } from "@/lib/navi/types";
 import { DEV_USERS } from "@/lib/dev-user/users";
+import { creditBalance } from "@/lib/balance/BalanceContext";
 
 import {
   type BuyerContact,
@@ -22,6 +23,7 @@ import { deriveTradeStatusFromTodos } from "./deriveStatus";
 
 export const TRADE_STORAGE_KEY = "trade_records_v1";
 const CONTACT_STORAGE_PREFIX = "buyerContacts:";
+const CREDITED_TRADE_IDS_KEY = "credited_trade_ids";
 
 const companyDirectory: Record<string, CompanyProfile> = Object.values(DEV_USERS).reduce(
   (acc, user) => {
@@ -249,6 +251,24 @@ function getContactScopeId(trade?: TradeRecord | null) {
   return trade.buyer.userId ?? trade.id;
 }
 
+function loadCreditedTradeIds(): Set<string> {
+  if (typeof window === "undefined") return new Set();
+  const raw = window.localStorage.getItem(CREDITED_TRADE_IDS_KEY);
+  if (!raw) return new Set();
+  try {
+    const parsed = JSON.parse(raw) as string[];
+    if (!Array.isArray(parsed)) return new Set();
+    return new Set(parsed.filter((id) => typeof id === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCreditedTradeIds(ids: Set<string>) {
+  if (typeof window === "undefined") return;
+  window.localStorage.setItem(CREDITED_TRADE_IDS_KEY, JSON.stringify([...ids]));
+}
+
 export function loadAllTrades(): TradeRecord[] {
   const stored = readTradesFromStorage();
   const trades = mergeSeedTrades(stored).map(normalizeTrade);
@@ -435,7 +455,25 @@ export function markTradeCompleted(tradeId: string, actorUserId: string): TradeR
   const advanced = advanceTradeTodo(trade, "payment_confirmed", actorUserId);
   if (!advanced) return null;
 
-  return upsertTradeInternal(advanced);
+  const updated = upsertTradeInternal(advanced);
+
+  if (typeof window === "undefined") return updated;
+
+  const creditedTradeIds = loadCreditedTradeIds();
+  if (creditedTradeIds.has(tradeId)) return updated;
+
+  const amount =
+    advanced.paymentAmount ??
+    advanced.totalAmount ??
+    calculateStatementTotals(advanced.items, advanced.taxRate ?? 0.1).total;
+
+  if (Number.isFinite(amount) && amount > 0) {
+    creditBalance(advanced.sellerUserId, amount);
+    creditedTradeIds.add(tradeId);
+    saveCreditedTradeIds(creditedTradeIds);
+  }
+
+  return updated;
 }
 
 export function cancelTrade(tradeId: string, actorUserId: string): TradeRecord | null {
