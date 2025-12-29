@@ -240,6 +240,39 @@ const STORAGE_LOCATIONS: StorageLocationSeed[] = [
   },
 ];
 
+const DEV_TEST_USER_ID = "dev_user_1";
+
+const DEV_TEST_STORAGE_LOCATIONS: StorageLocationSeed[] = [
+  {
+    id: "test_storage_dev_user_1_tokyo",
+    ownerUserId: DEV_TEST_USER_ID,
+    name: "テスト倉庫（東京）",
+    prefecture: "東京都",
+    addressLine: "テスト用 東京都内ロケーション",
+  },
+  {
+    id: "test_storage_dev_user_1_osaka",
+    ownerUserId: DEV_TEST_USER_ID,
+    name: "テスト倉庫（大阪）",
+    prefecture: "大阪府",
+    addressLine: "テスト用 大阪府内ロケーション",
+  },
+  {
+    id: "test_storage_dev_user_1_fukuoka",
+    ownerUserId: DEV_TEST_USER_ID,
+    name: "テスト倉庫（福岡）",
+    prefecture: "福岡県",
+    addressLine: "テスト用 福岡県内ロケーション",
+  },
+  {
+    id: "test_storage_dev_user_1_demo",
+    ownerUserId: DEV_TEST_USER_ID,
+    name: "デモ倉庫（共通）",
+    prefecture: "東京都",
+    addressLine: "デモ用 共通ロケーション",
+  },
+];
+
 const findStorageLocationSnapshot = (id: string): Prisma.JsonObject => {
   const location = STORAGE_LOCATIONS.find((loc) => loc.id === id);
 
@@ -573,11 +606,17 @@ async function seedUsers() {
 }
 
 async function seedStorageLocations() {
-  for (const location of STORAGE_LOCATIONS) {
+  const locations = [...STORAGE_LOCATIONS, ...DEV_TEST_STORAGE_LOCATIONS];
+
+  for (const location of locations) {
     const { address, ...rest } = location;
 
-    await prisma.storageLocation.create({
-      data: {
+    await prisma.storageLocation.upsert({
+      where: {
+        name_ownerUserId: { name: rest.name, ownerUserId: rest.ownerUserId },
+      },
+      update: {},
+      create: {
         ...rest,
         addressLine: location.addressLine ?? address ?? null,
       },
