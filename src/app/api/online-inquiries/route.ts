@@ -5,6 +5,10 @@ import { z } from "zod";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 
+const listQuerySchema = z.object({
+  role: z.enum(["buyer", "seller"]),
+});
+
 const requestSchema = z.object({
   listingId: z.string().min(1, "listingId is required"),
   quantity: z.number().int().positive("quantity must be a positive integer"),
@@ -18,6 +22,95 @@ const requestSchema = z.object({
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
+
+const calculateTotalAmount = (unitPriceExclTax: number | null, quantity: number) => {
+  const price = unitPriceExclTax ?? 0;
+  const subtotal = price * quantity;
+  const tax = Math.round(subtotal * 0.1);
+  return subtotal + tax;
+};
+
+export async function GET(request: Request) {
+  const currentUserId = getCurrentUserId(request);
+
+  if (!currentUserId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const parsedQuery = listQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+
+  if (!parsedQuery.success) {
+    return NextResponse.json(
+      { error: "Invalid query parameters", detail: parsedQuery.error.format() },
+      { status: 400 }
+    );
+  }
+
+  const { role } = parsedQuery.data;
+
+  try {
+    const inquiries = await prisma.onlineInquiry.findMany({
+      where: role === "buyer" ? { buyerUserId: currentUserId } : { sellerUserId: currentUserId },
+      orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
+    });
+
+    const listingIds = [...new Set(inquiries.map((inquiry) => inquiry.listingId))];
+    const userIds = [
+      ...new Set(inquiries.flatMap((inquiry) => [inquiry.buyerUserId, inquiry.sellerUserId])),
+    ];
+
+    const [listings, users] = await Promise.all([
+      listingIds.length > 0
+        ? prisma.listing.findMany({
+            where: { id: { in: listingIds } },
+            select: {
+              id: true,
+              maker: true,
+              machineName: true,
+              quantity: true,
+              unitPriceExclTax: true,
+            },
+          })
+        : Promise.resolve([]),
+      userIds.length > 0
+        ? prisma.user.findMany({ where: { id: { in: userIds } }, select: { id: true, companyName: true } })
+        : Promise.resolve([]),
+    ]);
+
+    const listingMap = new Map(listings.map((listing) => [listing.id, listing]));
+    const userMap = new Map(users.map((user) => [user.id, user.companyName]));
+
+    const payload = inquiries.map((inquiry) => {
+      const listing = listingMap.get(inquiry.listingId);
+      const partnerName =
+        role === "buyer"
+          ? userMap.get(inquiry.sellerUserId) ?? inquiry.sellerUserId
+          : userMap.get(inquiry.buyerUserId) ?? inquiry.buyerUserId;
+
+      return {
+        id: inquiry.id,
+        listingId: inquiry.listingId,
+        buyerUserId: inquiry.buyerUserId,
+        sellerUserId: inquiry.sellerUserId,
+        createdAt: inquiry.createdAt,
+        updatedAt: inquiry.updatedAt,
+        makerName: listing?.maker ?? null,
+        machineName: listing?.machineName ?? null,
+        quantity: inquiry.quantity,
+        totalAmount: calculateTotalAmount(listing?.unitPriceExclTax ?? null, inquiry.quantity),
+        partnerName,
+      };
+    });
+
+    return NextResponse.json(payload, { status: 200 });
+  } catch (error) {
+    console.error("Failed to list online inquiries", error);
+    return NextResponse.json(
+      { error: "Failed to fetch online inquiries", detail: handleUnknownError(error) },
+      { status: 500 }
+    );
+  }
+}
 
 export async function POST(request: Request) {
   const currentUserId = getCurrentUserId(request);

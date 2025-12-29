@@ -2,33 +2,12 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { NaviType } from "@prisma/client";
 
 import MyPageLayout from "@/components/layout/MyPageLayout";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { fetchNaviById } from "@/lib/trade/api";
-import { findDevUserById } from "@/lib/dev-user/users";
-import {
-  formatListingStorageLocation,
-  resolveListingSnapshot,
-} from "@/lib/trade/listingSnapshot";
+import { fetchOnlineInquiryDetail, type OnlineInquiryDetail } from "@/lib/online-inquiries/api";
 
-type InquiryView = {
-  id: string;
-  productName: string;
-  makerName?: string | null;
-  quantity: number;
-  unitPrice: number;
-  shippingAddress?: string;
-  contactPerson?: string;
-  desiredShipDate?: string;
-  desiredPaymentDate?: string;
-  memo?: string | null;
-  sellerUserId: string;
-  buyerUserId: string;
-  sellerCompanyName: string;
-  buyerCompanyName: string;
-};
+type InquiryView = OnlineInquiryDetail;
 
 const formatYen = (value: number) =>
   new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" }).format(value);
@@ -43,68 +22,13 @@ export default function InquiryDetailPage() {
   useEffect(() => {
     const loadInquiry = async () => {
       try {
-        const dto = await fetchNaviById(inquiryId);
-        if (!dto || dto.naviType !== NaviType.ONLINE_INQUIRY) {
+        const dto = await fetchOnlineInquiryDetail(inquiryId);
+        if (!dto) {
           setRecord(null);
           return;
         }
 
-        const payload = (dto.payload ?? {}) as Record<string, unknown>;
-        const conditions = (payload.conditions as Record<string, unknown> | undefined) ?? {};
-        const listingSnapshot = resolveListingSnapshot(dto.listingSnapshot);
-        const storageLocation = formatListingStorageLocation(listingSnapshot);
-
-        const resolveCompanyName = (userId: string | null | undefined) =>
-          findDevUserById(userId ?? "")?.companyName ?? userId ?? "-";
-
-        const quantity =
-          typeof conditions.quantity === "number"
-            ? conditions.quantity
-            : typeof listingSnapshot?.quantity === "number"
-              ? listingSnapshot.quantity
-              : 1;
-        const unitPrice =
-          typeof conditions.unitPrice === "number"
-            ? conditions.unitPrice
-            : typeof listingSnapshot?.unitPriceExclTax === "number"
-              ? listingSnapshot.unitPriceExclTax
-              : 0;
-
-        const view: InquiryView = {
-          id: String(dto.id),
-          productName:
-            (typeof conditions.productName === "string" && conditions.productName) ||
-            listingSnapshot?.machineName ||
-            listingSnapshot?.title ||
-            "商品",
-          makerName:
-            (typeof conditions.makerName === "string" && conditions.makerName) ||
-            listingSnapshot?.maker ||
-            null,
-          quantity,
-          unitPrice,
-          shippingAddress:
-            (typeof payload.buyerAddress === "string" && payload.buyerAddress) ||
-            storageLocation,
-          contactPerson:
-            (typeof payload.buyerContactName === "string" && payload.buyerContactName) ||
-            (typeof conditions.handler === "string" ? conditions.handler : undefined),
-          desiredShipDate:
-            (typeof conditions.machineShipmentDate === "string" && conditions.machineShipmentDate) ||
-            (typeof payload.desiredShipDate === "string" ? payload.desiredShipDate : undefined),
-          desiredPaymentDate:
-            (typeof payload.desiredPaymentDate === "string" && payload.desiredPaymentDate) ||
-            (typeof conditions.paymentDue === "string" ? conditions.paymentDue : undefined),
-          memo:
-            (typeof conditions.memo === "string" && conditions.memo) ||
-            (typeof payload.buyerMemo === "string" ? payload.buyerMemo : undefined),
-          sellerUserId: dto.ownerUserId,
-          buyerUserId: dto.buyerUserId ?? "",
-          sellerCompanyName: resolveCompanyName(dto.ownerUserId),
-          buyerCompanyName: resolveCompanyName(dto.buyerUserId),
-        };
-
-        setRecord(view);
+        setRecord(dto);
       } catch (error) {
         console.error("Failed to load inquiry", error);
         setRecord(null);

@@ -21,6 +21,7 @@ import { getStatementPath } from "@/lib/trade/navigation";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap, type TodoUiDef } from "@/lib/todo/todoUiMap";
 import { fetchNavis, mapNaviToTradeRecord, updateTradeStatus } from "@/lib/trade/api";
+import { fetchOnlineInquiries, type OnlineInquiryListItem } from "@/lib/online-inquiries/api";
 
 type TradeSectionWithInquiry = TodoUiDef["section"] | "onlineInquiry";
 
@@ -120,27 +121,21 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
   };
 }
 
-function buildInquiryRowFromTrade(trade: TradeRecord, viewerId: string): InquiryRow {
-  const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
-  const primaryItem = trade.items[0];
-  const updatedAtLabel = formatDateTime(trade.updatedAt ?? trade.createdAt ?? new Date().toISOString());
-  const isBuyer = (trade.buyerUserId ?? trade.buyer.userId) === viewerId;
-  const kind = isBuyer ? ("buy" as const) : ("sell" as const);
-  const sellerId = trade.sellerUserId ?? trade.seller.userId ?? "seller";
-  const buyerId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
+function buildInquiryRowFromDto(dto: OnlineInquiryListItem, kind: "buy" | "sell"): InquiryRow {
+  const updatedAtLabel = formatDateTime(dto.updatedAt ?? dto.createdAt);
 
   return {
-    id: trade.naviId ? String(trade.naviId) : trade.id,
-    naviId: trade.naviId,
+    id: dto.id,
+    naviId: undefined,
     status: NaviStatus.SENT,
-    partnerName: isBuyer ? trade.seller.companyName : trade.buyer.companyName,
-    makerName: primaryItem?.maker ?? trade.makerName ?? "-",
-    itemName: primaryItem?.itemName ?? trade.itemName ?? "商品",
-    quantity: trade.quantity ?? primaryItem?.qty ?? 1,
-    totalAmount: totals.total,
+    partnerName: dto.partnerName,
+    makerName: dto.makerName ?? "-",
+    itemName: dto.machineName ?? "商品",
+    quantity: dto.quantity,
+    totalAmount: dto.totalAmount,
     updatedAt: updatedAtLabel,
-    sellerUserId: sellerId,
-    buyerUserId: buyerId,
+    sellerUserId: dto.sellerUserId,
+    buyerUserId: dto.buyerUserId,
     kind,
   };
 }
@@ -181,25 +176,39 @@ export function InProgressTabContent() {
 
       setSellerApprovalRows(rows.filter((row) => row.kind === "sell"));
       setBuyerNaviApprovalRows(rows.filter((row) => row.kind === "buy"));
-
-      const inquiryRows = apiTrades
-        .filter((trade) => trade.naviType === NaviType.ONLINE_INQUIRY && trade.status === NaviStatus.SENT)
-        .map((trade) => mapNaviToTradeRecord(trade))
-        .filter((trade): trade is TradeRecord => Boolean(trade))
-        .map((trade) => buildInquiryRowFromTrade(trade, currentUser.id));
-
-      setOnlineInquiryRows(inquiryRows);
     } catch (error) {
       console.error(error);
       setSellerApprovalRows([]);
       setBuyerNaviApprovalRows([]);
-      setOnlineInquiryRows([]);
     }
   }, [currentUser.id]);
 
   useEffect(() => {
     fetchApprovalRows();
   }, [fetchApprovalRows]);
+
+  useEffect(() => {
+    const loadInquiries = async () => {
+      try {
+        const [buyer, seller] = await Promise.all([
+          fetchOnlineInquiries("buyer"),
+          fetchOnlineInquiries("seller"),
+        ]);
+
+        const rows = [
+          ...buyer.map((inquiry) => buildInquiryRowFromDto(inquiry, "buy")),
+          ...seller.map((inquiry) => buildInquiryRowFromDto(inquiry, "sell")),
+        ].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
+        setOnlineInquiryRows(rows);
+      } catch (error) {
+        console.error(error);
+        setOnlineInquiryRows([]);
+      }
+    };
+
+    loadInquiries();
+  }, [currentUser.id]);
 
   const mappedTradeRows = useMemo(
     () => trades.map((trade) => buildTradeRow(trade, currentUser.id)),
