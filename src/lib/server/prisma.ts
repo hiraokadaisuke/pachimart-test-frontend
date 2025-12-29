@@ -1,5 +1,6 @@
 import {
   ListingStatus,
+  ListingType,
   Prisma,
   PrismaClient,
   RemovalStatus,
@@ -63,6 +64,7 @@ type InMemoryListing = {
   sellerUserId: string;
   status: ListingStatus;
   isVisible: boolean;
+  type: ListingType;
   kind: string;
   maker: string | null;
   machineName: string | null;
@@ -116,6 +118,18 @@ type InMemoryBuyerShippingAddress = {
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
+};
+
+type InMemoryMaker = {
+  id: string;
+  name: string;
+};
+
+type InMemoryMachineModel = {
+  id: string;
+  makerId: string;
+  type: ListingType;
+  name: string;
 };
 
 type InMemoryPrisma = {
@@ -227,6 +241,16 @@ type InMemoryPrisma = {
     }) => Promise<InMemoryBuyerShippingAddress[]>;
     create: ({ data }: { data: Partial<InMemoryBuyerShippingAddress> }) => Promise<InMemoryBuyerShippingAddress>;
   };
+  maker: {
+    findMany: (args?: {
+      where?: { machineModels?: { some?: { type?: ListingType } } };
+      orderBy?: { name?: "asc" | "desc" };
+    }) => Promise<InMemoryMaker[]>;
+  };
+  machineModel: {
+    findMany: (args?: { where?: { type?: ListingType }; orderBy?: { name?: "asc" | "desc" } }) =>
+      Promise<InMemoryMachineModel[]>;
+  };
   $transaction: <T>(callback: (client: InMemoryPrisma) => Promise<T> | T) => Promise<T>;
   $queryRaw: (...params: unknown[]) => Promise<void>;
 };
@@ -247,6 +271,22 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   const listings: InMemoryListing[] = [];
   const storageLocations: InMemoryStorageLocation[] = [];
   const buyerShippingAddresses: InMemoryBuyerShippingAddress[] = [];
+  const makers: InMemoryMaker[] = [
+    { id: "maker_sanyo", name: "三洋" },
+    { id: "maker_heiwa", name: "平和" },
+    { id: "maker_sankyo", name: "三共" },
+    { id: "maker_sammy", name: "サミー" },
+  ];
+  const machineModels: InMemoryMachineModel[] = [
+    { id: "model_sanyo_p_1", makerId: "maker_sanyo", type: ListingType.PACHINKO, name: "P海物語5" },
+    { id: "model_sanyo_s_1", makerId: "maker_sanyo", type: ListingType.SLOT, name: "Sスーパー海物語" },
+    { id: "model_heiwa_p_1", makerId: "maker_heiwa", type: ListingType.PACHINKO, name: "Pルパン三世2000カラット" },
+    { id: "model_heiwa_s_1", makerId: "maker_heiwa", type: ListingType.SLOT, name: "Sルパン三世Lupin the Last" },
+    { id: "model_sankyo_p_1", makerId: "maker_sankyo", type: ListingType.PACHINKO, name: "Pフィーバーからくりサーカス" },
+    { id: "model_sankyo_s_1", makerId: "maker_sankyo", type: ListingType.SLOT, name: "Sからくりサーカス" },
+    { id: "model_sammy_p_1", makerId: "maker_sammy", type: ListingType.PACHINKO, name: "P北斗の拳9" },
+    { id: "model_sammy_s_1", makerId: "maker_sammy", type: ListingType.SLOT, name: "S北斗の拳" },
+  ];
   let naviSeq = 1;
   let tradeSeq = 1;
   let messageSeq = 1;
@@ -533,6 +573,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           sellerUserId: String(data.sellerUserId ?? ""),
           status: (data.status as ListingStatus | undefined) ?? ListingStatus.DRAFT,
           isVisible: (data.isVisible as boolean | undefined) ?? true,
+          type: (data.type as ListingType | undefined) ?? ListingType.PACHINKO,
           kind: String(data.kind ?? ""),
           maker: (data.maker as string | null | undefined) ?? null,
           machineName: (data.machineName as string | null | undefined) ?? null,
@@ -579,6 +620,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           ...data,
           status: (data.status as ListingStatus | undefined) ?? listings[idx].status,
           isVisible: (data.isVisible as boolean | undefined) ?? listings[idx].isVisible,
+          type: (data.type as ListingType | undefined) ?? listings[idx].type,
           kind: (data.kind as string | undefined) ?? listings[idx].kind,
           maker: (data.maker as string | null | undefined) ?? listings[idx].maker,
           machineName: (data.machineName as string | null | undefined) ?? listings[idx].machineName,
@@ -827,6 +869,32 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
         buyerShippingAddresses.push(record);
         return { ...record };
+      },
+    },
+    maker: {
+      findMany: async ({ where, orderBy } = {}) => {
+        const filtered = makers.filter((maker) => {
+          if (!where?.machineModels?.some?.type) return true;
+          const type = where.machineModels.some.type;
+          return machineModels.some((model) => model.makerId === maker.id && model.type === type);
+        });
+        const sorted = [...filtered].sort((a, b) => {
+          if (orderBy?.name === "asc") return a.name.localeCompare(b.name, "ja");
+          return b.name.localeCompare(a.name, "ja");
+        });
+        return sorted.map((maker) => ({ ...maker }));
+      },
+    },
+    machineModel: {
+      findMany: async ({ where, orderBy } = {}) => {
+        const filtered = where?.type
+          ? machineModels.filter((model) => model.type === where.type)
+          : [...machineModels];
+        const sorted = [...filtered].sort((a, b) => {
+          if (orderBy?.name === "desc") return b.name.localeCompare(a.name, "ja");
+          return a.name.localeCompare(b.name, "ja");
+        });
+        return sorted.map((model) => ({ ...model }));
       },
     },
     $transaction: async <T>(callback: (client: ReturnType<typeof buildInMemoryPrisma>) => Promise<T> | T): Promise<T> =>
