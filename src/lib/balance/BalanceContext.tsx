@@ -7,6 +7,7 @@ type BalanceState = Record<string, number>;
 type BalanceContextValue = {
   getBalance: (userId: string) => number;
   injectBalance: (userId: string, deltaAmount: number) => void;
+  deductBalance: (userId: string, amount: number) => boolean;
 };
 
 const STORAGE_KEY = "dev_user_balances";
@@ -14,6 +15,7 @@ const STORAGE_KEY = "dev_user_balances";
 const BalanceContext = createContext<BalanceContextValue>({
   getBalance: () => 0,
   injectBalance: () => {},
+  deductBalance: () => false,
 });
 
 const parseStoredBalances = (raw: string | null): BalanceState => {
@@ -51,6 +53,17 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           [userId]: (prev[userId] ?? 0) + deltaAmount,
         }));
+      },
+      deductBalance: (userId: string, amount: number) => {
+        if (!userId || !Number.isFinite(amount)) return false;
+        if (amount <= 0) return true;
+        const currentBalance = balances[userId] ?? 0;
+        if (currentBalance < amount) return false;
+        setBalances((prev) => ({
+          ...prev,
+          [userId]: (prev[userId] ?? 0) - amount,
+        }));
+        return true;
       },
     }),
     [balances],

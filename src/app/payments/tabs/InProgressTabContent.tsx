@@ -15,11 +15,12 @@ import { calculateStatementTotals } from "@/lib/trade/calcTotals";
 import { getInProgressDescription } from "@/lib/trade/copy";
 import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
 import { loadAcceptedOnlineInquiryTrades } from "@/lib/trade/onlineInquiryTrades";
-import { markTradePaid, saveTradeRecord } from "@/lib/trade/storage";
 import { getStatementPath } from "@/lib/trade/navigation";
 import { TradeRecord } from "@/lib/trade/types";
 import { advanceTradeTodo, getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
+import { useBalance } from "@/lib/balance/BalanceContext";
+import { markTradeCompleted, markTradePaid, saveTradeRecord } from "@/lib/trade/storage";
 
 const SECTION_LABELS = {
   approval: todoUiMap["application_sent"],
@@ -61,7 +62,9 @@ function formatDateTime(iso?: string) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "-";
   const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(
+    d.getMinutes()
+  )}`;
 }
 
 function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
@@ -103,6 +106,7 @@ export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const router = useRouter();
+  const { deductBalance } = useBalance();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("inProgress");
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -110,13 +114,11 @@ export function InProgressTabContent() {
   const [messages, setMessages] = useState<TradeMessage[]>([]);
 
   const filterTrades = useCallback(
-    (trades: TradeRow[]) => {
+    (rows: TradeRow[]) => {
       const keywordLower = keyword.toLowerCase();
 
-      return trades
-        .filter(
-          (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
-        )
+      return rows
+        .filter((trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id)
         .filter((trade) => {
           if (statusFilter === "inProgress") return trade.isOpen;
           if (statusFilter === "completed")
@@ -136,10 +138,7 @@ export function InProgressTabContent() {
 
   const refreshTrades = useCallback(async () => {
     try {
-      const [navis, inquiries] = await Promise.all([
-        loadAllTradesWithApi(),
-        loadAcceptedOnlineInquiryTrades(),
-      ]);
+      const [navis, inquiries] = await Promise.all([loadAllTradesWithApi(), loadAcceptedOnlineInquiryTrades()]);
       const data = [...navis, ...inquiries];
       const ownedTrades = data.filter(
         (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
@@ -152,59 +151,82 @@ export function InProgressTabContent() {
   }, [currentUser.id]);
 
   const handleCompleteTodo = useCallback(
-    (tradeId: string, todoKind: TradeStatusKey) => {
-      const targetTrade = trades.find((trade) => trade.id === tradeId);
+    (row: TradeRow) => {
+      const targetTrade = trades.find((trade) => trade.id === row.id);
+
       if (!targetTrade) {
-        console.error("Trade not found for todo completion", { tradeId, todoKind });
+        console.error("Trade not found for todo completion", { tradeId: row.id, todoKind: row.status });
         return;
       }
 
-      let updated: TradeRecord | null = null;
+      // 支払い（買手側の「支払い完了」想定）
+      if (row.status === "application_approved") {
+        const paymentAmount = row.totalAmount;
 
-      if (todoKind === "application_approved") {
-        updated = markTradePaid(tradeId, currentUser.id);
-      }
-
-      if (!updated) {
-        updated = advanceTradeTodo(targetTrade, todoKind, currentUser.id);
-        if (updated) {
-          saveTradeRecord(updated);
+        const deducted = deductBalance(row.buyerUserId, paymentAmount);
+        if (!deducted) {
+          console.error("Insufficient balance to mark trade as paid", {
+            tradeId: row.id,
+            buyerUserId: row.buyerUserId,
+            paymentAmount,
+          });
+          return;
         }
-      }
 
-      if (!updated) {
-        console.error("Failed to advance trade todo", { tradeId, todoKind });
+        const updated = markTradePaid(row.id, currentUser.id);
+        if (!updated) {
+          console.error("Failed to mark trade as paid", { tradeId: row.id });
+          return;
+        }
+
+        setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
         return;
       }
 
-      setTrades((prev) => prev.map((trade) => (trade.id === tradeId ? updated : trade)));
+      // 完了
+      if (row.status === "payment_confirmed") {
+        const updated = markTradeCompleted(row.id, currentUser.id);
+        if (!updated) {
+          console.error("Failed to mark trade as completed", { tradeId: row.id });
+          return;
+        }
+
+        setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
+        return;
+      }
+
+      // その他は既存の todo 進行ロジックへ（fallback）
+      const advanced = advanceTradeTodo(targetTrade, row.status, currentUser.id);
+      if (!advanced) {
+        console.warn("Todo completion is not supported for fetched trades", {
+          tradeId: row.id,
+          todoKind: row.status,
+        });
+        return;
+      }
+
+      saveTradeRecord(advanced);
+      setTrades((prev) => prev.map((trade) => (trade.id === advanced.id ? advanced : trade)));
     },
-    [currentUser.id, trades]
+    [currentUser.id, deductBalance, trades]
   );
 
   useEffect(() => {
     refreshTrades();
   }, [refreshTrades]);
 
-  const tradeRows = useMemo(
-    () => trades.map((trade) => buildTradeRow(trade, currentUser.id)),
-    [currentUser.id, trades]
-  );
+  const tradeRows = useMemo(() => trades.map((trade) => buildTradeRow(trade, currentUser.id)), [currentUser.id, trades]);
 
   const filteredTrades = useMemo(() => filterTrades(tradeRows), [filterTrades, tradeRows]);
 
   const buyPayment = filteredTrades.filter(
     (trade) => trade.kind === "buy" && (trade.section === "payment" || trade.section === "approval")
   );
-  const buyConfirmation = filteredTrades.filter(
-    (trade) => trade.kind === "buy" && trade.section === "confirmation"
-  );
+  const buyConfirmation = filteredTrades.filter((trade) => trade.kind === "buy" && trade.section === "confirmation");
   const sellPayment = filteredTrades.filter(
     (trade) => trade.kind === "sell" && (trade.section === "payment" || trade.section === "approval")
   );
-  const sellConfirmation = filteredTrades.filter(
-    (trade) => trade.kind === "sell" && trade.section === "confirmation"
-  );
+  const sellConfirmation = filteredTrades.filter((trade) => trade.kind === "sell" && trade.section === "confirmation");
 
   const getStatementDestination = (row: TradeRow) =>
     getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller", {
@@ -216,9 +238,7 @@ export function InProgressTabContent() {
       key: "status",
       label: "状況",
       width: "110px",
-      render: (row: TradeRow) => (
-        <StatusBadge statusKey={row.status} context="inProgress" />
-      ),
+      render: (row: TradeRow) => <StatusBadge statusKey={row.status} context="inProgress" />,
     },
     {
       key: "updatedAt",
@@ -290,6 +310,7 @@ export function InProgressTabContent() {
       </button>
     ),
   };
+
   const actionColumn: NaviTableColumn = {
     key: "action",
     label: "操作",
@@ -301,7 +322,7 @@ export function InProgressTabContent() {
           className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
           onClick={(e) => {
             e.stopPropagation();
-            handleCompleteTodo(row.id, row.status);
+            handleCompleteTodo(row);
           }}
         >
           {row.primaryActionLabel}
@@ -311,16 +332,9 @@ export function InProgressTabContent() {
       ),
   };
 
-  const tradeColumnsWithAction: NaviTableColumn[] = [
-    ...tradeColumnBase,
-    actionColumn,
-    messageColumn,
-  ];
+  const tradeColumnsWithAction: NaviTableColumn[] = [...tradeColumnBase, actionColumn, messageColumn];
 
-  const tradeColumnsWithoutAction: NaviTableColumn[] = [
-    ...tradeColumnBase,
-    messageColumn,
-  ];
+  const tradeColumnsWithoutAction: NaviTableColumn[] = [...tradeColumnBase, messageColumn];
 
   useEffect(() => {
     if (messageNaviId === null) {
@@ -372,16 +386,13 @@ export function InProgressTabContent() {
       />
 
       <section className="space-y-4">
-        <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">
-          購入中の商品
-        </h2>
+        <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">購入中の商品</h2>
+
         <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
-            description={getInProgressDescription("buy", "application_approved")}
-          >
+          <SectionHeader className="px-3 py-2 text-xs" description={getInProgressDescription("buy", "application_approved")}>
             {SECTION_LABELS.payment.title}
           </SectionHeader>
+
           <NaviTable
             columns={tradeColumnsWithAction}
             rows={buyPayment}
@@ -391,12 +402,10 @@ export function InProgressTabContent() {
         </div>
 
         <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
-            description={getInProgressDescription("buy", "payment_confirmed")}
-          >
+          <SectionHeader className="px-3 py-2 text-xs" description={getInProgressDescription("buy", "payment_confirmed")}>
             {SECTION_LABELS.confirmation.title}
           </SectionHeader>
+
           <NaviTable
             columns={tradeColumnsWithAction}
             rows={buyConfirmation}
@@ -404,20 +413,16 @@ export function InProgressTabContent() {
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
           />
         </div>
-
       </section>
 
       <section className="space-y-4">
-        <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">
-          売却中の商品
-        </h2>
+        <h2 className="bg-[#142B5E] text-white text-lg font-semibold px-4 py-2 mb-2">売却中の商品</h2>
+
         <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
-            description={getInProgressDescription("sell", "application_approved")}
-          >
+          <SectionHeader className="px-3 py-2 text-xs" description={getInProgressDescription("sell", "application_approved")}>
             {SECTION_LABELS.payment.title}
           </SectionHeader>
+
           <NaviTable
             columns={tradeColumnsWithoutAction}
             rows={sellPayment}
@@ -425,13 +430,12 @@ export function InProgressTabContent() {
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
           />
         </div>
+
         <div className="space-y-2">
-          <SectionHeader
-            className="px-3 py-2 text-xs"
-            description={getInProgressDescription("sell", "payment_confirmed")}
-          >
+          <SectionHeader className="px-3 py-2 text-xs" description={getInProgressDescription("sell", "payment_confirmed")}>
             {SECTION_LABELS.confirmation.title}
           </SectionHeader>
+
           <NaviTable
             columns={tradeColumnsWithoutAction}
             rows={sellConfirmation}
@@ -453,3 +457,4 @@ export function InProgressTabContent() {
     </section>
   );
 }
+
