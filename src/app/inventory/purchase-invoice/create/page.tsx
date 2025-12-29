@@ -82,13 +82,13 @@ export default function PurchaseInvoiceCreatePage() {
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => handleCreateDraft("vendor")}
-            className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
+            className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-none hover:bg-slate-100"
           >
             業者伝票登録
           </button>
           <button
             onClick={() => handleCreateDraft("hall")}
-            className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] hover:bg-slate-100"
+            className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-none hover:bg-slate-100"
           >
             ホール伝票登録
           </button>
