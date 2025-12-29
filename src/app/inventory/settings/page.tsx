@@ -783,6 +783,7 @@ function InventorySettingsContent() {
   const dangerButton =
     "rounded-none border border-red-400 bg-red-100 px-3 py-1 text-sm font-semibold text-red-700";
   const mutedText = "text-sm text-slate-600";
+  const compactContainer = "max-w-[1200px] mx-auto w-full";
 
   const companyName = masterData.companyProfile.corporateName || "-";
 
@@ -873,168 +874,169 @@ function InventorySettingsContent() {
                 <div className="border border-gray-400 bg-white">
                   <div className={sectionHeader}>法人設定（取引先）</div>
                   <div className="border-t border-gray-400">
-                    <table className="w-full border-collapse text-sm">
-                      <tbody>
-                        <tr>
-                          <th className={tableHeader}>区分</th>
-                          <td className={tableCell}>
-                            <select
-                              value={corporateForm.category}
-                              onChange={(event) =>
-                                handleCorporateFormChange("category", event.target.value as SupplierCategory)
-                              }
-                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-category")}
-                              ref={registerFocus("corporate-category")}
-                              className={inputBase}
-                            >
-                              <option value="vendor">業者</option>
-                              <option value="hall">ホール</option>
-                            </select>
-                          </td>
-                          <th className={tableHeader}>非表示</th>
-                          <td className={tableCell}>
-                            <label className="flex items-center gap-2">
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full border-collapse text-sm">
+                        <thead>
+                          <tr>
+                            <th className={tableHeader}>区分</th>
+                            <th className={tableHeader}>非表示</th>
+                            <th className={tableHeader}>取引先名</th>
+                            <th className={tableHeader}>取引先名カナ</th>
+                            <th className={tableHeader}>郵便番号</th>
+                            <th className={tableHeader}>都道府県</th>
+                            <th className={tableHeader}>市区町村（住所）</th>
+                            <th className={tableHeader}>番地・建物名</th>
+                            <th className={tableHeader}>代表者</th>
+                            <th className={tableHeader}>電話番号</th>
+                            <th className={tableHeader}>FAX番号</th>
+                            <th className={tableHeader}>mailアドレス</th>
+                            <th className={tableHeader}>操作</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td className={tableCell}>
+                              <select
+                                value={corporateForm.category}
+                                onChange={(event) =>
+                                  handleCorporateFormChange("category", event.target.value as SupplierCategory)
+                                }
+                                onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-category")}
+                                ref={registerFocus("corporate-category")}
+                                className={inputBase}
+                              >
+                                <option value="vendor">業者</option>
+                                <option value="hall">ホール</option>
+                              </select>
+                            </td>
+                            <td className={tableCell}>
+                              <label className="flex items-center gap-2">
+                                <input
+                                  type="checkbox"
+                                  checked={corporateForm.isHidden}
+                                  onChange={(event) => handleCorporateFormChange("isHidden", event.target.checked)}
+                                  className="h-4 w-4 border border-gray-500"
+                                />
+                                <span className="text-xs text-slate-700">一覧から隠す</span>
+                              </label>
+                            </td>
+                            <td className={tableCell}>
                               <input
-                                type="checkbox"
-                                checked={corporateForm.isHidden}
-                                onChange={(event) => handleCorporateFormChange("isHidden", event.target.checked)}
-                                className="h-4 w-4 border border-gray-500"
+                                value={corporateForm.corporateName}
+                                onChange={(event) => handleCorporateFormChange("corporateName", event.target.value)}
+                                onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-name")}
+                                ref={registerFocus("corporate-name")}
+                                className={inputBase}
+                                placeholder="例: サンプル商事"
                               />
-                              <span className="text-xs text-slate-700">一覧から隠す</span>
-                            </label>
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>取引先名</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.corporateName}
-                              onChange={(event) => handleCorporateFormChange("corporateName", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-name")}
-                              ref={registerFocus("corporate-name")}
-                              className={inputBase}
-                              placeholder="例: サンプル商事"
-                            />
-                          </td>
-                          <th className={tableHeader}>取引先名カナ</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.corporateNameKana}
-                              onChange={(event) => handleCorporateFormChange("corporateNameKana", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-nameKana")}
-                              ref={registerFocus("corporate-nameKana")}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>郵便番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.postalCode}
-                              onChange={(event) => handleCorporateFormChange("postalCode", event.target.value)}
-                              onKeyDown={(event) =>
-                                handleEnterNext(event, corporateFieldOrder, "corporate-postalCode")
-                              }
-                              ref={registerFocus("corporate-postalCode")}
-                              className={inputBase}
-                              placeholder="例: 123-4567"
-                            />
-                          </td>
-                          <th className={tableHeader}>都道府県</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.prefecture}
-                              onChange={(event) => handleCorporateFormChange("prefecture", event.target.value)}
-                              onKeyDown={(event) =>
-                                handleEnterNext(event, corporateFieldOrder, "corporate-prefecture")
-                              }
-                              ref={registerFocus("corporate-prefecture")}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>市区町村（住所）</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.city}
-                              onChange={(event) => handleCorporateFormChange("city", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-city")}
-                              ref={registerFocus("corporate-city")}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>番地・建物名</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.addressLine}
-                              onChange={(event) => handleCorporateFormChange("addressLine", event.target.value)}
-                              onKeyDown={(event) =>
-                                handleEnterNext(event, corporateFieldOrder, "corporate-addressLine")
-                              }
-                              ref={registerFocus("corporate-addressLine")}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>代表者</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.corporateRepresentative}
-                              onChange={(event) => handleCorporateFormChange("corporateRepresentative", event.target.value)}
-                              onKeyDown={(event) =>
-                                handleEnterNext(event, corporateFieldOrder, "corporate-representative")
-                              }
-                              ref={registerFocus("corporate-representative")}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>電話番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.phone}
-                              onChange={(event) => handleCorporateFormChange("phone", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-phone")}
-                              ref={registerFocus("corporate-phone")}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>FAX番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.fax}
-                              onChange={(event) => handleCorporateFormChange("fax", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-fax")}
-                              ref={registerFocus("corporate-fax")}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>mailアドレス</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateForm.email}
-                              onChange={(event) => handleCorporateFormChange("email", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-email")}
-                              ref={registerFocus("corporate-email")}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    <div className="flex items-center justify-end gap-2 border-t border-gray-400 px-3 py-2">
-                      {editingCorporateId && (
-                        <button type="button" onClick={resetCorporateForm} className={secondaryButton}>
-                          新規入力へ戻す
-                        </button>
-                      )}
-                      <button type="button" onClick={handleCorporateSubmit} className={buttonBase}>
-                        {editingCorporateId ? "更新" : "登録"}
-                      </button>
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.corporateNameKana}
+                                onChange={(event) => handleCorporateFormChange("corporateNameKana", event.target.value)}
+                                onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-nameKana")}
+                                ref={registerFocus("corporate-nameKana")}
+                                className={inputBase}
+                              />
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.postalCode}
+                                onChange={(event) => handleCorporateFormChange("postalCode", event.target.value)}
+                                onKeyDown={(event) =>
+                                  handleEnterNext(event, corporateFieldOrder, "corporate-postalCode")
+                                }
+                                ref={registerFocus("corporate-postalCode")}
+                                className={inputBase}
+                                placeholder="例: 123-4567"
+                              />
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.prefecture}
+                                onChange={(event) => handleCorporateFormChange("prefecture", event.target.value)}
+                                onKeyDown={(event) =>
+                                  handleEnterNext(event, corporateFieldOrder, "corporate-prefecture")
+                                }
+                                ref={registerFocus("corporate-prefecture")}
+                                className={inputBase}
+                              />
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.city}
+                                onChange={(event) => handleCorporateFormChange("city", event.target.value)}
+                                onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-city")}
+                                ref={registerFocus("corporate-city")}
+                                className={inputBase}
+                              />
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.addressLine}
+                                onChange={(event) => handleCorporateFormChange("addressLine", event.target.value)}
+                                onKeyDown={(event) =>
+                                  handleEnterNext(event, corporateFieldOrder, "corporate-addressLine")
+                                }
+                                ref={registerFocus("corporate-addressLine")}
+                                className={inputBase}
+                              />
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.corporateRepresentative}
+                                onChange={(event) =>
+                                  handleCorporateFormChange("corporateRepresentative", event.target.value)
+                                }
+                                onKeyDown={(event) =>
+                                  handleEnterNext(event, corporateFieldOrder, "corporate-representative")
+                                }
+                                ref={registerFocus("corporate-representative")}
+                                className={inputBase}
+                              />
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.phone}
+                                onChange={(event) => handleCorporateFormChange("phone", event.target.value)}
+                                onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-phone")}
+                                ref={registerFocus("corporate-phone")}
+                                className={inputBase}
+                              />
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.fax}
+                                onChange={(event) => handleCorporateFormChange("fax", event.target.value)}
+                                onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-fax")}
+                                ref={registerFocus("corporate-fax")}
+                                className={inputBase}
+                              />
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.email}
+                                onChange={(event) => handleCorporateFormChange("email", event.target.value)}
+                                onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-email")}
+                                ref={registerFocus("corporate-email")}
+                                className={inputBase}
+                              />
+                            </td>
+                            <td className={`${tableCell} min-w-[160px]`}>
+                              <div className="flex flex-col gap-1">
+                                {editingCorporateId && (
+                                  <button type="button" onClick={resetCorporateForm} className={secondaryButton}>
+                                    新規入力へ戻す
+                                  </button>
+                                )}
+                                <button type="button" onClick={handleCorporateSubmit} className={buttonBase}>
+                                  {editingCorporateId ? "更新" : "登録"}
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
@@ -1134,173 +1136,178 @@ function InventorySettingsContent() {
                 <div className="border border-gray-400 bg-white">
                   <div className={sectionHeader}>ホール・支店設定</div>
                   <div className="border-t border-gray-400">
-                    <table className="w-full border-collapse text-sm">
-                      <tbody>
-                        <tr>
-                          <th className={tableHeader}>法人名検索</th>
-                          <td className={tableCell}>
-                            <input
-                              value={corporateFilterInput}
-                              onChange={(event) => setCorporateFilterInput(event.target.value)}
-                              className={inputBase}
-                              placeholder="法人名で絞り込み"
-                            />
-                          </td>
-                          <th className={tableHeader}>法人名</th>
-                          <td className={tableCell}>
-                            <select
-                              value={branchForm.corporateId}
-                              onChange={(event) => handleBranchFormChange("corporateId", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-corporateId")}
-                              ref={registerFocus("branch-corporateId")}
-                              className={inputBase}
-                            >
-                              <option value="">法人を選択</option>
-                              {corporateOptions.map((supplier) => (
-                                <option key={supplier.id} value={supplier.id}>
-                                  {supplier.corporateName}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>支店・ホール名</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.name}
-                              onChange={(event) => handleBranchFormChange("name", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-name")}
-                              ref={registerFocus("branch-name")}
-                              className={inputBase}
-                              placeholder="例: 本店"
-                            />
-                          </td>
-                          <th className={tableHeader}>支店・ホール名カナ</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.nameKana}
-                              onChange={(event) => handleBranchFormChange("nameKana", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-nameKana")}
-                              ref={registerFocus("branch-nameKana")}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>郵便番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.postalCode}
-                              onChange={(event) => handleBranchFormChange("postalCode", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-postalCode")}
-                              ref={registerFocus("branch-postalCode")}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>都道府県</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.prefecture}
-                              onChange={(event) => handleBranchFormChange("prefecture", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-prefecture")}
-                              ref={registerFocus("branch-prefecture")}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>市区町村（住所）</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.city}
-                              onChange={(event) => handleBranchFormChange("city", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-city")}
-                              ref={registerFocus("branch-city")}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>番地・建物名</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.addressLine}
-                              onChange={(event) => handleBranchFormChange("addressLine", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-addressLine")}
-                              ref={registerFocus("branch-addressLine")}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>代表者</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.representative}
-                              onChange={(event) => handleBranchFormChange("representative", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-representative")}
-                              ref={registerFocus("branch-representative")}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>担当者</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.contactPerson}
-                              onChange={(event) => handleBranchFormChange("contactPerson", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-contactPerson")}
-                              ref={registerFocus("branch-contactPerson")}
-                              className={inputBase}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className={tableHeader}>電話番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.phone}
-                              onChange={(event) => handleBranchFormChange("phone", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-phone")}
-                              ref={registerFocus("branch-phone")}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>FAX番号</th>
-                          <td className={tableCell}>
-                            <input
-                              value={branchForm.fax}
-                              onChange={(event) => handleBranchFormChange("fax", event.target.value)}
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-fax")}
-                              ref={registerFocus("branch-fax")}
-                              className={inputBase}
-                            />
-                          </td>
-                          <th className={tableHeader}>種別</th>
-                          <td className={tableCell}>
-                            <select
-                              value={branchForm.type}
-                              onChange={(event) =>
-                                handleBranchFormChange("type", event.target.value as "hall" | "branch")
-                              }
-                              onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-type")}
-                              ref={registerFocus("branch-type")}
-                              className={inputBase}
-                            >
-                              <option value="hall">ホール</option>
-                              <option value="branch">支店</option>
-                            </select>
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                    <div className="flex items-center justify-end gap-2 border-t border-gray-400 px-3 py-2">
-                      {editingBranchId && (
-                        <button type="button" onClick={resetBranchForm} className={secondaryButton}>
-                          新規入力へ戻す
-                        </button>
-                      )}
-                      <button type="button" onClick={handleBranchSubmit} className={buttonBase}>
-                        {editingBranchId ? "更新" : "登録"}
-                      </button>
+                    <div className="space-y-3 p-3">
+                      <label className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="text-xs text-slate-700">法人名検索</span>
+                        <input
+                          value={corporateFilterInput}
+                          onChange={(event) => setCorporateFilterInput(event.target.value)}
+                          className="w-56 border border-gray-400 px-2 py-1 text-sm"
+                          placeholder="法人名で絞り込み"
+                        />
+                      </label>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full border-collapse text-sm">
+                          <thead>
+                            <tr>
+                              <th className={tableHeader}>法人名</th>
+                              <th className={tableHeader}>支店・ホール名</th>
+                              <th className={tableHeader}>支店・ホール名カナ</th>
+                              <th className={tableHeader}>郵便番号</th>
+                              <th className={tableHeader}>都道府県</th>
+                              <th className={tableHeader}>市区町村（住所）</th>
+                              <th className={tableHeader}>番地・建物名</th>
+                              <th className={tableHeader}>代表者</th>
+                              <th className={tableHeader}>担当者</th>
+                              <th className={tableHeader}>電話番号</th>
+                              <th className={tableHeader}>FAX番号</th>
+                              <th className={tableHeader}>種別</th>
+                              <th className={tableHeader}>操作</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            <tr>
+                              <td className={tableCell}>
+                                <select
+                                  value={branchForm.corporateId}
+                                  onChange={(event) => handleBranchFormChange("corporateId", event.target.value)}
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-corporateId")}
+                                  ref={registerFocus("branch-corporateId")}
+                                  className={inputBase}
+                                >
+                                  <option value="">法人を選択</option>
+                                  {corporateOptions.map((supplier) => (
+                                    <option key={supplier.id} value={supplier.id}>
+                                      {supplier.corporateName}
+                                    </option>
+                                  ))}
+                                </select>
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.name}
+                                  onChange={(event) => handleBranchFormChange("name", event.target.value)}
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-name")}
+                                  ref={registerFocus("branch-name")}
+                                  className={inputBase}
+                                  placeholder="例: 本店"
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.nameKana}
+                                  onChange={(event) => handleBranchFormChange("nameKana", event.target.value)}
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-nameKana")}
+                                  ref={registerFocus("branch-nameKana")}
+                                  className={inputBase}
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.postalCode}
+                                  onChange={(event) => handleBranchFormChange("postalCode", event.target.value)}
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-postalCode")}
+                                  ref={registerFocus("branch-postalCode")}
+                                  className={inputBase}
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.prefecture}
+                                  onChange={(event) => handleBranchFormChange("prefecture", event.target.value)}
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-prefecture")}
+                                  ref={registerFocus("branch-prefecture")}
+                                  className={inputBase}
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.city}
+                                  onChange={(event) => handleBranchFormChange("city", event.target.value)}
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-city")}
+                                  ref={registerFocus("branch-city")}
+                                  className={inputBase}
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.addressLine}
+                                  onChange={(event) => handleBranchFormChange("addressLine", event.target.value)}
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-addressLine")}
+                                  ref={registerFocus("branch-addressLine")}
+                                  className={inputBase}
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.representative}
+                                  onChange={(event) => handleBranchFormChange("representative", event.target.value)}
+                                  onKeyDown={(event) =>
+                                    handleEnterNext(event, branchFieldOrder, "branch-representative")
+                                  }
+                                  ref={registerFocus("branch-representative")}
+                                  className={inputBase}
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.contactPerson}
+                                  onChange={(event) => handleBranchFormChange("contactPerson", event.target.value)}
+                                  onKeyDown={(event) =>
+                                    handleEnterNext(event, branchFieldOrder, "branch-contactPerson")
+                                  }
+                                  ref={registerFocus("branch-contactPerson")}
+                                  className={inputBase}
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.phone}
+                                  onChange={(event) => handleBranchFormChange("phone", event.target.value)}
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-phone")}
+                                  ref={registerFocus("branch-phone")}
+                                  className={inputBase}
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <input
+                                  value={branchForm.fax}
+                                  onChange={(event) => handleBranchFormChange("fax", event.target.value)}
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-fax")}
+                                  ref={registerFocus("branch-fax")}
+                                  className={inputBase}
+                                />
+                              </td>
+                              <td className={tableCell}>
+                                <select
+                                  value={branchForm.type}
+                                  onChange={(event) =>
+                                    handleBranchFormChange("type", event.target.value as "hall" | "branch")
+                                  }
+                                  onKeyDown={(event) => handleEnterNext(event, branchFieldOrder, "branch-type")}
+                                  ref={registerFocus("branch-type")}
+                                  className={inputBase}
+                                >
+                                  <option value="hall">ホール</option>
+                                  <option value="branch">支店</option>
+                                </select>
+                              </td>
+                              <td className={`${tableCell} min-w-[160px]`}>
+                                <div className="flex flex-col gap-1">
+                                  {editingBranchId && (
+                                    <button type="button" onClick={resetBranchForm} className={secondaryButton}>
+                                      新規入力へ戻す
+                                    </button>
+                                  )}
+                                  <button type="button" onClick={handleBranchSubmit} className={buttonBase}>
+                                    {editingBranchId ? "更新" : "登録"}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1400,7 +1407,7 @@ function InventorySettingsContent() {
         </section>
       ) : (
         <section className="space-y-4">
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+          <div className={`${compactContainer} grid gap-2 sm:grid-cols-2 lg:grid-cols-4`}>
             {[
               { key: "profile", label: "法人情報" },
               { key: "branches", label: "ホール・支店設定" },
@@ -1421,7 +1428,7 @@ function InventorySettingsContent() {
           </div>
 
           {companyTab === "profile" && (
-            <div className="space-y-4">
+            <div className={`${compactContainer} space-y-4`}>
               <div className="border border-gray-400 bg-white">
                 <div className="flex items-center justify-between border-b border-gray-400 bg-gray-200 px-3 py-2">
                   <h3 className="text-sm font-semibold text-slate-800">法人情報</h3>
@@ -1434,10 +1441,10 @@ function InventorySettingsContent() {
 
                 {isCompanyProfileEditing ? (
                   <div className="border-t border-gray-400">
-                    <table className="w-full border-collapse text-sm">
+                    <table className="w-full table-fixed border-collapse text-sm">
                       <tbody>
                         <tr>
-                          <th className={tableHeader}>管理者法人名</th>
+                          <th className={`${tableHeader} w-[220px]`}>管理者法人名</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.corporateName}
@@ -1445,7 +1452,7 @@ function InventorySettingsContent() {
                               className={inputBase}
                             />
                           </td>
-                          <th className={tableHeader}>郵便番号</th>
+                          <th className={`${tableHeader} w-[220px]`}>郵便番号</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.postalCode}
@@ -1455,7 +1462,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className={tableHeader}>都道府県</th>
+                          <th className={`${tableHeader} w-[220px]`}>都道府県</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.prefecture}
@@ -1463,7 +1470,7 @@ function InventorySettingsContent() {
                               className={inputBase}
                             />
                           </td>
-                          <th className={tableHeader}>市区町村</th>
+                          <th className={`${tableHeader} w-[220px]`}>市区町村</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.city}
@@ -1473,7 +1480,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className={tableHeader}>番地・ビル名</th>
+                          <th className={`${tableHeader} w-[220px]`}>番地・ビル名</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.addressLine2 ?? ""}
@@ -1481,7 +1488,7 @@ function InventorySettingsContent() {
                               className={inputBase}
                             />
                           </td>
-                          <th className={tableHeader}>電話番号</th>
+                          <th className={`${tableHeader} w-[220px]`}>電話番号</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.phone}
@@ -1491,7 +1498,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className={tableHeader}>FAX番号</th>
+                          <th className={`${tableHeader} w-[220px]`}>FAX番号</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.fax}
@@ -1499,7 +1506,7 @@ function InventorySettingsContent() {
                               className={inputBase}
                             />
                           </td>
-                          <th className={tableHeader}>役職</th>
+                          <th className={`${tableHeader} w-[220px]`}>役職</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.title}
@@ -1509,7 +1516,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className={tableHeader}>代表名</th>
+                          <th className={`${tableHeader} w-[220px]`}>代表名</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.representative}
@@ -1517,7 +1524,7 @@ function InventorySettingsContent() {
                               className={inputBase}
                             />
                           </td>
-                          <th className={tableHeader}>備考</th>
+                          <th className={`${tableHeader} w-[220px]`}>備考</th>
                           <td className={tableCell}>
                             <input
                               value={companyProfileForm.note}
@@ -1539,16 +1546,16 @@ function InventorySettingsContent() {
                   </div>
                 ) : (
                   <div className="border-t border-gray-400">
-                    <table className="w-full border-collapse text-sm">
+                    <table className="w-full table-fixed border-collapse text-sm">
                       <tbody>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             管理者法人名
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">{companyName}</td>
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             郵便番号
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">
@@ -1556,7 +1563,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             都道府県
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">
@@ -1564,7 +1571,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             市区町村
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">
@@ -1572,7 +1579,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             番地・ビル名
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">
@@ -1580,7 +1587,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             電話番号
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">
@@ -1588,7 +1595,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             FAX番号
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">
@@ -1596,7 +1603,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             役職
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">
@@ -1604,7 +1611,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             代表名
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">
@@ -1612,7 +1619,7 @@ function InventorySettingsContent() {
                           </td>
                         </tr>
                         <tr>
-                          <th className="border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
+                          <th className="w-[220px] border border-gray-400 bg-gray-100 px-3 py-2 text-left text-sm font-semibold">
                             備考
                           </th>
                           <td className="border border-gray-400 px-3 py-2 text-sm">
@@ -1628,16 +1635,16 @@ function InventorySettingsContent() {
           )}
 
           {companyTab === "branches" && (
-            <div className="space-y-4">
+            <div className={`${compactContainer} space-y-4`}>
               <div className="border border-gray-400 bg-white">
                 <div className={sectionHeader}>ホール・支店設定</div>
                 <div className="border-t border-gray-400">
-                  <table className="w-full border-collapse text-sm">
+                  <table className="w-full table-fixed border-collapse text-sm">
                     <tbody>
                       <tr>
-                        <th className={tableHeader}>管理者法人名</th>
+                        <th className={`${tableHeader} w-[220px]`}>管理者法人名</th>
                         <td className={tableCell}>{companyName}</td>
-                        <th className={tableHeader}>管理者支店名</th>
+                        <th className={`${tableHeader} w-[220px]`}>管理者支店名</th>
                         <td className={tableCell}>
                           <input
                             value={companyBranchForm.name}
@@ -1647,7 +1654,7 @@ function InventorySettingsContent() {
                         </td>
                       </tr>
                       <tr>
-                        <th className={tableHeader}>郵便番号</th>
+                        <th className={`${tableHeader} w-[220px]`}>郵便番号</th>
                         <td className={tableCell}>
                           <input
                             value={companyBranchForm.postalCode}
@@ -1655,7 +1662,7 @@ function InventorySettingsContent() {
                             className={inputBase}
                           />
                         </td>
-                        <th className={tableHeader}>都道府県</th>
+                        <th className={`${tableHeader} w-[220px]`}>都道府県</th>
                         <td className={tableCell}>
                           <input
                             value={companyBranchForm.prefecture}
@@ -1665,7 +1672,7 @@ function InventorySettingsContent() {
                         </td>
                       </tr>
                       <tr>
-                        <th className={tableHeader}>市区町村</th>
+                        <th className={`${tableHeader} w-[220px]`}>市区町村</th>
                         <td className={tableCell}>
                           <input
                             value={companyBranchForm.city}
@@ -1673,7 +1680,7 @@ function InventorySettingsContent() {
                             className={inputBase}
                           />
                         </td>
-                        <th className={tableHeader}>番地・ビル名</th>
+                        <th className={`${tableHeader} w-[220px]`}>番地・ビル名</th>
                         <td className={tableCell}>
                           <input
                             value={companyBranchForm.addressLine2}
@@ -1683,7 +1690,7 @@ function InventorySettingsContent() {
                         </td>
                       </tr>
                       <tr>
-                        <th className={tableHeader}>電話番号</th>
+                        <th className={`${tableHeader} w-[220px]`}>電話番号</th>
                         <td className={tableCell}>
                           <input
                             value={companyBranchForm.phone}
@@ -1691,7 +1698,7 @@ function InventorySettingsContent() {
                             className={inputBase}
                           />
                         </td>
-                        <th className={tableHeader}>FAX番号</th>
+                        <th className={`${tableHeader} w-[220px]`}>FAX番号</th>
                         <td className={tableCell}>
                           <input
                             value={companyBranchForm.fax}
@@ -1701,7 +1708,7 @@ function InventorySettingsContent() {
                         </td>
                       </tr>
                       <tr>
-                        <th className={tableHeader}>責任者</th>
+                        <th className={`${tableHeader} w-[220px]`}>責任者</th>
                         <td className={tableCell}>
                           <input
                             value={companyBranchForm.manager}
@@ -1709,7 +1716,7 @@ function InventorySettingsContent() {
                             className={inputBase}
                           />
                         </td>
-                        <th className={tableHeader}>備考</th>
+                        <th className={`${tableHeader} w-[220px]`}>備考</th>
                         <td className={tableCell}>
                           <input
                             value={companyBranchForm.note}
@@ -1800,16 +1807,16 @@ function InventorySettingsContent() {
           )}
 
           {companyTab === "staffs" && (
-            <div className="space-y-4">
+            <div className={`${compactContainer} space-y-4`}>
               <div className="border border-gray-400 bg-white">
                 <div className={sectionHeader}>担当者設定</div>
                 <div className="border-t border-gray-400">
-                  <table className="w-full border-collapse text-sm">
+                  <table className="w-full table-fixed border-collapse text-sm">
                     <tbody>
                       <tr>
-                        <th className={tableHeader}>法人名</th>
+                        <th className={`${tableHeader} w-[220px]`}>法人名</th>
                         <td className={tableCell}>{companyName}</td>
-                        <th className={tableHeader}>ホール・支店</th>
+                        <th className={`${tableHeader} w-[220px]`}>ホール・支店</th>
                         <td className={tableCell}>
                           {masterData.companyBranches.length > 0 ? (
                             <select
@@ -1830,7 +1837,7 @@ function InventorySettingsContent() {
                         </td>
                       </tr>
                       <tr>
-                        <th className={tableHeader}>名前</th>
+                        <th className={`${tableHeader} w-[220px]`}>名前</th>
                         <td className={tableCell} colSpan={3}>
                           <input
                             value={companyStaffForm.name}
@@ -1921,7 +1928,7 @@ function InventorySettingsContent() {
           )}
 
           {companyTab === "warehouses" && (
-            <div className="border border-gray-400 bg-white px-4 py-6 text-center text-sm text-gray-600">
+            <div className={`${compactContainer} border border-gray-400 bg-white px-4 py-6 text-center text-sm text-gray-600`}>
               準備中
             </div>
           )}

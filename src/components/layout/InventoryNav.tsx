@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 const NAV_ITEMS = [
   { href: "/inventory/new", label: "在庫登録" },
@@ -14,35 +14,43 @@ const NAV_ITEMS = [
   { href: "/inventory/settings?mode=self", label: "自社設定" },
 ];
 
-const isActive = (path: string, href: string) => {
+const isActive = (path: string, searchParams: URLSearchParams | null, href: string) => {
   if (href === "/inventory") {
     return path === "/inventory";
   }
-  const cleanHref = href.split("?")[0];
-  return path.startsWith(cleanHref);
+  const [basePath, queryString] = href.split("?");
+  if (basePath === "/inventory/settings") {
+    if (path !== "/inventory/settings") return false;
+    const hrefParams = new URLSearchParams(queryString);
+    const targetMode = hrefParams.get("mode");
+    const currentMode = searchParams?.get("mode") ?? "customer";
+    return targetMode === currentMode;
+  }
+  return path.startsWith(basePath);
 };
 
 export function InventoryNav() {
   const pathname = usePathname() ?? "";
+  const searchParams = useSearchParams();
 
   return (
-    <nav className="w-full border-b border-slate-200 bg-slate-50 px-4 py-3">
+    <nav className="w-full border-b border-gray-300 bg-slate-100 px-4 py-3">
       <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Link href="/" className="text-lg font-bold text-sky-700">
+          <Link href="/" className="text-lg font-bold text-slate-700">
             パチマート
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             {NAV_ITEMS.map((item) => {
-              const active = isActive(pathname, item.href);
+              const active = isActive(pathname, searchParams, item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
-                  className={`rounded-md px-4 py-2 text-sm font-semibold shadow-sm transition hover:bg-white hover:text-sky-700 ${
+                  className={`rounded-none border border-gray-300 px-4 py-2 text-sm font-semibold shadow-none transition hover:bg-white hover:text-slate-800 ${
                     active
-                      ? "bg-white text-sky-700 ring-1 ring-sky-200"
-                      : "bg-slate-100 text-slate-800"
+                      ? "bg-white text-slate-800"
+                      : "bg-slate-200 text-slate-700"
                   }`}
                 >
                   {item.label}
