@@ -6,6 +6,7 @@ import { Suspense, useState } from "react";
 
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
+import { useBalance } from "@/lib/balance/BalanceContext";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { dummyBalances } from "@/lib/dummyBalances";
 import { InventorySearchBar } from "../inventory/InventorySearchBar";
@@ -47,8 +48,13 @@ const isActiveLink = (pathname: string | null, href: string, matchPrefixes?: str
 
 export default function Header() {
   const currentUser = useCurrentDevUser();
-  const balanceSummary =
+  const { getBalance } = useBalance();
+  const baseBalanceSummary =
     dummyBalances.find((balance) => balance.userId === currentUser.id) ?? fallbackBalanceSummary;
+  const balanceSummary: BalanceSummary = {
+    ...baseBalanceSummary,
+    available: getBalance(currentUser.id),
+  };
   const pathname = usePathname();
   const isProductsPage = pathname === "/products" || pathname?.startsWith("/products/");
   const isInventoryPage = pathname?.startsWith("/inventory");
