@@ -10,14 +10,16 @@ const NAV_ITEMS = [
   { href: "/inventory/purchase-invoice/list", label: "購入伝票一覧" },
   { href: "/inventory/sales-invoice/create", label: "販売伝票作成" },
   { href: "/inventory/sales-invoice/list", label: "販売伝票一覧" },
-  { href: "/inventory/settings", label: "詳細設定" },
+  { href: "/inventory/settings?mode=customer&tab=corp", label: "取引先管理" },
+  { href: "/inventory/settings?mode=self", label: "自社設定" },
 ];
 
 const isActive = (path: string, href: string) => {
   if (href === "/inventory") {
     return path === "/inventory";
   }
-  return path.startsWith(href);
+  const cleanHref = href.split("?")[0];
+  return path.startsWith(cleanHref);
 };
 
 export function InventoryNav() {
