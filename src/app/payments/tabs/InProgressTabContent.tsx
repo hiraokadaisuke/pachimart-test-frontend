@@ -19,6 +19,8 @@ import { getStatementPath } from "@/lib/trade/navigation";
 import { TradeRecord } from "@/lib/trade/types";
 import { getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
+import { useBalance } from "@/lib/balance/BalanceContext";
+import { markTradeCompleted, markTradePaid } from "@/lib/trade/storage";
 
 const SECTION_LABELS = {
   approval: todoUiMap["application_sent"],
@@ -102,6 +104,7 @@ export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const router = useRouter();
+  const { deductBalance } = useBalance();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("inProgress");
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -151,11 +154,43 @@ export function InProgressTabContent() {
   }, [currentUser.id]);
 
   const handleCompleteTodo = useCallback(
-    (tradeId: string, todoKind: TradeStatusKey) => {
-      console.warn("Todo completion is not supported for fetched trades", { tradeId, todoKind });
-      refreshTrades();
+    (row: TradeRow) => {
+      if (row.status === "application_approved") {
+        const paymentAmount = row.totalAmount;
+        const deducted = deductBalance(row.buyerUserId, paymentAmount);
+        if (!deducted) {
+          console.error("Insufficient balance to mark trade as paid", {
+            tradeId: row.id,
+            buyerUserId: row.buyerUserId,
+            paymentAmount,
+          });
+          return;
+        }
+        const updated = markTradePaid(row.id, currentUser.id);
+        if (!updated) {
+          console.error("Failed to mark trade as paid", { tradeId: row.id });
+          return;
+        }
+        setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
+        return;
+      }
+
+      if (row.status === "payment_confirmed") {
+        const updated = markTradeCompleted(row.id, currentUser.id);
+        if (!updated) {
+          console.error("Failed to mark trade as completed", { tradeId: row.id });
+          return;
+        }
+        setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
+        return;
+      }
+
+      console.warn("Todo completion is not supported for fetched trades", {
+        tradeId: row.id,
+        todoKind: row.status,
+      });
     },
-    [refreshTrades]
+    [currentUser.id, deductBalance]
   );
 
   useEffect(() => {
@@ -277,7 +312,7 @@ export function InProgressTabContent() {
           className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
           onClick={(e) => {
             e.stopPropagation();
-            handleCompleteTodo(row.id, row.status);
+            handleCompleteTodo(row);
           }}
         >
           {row.primaryActionLabel}
