@@ -43,6 +43,21 @@ type InMemoryMessage = {
   createdAt: Date;
 };
 
+type InMemoryOnlineInquiry = {
+  id: string;
+  listingId: string;
+  buyerUserId: string;
+  sellerUserId: string;
+  body: string;
+  quantity: number;
+  shippingAddress: string | null;
+  contactPerson: string | null;
+  desiredShipDate: string | null;
+  desiredPaymentDate: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
 type InMemoryListing = {
   id: string;
   sellerUserId: string;
@@ -109,6 +124,10 @@ type InMemoryPrisma = {
     create: ({ data }: { data: Partial<InMemoryNavi> }) => Promise<InMemoryNavi>;
     findUnique: ({ where }: { where: { id?: number | null } }) => Promise<InMemoryNavi | null>;
     update: ({ where, data }: { where: { id?: number | null }; data: Partial<InMemoryNavi> }) => Promise<InMemoryNavi>;
+  };
+  onlineInquiry: {
+    findMany: () => Promise<InMemoryOnlineInquiry[]>;
+    create: ({ data }: { data: Partial<InMemoryOnlineInquiry> }) => Promise<InMemoryOnlineInquiry>;
   };
   trade: {
     findMany: ({ where }?: { where?: { status?: TradeStatus } }) => Promise<(InMemoryTrade & {
@@ -213,12 +232,14 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   const navis: InMemoryNavi[] = [];
   const trades: InMemoryTrade[] = [];
   const messages: InMemoryMessage[] = [];
+  const onlineInquiries: InMemoryOnlineInquiry[] = [];
   const listings: InMemoryListing[] = [];
   const storageLocations: InMemoryStorageLocation[] = [];
   const buyerShippingAddresses: InMemoryBuyerShippingAddress[] = [];
   let naviSeq = 1;
   let tradeSeq = 1;
   let messageSeq = 1;
+  let onlineInquirySeq = 1;
   let listingSeq = 1;
   let storageLocationSeq = 1;
   let buyerShippingAddressSeq = 1;
@@ -315,6 +336,30 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
         navis[idx] = updated;
         return updated;
+      },
+    },
+    onlineInquiry: {
+      findMany: async () =>
+        [...onlineInquiries].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+      create: async ({ data }: { data: Partial<InMemoryOnlineInquiry> }) => {
+        const nowDate = now();
+        const record: InMemoryOnlineInquiry = {
+          id: String(data.id ?? `online_inquiry_${onlineInquirySeq++}`),
+          listingId: String(data.listingId ?? ""),
+          buyerUserId: String(data.buyerUserId ?? ""),
+          sellerUserId: String(data.sellerUserId ?? ""),
+          body: String(data.body ?? ""),
+          quantity: Number.isFinite(Number(data.quantity)) ? Number(data.quantity) : 0,
+          shippingAddress: (data.shippingAddress as string | null | undefined) ?? null,
+          contactPerson: (data.contactPerson as string | null | undefined) ?? null,
+          desiredShipDate: (data.desiredShipDate as string | null | undefined) ?? null,
+          desiredPaymentDate: (data.desiredPaymentDate as string | null | undefined) ?? null,
+          createdAt: nowDate,
+          updatedAt: nowDate,
+        };
+
+        onlineInquiries.push(record);
+        return { ...record };
       },
     },
     trade: {

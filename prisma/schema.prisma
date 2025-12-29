@@ -106,6 +106,21 @@ model Message {
   navi       Navi @relation(fields: [naviId], references: [id])
 }
 
+model OnlineInquiry {
+  id                String   @id @default(cuid())
+  listingId         String
+  buyerUserId       String
+  sellerUserId      String
+  body              String
+  quantity          Int
+  shippingAddress   String?
+  contactPerson     String?
+  desiredShipDate   String?
+  desiredPaymentDate String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
 model Listing {
   id               String         @id @default(cuid())
   sellerUserId     String
