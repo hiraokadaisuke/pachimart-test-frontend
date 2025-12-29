@@ -92,6 +92,7 @@ export async function GET(request: Request) {
         listingId: inquiry.listingId,
         buyerUserId: inquiry.buyerUserId,
         sellerUserId: inquiry.sellerUserId,
+        status: inquiry.status,
         createdAt: inquiry.createdAt,
         updatedAt: inquiry.updatedAt,
         makerName: listing?.maker ?? null,
@@ -189,6 +190,7 @@ export async function POST(request: Request) {
           contactPerson: contactPerson ?? null,
           desiredShipDate: desiredShipDate ?? null,
           desiredPaymentDate: desiredPaymentDate ?? null,
+          status: "PENDING",
         },
       });
 

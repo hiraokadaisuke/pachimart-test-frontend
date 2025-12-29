@@ -50,6 +50,12 @@ enum ListingType {
   SLOT
 }
 
+enum OnlineInquiryStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
 model User {
   id              String     @id
   companyName     String
@@ -122,6 +128,7 @@ model OnlineInquiry {
   contactPerson     String?
   desiredShipDate   String?
   desiredPaymentDate String?
+  status            OnlineInquiryStatus @default(PENDING)
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 }
