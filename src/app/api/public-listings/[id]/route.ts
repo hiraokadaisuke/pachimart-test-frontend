@@ -78,16 +78,21 @@ export async function GET(request: Request, { params }: { params: { id?: string 
 
     const listing = await listingClient.findUnique({
       where: { id },
-      include: { storageLocationRecord: true },
     });
 
     if (!listing) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
+    const storageLocationRecord = listing.storageLocationId
+      ? await prisma.storageLocation.findUnique({
+          where: { id: listing.storageLocationId },
+        })
+      : null;
+
     const storageLocationSnapshot =
       resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
-      toSnapshotFromStorageLocation(listing.storageLocationRecord);
+      toSnapshotFromStorageLocation(storageLocationRecord);
 
     const storageLocation = formatStorageLocationShort(
       storageLocationSnapshot,
