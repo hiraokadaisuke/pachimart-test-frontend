@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
+import { addLedgerEntry } from "@/lib/balance/ledger";
 
 type BalanceState = Record<string, number>;
 
@@ -82,6 +83,9 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
           ...prev,
           [userId]: (prev[userId] ?? 0) + deltaAmount,
         }));
+        if (deltaAmount > 0) {
+          addLedgerEntry(userId, { kind: "DEPOSIT", amount: deltaAmount });
+        }
       },
       creditBalance: (userId: string, amount: number) => {
         if (!userId || !Number.isFinite(amount) || amount <= 0) return;
