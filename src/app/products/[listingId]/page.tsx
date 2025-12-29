@@ -12,11 +12,18 @@ import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
 
 type ListingFetchResult = { listing: Listing | null; notFound: boolean };
 
-async function fetchListing(listingId: string, devUserId?: string): Promise<ListingFetchResult> {
+async function fetchListing(
+  listingId: string,
+  devUserId?: string,
+  cookieHeader?: string
+): Promise<ListingFetchResult> {
   try {
     const response = await fetch(buildApiUrl(`/api/public-listings/${listingId}`), {
       cache: "no-store",
-      headers: devUserId ? { "x-dev-user-id": devUserId } : undefined,
+      headers: {
+        ...(devUserId ? { "x-dev-user-id": devUserId } : {}),
+        ...(cookieHeader ? { cookie: cookieHeader } : {}),
+      },
     });
 
     if (response.status === 404) return { listing: null, notFound: true };
@@ -53,9 +60,15 @@ const resolveInquiryStatus = (listing: Listing, isSellerViewing: boolean) => {
 };
 
 export default async function ProductDetailPage({ params }: { params: { listingId: string } }) {
-  const devUserId = cookies().get("dev_user_id")?.value ?? DEV_USERS.A.id;
+  const currentCookies = cookies();
+  const devUserId = currentCookies.get("dev_user_id")?.value ?? DEV_USERS.A.id;
+  const cookieHeader = currentCookies.toString();
 
-  const { listing, notFound: listingMissing } = await fetchListing(params.listingId, devUserId);
+  const { listing, notFound: listingMissing } = await fetchListing(
+    params.listingId,
+    devUserId,
+    cookieHeader
+  );
 
   if (listingMissing) {
     // NOTE: 404 は「Listing が存在しない場合のみ」。以前の seller 絞り込みでは到達していた。
