@@ -3,17 +3,17 @@ import {
   Prisma,
   PrismaClient,
   RemovalStatus,
-  TradeNaviStatus,
-  TradeNaviType,
+  NaviStatus,
+  NaviType,
   TradeStatus,
 } from "@prisma/client";
 
 import { DEV_USERS } from "@/lib/dev-user/users";
 
-type InMemoryTradeNavi = {
+type InMemoryNavi = {
   id: number;
-  status: TradeNaviStatus;
-  naviType: TradeNaviType;
+  status: NaviStatus;
+  naviType: NaviType;
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
@@ -36,7 +36,7 @@ type InMemoryTrade = {
 
 type InMemoryMessage = {
   id: number;
-  tradeNaviId: number;
+  naviId: number;
   senderUserId: string;
   senderRole: "buyer" | "seller";
   body: string;
@@ -104,21 +104,21 @@ type InMemoryBuyerShippingAddress = {
 };
 
 type InMemoryPrisma = {
-  tradeNavi: {
-    findMany: () => Promise<InMemoryTradeNavi[]>;
-    create: ({ data }: { data: Partial<InMemoryTradeNavi> }) => Promise<InMemoryTradeNavi>;
-    findUnique: ({ where }: { where: { id?: number | null } }) => Promise<InMemoryTradeNavi | null>;
-    update: ({ where, data }: { where: { id?: number | null }; data: Partial<InMemoryTradeNavi> }) => Promise<InMemoryTradeNavi>;
+  navi: {
+    findMany: () => Promise<InMemoryNavi[]>;
+    create: ({ data }: { data: Partial<InMemoryNavi> }) => Promise<InMemoryNavi>;
+    findUnique: ({ where }: { where: { id?: number | null } }) => Promise<InMemoryNavi | null>;
+    update: ({ where, data }: { where: { id?: number | null }; data: Partial<InMemoryNavi> }) => Promise<InMemoryNavi>;
   };
   trade: {
     findMany: ({ where }?: { where?: { status?: TradeStatus } }) => Promise<(InMemoryTrade & {
-      navi: InMemoryTradeNavi | null;
+      navi: InMemoryNavi | null;
       sellerUser: { id: string; companyName: string } | null;
       buyerUser: { id: string; companyName: string } | null;
     })[]>;
     findUnique: ({ where }: { where: { id?: number | null; naviId?: number | null } }) => Promise<
       | (InMemoryTrade & {
-          navi: InMemoryTradeNavi | null;
+          navi: InMemoryNavi | null;
           sellerUser: { id: string; companyName: string } | null;
           buyerUser: { id: string; companyName: string } | null;
         })
@@ -137,14 +137,14 @@ type InMemoryPrisma = {
     }) => Promise<
       | { id: number }
       | (InMemoryTrade & {
-          navi: InMemoryTradeNavi | null;
+          navi: InMemoryNavi | null;
           sellerUser: { id: string; companyName: string } | null;
           buyerUser: { id: string; companyName: string } | null;
         })
     >;
   };
   message: {
-    findMany: ({ where, orderBy }?: { where?: { tradeNaviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
+    findMany: ({ where, orderBy }?: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
       Promise<InMemoryMessage[]>;
     create: ({ data }: { data: Partial<InMemoryMessage> }) => Promise<InMemoryMessage>;
   };
@@ -210,13 +210,13 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
     {}
   );
 
-  const tradeNavis: InMemoryTradeNavi[] = [];
+  const navis: InMemoryNavi[] = [];
   const trades: InMemoryTrade[] = [];
   const messages: InMemoryMessage[] = [];
   const listings: InMemoryListing[] = [];
   const storageLocations: InMemoryStorageLocation[] = [];
   const buyerShippingAddresses: InMemoryBuyerShippingAddress[] = [];
-  let tradeNaviSeq = 1;
+  let naviSeq = 1;
   let tradeSeq = 1;
   let messageSeq = 1;
   let listingSeq = 1;
@@ -227,7 +227,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
   const attachRelations = (trade: InMemoryTrade) => ({
     ...trade,
-    navi: trade.naviId ? tradeNavis.find((navi) => navi.id === trade.naviId) ?? null : null,
+    navi: trade.naviId ? navis.find((navi) => navi.id === trade.naviId) ?? null : null,
     sellerUser: userDirectory[trade.sellerUserId] ?? null,
     buyerUser: userDirectory[trade.buyerUserId] ?? null,
   });
@@ -268,13 +268,13 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   };
 
   return {
-    tradeNavi: {
-      findMany: async () => [...tradeNavis].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
-      create: async ({ data }: { data: Partial<InMemoryTradeNavi> }) => {
-        const record: InMemoryTradeNavi = {
-          id: tradeNaviSeq++,
-          status: (data.status as TradeNaviStatus) ?? TradeNaviStatus.DRAFT,
-          naviType: (data.naviType as TradeNaviType) ?? TradeNaviType.PHONE_AGREEMENT,
+    navi: {
+      findMany: async () => [...navis].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()),
+      create: async ({ data }: { data: Partial<InMemoryNavi> }) => {
+        const record: InMemoryNavi = {
+          id: naviSeq++,
+          status: (data.status as NaviStatus) ?? NaviStatus.DRAFT,
+          naviType: (data.naviType as NaviType) ?? NaviType.PHONE_AGREEMENT,
           ownerUserId: String(data.ownerUserId ?? ""),
           buyerUserId: (data.buyerUserId as string | null) ?? null,
           listingId: (data.listingId as string | null | undefined) ?? null,
@@ -284,36 +284,36 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           updatedAt: now(),
         };
 
-        tradeNavis.push(record);
+        navis.push(record);
         return record;
       },
       findUnique: async ({ where }: { where: { id?: number | null } }) => {
         const id = Number(where.id ?? 0);
-        const found = tradeNavis.find((trade) => trade.id === id);
+        const found = navis.find((trade) => trade.id === id);
         return found ?? null;
       },
-      update: async ({ where, data }: { where: { id?: number | null }; data: Partial<InMemoryTradeNavi> }) => {
+      update: async ({ where, data }: { where: { id?: number | null }; data: Partial<InMemoryNavi> }) => {
         const id = Number(where.id ?? 0);
-        const idx = tradeNavis.findIndex((trade) => trade.id === id);
+        const idx = navis.findIndex((trade) => trade.id === id);
 
         if (idx < 0) {
           throw new Error("Trade not found");
         }
 
-        const updated: InMemoryTradeNavi = {
-          ...tradeNavis[idx],
+        const updated: InMemoryNavi = {
+          ...navis[idx],
           ...data,
-          status: (data.status as TradeNaviStatus | undefined) ?? tradeNavis[idx].status,
-          naviType: (data.naviType as TradeNaviType | undefined) ?? tradeNavis[idx].naviType,
-          buyerUserId: (data.buyerUserId as string | null | undefined) ?? tradeNavis[idx].buyerUserId,
-          listingId: (data.listingId as string | null | undefined) ?? tradeNavis[idx].listingId,
+          status: (data.status as NaviStatus | undefined) ?? navis[idx].status,
+          naviType: (data.naviType as NaviType | undefined) ?? navis[idx].naviType,
+          buyerUserId: (data.buyerUserId as string | null | undefined) ?? navis[idx].buyerUserId,
+          listingId: (data.listingId as string | null | undefined) ?? navis[idx].listingId,
           listingSnapshot:
-            (data.listingSnapshot as Prisma.JsonValue | null | undefined) ?? tradeNavis[idx].listingSnapshot,
-          payload: (data.payload as Prisma.JsonValue | null | undefined) ?? tradeNavis[idx].payload,
+            (data.listingSnapshot as Prisma.JsonValue | null | undefined) ?? navis[idx].listingSnapshot,
+          payload: (data.payload as Prisma.JsonValue | null | undefined) ?? navis[idx].payload,
           updatedAt: now(),
         };
 
-        tradeNavis[idx] = updated;
+        navis[idx] = updated;
         return updated;
       },
     },
@@ -353,9 +353,9 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       findMany: async ({
         where,
         orderBy,
-      }: { where?: { tradeNaviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } } = {}) => {
+      }: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } } = {}) => {
         const filtered = messages.filter((message) =>
-          where?.tradeNaviId ? message.tradeNaviId === where.tradeNaviId : true
+          where?.naviId ? message.naviId === where.naviId : true
         );
         const sorted = filtered.sort((a, b) => {
           const order = orderBy?.createdAt === "desc" ? -1 : 1;
@@ -366,7 +366,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       create: async ({ data }: { data: Partial<InMemoryMessage> }) => {
         const record: InMemoryMessage = {
           id: messageSeq++,
-          tradeNaviId: Number(data.tradeNaviId ?? 0),
+          naviId: Number(data.naviId ?? 0),
           senderUserId: String(data.senderUserId ?? ""),
           senderRole: (data.senderRole as "buyer" | "seller" | undefined) ?? "buyer",
           body: String(data.body ?? ""),

@@ -7,16 +7,20 @@ datasource db {
   url      = env("PRISMA_DATABASE_URL")
 }
 
-enum TradeNaviStatus {
+enum NaviStatus {
   DRAFT
   SENT
   APPROVED
   REJECTED
+
+  @@map("TradeNaviStatus")
 }
 
-enum TradeNaviType {
+enum NaviType {
   PHONE_AGREEMENT
   ONLINE_INQUIRY
+
+  @@map("TradeNaviType")
 }
 
 enum MessageSenderRole {
@@ -42,35 +46,37 @@ enum RemovalStatus {
 }
 
 model User {
-  id             String     @id
-  companyName    String
-  contactName    String?
-  address        String?
-  tel            String?
-  tradeNavisOwned TradeNavi[]     @relation("TradeNaviOwner")
-  tradeNavisBought TradeNavi[]    @relation("TradeNaviBuyer")
-  tradesAsSeller Trade[]          @relation("TradeSeller")
-  tradesAsBuyer  Trade[]          @relation("TradeBuyer")
-  messagesSent   Message[]        @relation("Sender")
+  id              String     @id
+  companyName     String
+  contactName     String?
+  address         String?
+  tel             String?
+  navisOwned      Navi[]     @relation("NaviOwner")
+  navisBought     Navi[]     @relation("NaviBuyer")
+  tradesAsSeller  Trade[]          @relation("TradeSeller")
+  tradesAsBuyer   Trade[]          @relation("TradeBuyer")
+  messagesSent    Message[]        @relation("Sender")
   storageLocations StorageLocation[]
 }
 
-model TradeNavi {
-  id          Int             @id @default(autoincrement())
-  status      TradeNaviStatus @default(DRAFT)
-  naviType    TradeNaviType   @default(PHONE_AGREEMENT)
-  ownerUserId String
-  buyerUserId String?
-  listingId   String?
+model Navi {
+  id             Int        @id @default(autoincrement())
+  status         NaviStatus @default(DRAFT)
+  naviType       NaviType   @default(PHONE_AGREEMENT)
+  ownerUserId    String
+  buyerUserId    String?
+  listingId      String?
   listingSnapshot Json?
-  payload     Json?
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  payload        Json?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 
-  ownerUser User @relation("TradeNaviOwner", fields: [ownerUserId], references: [id])
-  buyerUser User? @relation("TradeNaviBuyer", fields: [buyerUserId], references: [id])
+  ownerUser User  @relation("NaviOwner", fields: [ownerUserId], references: [id])
+  buyerUser User? @relation("NaviBuyer", fields: [buyerUserId], references: [id])
   trade     Trade?
   messages  Message[]
+
+  @@map("TradeNavi")
 }
 
 model Trade {
@@ -83,21 +89,21 @@ model Trade {
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
 
-  sellerUser User   @relation("TradeSeller", fields: [sellerUserId], references: [id])
-  buyerUser  User   @relation("TradeBuyer", fields: [buyerUserId], references: [id])
-  navi       TradeNavi? @relation(fields: [naviId], references: [id])
+  sellerUser User  @relation("TradeSeller", fields: [sellerUserId], references: [id])
+  buyerUser  User  @relation("TradeBuyer", fields: [buyerUserId], references: [id])
+  navi       Navi? @relation(fields: [naviId], references: [id])
 }
 
 model Message {
   id           Int               @id @default(autoincrement())
-  tradeNaviId  Int
+  naviId       Int              @map("tradeNaviId")
   senderUserId String
   senderRole   MessageSenderRole
   body         String
   createdAt    DateTime          @default(now())
 
-  senderUser User     @relation("Sender", fields: [senderUserId], references: [id])
-  navi       TradeNavi @relation(fields: [tradeNaviId], references: [id])
+  senderUser User @relation("Sender", fields: [senderUserId], references: [id])
+  navi       Navi @relation(fields: [naviId], references: [id])
 }
 
 model Listing {

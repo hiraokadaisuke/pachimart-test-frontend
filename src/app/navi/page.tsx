@@ -8,7 +8,7 @@ import { InProgressTabContent } from "./tabs/InProgressTabContent";
 import { PurchaseHistoryTabContent } from "./tabs/PurchaseHistoryTabContent";
 import { RequestTabContent } from "./tabs/RequestTabContent";
 import { SalesHistoryTabContent } from "./tabs/SalesHistoryTabContent";
-import { TRADE_NAVI_TABS, type TradeTabKey } from "./tabsConfig";
+import { NAVI_TABS, type TradeTabKey } from "./tabsConfig";
 
 const resolveActiveTab = (searchParams: URLSearchParams): TradeTabKey => {
   const tab = searchParams.get("tab");
@@ -18,15 +18,15 @@ const resolveActiveTab = (searchParams: URLSearchParams): TradeTabKey => {
 
 const TRADE_TAB_VALUES: TradeTabKey[] = ["new", "inProgress", "salesHistory", "purchaseHistory"];
 
-export default function TradeNaviPage() {
+export default function NaviPage() {
   return (
     <Suspense fallback={<div className="text-sm text-neutral-900">読み込み中…</div>}>
-      <TradeNaviContent />
+      <NaviContent />
     </Suspense>
   );
 }
 
-function TradeNaviContent() {
+function NaviContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const resolvedTab = useMemo(() => resolveActiveTab(searchParams ?? new URLSearchParams()), [searchParams]);
@@ -50,7 +50,7 @@ function TradeNaviContent() {
       <Tabs value={activeTab} defaultValue="inProgress" onValueChange={handleTabChange}>
         <TabsList className="overflow-x-auto pb-1">
           <div className="flex min-w-full gap-6 border-b border-slate-200 px-1">
-            {TRADE_NAVI_TABS.map((tab) => (
+            {NAVI_TABS.map((tab) => (
               <TabsTrigger key={tab.key} value={tab.key} className="flex-shrink-0">
                 {tab.label}
               </TabsTrigger>

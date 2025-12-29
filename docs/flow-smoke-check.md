@@ -35,7 +35,7 @@
 5. `/products/[listingId]` から「ナビ作成」へ遷移
    - 対象商品の詳細ページで「ナビ作成」をクリック。
 6. 売手側で条件入力して送信
-   - 送信後、`TradeNavi.status=SENT` が作成される。
+   - 送信後、`Navi.status=SENT` が作成される。
 7. 買手側（dev_user_2）で取引中一覧を確認
    - 取引中一覧に **承認待ちナビ** が表示される（ステップ0の保証）。
 8. 買手側で発送先/担当者を入力し承認
@@ -54,7 +54,7 @@
    - 入力後に送信し、送信完了を確認。
 5. **開発用ユーザー C（dev_user_3）に切替**
 6. 取引中一覧の「オンライン問い合わせ」セクションで確認
-   - `TradeNavi.naviType=ONLINE_INQUIRY` かつ `status=SENT` が表示される。
+   - `Navi.naviType=ONLINE_INQUIRY` かつ `status=SENT` が表示される。
 7. 売手が承認
    - `Trade` が生成され、`Listing.status=SOLD` になる。
 8. `/products` で成約済み表示を確認

@@ -1,6 +1,6 @@
 export type TradeTabKey = "new" | "inProgress" | "salesHistory" | "purchaseHistory";
 
-export const TRADE_NAVI_TABS = [
+export const NAVI_TABS = [
   { key: "new", label: "ナビ作成" },
   { key: "inProgress", label: "取引中一覧" },
   { key: "salesHistory", label: "売却履歴" },

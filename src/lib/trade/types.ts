@@ -1,4 +1,4 @@
-import { TradeNaviType } from "@prisma/client";
+import { NaviType } from "@prisma/client";
 
 import { TodoItem } from "@/lib/todo/types";
 import { type ListingSnapshot } from "./listingSnapshot";
@@ -47,7 +47,7 @@ export type BuyerContact = {
 export type TradeRecord = {
   id: string;
   naviId?: number;
-  naviType?: TradeNaviType;
+  naviType?: NaviType;
   status: TradeStatus;
   sellerUserId: string;
   buyerUserId: string;

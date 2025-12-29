@@ -3,14 +3,14 @@ import {
   MessageSenderRole,
   Prisma,
   PrismaClient,
-  TradeNaviStatus,
-  TradeNaviType,
+  NaviStatus,
+  NaviType,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
-import { type TradeNaviDraft } from "@/lib/navi/types";
+import { type NaviDraft } from "@/lib/navi/types";
 import {
   buildListingSnapshot,
   formatListingStorageLocation,
@@ -49,8 +49,8 @@ const toRecord = (trade: unknown) => {
 
   return {
     id: Number(candidate.id),
-    status: candidate.status as TradeNaviStatus,
-    naviType: candidate.naviType as TradeNaviType,
+    status: candidate.status as NaviStatus,
+    naviType: candidate.naviType as NaviType,
     ownerUserId: String(candidate.ownerUserId),
     buyerUserId: (candidate.buyerUserId as string | null) ?? null,
     listingId: (candidate.listingId as string | null) ?? null,
@@ -81,7 +81,7 @@ const buildInquiryPayload = (
   listing: ListingSnapshot,
   ownerUserId: string,
   request: z.infer<typeof requestSchema>
-): TradeNaviDraft & { inquiryType: "ONLINE_INQUIRY" } => {
+): NaviDraft & { inquiryType: "ONLINE_INQUIRY" } => {
   const now = new Date().toISOString();
   const location = formatListingStorageLocation(listing) ?? "";
   return {
@@ -171,14 +171,14 @@ export async function POST(request: Request) {
     const payload = buildInquiryPayload(snapshot, listing.sellerUserId, parsed.data);
 
     const createInquiry = async (tx: Prisma.TransactionClient | InMemoryPrismaClient) => {
-      const tradeNavi = await tx.tradeNavi.create({
+      const navi = await tx.navi.create({
         data: {
           ownerUserId: listing.sellerUserId,
           buyerUserId,
           listingId: listing.id,
           listingSnapshot: snapshot as any,
-          status: TradeNaviStatus.SENT,
-          naviType: TradeNaviType.ONLINE_INQUIRY,
+          status: NaviStatus.SENT,
+          naviType: NaviType.ONLINE_INQUIRY,
           payload: { ...payload, buyerMemo },
         },
       });
@@ -187,14 +187,14 @@ export async function POST(request: Request) {
 
       await tx.message.create({
         data: {
-          tradeNaviId: tradeNavi.id,
+          naviId: navi.id,
           senderUserId: buyerUserId,
           senderRole: MessageSenderRole.buyer,
           body: normalizedBody,
         },
       });
 
-      return tradeNavi;
+      return navi;
     };
 
     const created = await (prisma instanceof PrismaClient

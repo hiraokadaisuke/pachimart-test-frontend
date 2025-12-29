@@ -1,10 +1,10 @@
-import { TradeNaviStatus, TradeNaviType, type Prisma } from "@prisma/client";
+import { NaviStatus, NaviType, type Prisma } from "@prisma/client";
 import { z } from "zod";
 
 import { findDevUserById } from "@/lib/dev-user/users";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { buildTodosFromStatus } from "./todo";
-import { type TradeNaviDraft } from "@/lib/navi/types";
+import { type NaviDraft } from "@/lib/navi/types";
 import {
   formatListingStorageLocation,
   resolveListingSnapshot,
@@ -15,10 +15,10 @@ import { createTradeFromDraft } from "./storage";
 import { type BuyerContact, type ShippingInfo, type TradeRecord } from "./types";
 import { tradeDtoListSchema, type TradeDto, transformTrade } from "./transform";
 
-const tradeNaviSchema = z.object({
+const naviSchema = z.object({
   id: z.number(),
-  status: z.nativeEnum(TradeNaviStatus),
-  naviType: z.nativeEnum(TradeNaviType),
+  status: z.nativeEnum(NaviStatus),
+  naviType: z.nativeEnum(NaviType),
   ownerUserId: z.string(),
   buyerUserId: z.string().nullable(),
   payload: z.unknown().nullable(),
@@ -27,11 +27,11 @@ const tradeNaviSchema = z.object({
   updatedAt: z.string(),
 });
 
-export type TradeNaviDto = z.infer<typeof tradeNaviSchema>;
+export type NaviDto = z.infer<typeof naviSchema>;
 
-const tradeNaviListSchema = z.array(tradeNaviSchema);
+const naviListSchema = z.array(naviSchema);
 
-const isTradeNaviDraft = (payload: unknown): payload is TradeNaviDraft => {
+const isNaviDraft = (payload: unknown): payload is NaviDraft => {
   if (!payload || typeof payload !== "object") return false;
   return "id" in payload && "ownerUserId" in payload && "conditions" in payload;
 };
@@ -72,10 +72,10 @@ const normalizeContacts = (input: unknown, fallback: BuyerContact[] = []): Buyer
 };
 
 const buildOnlineInquiryDraft = (
-  trade: TradeNaviDto,
+  trade: NaviDto,
   payload: OnlineInquiryPayload,
   snapshot: ListingSnapshot | null
-): TradeNaviDraft => {
+): NaviDraft => {
   const now = new Date().toISOString();
   const listingUnitPrice = snapshot?.unitPriceExclTax ?? null;
   const unitPrice =
@@ -110,17 +110,17 @@ const buildOnlineInquiryDraft = (
   };
 };
 
-export function mapTradeNaviToTradeRecord(trade: TradeNaviDto): TradeRecord | null {
-  if (trade.naviType === TradeNaviType.ONLINE_INQUIRY) {
+export function mapNaviToTradeRecord(trade: NaviDto): TradeRecord | null {
+  if (trade.naviType === NaviType.ONLINE_INQUIRY) {
     const inquiryRecord = mapOnlineInquiryToTradeRecord(trade);
     if (inquiryRecord) return inquiryRecord;
   }
 
-  if (!isTradeNaviDraft(trade.payload)) return null;
+  if (!isNaviDraft(trade.payload)) return null;
 
   const listingSnapshot = resolveListingSnapshot(trade.listingSnapshot);
 
-  const draft: TradeNaviDraft = {
+  const draft: NaviDraft = {
     ...trade.payload,
     status: trade.payload.status ?? "sent_to_buyer",
     ownerUserId: trade.ownerUserId,
@@ -168,8 +168,8 @@ export function mapTradeNaviToTradeRecord(trade: TradeNaviDto): TradeRecord | nu
   };
 }
 
-export function mapOnlineInquiryToTradeRecord(trade: TradeNaviDto): TradeRecord | null {
-  if (trade.naviType !== TradeNaviType.ONLINE_INQUIRY || !trade.payload) return null;
+export function mapOnlineInquiryToTradeRecord(trade: NaviDto): TradeRecord | null {
+  if (trade.naviType !== NaviType.ONLINE_INQUIRY || !trade.payload) return null;
   if (!isOnlineInquiryPayload(trade.payload)) return null;
 
   const snapshot = resolveListingSnapshot(trade.listingSnapshot);
@@ -242,7 +242,7 @@ const normalizeTradeRecord = (trade: TradeRecord): TradeRecord => {
   };
 };
 
-export async function fetchTradeNavis(): Promise<TradeNaviDto[]> {
+export async function fetchNavis(): Promise<NaviDto[]> {
   const response = await fetchWithDevHeader("/api/trades");
 
   if (!response.ok) {
@@ -251,7 +251,7 @@ export async function fetchTradeNavis(): Promise<TradeNaviDto[]> {
   }
 
   const json = (await response.json()) as unknown;
-  const parsed = tradeNaviListSchema.safeParse(json);
+  const parsed = naviListSchema.safeParse(json);
 
   if (!parsed.success) {
     throw new Error(parsed.error.message);
@@ -265,14 +265,14 @@ export async function fetchTradeNavis(): Promise<TradeNaviDto[]> {
 }
 
 export async function fetchTradeRecordsFromApi(): Promise<TradeRecord[]> {
-  const trades = await fetchTradeNavis();
+  const trades = await fetchNavis();
 
   return trades
-    .map((trade) => mapTradeNaviToTradeRecord(trade))
+    .map((trade) => mapNaviToTradeRecord(trade))
     .filter((trade): trade is TradeRecord => Boolean(trade));
 }
 
-export async function fetchTradeNaviById(tradeId: string): Promise<TradeNaviDto | null> {
+export async function fetchNaviById(tradeId: string): Promise<NaviDto | null> {
   const response = await fetchWithDevHeader(`/api/trades/${tradeId}`);
 
   if (response.status === 404) return null;
@@ -283,7 +283,7 @@ export async function fetchTradeNaviById(tradeId: string): Promise<TradeNaviDto 
   }
 
   const json = (await response.json()) as unknown;
-  const parsed = tradeNaviSchema.safeParse(json);
+  const parsed = naviSchema.safeParse(json);
 
   if (!parsed.success) {
     throw new Error(parsed.error.message);
@@ -293,7 +293,7 @@ export async function fetchTradeNaviById(tradeId: string): Promise<TradeNaviDto 
     ...parsed.data,
     payload: (parsed.data.payload as Prisma.JsonValue | null) ?? null,
     listingSnapshot: (parsed.data.listingSnapshot as Prisma.JsonValue | null) ?? null,
-  } satisfies TradeNaviDto;
+  } satisfies NaviDto;
 }
 
 export async function fetchTradeRecordById(tradeId: string): Promise<TradeRecord | null> {

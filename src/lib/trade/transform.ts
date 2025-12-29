@@ -1,4 +1,4 @@
-import { TradeNaviType } from "@prisma/client";
+import { NaviType } from "@prisma/client";
 import { z } from "zod";
 
 import { buildTodosFromStatus } from "@/lib/trade/todo";
@@ -26,7 +26,7 @@ export const tradeDtoSchema = z.object({
       buyerUserId: z.string().nullable(),
       payload: z.unknown().nullable().optional(),
       listingSnapshot: z.unknown().nullable().optional(),
-      naviType: z.nativeEnum(TradeNaviType).nullable().optional(),
+      naviType: z.nativeEnum(NaviType).nullable().optional(),
       createdAt: z.string(),
       updatedAt: z.string(),
     })

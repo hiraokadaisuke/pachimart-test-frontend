@@ -1,4 +1,4 @@
-import { TradeNaviDraft } from "@/lib/navi/types";
+import { NaviDraft } from "@/lib/navi/types";
 import { DEV_USERS } from "@/lib/dev-user/users";
 
 import {
@@ -462,7 +462,7 @@ export function cancelTrade(tradeId: string, actorUserId: string): TradeRecord |
   });
 }
 
-export function buildItemsFromDraft(draft: TradeNaviDraft): StatementItem[] {
+export function buildItemsFromDraft(draft: NaviDraft): StatementItem[] {
   const items: StatementItem[] = [];
   const qty = draft.conditions.quantity ?? 1;
   const unitPrice = draft.conditions.unitPrice ?? 0;
@@ -502,7 +502,7 @@ export function buildItemsFromDraft(draft: TradeNaviDraft): StatementItem[] {
 }
 
 export function createTradeFromDraft(
-  draft: TradeNaviDraft,
+  draft: NaviDraft,
   sellerUserId: string,
   defaults?: { termsText?: string }
 ): TradeRecord {

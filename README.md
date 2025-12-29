@@ -28,7 +28,7 @@ npm run dev
 
 ## API 叩き方
 
-Prisma と PostgreSQL を利用した取引(TradeNavi) API が app router で提供されています。
+Prisma と PostgreSQL を利用したナビ API が app router で提供されています。
 
 - `GET /api/health/db` : DB へ簡易クエリを実行し、`{ ok: true }` を返却
 - `GET /api/trades` : 取引一覧を作成日時の降順で返却
@@ -37,7 +37,7 @@ Prisma と PostgreSQL を利用した取引(TradeNavi) API が app router で提
 - `PATCH /api/trades/[id]` : `status` を enum で更新
 - `GET /api/trades/in-progress/[id]` : `Trade.id` を指定して IN_PROGRESS 取引の詳細を取得（`navi`、`sellerUser`、`buyerUser` を含む）
 
-進行中取引の詳細ページ（`/transactions/navi/[id]`）も上記の `GET /api/trades/in-progress/[id]` を参照し、Trade と TradeNavi の両方を DB から読み取ります。
+進行中取引の詳細ページ（`/transactions/navi/[id]`）も上記の `GET /api/trades/in-progress/[id]` を参照し、Trade と Navi の両方を DB から読み取ります。
 
 レスポンスは DTO 形式で返し、日時は ISO8601 文字列です。
 
@@ -61,10 +61,10 @@ curl "https://<your-domain>/api/trades/in-progress/1"
 # }
 ```
 
-### 取引Navi 保存ポリシー
+### ナビ保存ポリシー
 
 - 未送信の下書きはブラウザの `sessionStorage` のみで管理し、DB には保存しません。
-- ナビの「送信」操作時にのみ `/api/trades` へ POST し、`TradeNavi` レコードを作成します。
+- ナビの「送信」操作時にのみ `/api/trades` へ POST し、`Navi` レコードを作成します。
 
 ## Preview 環境での E2E 体験手順（ローカル DB 不要）
 
@@ -90,7 +90,7 @@ curl "https://<your-domain>/api/trades/in-progress/1"
   - dev_user_1: オンライン問い合わせ可の PUBLISHED 出品、承認済みで SOLD になった出品、応相談（問い合わせ不可）の出品。
   - dev_user_2: PUBLISHED 出品（オンライン問い合わせ送信先）。
   - dev_user_4: SOLD 表示確認用の出品。
-- TradeNavi / Trade:
+- Navi / Trade:
   - 「送信済み・承認待ち」の電話ナビ（dev_user_1 → dev_user_2）。
   - 「オンライン問い合わせ＋メッセージ往復付き」のナビ（dev_user_1 ↔ dev_user_2）。
   - 「承認済みで Trade 生成済み」のナビ+取引（決済管理・明細に表示、関連 Listing は SOLD）。

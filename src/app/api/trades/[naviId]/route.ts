@@ -1,8 +1,8 @@
 import {
   ListingStatus,
   Prisma,
-  TradeNaviStatus,
-  TradeNaviType,
+  NaviStatus,
+  NaviType,
   TradeStatus,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -11,18 +11,18 @@ import { z } from "zod";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 
-const tradeNaviClient = prisma.tradeNavi;
+const naviClient = prisma.navi;
 
 const updateTradeSchema = z.object({
-  status: z.nativeEnum(TradeNaviStatus, {
-    errorMap: () => ({ message: "status must be a valid TradeNaviStatus" }),
+  status: z.nativeEnum(NaviStatus, {
+    errorMap: () => ({ message: "status must be a valid NaviStatus" }),
   }),
 });
 
-type TradeNaviRecord = {
+type NaviRecord = {
   id: number;
-  status: TradeNaviStatus;
-  naviType: TradeNaviType;
+  status: NaviStatus;
+  naviType: NaviType;
   ownerUserId: string;
   buyerUserId: string | null;
   listingId: string | null;
@@ -33,7 +33,7 @@ type TradeNaviRecord = {
   trade?: { id: unknown } | null;
 };
 
-const toDto = (trade: TradeNaviRecord, tradeId?: number) => ({
+const toDto = (trade: NaviRecord, tradeId?: number) => ({
   id: trade.id,
   status: trade.status,
   naviType: trade.naviType,
@@ -47,7 +47,7 @@ const toDto = (trade: TradeNaviRecord, tradeId?: number) => ({
   tradeId,
 });
 
-const toRecord = (trade: unknown): TradeNaviRecord => {
+const toRecord = (trade: unknown): NaviRecord => {
   if (!trade || typeof trade !== "object") {
     throw new Error("Trade result was not an object");
   }
@@ -67,8 +67,8 @@ const toRecord = (trade: unknown): TradeNaviRecord => {
 
   return {
     id: Number(candidate.id),
-    status: candidate.status as TradeNaviStatus,
-    naviType: (candidate.naviType as TradeNaviType | undefined) ?? TradeNaviType.PHONE_AGREEMENT,
+    status: candidate.status as NaviStatus,
+    naviType: (candidate.naviType as NaviType | undefined) ?? NaviType.PHONE_AGREEMENT,
     ownerUserId: String(candidate.ownerUserId),
     buyerUserId: (candidate.buyerUserId as string | null) ?? null,
     listingId: (candidate.listingId as string | null) ?? null,
@@ -132,7 +132,7 @@ const extractShippingInfo = (payload: Prisma.JsonValue | null) => {
   };
 };
 
-const resolveBuyerUserId = (trade: TradeNaviRecord): string | null => {
+const resolveBuyerUserId = (trade: NaviRecord): string | null => {
   if (trade.buyerUserId) return trade.buyerUserId;
 
   if (
@@ -164,7 +164,7 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
 
   try {
     // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
-    const trade = await tradeNaviClient.findUnique({ where: { id } as any });
+    const trade = await naviClient.findUnique({ where: { id } as any });
 
     if (!trade) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
@@ -221,7 +221,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
   }
 
   try {
-    const existing = await tradeNaviClient.findUnique({
+    const existing = await naviClient.findUnique({
       where: { id } as any,
       include: { trade: true } as any,
     });
@@ -240,15 +240,15 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
 
     const targetStatus = parsed.data.status;
 
-    if (targetStatus === TradeNaviStatus.APPROVED && buyerUserId !== currentUserId) {
+    if (targetStatus === NaviStatus.APPROVED && buyerUserId !== currentUserId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (targetStatus !== TradeNaviStatus.APPROVED && !isOwner) {
+    if (targetStatus !== NaviStatus.APPROVED && !isOwner) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (targetStatus === TradeNaviStatus.APPROVED) {
+    if (targetStatus === NaviStatus.APPROVED) {
       const shipping = extractShippingInfo(existingRecord.payload);
 
       if (!shipping?.address || !shipping.personName) {
@@ -256,17 +256,17 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       }
     }
 
-    const isApproving = targetStatus === TradeNaviStatus.APPROVED;
+    const isApproving = targetStatus === NaviStatus.APPROVED;
 
     if (isApproving && existingRecord.trade?.id) {
       return NextResponse.json(
         toDto(existingRecord, Number(existingRecord.trade.id) || undefined),
-        { status: existingRecord.status === TradeNaviStatus.APPROVED ? 200 : 409 }
+        { status: existingRecord.status === NaviStatus.APPROVED ? 200 : 409 }
       );
     }
 
     const { updated, trade } = await (prisma as any).$transaction(async (tx: any) => {
-      const current = await tx.tradeNavi.findUnique({ where: { id } as any, include: { trade: true } });
+      const current = await tx.navi.findUnique({ where: { id } as any, include: { trade: true } });
 
       if (!current) throw new TradeNotFoundError();
 
@@ -289,7 +289,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
           null,
       } as Prisma.JsonValue;
 
-      const updatedNavi = await tx.tradeNavi.update({
+      const updatedNavi = await tx.navi.update({
         where: { id } as any,
         data: { status: parsed.data.status, payload: nextPayload },
       });
