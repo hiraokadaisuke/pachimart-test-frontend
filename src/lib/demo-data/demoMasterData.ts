@@ -3,20 +3,34 @@ export type SupplierCategory = "vendor" | "hall";
 export type SupplierBranch = {
   id: string;
   name: string;
+  nameKana?: string;
   postalCode: string;
+  prefecture?: string;
+  city?: string;
+  addressLine?: string;
   address: string;
+  representative?: string;
+  contactPerson?: string;
   phone?: string;
   fax?: string;
+  type?: "hall" | "branch";
 };
 
 export type SupplierCorporate = {
   id: string;
   category: SupplierCategory;
   corporateName: string;
+  corporateNameKana?: string;
+  corporateRepresentative?: string;
   postalCode: string;
+  prefecture?: string;
+  city?: string;
+  addressLine?: string;
   address: string;
   phone?: string;
   fax?: string;
+  email?: string;
+  isHidden?: boolean;
   branches: SupplierBranch[];
 };
 
@@ -41,18 +55,32 @@ const buildDefaultSupplier = (
   id: createMasterId("supplier"),
   category,
   corporateName,
+  corporateNameKana: "",
+  corporateRepresentative: "",
   postalCode: "",
+  prefecture: "",
+  city: "",
+  addressLine: "",
   address: "",
   phone: "",
   fax: "",
+  email: "",
+  isHidden: false,
   branches: [
     {
       id: createMasterId("branch"),
       name: branchName,
+      nameKana: "",
       postalCode: "",
+      prefecture: "",
+      city: "",
+      addressLine: "",
       address: "",
+      representative: "",
+      contactPerson: "",
       phone: "",
       fax: "",
+      type: category === "hall" ? "hall" : "branch",
     },
   ],
 });
