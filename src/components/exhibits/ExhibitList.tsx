@@ -43,6 +43,7 @@ const currencyFormatter = new Intl.NumberFormat("ja-JP", {
 type ExhibitListProps = {
   status: "出品中" | "下書き";
   onNewExhibit?: () => void;
+  selectionMode?: "pickForNavi";
 };
 
 type ExhibitFilters = {
@@ -51,7 +52,7 @@ type ExhibitFilters = {
   noteKeyword: string;
 };
 
-export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
+export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitListProps) {
   const router = useRouter();
   const currentUser = useCurrentDevUser();
   const defaultFilters = useMemo<ExhibitFilters>(
@@ -156,6 +157,11 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
     fetchListings();
   };
 
+  const handleSelectForNavi = (listingId: string) => {
+    const params = new URLSearchParams({ tab: "new", pickListingId: listingId });
+    router.push(`/navi?${params.toString()}`);
+  };
+
   const handleCreateNaviFromListing = (listing: Listing) => {
     const params = new URLSearchParams({
       productId: listing.id.toString(),
@@ -190,6 +196,11 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
       </div>
 
       <div className="mb-4 flex flex-wrap items-end gap-3 rounded-md bg-slate-50 px-4 py-3">
+        {selectionMode === "pickForNavi" && (
+          <div className="rounded bg-blue-50 px-3 py-2 text-[13px] font-semibold text-blue-800">
+            ナビ用に出品を選択中
+          </div>
+        )}
         <div className="flex flex-col">
           {/* メーカー */}
           <label className="mb-1 block text-xs font-semibold text-neutral-800">メーカー</label>
@@ -391,7 +402,15 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                       }`}
                     >
                       <div className="flex items-center justify-center">
-                        {canOperate ? (
+                        {selectionMode === "pickForNavi" ? (
+                          <button
+                            type="button"
+                            className="inline-flex h-8 items-center justify-center rounded bg-blue-600 px-3 text-[13px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
+                            onClick={() => handleSelectForNavi(listing.id)}
+                          >
+                            この出品を選択
+                          </button>
+                        ) : canOperate ? (
                           <ActionMenu
                             onCreateNavi={() => handleCreateNaviFromListing(listing)}
                             onEdit={() => {}}
