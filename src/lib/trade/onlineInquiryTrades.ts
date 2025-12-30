@@ -22,12 +22,12 @@ const mapInquiryToTradeRecord = (inquiry: OnlineInquiryListItem): TradeRecord =>
   const sellerCompany = findDevUserById(inquiry.sellerUserId)?.companyName ?? inquiry.sellerUserId;
   const buyerCompany = findDevUserById(inquiry.buyerUserId)?.companyName ?? inquiry.buyerUserId;
   const items = buildInquiryItems(inquiry);
-  const todos = buildTodosFromStatus("APPROVAL_REQUIRED");
+  const todos = buildTodosFromStatus("PAYMENT_REQUIRED");
 
   return {
     id: inquiry.id,
     naviType: NaviType.ONLINE_INQUIRY,
-    status: "APPROVAL_REQUIRED",
+    status: "PAYMENT_REQUIRED",
     sellerUserId: inquiry.sellerUserId,
     buyerUserId: inquiry.buyerUserId,
     sellerName: sellerCompany,
@@ -70,7 +70,17 @@ export async function loadAcceptedOnlineInquiryTrades(): Promise<TradeRecord[]> 
       }
     });
 
-    return Array.from(unique.values());
+    const trades = Array.from(unique.values());
+
+    console.table(
+      trades.map((trade) => ({
+        id: trade.id,
+        status: trade.status,
+        todoKey: trade.todos?.find((todo) => todo.status === "open")?.kind ?? "-",
+      }))
+    );
+
+    return trades;
   } catch (error) {
     console.error("Failed to load accepted online inquiries", error);
     return [];
