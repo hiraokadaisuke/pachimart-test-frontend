@@ -127,6 +127,22 @@ const emptyManualItemForm: ManualItemFormState = {
   frameColor: "",
 };
 
+const mapListingTypeToGameType = (
+  type?: string | null
+): ManualItemFormState["gameType"] | undefined => {
+  const normalized = type?.toString().toLowerCase();
+  if (normalized === "slot" || normalized === "s") return "slot";
+  if (normalized === "pachinko" || normalized === "p") return "pachinko";
+  return undefined;
+};
+
+const mapListingKindToBodyType = (
+  kind?: string | null
+): ManualItemFormState["bodyType"] | undefined => {
+  if (kind === "本体" || kind === "枠のみ" || kind === "セルのみ") return kind;
+  return undefined;
+};
+
 const additionalFeeLabels = {
   cardboardFee: "段ボール",
   nailSheetFee: "釘シート",
@@ -224,10 +240,12 @@ function StandardNaviRequestEditor({
   const params = useParams<{ id?: string }>();
   const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
   const listingId = safeSearchParams.get("listingId");
+  const pickListingId = safeSearchParams.get("pickListingId");
+  const listingSourceId = listingId ?? pickListingId ?? undefined;
   const hasBuyerPrefill =
     Boolean(safeSearchParams.get("buyerId")) || Boolean(safeSearchParams.get("buyerCompanyName"));
-  const hasProductPrefill = Boolean(listingId || safeSearchParams.get("productId"));
-  const entryMode = listingId ? "fromListing" : hasBuyerPrefill || hasProductPrefill ? "prefilled" : "new";
+  const hasProductPrefill = Boolean(listingSourceId || safeSearchParams.get("productId"));
+  const entryMode = listingSourceId ? "fromListing" : hasBuyerPrefill || hasProductPrefill ? "prefilled" : "new";
 
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<NaviDraft | null>(null);
@@ -268,17 +286,19 @@ function StandardNaviRequestEditor({
   const formattedNumber = formatCurrency;
   const isProductLinked = Boolean(draft?.productId);
   const manualItem = draft?.items?.[0];
+  const [appliedPickListingId, setAppliedPickListingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!listingId) {
+    if (!listingSourceId) {
       setLinkedListing(null);
+      setIsLoadingListing(false);
       return;
     }
 
     let isMounted = true;
     setIsLoadingListing(true);
 
-    fetchWithDevHeader(buildApiUrl(`/api/listings/${listingId}`), {}, currentUser.id)
+    fetchWithDevHeader(buildApiUrl(`/api/listings/${listingSourceId}`), {}, currentUser.id)
       .then((response) => (response.ok ? response.json() : null))
       .then((data: Listing | null) => {
         if (!isMounted) return;
@@ -296,11 +316,17 @@ function StandardNaviRequestEditor({
     return () => {
       isMounted = false;
     };
-  }, [currentUser.id, listingId]);
+  }, [currentUser.id, listingSourceId]);
+
+  useEffect(() => {
+    if (!pickListingId) {
+      setAppliedPickListingId(null);
+    }
+  }, [pickListingId]);
 
   useEffect(() => {
     if (!transactionId || draft) return;
-    if (listingId && isLoadingListing) return;
+    if (listingSourceId && isLoadingListing) return;
 
     const storedDraft = loadNaviDraft(currentUser.id, transactionId);
     if (storedDraft) {
@@ -365,7 +391,7 @@ function StandardNaviRequestEditor({
     hasProductPrefill,
     isLoadingListing,
     linkedListing,
-    listingId,
+    listingSourceId,
     safeSearchParams,
     transactionId,
   ]);
@@ -684,6 +710,90 @@ function StandardNaviRequestEditor({
     setManualItemForm(initialForm);
   }, [displayPropertyInfo, draft, persistManualItem]);
 
+  useEffect(() => {
+    if (!pickListingId || !linkedListing || !draft) return;
+    if (appliedPickListingId === pickListingId) return;
+
+    const nextGameType = mapListingTypeToGameType(linkedListing.type) ?? manualItemForm.gameType;
+    const nextBodyType = mapListingKindToBodyType(linkedListing.kind) ?? manualItemForm.bodyType;
+    const nextQuantity = linkedListing.quantity ?? draft.conditions.quantity ?? 1;
+    const nextUnitPrice =
+      linkedListing.unitPriceExclTax === null || linkedListing.unitPriceExclTax === undefined
+        ? editedConditions.price
+        : linkedListing.unitPriceExclTax;
+    const nextRemovalDate = linkedListing.removalDate ? linkedListing.removalDate.slice(0, 10) : editedConditions.removalDate;
+
+    const nextForm: ManualItemFormState = {
+      gameType: nextGameType,
+      bodyType: nextBodyType,
+      maker: linkedListing.maker ?? manualItemForm.maker,
+      modelName: linkedListing.machineName ?? manualItemForm.modelName,
+      frameColor: manualItemForm.frameColor,
+    };
+
+    setManualItemForm(nextForm);
+    setEditedConditions((prev) => ({
+      ...prev,
+      quantity: nextQuantity,
+      price: typeof nextUnitPrice === "number" ? nextUnitPrice : prev.price,
+      removalDate: nextRemovalDate,
+    }));
+
+    persistDraft((prev) => {
+      if (!prev) return prev;
+
+      const updatedItem: ManualNaviItem = {
+        id: prev.items?.[0]?.id ?? generateManualItemId(),
+        gameType: nextForm.gameType,
+        bodyType: nextForm.bodyType,
+        maker: nextForm.maker,
+        modelName: nextForm.modelName,
+        frameColor: prev.items?.[0]?.frameColor ?? null,
+        quantity: nextQuantity,
+      };
+
+      const remainingItems = prev.items?.slice(1) ?? [];
+
+      return {
+        ...prev,
+        productId: linkedListing.id,
+        items: [updatedItem, ...remainingItems],
+        conditions: {
+          ...prev.conditions,
+          productName: linkedListing.machineName ?? prev.conditions.productName,
+          makerName: linkedListing.maker ?? prev.conditions.makerName,
+          quantity: nextQuantity,
+          unitPrice: typeof nextUnitPrice === "number" ? nextUnitPrice : prev.conditions.unitPrice,
+          location: linkedListing.storageLocation ?? prev.conditions.location,
+          removalDate: nextRemovalDate ?? prev.conditions.removalDate,
+        },
+      };
+    });
+
+    setValidationErrors((prev) => ({ ...prev, items: undefined, quantity: undefined, unitPrice: undefined }));
+    setAppliedPickListingId(pickListingId);
+
+    const nextParams = new URLSearchParams(safeSearchParams);
+    nextParams.delete("pickListingId");
+    const queryString = nextParams.toString();
+    router.replace(`/navi${queryString ? `?${queryString}` : ""}`);
+  }, [
+    appliedPickListingId,
+    draft,
+    editedConditions.price,
+    editedConditions.removalDate,
+    linkedListing,
+    manualItemForm.bodyType,
+    manualItemForm.frameColor,
+    manualItemForm.gameType,
+    manualItemForm.maker,
+    manualItemForm.modelName,
+    pickListingId,
+    persistDraft,
+    router,
+    safeSearchParams,
+  ]);
+
   const handleNumberConditionChange = (field: keyof TransactionConditions, value: number) => {
     syncEditedConditions((prev) => ({ ...prev, [field]: value } as TransactionConditions));
   };
@@ -837,7 +947,7 @@ function StandardNaviRequestEditor({
                 <button
                   type="button"
                   className="rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
-                  onClick={() => router.push("/inventory")}
+                  onClick={() => router.push("/mypage/exhibits?tab=active&mode=pickForNavi")}
                 >
                   出品から選ぶ
                 </button>
