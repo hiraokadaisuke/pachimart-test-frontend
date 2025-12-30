@@ -132,7 +132,16 @@ export const usePurchaseInvoicePrintData = (invoiceId: string) => {
     [items],
   );
   const tax = Math.floor(subtotal * 0.1);
-  const grandTotal = invoice?.totalAmount ?? subtotal + tax;
+  const shippingInsurance = Number(invoice?.formInput?.shippingInsurance || 0);
+  const extraCostTotal = (invoice?.extraCosts ?? []).reduce(
+    (sum, item) => sum + (Number(item.amount) || 0),
+    0,
+  );
+  const computedGrandTotal = subtotal + tax + shippingInsurance + extraCostTotal;
+  const grandTotal =
+    invoice?.totalAmount && invoice.totalAmount >= computedGrandTotal
+      ? invoice.totalAmount
+      : computedGrandTotal;
 
   const findInventoryForItem = useCallback(
     (item: PurchaseInvoiceItem): InventoryRecord | null => {
