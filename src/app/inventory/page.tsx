@@ -6,8 +6,6 @@ import Link from "next/link";
 import {
   loadInventoryRecords,
   resetInventoryRecords,
-  addInventoryRecords,
-  generateInventoryId,
   saveDraft,
   updateInventoryRecord,
   updateInventoryStatuses,
@@ -18,11 +16,12 @@ import {
 import { DEFAULT_MASTER_DATA, loadMasterData, type MasterData } from "@/lib/demo-data/demoMasterData";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
 import {
-  loadSerialDraft,
-  loadSerialInput,
+  clearSerialDraft,
+  saveSerialDraft,
   saveSerialInput,
-  type SerialInputRow,
+  type SerialInputPayload,
 } from "@/lib/serialInputStorage";
+import SerialInputPanel from "@/app/inventory/purchase-invoice/_components/SerialInputPanel";
 import type { InventoryStatusOption } from "@/types/purchaseInvoices";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
 
@@ -214,24 +213,169 @@ const buildPayload = (form: Partial<InventoryRecord>): Partial<InventoryRecord> 
   taxType: form.taxType ?? "exclusive",
 });
 
-const createSerialRow = (index: number): SerialInputRow => ({
-  p: index + 1,
-  board: "",
-  frame: "",
-  main: "",
-  removalDate: "",
-});
-
-const normalizeSerialRows = (rows: SerialInputRow[], quantity: number) => {
-  const next = [...rows];
-  while (next.length < quantity) {
-    next.push(createSerialRow(next.length));
-  }
-  return next.slice(0, quantity).map((row, index) => ({ ...row, p: index + 1 }));
+type InventoryEditTableProps = {
+  groups: Array<[string, InventoryRecord[]]>;
+  bulkEditForms: Record<string, Partial<InventoryRecord>>;
+  onChange: <K extends keyof InventoryRecord>(id: string, key: K, value: InventoryRecord[K]) => void;
 };
 
-const isSerialRowFilled = (row: SerialInputRow) =>
-  [row.main, row.board, row.frame].some((value) => value?.trim());
+const InventoryEditTable = ({ groups, bulkEditForms, onChange }: InventoryEditTableProps) => (
+  <>
+    {groups.map(([supplier, items]) => (
+      <div key={supplier} className="border-2 border-gray-300">
+        <div className="bg-[#e8f5e9] px-2 py-1 text-xs font-semibold">仕入先: {supplier}</div>
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-xs">
+            <thead className="bg-slate-600 text-left text-white font-bold">
+              <tr>
+                <th className="border border-gray-300 px-2 py-1">在庫ID</th>
+                <th className="border border-gray-300 px-2 py-1">種別</th>
+                <th className="border border-gray-300 px-2 py-1">メーカー</th>
+                <th className="border border-gray-300 px-2 py-1">機種名</th>
+                <th className="border border-gray-300 px-2 py-1">仕入数</th>
+                <th className="border border-gray-300 px-2 py-1">仕入単価</th>
+                <th className="border border-gray-300 px-2 py-1">販売単価</th>
+                <th className="border border-gray-300 px-2 py-1">入庫日</th>
+                <th className="border border-gray-300 px-2 py-1">撤去日</th>
+                <th className="border border-gray-300 px-2 py-1">保管先</th>
+                <th className="border border-gray-300 px-2 py-1">担当者</th>
+                <th className="border border-gray-300 px-2 py-1">状況</th>
+                <th className="border border-gray-300 px-2 py-1">表示</th>
+                <th className="border border-gray-300 px-2 py-1">備考</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((record) => {
+                const form = bulkEditForms[record.id] ?? buildEditForm(record);
+                return (
+                  <tr key={record.id} className="odd:bg-white even:bg-[#f8fafc]">
+                    <td className="border border-gray-300 px-2 py-1">{record.id}</td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <select
+                        value={form.kind ?? ""}
+                        onChange={(event) =>
+                          onChange(record.id, "kind", event.target.value as InventoryRecord["kind"])
+                        }
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      >
+                        <option value="">-</option>
+                        <option value="P">P</option>
+                        <option value="S">S</option>
+                      </select>
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        value={form.maker ?? ""}
+                        onChange={(event) => onChange(record.id, "maker", event.target.value)}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        value={form.model ?? ""}
+                        onChange={(event) => onChange(record.id, "model", event.target.value)}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        type="number"
+                        min={0}
+                        value={form.quantity ?? 0}
+                        onChange={(event) => onChange(record.id, "quantity", Number(event.target.value))}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        type="number"
+                        min={0}
+                        value={form.unitPrice ?? 0}
+                        onChange={(event) => onChange(record.id, "unitPrice", Number(event.target.value))}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        type="number"
+                        min={0}
+                        value={form.saleUnitPrice ?? 0}
+                        onChange={(event) => onChange(record.id, "saleUnitPrice", Number(event.target.value))}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        type="date"
+                        value={form.stockInDate ?? ""}
+                        onChange={(event) => onChange(record.id, "stockInDate", event.target.value)}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        type="date"
+                        value={form.removeDate ?? ""}
+                        onChange={(event) => onChange(record.id, "removeDate", event.target.value)}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        value={form.warehouse ?? ""}
+                        onChange={(event) => onChange(record.id, "warehouse", event.target.value)}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        value={form.staff ?? ""}
+                        onChange={(event) => onChange(record.id, "staff", event.target.value)}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      />
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <select
+                        value={(form.listingStatus as ListingStatusOption) ?? "not_listing"}
+                        onChange={(event) =>
+                          onChange(record.id, "listingStatus", event.target.value as ListingStatusOption)
+                        }
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      >
+                        {STATUS_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <select
+                        value={form.isVisible === false ? "0" : "1"}
+                        onChange={(event) => onChange(record.id, "isVisible", event.target.value === "1")}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      >
+                        <option value="1">する</option>
+                        <option value="0">しない</option>
+                      </select>
+                    </td>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <input
+                        value={form.note ?? ""}
+                        onChange={(event) => onChange(record.id, "note", event.target.value)}
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
+                      />
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ))}
+  </>
+);
 
 export default function InventoryPage() {
   const [records, setRecords] = useState<InventoryRecord[]>([]);
@@ -255,10 +399,7 @@ export default function InventoryPage() {
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
   const [editRecord, setEditRecord] = useState<InventoryRecord | null>(null);
-  const [editForm, setEditForm] = useState<Partial<InventoryRecord>>({});
   const [activeTab, setActiveTab] = useState<"edit" | "serial">("edit");
-  const [serialRows, setSerialRows] = useState<SerialInputRow[]>([]);
-  const [serialSelections, setSerialSelections] = useState<Set<number>>(new Set());
   const [existingInvoicePrompt, setExistingInvoicePrompt] = useState<{
     invoiceId: string;
     invoiceType: PurchaseInvoice["invoiceType"];
@@ -441,6 +582,12 @@ export default function InventoryPage() {
     });
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b, "ja"));
   }, [selectedRecords]);
+
+  const editGroups = useMemo(() => {
+    if (!editRecord) return [];
+    const supplier = editRecord.supplier?.trim() || "未設定";
+    return [[supplier, [editRecord]]] as Array<[string, InventoryRecord[]]>;
+  }, [editRecord]);
 
   const purchaseInvoiceMap = useMemo(
     () => new Map(purchaseInvoices.map((invoice) => [invoice.invoiceId, invoice])),
@@ -712,169 +859,58 @@ export default function InventoryPage() {
     setSaleDraft("");
   };
 
-  const openEditModal = (record: InventoryRecord) => {
-    const baseForm = buildEditForm(record);
-    const quantity = Number(baseForm.quantity ?? record.quantity ?? 1) || 1;
-    const stored = loadSerialInput(record.id) ?? loadSerialDraft(record.id);
-    const rows = normalizeSerialRows(stored?.rows ?? [], quantity);
+  const openEditModal = (record: InventoryRecord, initialTab: "edit" | "serial" = "edit") => {
     setEditRecord(record);
-    setEditForm(baseForm);
-    setActiveTab("edit");
-    setSerialRows(rows);
-    setSerialSelections(new Set());
+    setActiveTab(initialTab);
+    setBulkEditForms((prev) => ({
+      ...prev,
+      [record.id]: buildEditForm(record),
+    }));
   };
 
   const closeEditModal = () => {
     setEditRecord(null);
-    setEditForm({});
-    setSerialRows([]);
-    setSerialSelections(new Set());
-  };
-
-  const handleEditFieldChange = <K extends keyof InventoryRecord>(
-    key: K,
-    value: InventoryRecord[K],
-  ) => {
-    setEditForm((prev) => ({ ...prev, [key]: value }));
-  };
-
-  const handleQuantityChange = (value: string) => {
-    const nextQuantity = Math.max(1, Number(value) || 1);
-    if (nextQuantity === serialRows.length) {
-      handleEditFieldChange("quantity", nextQuantity);
-      return;
-    }
-    if (nextQuantity < serialRows.length) {
-      let nextRows = [...serialRows];
-      let removedFilled = false;
-      while (nextRows.length > nextQuantity) {
-        const removableIndex = [...nextRows].reverse().findIndex((row) => !isSerialRowFilled(row));
-        if (removableIndex !== -1) {
-          const index = nextRows.length - 1 - removableIndex;
-          nextRows.splice(index, 1);
-          continue;
-        }
-        removedFilled = true;
-        nextRows.pop();
-      }
-      if (removedFilled) {
-        const confirmed = window.confirm("入力済みの番号を削除して台数を減らします。よろしいですか？");
-        if (!confirmed) return;
-      }
-      const normalized = normalizeSerialRows(nextRows, nextQuantity);
-      setSerialRows(normalized);
-      handleEditFieldChange("quantity", nextQuantity);
-      return;
-    }
-    const normalized = normalizeSerialRows(serialRows, nextQuantity);
-    setSerialRows(normalized);
-    handleEditFieldChange("quantity", nextQuantity);
-  };
-
-  const handleSerialRowChange = (index: number, key: keyof SerialInputRow, value: string) => {
-    setSerialRows((prev) =>
-      prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: value } : row)),
-    );
-  };
-
-  const handleSerialSave = () => {
-    if (!editRecord) return;
-    const quantity = Number(editForm.quantity ?? editRecord.quantity ?? serialRows.length) || 1;
-    const normalizedRows = normalizeSerialRows(serialRows, quantity);
-    saveSerialInput({
-      inventoryId: editRecord.id,
-      units: quantity,
-      rows: normalizedRows,
-      updatedAt: new Date().toISOString(),
-    });
-    setSerialRows(normalizedRows);
+    setActiveTab("edit");
   };
 
   const handleEditSave = () => {
     if (!editRecord) return;
-    const quantity = Number(editForm.quantity ?? editRecord.quantity ?? 1) || 1;
-    const normalizedRows = normalizeSerialRows(serialRows, quantity);
-    const payload = buildPayload({ ...editForm, quantity });
-    const updated = updateInventoryRecord(editRecord.id, payload);
+    const form = bulkEditForms[editRecord.id] ?? buildEditForm(editRecord);
+    const updated = updateInventoryRecord(editRecord.id, buildPayload(form));
     setRecords(updated);
-    saveSerialInput({
-      inventoryId: editRecord.id,
-      units: quantity,
-      rows: normalizedRows,
-      updatedAt: new Date().toISOString(),
-    });
-    setSerialRows(normalizedRows);
     const latest = updated.find((record) => record.id === editRecord.id) ?? editRecord;
     setEditRecord(latest);
+    setBulkEditForms((prev) => ({
+      ...prev,
+      [latest.id]: buildEditForm(latest),
+    }));
   };
 
-  const toggleSerialSelection = (index: number) => {
-    setSerialSelections((prev) => {
-      const next = new Set(prev);
-      if (next.has(index)) {
-        next.delete(index);
-      } else {
-        next.add(index);
-      }
-      return next;
-    });
-  };
-
-  const handleSplitUnits = () => {
+  const handleSerialNavigate = (direction: -1 | 1) => {
     if (!editRecord) return;
-    const selectedIndices = Array.from(serialSelections).sort((a, b) => a - b);
-    if (selectedIndices.length === 0) {
-      alert("分離する台を選択してください。");
+    const currentIndex = displayRecords.findIndex((record) => record.id === editRecord.id);
+    if (currentIndex === -1) return;
+    const nextIndex = currentIndex + direction;
+    if (nextIndex < 0 || nextIndex >= displayRecords.length) {
+      alert(direction < 0 ? "前の在庫が見つかりませんでした。" : "次の在庫が見つかりませんでした。");
       return;
     }
-    if (selectedIndices.length >= serialRows.length) {
-      alert("全台を分離することはできません。残す台数を指定してください。");
-      return;
-    }
-    const confirmed = window.confirm(`選択した${selectedIndices.length}台を分離します。よろしいですか？`);
-    if (!confirmed) return;
+    openEditModal(displayRecords[nextIndex], "serial");
+  };
 
-    const selectedSet = new Set(selectedIndices);
-    const remainingRows = serialRows.filter((_, index) => !selectedSet.has(index));
-    const separatedRows = serialRows.filter((_, index) => selectedSet.has(index));
+  const handleSerialRegister = (payload: SerialInputPayload) => {
+    saveSerialInput(payload);
+    clearSerialDraft(payload.inventoryId);
+  };
 
-    const basePayload = buildPayload(editForm);
-    updateInventoryRecord(editRecord.id, {
-      ...basePayload,
-      quantity: remainingRows.length,
-    });
-    const newId = generateInventoryId();
-    const now = new Date().toISOString();
-    const newRecord: InventoryRecord = {
-      ...editRecord,
-      ...basePayload,
-      id: newId,
-      createdAt: now,
-      quantity: separatedRows.length,
-      purchaseInvoiceId: undefined,
-    };
-    const updatedWithNew = addInventoryRecords([newRecord]);
-    setRecords(updatedWithNew);
+  const handleSerialPrev = (payload: SerialInputPayload) => {
+    saveSerialDraft(payload);
+    handleSerialNavigate(-1);
+  };
 
-    saveSerialInput({
-      inventoryId: editRecord.id,
-      units: remainingRows.length,
-      rows: normalizeSerialRows(remainingRows, remainingRows.length),
-      updatedAt: new Date().toISOString(),
-    });
-    saveSerialInput({
-      inventoryId: newId,
-      units: separatedRows.length,
-      rows: normalizeSerialRows(separatedRows, separatedRows.length),
-      updatedAt: new Date().toISOString(),
-    });
-
-    setSerialRows(normalizeSerialRows(remainingRows, remainingRows.length));
-    setSerialSelections(new Set());
-    setEditForm((prev) => ({ ...prev, quantity: remainingRows.length }));
-    const latest = updatedWithNew.find((record) => record.id === editRecord.id) ?? editRecord;
-    setEditRecord(latest);
-    alert("分離が完了しました。");
+  const handleSerialNext = (payload: SerialInputPayload) => {
+    saveSerialDraft(payload);
+    handleSerialNavigate(1);
   };
 
   const handleBulkCreatePurchaseInvoice = () => {
@@ -1357,201 +1393,11 @@ export default function InventoryPage() {
                 一括編集 ({selectedIds.size}件)
               </div>
               <div className="space-y-4 bg-white p-3">
-                {groupedSelected.map(([supplier, items]) => (
-                  <div key={supplier} className="border-2 border-gray-300">
-                    <div className="bg-[#e8f5e9] px-2 py-1 text-xs font-semibold">仕入先: {supplier}</div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full border-collapse text-xs">
-                        <thead className="bg-slate-600 text-left text-white font-bold">
-                          <tr>
-                            <th className="border border-gray-300 px-2 py-1">在庫ID</th>
-                            <th className="border border-gray-300 px-2 py-1">種別</th>
-                            <th className="border border-gray-300 px-2 py-1">メーカー</th>
-                            <th className="border border-gray-300 px-2 py-1">機種名</th>
-                            <th className="border border-gray-300 px-2 py-1">仕入数</th>
-                            <th className="border border-gray-300 px-2 py-1">仕入単価</th>
-                            <th className="border border-gray-300 px-2 py-1">販売単価</th>
-                            <th className="border border-gray-300 px-2 py-1">入庫日</th>
-                            <th className="border border-gray-300 px-2 py-1">撤去日</th>
-                            <th className="border border-gray-300 px-2 py-1">保管先</th>
-                            <th className="border border-gray-300 px-2 py-1">担当者</th>
-                            <th className="border border-gray-300 px-2 py-1">状況</th>
-                            <th className="border border-gray-300 px-2 py-1">表示</th>
-                            <th className="border border-gray-300 px-2 py-1">備考</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {items.map((record) => {
-                            const form = bulkEditForms[record.id] ?? buildEditForm(record);
-                            return (
-                              <tr key={record.id} className="odd:bg-white even:bg-[#f8fafc]">
-                                <td className="border border-gray-300 px-2 py-1">{record.id}</td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <select
-                                    value={form.kind ?? ""}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(
-                                        record.id,
-                                        "kind",
-                                        event.target.value as InventoryRecord["kind"],
-                                      )
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  >
-                                    <option value="">-</option>
-                                    <option value="P">P</option>
-                                    <option value="S">S</option>
-                                  </select>
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    value={form.maker ?? ""}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(record.id, "maker", event.target.value)
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  />
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    value={form.model ?? ""}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(record.id, "model", event.target.value)
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  />
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={form.quantity ?? 0}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(
-                                        record.id,
-                                        "quantity",
-                                        Number(event.target.value),
-                                      )
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
-                                  />
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={form.unitPrice ?? 0}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(
-                                        record.id,
-                                        "unitPrice",
-                                        Number(event.target.value),
-                                      )
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
-                                  />
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    type="number"
-                                    min={0}
-                                    value={form.saleUnitPrice ?? 0}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(
-                                        record.id,
-                                        "saleUnitPrice",
-                                        Number(event.target.value),
-                                      )
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
-                                  />
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    type="date"
-                                    value={form.stockInDate ?? ""}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(record.id, "stockInDate", event.target.value)
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  />
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    type="date"
-                                    value={form.removeDate ?? ""}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(record.id, "removeDate", event.target.value)
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  />
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    value={form.warehouse ?? ""}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(record.id, "warehouse", event.target.value)
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  />
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    value={form.staff ?? ""}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(record.id, "staff", event.target.value)
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  />
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <select
-                                    value={(form.listingStatus as ListingStatusOption) ?? "not_listing"}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(
-                                        record.id,
-                                        "listingStatus",
-                                        event.target.value as ListingStatusOption,
-                                      )
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  >
-                                    {STATUS_OPTIONS.map((option) => (
-                                      <option key={option.value} value={option.value}>
-                                        {option.label}
-                                      </option>
-                                    ))}
-                                  </select>
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <select
-                                    value={form.isVisible === false ? "0" : "1"}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(record.id, "isVisible", event.target.value === "1")
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  >
-                                    <option value="1">する</option>
-                                    <option value="0">しない</option>
-                                  </select>
-                                </td>
-                                <td className="border border-gray-300 px-2 py-1">
-                                  <input
-                                    value={form.note ?? ""}
-                                    onChange={(event) =>
-                                      handleBulkFormChange(record.id, "note", event.target.value)
-                                    }
-                                    className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                                  />
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ))}
+                <InventoryEditTable
+                  groups={groupedSelected}
+                  bulkEditForms={bulkEditForms}
+                  onChange={handleBulkFormChange}
+                />
                 {groupedSelected.length === 0 && (
                   <div className="border border-gray-300 px-4 py-6 text-center text-sm text-neutral-600">
                     編集対象の在庫を選択してください。
@@ -1611,7 +1457,7 @@ export default function InventoryPage() {
                       )}
                     </th>
                   ))}
-                  <th className="border border-gray-300 px-1 py-1 text-center">番号/編集</th>
+                  <th className="border border-gray-300 px-1 py-1 text-center">番号・編集</th>
                   <th className="border border-gray-300 px-1 py-1 text-center">購伝票</th>
                   <th className="border border-gray-300 px-1 py-1 text-center">販伝票</th>
                 </tr>
@@ -1745,7 +1591,7 @@ export default function InventoryPage() {
                           onClick={() => openEditModal(item)}
                           className="w-full border border-gray-300 bg-[#f7f3e9] px-1 py-1 text-[11px] font-semibold text-neutral-800 shadow-[inset_0_1px_0_#fff]"
                         >
-                          番号/編集
+                          ＋
                         </button>
                       </td>
                       <td className="border border-gray-300 px-1 py-0.5 text-center">
@@ -1891,129 +1737,11 @@ export default function InventoryPage() {
             <div className="p-4">
               {activeTab === "edit" ? (
                 <div className="space-y-4">
-                  <table className="w-full border-collapse text-xs">
-                    <tbody>
-                      <tr>
-                        <th className="w-28 border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">仕入数</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <input
-                            type="number"
-                            min={1}
-                            value={Number(editForm.quantity ?? 1)}
-                            onChange={(event) => handleQuantityChange(event.target.value)}
-                            className="w-24 border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-right"
-                          />
-                        </td>
-                        <th className="w-28 border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">仕入単価</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <input
-                            type="number"
-                            min={0}
-                            value={Number(editForm.unitPrice ?? 0)}
-                            onChange={(event) =>
-                              handleEditFieldChange("unitPrice", Number(event.target.value) || 0)
-                            }
-                            className="w-28 border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-right"
-                          />
-                        </td>
-                        <th className="w-28 border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">販売単価</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <input
-                            type="number"
-                            min={0}
-                            value={Number(editForm.saleUnitPrice ?? 0)}
-                            onChange={(event) =>
-                              handleEditFieldChange("saleUnitPrice", Number(event.target.value) || 0)
-                            }
-                            className="w-28 border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-right"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">残債</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <label className="flex items-center gap-2 text-xs">
-                            <input
-                              type="checkbox"
-                              checked={Boolean(editForm.hasRemainingDebt)}
-                              onChange={(event) => handleEditFieldChange("hasRemainingDebt", event.target.checked)}
-                            />
-                            <span>残債あり</span>
-                          </label>
-                        </td>
-                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">入庫日</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <input
-                            type="date"
-                            value={(editForm.stockInDate as string) ?? ""}
-                            onChange={(event) => handleEditFieldChange("stockInDate", event.target.value)}
-                            className="border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                          />
-                        </td>
-                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">撤去日</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <input
-                            type="date"
-                            value={(editForm.removeDate as string) ?? ""}
-                            onChange={(event) => handleEditFieldChange("removeDate", event.target.value)}
-                            className="border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">柄</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <input
-                            value={(editForm.pattern as string) ?? ""}
-                            onChange={(event) => handleEditFieldChange("pattern", event.target.value)}
-                            className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                          />
-                        </td>
-                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">保管先</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <input
-                            value={(editForm.warehouse as string) ?? ""}
-                            onChange={(event) => handleEditFieldChange("warehouse", event.target.value)}
-                            className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                          />
-                        </td>
-                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">担当</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <input
-                            value={(editForm.staff as string) ?? ""}
-                            onChange={(event) => handleEditFieldChange("staff", event.target.value)}
-                            className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">状況</th>
-                        <td className="border border-gray-300 px-2 py-2">
-                          <select
-                            value={(editForm.listingStatus as ListingStatusOption) ?? "not_listing"}
-                            onChange={(event) =>
-                              handleEditFieldChange("listingStatus", event.target.value as ListingStatusOption)
-                            }
-                            className="border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                          >
-                            {STATUS_OPTIONS.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">備考</th>
-                        <td colSpan={3} className="border border-gray-300 px-2 py-2">
-                          <input
-                            value={(editForm.note as string) ?? ""}
-                            onChange={(event) => handleEditFieldChange("note", event.target.value)}
-                            className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                          />
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                  <InventoryEditTable
+                    groups={editGroups}
+                    bulkEditForms={bulkEditForms}
+                    onChange={handleBulkFormChange}
+                  />
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
@@ -2032,95 +1760,13 @@ export default function InventoryPage() {
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4 text-xs">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border border-gray-300 bg-[#f7f3e9] px-3 py-2 text-xs font-semibold">
-                    <span>
-                      番号入力状況:{" "}
-                      {serialRows.filter((row) => isSerialRowFilled(row)).length} / {serialRows.length}
-                    </span>
-                    <span className="text-[11px] text-neutral-600">番号未入力でも保存可能です。</span>
-                  </div>
-                  <div className="overflow-x-auto border border-gray-300">
-                    <table className="min-w-full border-collapse text-xs">
-                      <thead className="bg-slate-600 text-left text-xs font-semibold text-white">
-                        <tr>
-                          <th className="border border-gray-300 px-2 py-2 text-center">選択</th>
-                          <th className="border border-gray-300 px-2 py-2 text-center">No</th>
-                          <th className="border border-gray-300 px-2 py-2">遊技盤番号等</th>
-                          <th className="border border-gray-300 px-2 py-2">枠番号等</th>
-                          <th className="border border-gray-300 px-2 py-2">主基板番号等</th>
-                          <th className="border border-gray-300 px-2 py-2 text-center">状態</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {serialRows.map((row, index) => {
-                          const filled = isSerialRowFilled(row);
-                          return (
-                            <tr key={`${editRecord.id}-${index}`} className="odd:bg-white even:bg-[#f8fafc]">
-                              <td className="border border-gray-300 px-2 py-1 text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={serialSelections.has(index)}
-                                  onChange={() => toggleSerialSelection(index)}
-                                />
-                              </td>
-                              <td className="border border-gray-300 px-2 py-1 text-center">{row.p}</td>
-                              <td className="border border-gray-300 px-2 py-1">
-                                <input
-                                  value={row.board}
-                                  onChange={(event) => handleSerialRowChange(index, "board", event.target.value)}
-                                  className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                                />
-                              </td>
-                              <td className="border border-gray-300 px-2 py-1">
-                                <input
-                                  value={row.frame}
-                                  onChange={(event) => handleSerialRowChange(index, "frame", event.target.value)}
-                                  className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                                />
-                              </td>
-                              <td className="border border-gray-300 px-2 py-1">
-                                <input
-                                  value={row.main}
-                                  onChange={(event) => handleSerialRowChange(index, "main", event.target.value)}
-                                  className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
-                                />
-                              </td>
-                              <td className="border border-gray-300 px-2 py-1 text-center">
-                                {filled ? "入力済み" : "未入力"}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <button
-                      type="button"
-                      onClick={handleSplitUnits}
-                      className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
-                    >
-                      選択した台を分離する
-                    </button>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={handleSerialSave}
-                        className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
-                      >
-                        番号保存
-                      </button>
-                      <button
-                        type="button"
-                        onClick={closeEditModal}
-                        className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
-                      >
-                        閉じる
-                      </button>
-                    </div>
-                  </div>
-                </div>
+                <SerialInputPanel
+                  inventoryId={editRecord.id}
+                  onRegister={handleSerialRegister}
+                  onPrev={handleSerialPrev}
+                  onNext={handleSerialNext}
+                  onBack={closeEditModal}
+                />
               )}
             </div>
           </div>
