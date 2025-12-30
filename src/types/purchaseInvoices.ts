@@ -32,6 +32,12 @@ export type PurchaseInvoiceItem = {
   note?: string;
 };
 
+export type AdditionalCostItem = {
+  id: string;
+  label: "手数料" | "保険料" | "その他" | "書類代";
+  amount: number;
+};
+
 export type PurchaseInvoice = {
   invoiceId: string;
   invoiceType: "vendor" | "hall";
@@ -42,6 +48,7 @@ export type PurchaseInvoice = {
   inventoryIds: string[];
   items: PurchaseInvoiceItem[];
   totalAmount?: number;
+  extraCosts?: AdditionalCostItem[];
   formInput?: Record<string, string>;
   displayTitle?: string;
 };

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatCurrency, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import { BUYER_OPTIONS, findBuyerById } from "@/lib/demo-data/buyers";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
+import { loadSerialDraft, loadSerialInput } from "@/lib/serialInputStorage";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
 
@@ -23,7 +24,12 @@ const COMPANY_INFO = {
   fax: "FAX 03-5389-1956",
 };
 
-const PRINT_ACTIONS = ["売買契約書", "支払依頼書", "入庫検品依頼書", "書類一括"];
+const DOCUMENT_ACTIONS = [
+  { label: "売買契約書", path: "sales-contract", requiresSerial: false },
+  { label: "支払依頼書", path: "payment-request", requiresSerial: false },
+  { label: "入庫検品依頼書", path: "inspection-pickup", requiresSerial: true },
+  { label: "書類一括", path: null, requiresSerial: false },
+] as const;
 
 const formatFullDate = (value?: string): string => {
   if (!value) return "-";
@@ -100,6 +106,11 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   const staffName = invoice?.staff || "デモユーザー";
   const remarks = invoice?.formInput?.remarks || "";
   const shippingInsurance = Number(invoice?.formInput?.shippingInsurance || 0);
+  const extraCosts = useMemo(() => invoice?.extraCosts ?? [], [invoice?.extraCosts]);
+  const extraCostTotal = useMemo(
+    () => extraCosts.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+    [extraCosts],
+  );
 
   const subtotal = useMemo(
     () =>
@@ -111,7 +122,11 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   );
 
   const tax = Math.floor(subtotal * 0.1);
-  const grandTotal = invoice?.totalAmount ?? subtotal + tax + shippingInsurance;
+  const computedGrandTotal = subtotal + tax + shippingInsurance + extraCostTotal;
+  const grandTotal =
+    invoice?.totalAmount && invoice.totalAmount >= computedGrandTotal
+      ? invoice.totalAmount
+      : computedGrandTotal;
 
   const headerContractPartner = branchName ? `${supplierName} ${branchName}` : supplierName;
   const recipientLine = branchName ? `${supplierName} ${branchName} 御中` : `${supplierName} 御中`;
@@ -142,12 +157,9 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   const handlePrint = () => {
     if (!invoice || !selectedPrintLabel) return;
     const buyer = findBuyerById(selectedBuyerId);
-    const path =
-      selectedPrintLabel === "売買契約書"
-        ? "sales-contract"
-        : selectedPrintLabel === "支払依頼書"
-          ? "payment-request"
-          : "inspection-pickup";
+    const target = DOCUMENT_ACTIONS.find((action) => action.label === selectedPrintLabel);
+    if (!target?.path) return;
+    const path = target.path;
     const url = `/inventory/purchase-invoice/print/${path}/${invoice.invoiceId}?buyerId=${encodeURIComponent(buyer.id)}`;
     window.open(url, "_blank", "noopener,noreferrer");
     setIsPrintModalOpen(false);
@@ -184,6 +196,15 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   if (!invoice) {
     return null;
   }
+
+  const serialComplete = invoice.inventoryIds.every((id) => {
+    const inventory = inventories.get(id);
+    const targetQuantity = Number(inventory?.quantity ?? 1) || 1;
+    const stored = loadSerialInput(id) ?? loadSerialDraft(id);
+    const rows = stored?.rows ?? [];
+    if (rows.length < targetQuantity) return false;
+    return rows.slice(0, targetQuantity).every((row) => row.main?.trim());
+  });
 
   if (expectedType && invoice.invoiceType !== expectedType) {
     return (
@@ -265,24 +286,9 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
           <span>詳細情報</span>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 shadow-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-neutral-700">印刷メニュー：</span>
-            <div className="flex flex-wrap items-center gap-2">
-              {PRINT_ACTIONS.map((label) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => handlePrintMenu(label)}
-                  className="rounded border border-slate-400 bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800 shadow hover:bg-slate-200"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-neutral-700">機械番号入力：</span>
+        <div className="rounded border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 shadow-sm">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="text-neutral-700">書類一覧</span>
             <button
               type="button"
               onClick={handleSerialInput}
@@ -291,6 +297,53 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
               購入機械番号入力
             </button>
           </div>
+          <div className="mt-3 overflow-x-auto">
+            <table className="min-w-full table-fixed border-collapse text-xs">
+              <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-700">
+                <tr>
+                  <th className="border border-slate-300 px-2 py-2">書類名</th>
+                  <th className="border border-slate-300 px-2 py-2 text-center">番号要否</th>
+                  <th className="border border-slate-300 px-2 py-2 text-center">状態</th>
+                  <th className="border border-slate-300 px-2 py-2 text-center">出力</th>
+                </tr>
+              </thead>
+              <tbody>
+                {DOCUMENT_ACTIONS.map((action) => {
+                  const needsSerial = action.requiresSerial;
+                  const disabled = needsSerial && !serialComplete;
+                  const statusLabel = needsSerial
+                    ? serialComplete
+                      ? "番号入力済"
+                      : "要番号入力"
+                    : "出力可";
+                  return (
+                    <tr key={action.label} className="odd:bg-white even:bg-slate-50">
+                      <td className="border border-slate-300 px-2 py-2">{action.label}</td>
+                      <td className="border border-slate-300 px-2 py-2 text-center">
+                        {needsSerial ? "必須" : "不要"}
+                      </td>
+                      <td className="border border-slate-300 px-2 py-2 text-center">{statusLabel}</td>
+                      <td className="border border-slate-300 px-2 py-2 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handlePrintMenu(action.label)}
+                          disabled={disabled || action.path == null}
+                          className="rounded border border-slate-400 bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800 shadow disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          {action.path == null ? "準備中" : "印刷"}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {!serialComplete && (
+            <div className="mt-2 text-[11px] font-medium text-amber-700">
+              番号必須の書類は、全台の番号が揃うまで出力できません。
+            </div>
+          )}
         </div>
 
         <div className="flex justify-center">
@@ -394,6 +447,12 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
                     <td colSpan={7} className="border border-black px-3 py-2 text-right">消費税（10%）</td>
                     <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(tax)}</td>
                   </tr>
+                  {extraCosts.length > 0 && (
+                    <tr>
+                      <td colSpan={7} className="border border-black px-3 py-2 text-right">別費用合計</td>
+                      <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(extraCostTotal)}</td>
+                    </tr>
+                  )}
                   <tr>
                     <td colSpan={7} className="border border-black px-3 py-2 text-right">運送保険（税込）</td>
                     <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(shippingInsurance)}</td>
@@ -410,6 +469,28 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
               <div className="mb-2 text-sm font-semibold text-neutral-900">備考</div>
               <div className="whitespace-pre-wrap text-neutral-800">{remarks || "―"}</div>
             </div>
+
+            {extraCosts.length > 0 && (
+              <div className="mb-4 border border-black p-3 text-[12px]">
+                <div className="mb-2 text-sm font-semibold text-neutral-900">別費用明細</div>
+                <table className="w-full border-collapse text-[12px]">
+                  <thead className="bg-slate-100 text-left font-semibold">
+                    <tr>
+                      <th className="border border-black px-2 py-1">項目</th>
+                      <th className="border border-black px-2 py-1 text-right">金額</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {extraCosts.map((item) => (
+                      <tr key={item.id}>
+                        <td className="border border-black px-2 py-1">{item.label}</td>
+                        <td className="border border-black px-2 py-1 text-right">{formatCurrency(item.amount)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
 

@@ -6,13 +6,25 @@ import Link from "next/link";
 import {
   loadInventoryRecords,
   resetInventoryRecords,
+  addInventoryRecords,
+  generateInventoryId,
+  saveDraft,
   updateInventoryRecord,
   updateInventoryStatuses,
   updateInventoryStatus,
   type ListingStatusOption,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
+import { DEFAULT_MASTER_DATA, loadMasterData, type MasterData } from "@/lib/demo-data/demoMasterData";
+import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
+import {
+  loadSerialDraft,
+  loadSerialInput,
+  saveSerialInput,
+  type SerialInputRow,
+} from "@/lib/serialInputStorage";
 import type { InventoryStatusOption } from "@/types/purchaseInvoices";
+import type { PurchaseInvoice } from "@/types/purchaseInvoices";
 
 type Column = {
   key: keyof InventoryRecord | "status";
@@ -202,6 +214,25 @@ const buildPayload = (form: Partial<InventoryRecord>): Partial<InventoryRecord> 
   taxType: form.taxType ?? "exclusive",
 });
 
+const createSerialRow = (index: number): SerialInputRow => ({
+  p: index + 1,
+  board: "",
+  frame: "",
+  main: "",
+  removalDate: "",
+});
+
+const normalizeSerialRows = (rows: SerialInputRow[], quantity: number) => {
+  const next = [...rows];
+  while (next.length < quantity) {
+    next.push(createSerialRow(next.length));
+  }
+  return next.slice(0, quantity).map((row, index) => ({ ...row, p: index + 1 }));
+};
+
+const isSerialRowFilled = (row: SerialInputRow) =>
+  [row.main, row.board, row.frame].some((value) => value?.trim());
+
 export default function InventoryPage() {
   const [records, setRecords] = useState<InventoryRecord[]>([]);
   const [columns, setColumns] = useState<Column[]>(INITIAL_COLUMNS);
@@ -221,9 +252,31 @@ export default function InventoryPage() {
   const [saleErrors, setSaleErrors] = useState<Record<string, string>>({});
   const [showMakerSuggestions, setShowMakerSuggestions] = useState(false);
   const [showModelSuggestions, setShowModelSuggestions] = useState(false);
+  const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
+  const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
+  const [editRecord, setEditRecord] = useState<InventoryRecord | null>(null);
+  const [editForm, setEditForm] = useState<Partial<InventoryRecord>>({});
+  const [activeTab, setActiveTab] = useState<"edit" | "serial">("edit");
+  const [serialRows, setSerialRows] = useState<SerialInputRow[]>([]);
+  const [serialSelections, setSerialSelections] = useState<Set<number>>(new Set());
+  const [existingInvoicePrompt, setExistingInvoicePrompt] = useState<{
+    invoiceId: string;
+    invoiceType: PurchaseInvoice["invoiceType"];
+  } | null>(null);
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
+  }, []);
+
+  useEffect(() => {
+    setMasterData(loadMasterData());
+  }, []);
+
+  useEffect(() => {
+    const refreshInvoices = () => setPurchaseInvoices(loadPurchaseInvoices());
+    refreshInvoices();
+    window.addEventListener("focus", refreshInvoices);
+    return () => window.removeEventListener("focus", refreshInvoices);
   }, []);
 
   useEffect(() => {
@@ -388,6 +441,21 @@ export default function InventoryPage() {
     });
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b, "ja"));
   }, [selectedRecords]);
+
+  const purchaseInvoiceMap = useMemo(
+    () => new Map(purchaseInvoices.map((invoice) => [invoice.invoiceId, invoice])),
+    [purchaseInvoices],
+  );
+
+  const resolveSupplierCategory = (record: InventoryRecord): PurchaseInvoice["invoiceType"] => {
+    if (record.supplierCategory) {
+      return record.supplierCategory === "hall" ? "hall" : "vendor";
+    }
+    const supplierName = record.supplierCorporate || record.supplier || "";
+    const match = masterData.suppliers.find((supplier) => supplier.corporateName === supplierName);
+    if (match?.category === "hall") return "hall";
+    return "vendor";
+  };
 
   const handleStatusChange = (id: string, status: ListingStatusOption) => {
     const updated = updateInventoryStatus(id, status);
@@ -642,6 +710,217 @@ export default function InventoryPage() {
     setSaleSavingId(null);
     setEditingSaleId(null);
     setSaleDraft("");
+  };
+
+  const openEditModal = (record: InventoryRecord) => {
+    const baseForm = buildEditForm(record);
+    const quantity = Number(baseForm.quantity ?? record.quantity ?? 1) || 1;
+    const stored = loadSerialInput(record.id) ?? loadSerialDraft(record.id);
+    const rows = normalizeSerialRows(stored?.rows ?? [], quantity);
+    setEditRecord(record);
+    setEditForm(baseForm);
+    setActiveTab("edit");
+    setSerialRows(rows);
+    setSerialSelections(new Set());
+  };
+
+  const closeEditModal = () => {
+    setEditRecord(null);
+    setEditForm({});
+    setSerialRows([]);
+    setSerialSelections(new Set());
+  };
+
+  const handleEditFieldChange = <K extends keyof InventoryRecord>(
+    key: K,
+    value: InventoryRecord[K],
+  ) => {
+    setEditForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleQuantityChange = (value: string) => {
+    const nextQuantity = Math.max(1, Number(value) || 1);
+    if (nextQuantity === serialRows.length) {
+      handleEditFieldChange("quantity", nextQuantity);
+      return;
+    }
+    if (nextQuantity < serialRows.length) {
+      let nextRows = [...serialRows];
+      let removedFilled = false;
+      while (nextRows.length > nextQuantity) {
+        const removableIndex = [...nextRows].reverse().findIndex((row) => !isSerialRowFilled(row));
+        if (removableIndex !== -1) {
+          const index = nextRows.length - 1 - removableIndex;
+          nextRows.splice(index, 1);
+          continue;
+        }
+        removedFilled = true;
+        nextRows.pop();
+      }
+      if (removedFilled) {
+        const confirmed = window.confirm("入力済みの番号を削除して台数を減らします。よろしいですか？");
+        if (!confirmed) return;
+      }
+      const normalized = normalizeSerialRows(nextRows, nextQuantity);
+      setSerialRows(normalized);
+      handleEditFieldChange("quantity", nextQuantity);
+      return;
+    }
+    const normalized = normalizeSerialRows(serialRows, nextQuantity);
+    setSerialRows(normalized);
+    handleEditFieldChange("quantity", nextQuantity);
+  };
+
+  const handleSerialRowChange = (index: number, key: keyof SerialInputRow, value: string) => {
+    setSerialRows((prev) =>
+      prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: value } : row)),
+    );
+  };
+
+  const handleSerialSave = () => {
+    if (!editRecord) return;
+    const quantity = Number(editForm.quantity ?? editRecord.quantity ?? serialRows.length) || 1;
+    const normalizedRows = normalizeSerialRows(serialRows, quantity);
+    saveSerialInput({
+      inventoryId: editRecord.id,
+      units: quantity,
+      rows: normalizedRows,
+      updatedAt: new Date().toISOString(),
+    });
+    setSerialRows(normalizedRows);
+  };
+
+  const handleEditSave = () => {
+    if (!editRecord) return;
+    const quantity = Number(editForm.quantity ?? editRecord.quantity ?? 1) || 1;
+    const normalizedRows = normalizeSerialRows(serialRows, quantity);
+    const payload = buildPayload({ ...editForm, quantity });
+    const updated = updateInventoryRecord(editRecord.id, payload);
+    setRecords(updated);
+    saveSerialInput({
+      inventoryId: editRecord.id,
+      units: quantity,
+      rows: normalizedRows,
+      updatedAt: new Date().toISOString(),
+    });
+    setSerialRows(normalizedRows);
+    const latest = updated.find((record) => record.id === editRecord.id) ?? editRecord;
+    setEditRecord(latest);
+  };
+
+  const toggleSerialSelection = (index: number) => {
+    setSerialSelections((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  };
+
+  const handleSplitUnits = () => {
+    if (!editRecord) return;
+    const selectedIndices = Array.from(serialSelections).sort((a, b) => a - b);
+    if (selectedIndices.length === 0) {
+      alert("分離する台を選択してください。");
+      return;
+    }
+    if (selectedIndices.length >= serialRows.length) {
+      alert("全台を分離することはできません。残す台数を指定してください。");
+      return;
+    }
+    const confirmed = window.confirm(`選択した${selectedIndices.length}台を分離します。よろしいですか？`);
+    if (!confirmed) return;
+
+    const selectedSet = new Set(selectedIndices);
+    const remainingRows = serialRows.filter((_, index) => !selectedSet.has(index));
+    const separatedRows = serialRows.filter((_, index) => selectedSet.has(index));
+
+    const basePayload = buildPayload(editForm);
+    updateInventoryRecord(editRecord.id, {
+      ...basePayload,
+      quantity: remainingRows.length,
+    });
+    const newId = generateInventoryId();
+    const now = new Date().toISOString();
+    const newRecord: InventoryRecord = {
+      ...editRecord,
+      ...basePayload,
+      id: newId,
+      createdAt: now,
+      quantity: separatedRows.length,
+      purchaseInvoiceId: undefined,
+    };
+    const updatedWithNew = addInventoryRecords([newRecord]);
+    setRecords(updatedWithNew);
+
+    saveSerialInput({
+      inventoryId: editRecord.id,
+      units: remainingRows.length,
+      rows: normalizeSerialRows(remainingRows, remainingRows.length),
+      updatedAt: new Date().toISOString(),
+    });
+    saveSerialInput({
+      inventoryId: newId,
+      units: separatedRows.length,
+      rows: normalizeSerialRows(separatedRows, separatedRows.length),
+      updatedAt: new Date().toISOString(),
+    });
+
+    setSerialRows(normalizeSerialRows(remainingRows, remainingRows.length));
+    setSerialSelections(new Set());
+    setEditForm((prev) => ({ ...prev, quantity: remainingRows.length }));
+    const latest = updatedWithNew.find((record) => record.id === editRecord.id) ?? editRecord;
+    setEditRecord(latest);
+    alert("分離が完了しました。");
+  };
+
+  const handleBulkCreatePurchaseInvoice = () => {
+    if (selectedRecords.length === 0) {
+      alert("在庫を選択してください。");
+      return;
+    }
+    const created = selectedRecords.filter((record) => record.purchaseInvoiceId);
+    const uncreated = selectedRecords.filter((record) => !record.purchaseInvoiceId);
+
+    if (uncreated.length === 0 && created.length > 0) {
+      const firstInvoiceId = created[0]?.purchaseInvoiceId ?? "";
+      const invoice = purchaseInvoiceMap.get(firstInvoiceId);
+      if (invoice) {
+        setExistingInvoicePrompt({ invoiceId: invoice.invoiceId, invoiceType: invoice.invoiceType });
+        return;
+      }
+      alert("選択した在庫はすでに購入伝票が作成済みです。");
+      return;
+    }
+
+    if (created.length > 0) {
+      alert("作成済みの在庫は除外しました。");
+    }
+
+    const grouped = new Map<string, InventoryRecord[]>();
+    uncreated.forEach((record) => {
+      const supplier = record.supplier?.trim() || record.supplierCorporate?.trim() || "未設定";
+      const list = grouped.get(supplier) ?? [];
+      list.push(record);
+      grouped.set(supplier, list);
+    });
+
+    const summary = Array.from(grouped.entries())
+      .map(([supplier, items]) => `${supplier}：${items.length}件`)
+      .join("\n");
+    const confirmed = window.confirm(`購入伝票を仕入先ごとに作成します。\n${summary}`);
+    if (!confirmed) return;
+
+    Array.from(grouped.entries()).forEach(([supplier, items], index) => {
+      const invoiceType = resolveSupplierCategory(items[0]);
+      const draftId = `${Date.now()}-${Math.floor(Math.random() * 1000)}-${index}`;
+      saveDraft({ id: draftId, inventoryIds: items.map((item) => item.id) });
+      const url = `/inventory/purchase-invoice/${invoiceType}/${draftId}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+    });
   };
 
   return (
@@ -1048,6 +1327,14 @@ export default function InventoryPage() {
               </button>
               <button
                 type="button"
+                onClick={handleBulkCreatePurchaseInvoice}
+                disabled={selectedIds.size === 0}
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                購入伝票作成
+              </button>
+              <button
+                type="button"
                 onClick={handleBulkEditOpen}
                 disabled={selectedIds.size === 0}
                 className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
@@ -1324,13 +1611,16 @@ export default function InventoryPage() {
                       )}
                     </th>
                   ))}
+                  <th className="border border-gray-300 px-1 py-1 text-center">番号/編集</th>
+                  <th className="border border-gray-300 px-1 py-1 text-center">購伝票</th>
+                  <th className="border border-gray-300 px-1 py-1 text-center">販伝票</th>
                 </tr>
               </thead>
               <tbody>
                 {displayRecords.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={visibleColumns.length + 1}
+                      colSpan={visibleColumns.length + 4}
                       className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600"
                     >
                       登録された在庫がありません。
@@ -1449,6 +1739,34 @@ export default function InventoryPage() {
                           </td>
                         );
                       })}
+                      <td className="border border-gray-300 px-1 py-0.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => openEditModal(item)}
+                          className="w-full border border-gray-300 bg-[#f7f3e9] px-1 py-1 text-[11px] font-semibold text-neutral-800 shadow-[inset_0_1px_0_#fff]"
+                        >
+                          番号/編集
+                        </button>
+                      </td>
+                      <td className="border border-gray-300 px-1 py-0.5 text-center">
+                        {item.purchaseInvoiceId ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const invoice = purchaseInvoiceMap.get(item.purchaseInvoiceId ?? "");
+                              const invoiceType = invoice?.invoiceType ?? "vendor";
+                              const url = `/inventory/purchase-invoice/${invoiceType}/${item.purchaseInvoiceId}`;
+                              window.open(url, "_blank", "noopener,noreferrer");
+                            }}
+                            className="w-full border border-gray-300 bg-[#fff4d6] px-1 py-1 text-[11px] font-semibold text-emerald-700"
+                          >
+                            ○
+                          </button>
+                        ) : (
+                          <span className="text-transparent">-</span>
+                        )}
+                      </td>
+                      <td className="border border-gray-300 px-1 py-0.5 text-center text-transparent">-</td>
                     </tr>
                   ))
                 )}
@@ -1500,6 +1818,310 @@ export default function InventoryPage() {
                   </label>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {existingInvoicePrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md border-2 border-gray-300 bg-white">
+            <div className="bg-slate-600 px-4 py-3 text-sm font-semibold text-white">購入伝票ガード</div>
+            <div className="space-y-4 px-4 py-4 text-sm text-neutral-800">
+              <p>既に作成済みの伝票を開きますか？</p>
+              <p className="text-xs text-neutral-500">伝票ID: {existingInvoicePrompt.invoiceId}</p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-300 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `/inventory/purchase-invoice/${existingInvoicePrompt.invoiceType}/${existingInvoicePrompt.invoiceId}`;
+                  window.open(url, "_blank", "noopener,noreferrer");
+                  setExistingInvoicePrompt(null);
+                }}
+                className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+              >
+                作成済み伝票を開く
+              </button>
+              <button
+                type="button"
+                onClick={() => setExistingInvoicePrompt(null)}
+                className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-6xl border-2 border-gray-300 bg-white">
+            <div className="flex items-center justify-between bg-slate-700 px-4 py-3 text-sm font-semibold text-white">
+              <div className="flex items-center gap-2">
+                <span>在庫編集 / 番号登録</span>
+                <span className="text-xs text-white/80">ID: {editRecord.id}</span>
+              </div>
+              <button
+                type="button"
+                onClick={closeEditModal}
+                className="border border-white bg-white px-2 py-1 text-xs font-semibold text-slate-700"
+              >
+                閉じる
+              </button>
+            </div>
+            <div className="flex border-b border-gray-300 text-sm font-semibold">
+              {[
+                { key: "edit", label: "在庫編集" },
+                { key: "serial", label: "個体番号" },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key as "edit" | "serial")}
+                  className={`border-r border-gray-300 px-4 py-2 ${
+                    activeTab === tab.key ? "bg-[#f7f3e9] text-slate-800" : "bg-white text-neutral-500"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="p-4">
+              {activeTab === "edit" ? (
+                <div className="space-y-4">
+                  <table className="w-full border-collapse text-xs">
+                    <tbody>
+                      <tr>
+                        <th className="w-28 border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">仕入数</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <input
+                            type="number"
+                            min={1}
+                            value={Number(editForm.quantity ?? 1)}
+                            onChange={(event) => handleQuantityChange(event.target.value)}
+                            className="w-24 border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-right"
+                          />
+                        </td>
+                        <th className="w-28 border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">仕入単価</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={Number(editForm.unitPrice ?? 0)}
+                            onChange={(event) =>
+                              handleEditFieldChange("unitPrice", Number(event.target.value) || 0)
+                            }
+                            className="w-28 border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-right"
+                          />
+                        </td>
+                        <th className="w-28 border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">販売単価</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={Number(editForm.saleUnitPrice ?? 0)}
+                            onChange={(event) =>
+                              handleEditFieldChange("saleUnitPrice", Number(event.target.value) || 0)
+                            }
+                            className="w-28 border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-right"
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">残債</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <label className="flex items-center gap-2 text-xs">
+                            <input
+                              type="checkbox"
+                              checked={Boolean(editForm.hasRemainingDebt)}
+                              onChange={(event) => handleEditFieldChange("hasRemainingDebt", event.target.checked)}
+                            />
+                            <span>残債あり</span>
+                          </label>
+                        </td>
+                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">入庫日</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <input
+                            type="date"
+                            value={(editForm.stockInDate as string) ?? ""}
+                            onChange={(event) => handleEditFieldChange("stockInDate", event.target.value)}
+                            className="border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                          />
+                        </td>
+                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">撤去日</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <input
+                            type="date"
+                            value={(editForm.removeDate as string) ?? ""}
+                            onChange={(event) => handleEditFieldChange("removeDate", event.target.value)}
+                            className="border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">柄</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <input
+                            value={(editForm.pattern as string) ?? ""}
+                            onChange={(event) => handleEditFieldChange("pattern", event.target.value)}
+                            className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                          />
+                        </td>
+                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">保管先</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <input
+                            value={(editForm.warehouse as string) ?? ""}
+                            onChange={(event) => handleEditFieldChange("warehouse", event.target.value)}
+                            className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                          />
+                        </td>
+                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">担当</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <input
+                            value={(editForm.staff as string) ?? ""}
+                            onChange={(event) => handleEditFieldChange("staff", event.target.value)}
+                            className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">状況</th>
+                        <td className="border border-gray-300 px-2 py-2">
+                          <select
+                            value={(editForm.listingStatus as ListingStatusOption) ?? "not_listing"}
+                            onChange={(event) =>
+                              handleEditFieldChange("listingStatus", event.target.value as ListingStatusOption)
+                            }
+                            className="border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                          >
+                            {STATUS_OPTIONS.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-2 text-left">備考</th>
+                        <td colSpan={3} className="border border-gray-300 px-2 py-2">
+                          <input
+                            value={(editForm.note as string) ?? ""}
+                            onChange={(event) => handleEditFieldChange("note", event.target.value)}
+                            className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                          />
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={closeEditModal}
+                      className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+                    >
+                      キャンセル
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleEditSave}
+                      className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+                    >
+                      保存
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 text-xs">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border border-gray-300 bg-[#f7f3e9] px-3 py-2 text-xs font-semibold">
+                    <span>
+                      番号入力状況:{" "}
+                      {serialRows.filter((row) => isSerialRowFilled(row)).length} / {serialRows.length}
+                    </span>
+                    <span className="text-[11px] text-neutral-600">番号未入力でも保存可能です。</span>
+                  </div>
+                  <div className="overflow-x-auto border border-gray-300">
+                    <table className="min-w-full border-collapse text-xs">
+                      <thead className="bg-slate-600 text-left text-xs font-semibold text-white">
+                        <tr>
+                          <th className="border border-gray-300 px-2 py-2 text-center">選択</th>
+                          <th className="border border-gray-300 px-2 py-2 text-center">No</th>
+                          <th className="border border-gray-300 px-2 py-2">遊技盤番号等</th>
+                          <th className="border border-gray-300 px-2 py-2">枠番号等</th>
+                          <th className="border border-gray-300 px-2 py-2">主基板番号等</th>
+                          <th className="border border-gray-300 px-2 py-2 text-center">状態</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {serialRows.map((row, index) => {
+                          const filled = isSerialRowFilled(row);
+                          return (
+                            <tr key={`${editRecord.id}-${index}`} className="odd:bg-white even:bg-[#f8fafc]">
+                              <td className="border border-gray-300 px-2 py-1 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={serialSelections.has(index)}
+                                  onChange={() => toggleSerialSelection(index)}
+                                />
+                              </td>
+                              <td className="border border-gray-300 px-2 py-1 text-center">{row.p}</td>
+                              <td className="border border-gray-300 px-2 py-1">
+                                <input
+                                  value={row.board}
+                                  onChange={(event) => handleSerialRowChange(index, "board", event.target.value)}
+                                  className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                                />
+                              </td>
+                              <td className="border border-gray-300 px-2 py-1">
+                                <input
+                                  value={row.frame}
+                                  onChange={(event) => handleSerialRowChange(index, "frame", event.target.value)}
+                                  className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                                />
+                              </td>
+                              <td className="border border-gray-300 px-2 py-1">
+                                <input
+                                  value={row.main}
+                                  onChange={(event) => handleSerialRowChange(index, "main", event.target.value)}
+                                  className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1"
+                                />
+                              </td>
+                              <td className="border border-gray-300 px-2 py-1 text-center">
+                                {filled ? "入力済み" : "未入力"}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSplitUnits}
+                      className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+                    >
+                      選択した台を分離する
+                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={handleSerialSave}
+                        className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+                      >
+                        番号保存
+                      </button>
+                      <button
+                        type="button"
+                        onClick={closeEditModal}
+                        className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+                      >
+                        閉じる
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

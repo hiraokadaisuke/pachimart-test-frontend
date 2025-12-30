@@ -11,6 +11,8 @@ import {
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
 import { hasSerialInput, saveSerialOrder } from "@/lib/serialInputStorage";
+import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
+import type { PurchaseInvoice } from "@/types/purchaseInvoices";
 
 export default function PurchaseInvoiceCreatePage() {
   const router = useRouter();
@@ -18,9 +20,16 @@ export default function PurchaseInvoiceCreatePage() {
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<Record<string, boolean>>({});
   const [completed, setCompleted] = useState<Record<string, boolean>>({});
+  const [inventoryInvoiceMap, setInventoryInvoiceMap] = useState<Map<string, PurchaseInvoice>>(new Map());
 
   useEffect(() => {
     setInventories(loadInventoryRecords());
+    const invoices = loadPurchaseInvoices();
+    const map = new Map<string, PurchaseInvoice>();
+    invoices.forEach((invoice) => {
+      invoice.inventoryIds.forEach((id) => map.set(id, invoice));
+    });
+    setInventoryInvoiceMap(map);
   }, []);
 
   const unassigned = useMemo(
@@ -41,11 +50,34 @@ export default function PurchaseInvoiceCreatePage() {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
+  const handleSelectWithGuard = (record: InventoryRecord) => {
+    const linkedInvoice = inventoryInvoiceMap.get(record.id);
+    if (record.purchaseInvoiceId || linkedInvoice) {
+      const invoice = linkedInvoice;
+      if (invoice) {
+        const shouldOpen = window.confirm("既に作成済みの伝票があります。開きますか？");
+        if (shouldOpen) {
+          const url = `/inventory/purchase-invoice/${invoice.invoiceType}/${invoice.invoiceId}`;
+          window.open(url, "_blank", "noopener,noreferrer");
+        }
+      } else {
+        alert("既に作成済みの伝票があります。");
+      }
+      return;
+    }
+    toggleSelect(record.id);
+  };
+
   const selectedIds = useMemo(() => Object.entries(selected).filter(([, v]) => v).map(([id]) => id), [selected]);
 
   const handleCreateDraft = (type: "vendor" | "hall") => {
     if (selectedIds.length === 0) {
       alert("伝票対象の在庫を選択してください");
+      return;
+    }
+    const blocked = selectedIds.filter((id) => inventoryInvoiceMap.has(id));
+    if (blocked.length > 0) {
+      alert("作成済みの在庫が含まれているため、新規作成を中止しました。");
       return;
     }
     const draftId = `${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -139,7 +171,7 @@ export default function PurchaseInvoiceCreatePage() {
                     <input
                       type="checkbox"
                       checked={selected[item.id] ?? false}
-                      onChange={() => toggleSelect(item.id)}
+                      onChange={() => handleSelectWithGuard(item)}
                       className="h-4 w-4 rounded-none border-gray-300 text-slate-600 focus:ring-slate-600"
                     />
                   </td>

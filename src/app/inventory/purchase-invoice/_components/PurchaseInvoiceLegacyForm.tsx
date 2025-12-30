@@ -9,7 +9,8 @@ import {
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
 import { addPurchaseInvoice, generateInvoiceId } from "@/lib/demo-data/purchaseInvoices";
-import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/types/purchaseInvoices";
+import ExtraCostEditor from "@/components/invoices/ExtraCostEditor";
+import type { AdditionalCostItem, PurchaseInvoice, PurchaseInvoiceItem } from "@/types/purchaseInvoices";
 
 const toDateInputValue = (date: Date) => date.toISOString().slice(0, 10);
 
@@ -53,6 +54,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const [applicationDate, setApplicationDate] = useState("");
   const [applicationFlag, setApplicationFlag] = useState("-");
   const [transportInsurance, setTransportInsurance] = useState(0);
+  const [extraCosts, setExtraCosts] = useState<AdditionalCostItem[]>([]);
 
   useEffect(() => {
     const defaults = inventories.map<BaseRow>((item) => ({
@@ -82,6 +84,10 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const totalAmount = useMemo(
     () => rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0),
     [rows],
+  );
+  const extraCostTotal = useMemo(
+    () => extraCosts.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+    [extraCosts],
   );
 
   const handleChange = (index: number, key: keyof BaseRow, value: string) => {
@@ -144,7 +150,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       staff,
       inventoryIds: inventories.map((item) => item.id),
       items,
-      totalAmount,
+      totalAmount: totalAmount + taxAmount + transportInsurance + extraCostTotal,
+      extraCosts,
       formInput: {
         paymentDate,
         warehousingDate,
@@ -152,6 +159,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
         applicationFlag,
         applicationDate,
         issuedDate,
+        shippingInsurance: String(transportInsurance),
       },
       displayTitle: rows[0]?.machineName || "購入伝票",
     };
@@ -166,6 +174,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const headerTitle = type === "vendor" ? "購入伝票登録（業者）" : "購入伝票登録（ホール）";
   const totalLabel = totalAmount.toLocaleString("ja-JP");
   const taxAmount = Math.floor(totalAmount * 0.1);
+  const grandTotal = totalAmount + taxAmount + transportInsurance + extraCostTotal;
   const supplierName = inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? "";
 
   if (type === "hall") {
@@ -399,7 +408,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                 </table>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_300px]">
+              <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_340px]">
                 <div className="border border-black bg-white">
                   <div className="border-b border-black bg-cyan-50 px-3 py-2 text-sm font-bold">
                     備考（入庫検品依頼書に表示されます）
@@ -410,36 +419,47 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                     className="h-40 w-full border-none bg-amber-100 p-3 text-[13px] leading-tight focus:outline-none"
                   />
                 </div>
-                <div className="border border-black bg-white">
-                  <table className="w-full text-[12px]" style={{ borderCollapse: "collapse" }}>
-                    <tbody>
-                      <tr>
-                        <th className="w-32 border border-black bg-cyan-50 px-2 py-2 text-left">小計</th>
-                        <td className="border border-black px-2 py-2 text-right">¥{totalLabel}</td>
-                      </tr>
-                      <tr>
-                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">消費税（10%）</th>
-                        <td className="border border-black px-2 py-2 text-right">¥{taxAmount.toLocaleString("ja-JP")}</td>
-                      </tr>
-                      <tr>
-                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送保険（税込）</th>
-                        <td className="border border-black px-2 py-2 text-right">
-                          <input
-                            type="number"
-                            value={transportInsurance}
-                            onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
-                            className={`${yellowInput} w-full rounded-none text-right`}
-                          />
-                        </td>
-                      </tr>
-                      <tr>
-                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">合計金額</th>
-                        <td className="border border-black px-2 py-2 text-right text-base font-bold">
-                          ¥{(totalAmount + taxAmount + transportInsurance).toLocaleString("ja-JP")}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
+                <div className="space-y-2">
+                  <ExtraCostEditor
+                    value={extraCosts}
+                    onChange={setExtraCosts}
+                    note="※税込保険料は下段の専用欄で入力してください。"
+                  />
+                  <div className="border border-black bg-white">
+                    <table className="w-full text-[12px]" style={{ borderCollapse: "collapse" }}>
+                      <tbody>
+                        <tr>
+                          <th className="w-32 border border-black bg-cyan-50 px-2 py-2 text-left">小計</th>
+                          <td className="border border-black px-2 py-2 text-right">¥{totalLabel}</td>
+                        </tr>
+                        <tr>
+                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">消費税（10%）</th>
+                          <td className="border border-black px-2 py-2 text-right">¥{taxAmount.toLocaleString("ja-JP")}</td>
+                        </tr>
+                        <tr>
+                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">別費用合計</th>
+                          <td className="border border-black px-2 py-2 text-right">¥{extraCostTotal.toLocaleString("ja-JP")}</td>
+                        </tr>
+                        <tr>
+                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送保険（税込）</th>
+                          <td className="border border-black px-2 py-2 text-right">
+                            <input
+                              type="number"
+                              value={transportInsurance}
+                              onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
+                              className={`${yellowInput} w-full rounded-none text-right`}
+                            />
+                          </td>
+                        </tr>
+                        <tr>
+                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">合計金額</th>
+                          <td className="border border-black px-2 py-2 text-right text-base font-bold">
+                            ¥{grandTotal.toLocaleString("ja-JP")}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
@@ -812,12 +832,28 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               </div>
             </div>
 
-            <div className="w-full md:w-80">
+            <div className="w-full md:w-96 space-y-3">
+              <ExtraCostEditor
+                value={extraCosts}
+                onChange={setExtraCosts}
+                note="※税込保険料は下段の専用欄で入力してください。"
+              />
               <div className="border-2 border-black bg-cyan-50 p-3 text-center text-sm font-semibold leading-6">
                 <div>小計　¥{totalLabel}</div>
                 <div>消費税（10%）　¥{taxAmount.toLocaleString("ja-JP")}</div>
-                <div>運送保険（税込）　¥0</div>
-                <div className="border-t border-black pt-2 text-base font-bold">合計金額　¥{(totalAmount + taxAmount).toLocaleString("ja-JP")}</div>
+                <div>別費用合計　¥{extraCostTotal.toLocaleString("ja-JP")}</div>
+                <div className="flex items-center justify-between border border-black bg-white px-2 py-1 text-[12px]">
+                  <span>運送保険（税込）</span>
+                  <input
+                    type="number"
+                    value={transportInsurance}
+                    onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
+                    className={`${yellowInput} w-28 rounded-none text-right`}
+                  />
+                </div>
+                <div className="border-t border-black pt-2 text-base font-bold">
+                  合計金額　¥{grandTotal.toLocaleString("ja-JP")}
+                </div>
                 <div className="mt-3 flex items-center justify-between border border-black bg-white px-2 py-1 text-[12px]">
                   <span>支払日</span>
                   <input
