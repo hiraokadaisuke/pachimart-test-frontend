@@ -9,7 +9,9 @@ export type ManualNaviItem = {
   id: string;
   gameType: "pachinko" | "slot";
   bodyType: "本体" | "枠のみ" | "セルのみ";
+  makerId?: string | null;
   maker: string;
+  modelId?: string | null;
   modelName: string;
   frameColor?: string | null;
   quantity: number;
@@ -26,6 +28,7 @@ export type TradeConditions = {
   shippingFee: number;
   handlingFee: number;
   taxRate: number;
+  makerId?: string | null;
   removalDate?: string | null;
   machineShipmentDate?: string | null;
   machineShipmentType?: string | null;
@@ -39,6 +42,7 @@ export type TradeConditions = {
   terms?: string | null;
   memo?: string | null;
   handler?: string | null;
+  machineModelId?: string | null;
   productName?: string | null;
   makerName?: string | null;
   location?: string | null;
