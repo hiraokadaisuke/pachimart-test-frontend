@@ -548,13 +548,14 @@ export function buildItemsFromDraft(draft: NaviDraft): StatementItem[] {
   const manualItems = draft.items ?? [];
 
   const pushManualItem = (item: ManualNaviItem, index: number) => {
+    const unitPrice = item.unitPrice ?? draft.conditions.unitPrice ?? 0;
     items.push({
       lineId: item.id ?? `${draft.id}-item-${index}`,
       maker: item.maker,
       itemName: item.modelName,
       category: item.bodyType,
       qty: item.quantity,
-      unitPrice: item.unitPrice,
+      unitPrice,
       isTaxable: true,
       note: item.note ?? undefined,
     });

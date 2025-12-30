@@ -13,8 +13,8 @@ export type ManualNaviItem = {
   modelName: string;
   frameColor?: string | null;
   quantity: number;
-  unitPrice: number;
-  receiveMethod: "発送" | "引取" | "その他";
+  unitPrice?: number | null;
+  receiveMethod?: "発送" | "引取" | "その他";
   removalDate?: string | null;
   removalCompleted?: boolean;
   note?: string | null;
