@@ -7,6 +7,8 @@ import {
   loadInventoryRecords,
   resetInventoryRecords,
   saveDraft,
+  saveInventoryRecords,
+  generateInventoryId,
   updateInventoryRecord,
   updateInventoryStatuses,
   updateInventoryStatus,
@@ -21,7 +23,9 @@ import {
   saveSerialInput,
   type SerialInputPayload,
 } from "@/lib/serialInputStorage";
-import SerialInputPanel from "@/app/inventory/purchase-invoice/_components/SerialInputPanel";
+import SerialInputPanel, {
+  type SerialSplitPayload,
+} from "@/app/inventory/purchase-invoice/_components/SerialInputPanel";
 import type { InventoryStatusOption } from "@/types/purchaseInvoices";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
 
@@ -400,6 +404,7 @@ export default function InventoryPage() {
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
   const [editRecord, setEditRecord] = useState<InventoryRecord | null>(null);
   const [activeTab, setActiveTab] = useState<"edit" | "serial">("edit");
+  const [serialRefreshToken, setSerialRefreshToken] = useState(0);
   const [existingInvoicePrompt, setExistingInvoicePrompt] = useState<{
     invoiceId: string;
     invoiceType: PurchaseInvoice["invoiceType"];
@@ -901,6 +906,70 @@ export default function InventoryPage() {
   const handleSerialRegister = (payload: SerialInputPayload) => {
     saveSerialInput(payload);
     clearSerialDraft(payload.inventoryId);
+  };
+
+  const handleSerialSplit = (payload: SerialSplitPayload) => {
+    if (!editRecord) return null;
+    const currentRecords = loadInventoryRecords();
+    const target = currentRecords.find((record) => record.id === payload.inventoryId);
+    if (!target) return null;
+    const baseQuantity = Number(target.quantity ?? payload.units ?? 1);
+    const splitCount = payload.selectedIndexes.length;
+    if (baseQuantity < 2) {
+      alert("仕入数が1台のため分離できません。");
+      return null;
+    }
+    if (splitCount === 0) {
+      alert("分離する台を選択してください。");
+      return null;
+    }
+    if (splitCount >= baseQuantity) {
+      alert("分離後の仕入数が0になります。分離台数を調整してください。");
+      return null;
+    }
+
+    const selectedSet = new Set(payload.selectedIndexes);
+    const remainingRows = payload.rows.filter((_, index) => !selectedSet.has(index));
+    const movedRows = payload.rows.filter((_, index) => selectedSet.has(index));
+    const nextRows = remainingRows.map((row, index) => ({ ...row, p: index + 1 }));
+    const newRows = movedRows.map((row, index) => ({ ...row, p: index + 1 }));
+    const now = new Date().toISOString();
+    const newInventoryId = generateInventoryId();
+    const updatedRecords = currentRecords.map((record) =>
+      record.id === payload.inventoryId ? { ...record, quantity: baseQuantity - splitCount } : record,
+    );
+    const newInventory: InventoryRecord = {
+      ...target,
+      id: newInventoryId,
+      createdAt: now,
+      quantity: splitCount,
+    };
+    const nextRecords = [...updatedRecords, newInventory];
+    saveInventoryRecords(nextRecords);
+    setRecords(nextRecords);
+    const latest = nextRecords.find((record) => record.id === payload.inventoryId) ?? editRecord;
+    setEditRecord(latest);
+    setBulkEditForms((prev) => ({
+      ...prev,
+      [latest.id]: buildEditForm(latest),
+    }));
+
+    saveSerialInput({
+      inventoryId: payload.inventoryId,
+      units: nextRows.length,
+      rows: nextRows,
+      updatedAt: now,
+    });
+    saveSerialInput({
+      inventoryId: newInventoryId,
+      units: newRows.length,
+      rows: newRows,
+      updatedAt: now,
+    });
+    clearSerialDraft(payload.inventoryId);
+    clearSerialDraft(newInventoryId);
+    setSerialRefreshToken((prev) => prev + 1);
+    return newInventoryId;
   };
 
   const handleSerialUnitsChange = (nextUnits: number) => {
@@ -1778,6 +1847,9 @@ export default function InventoryPage() {
                   onPrev={handleSerialPrev}
                   onNext={handleSerialNext}
                   onUnitsChange={handleSerialUnitsChange}
+                  onSplit={handleSerialSplit}
+                  enableSplit
+                  refreshToken={serialRefreshToken}
                   onBack={closeEditModal}
                 />
               )}
