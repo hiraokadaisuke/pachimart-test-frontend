@@ -303,49 +303,6 @@ function StandardNaviRequestEditor({
   }, [currentUser.id, listingId]);
 
   useEffect(() => {
-    if (!pickListingId || !draft) return;
-
-    let isActive = true;
-    setIsLoadingListing(true);
-
-    fetchWithDevHeader(buildApiUrl(`/api/listings/${pickListingId}`), {}, currentUser.id)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((data: Listing | null) => {
-        if (!isActive || !data) return;
-
-        const nextForm: ManualItemFormState = {
-          gameType: data.type === "SLOT" ? "slot" : "pachinko",
-          bodyType:
-            data.kind === "枠のみ" || data.kind === "セルのみ"
-              ? (data.kind as ManualItemFormState["bodyType"])
-              : "本体",
-          maker: data.maker ?? "",
-          modelName: data.machineName ?? "",
-          frameColor: manualItemForm.frameColor,
-          quantity: data.quantity ?? emptyManualItemForm.quantity,
-        };
-
-        setLinkedListing(data);
-        setManualItemForm(nextForm);
-        persistManualItem(nextForm);
-        setEditedConditions((prev) => ({ ...prev, quantity: nextForm.quantity }));
-
-        const nextParams = new URLSearchParams(safeSearchParams.toString());
-        nextParams.delete("pickListingId");
-        router.replace(nextParams.size ? `/navi?${nextParams.toString()}` : "/navi", { scroll: false });
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (!isActive) return;
-        setIsLoadingListing(false);
-      });
-
-    return () => {
-      isActive = false;
-    };
-  }, [currentUser.id, draft, manualItemForm.frameColor, persistManualItem, pickListingId, router, safeSearchParams]);
-
-  useEffect(() => {
     if (!transactionId || draft) return;
     if (listingId && isLoadingListing) return;
 
@@ -678,6 +635,49 @@ function StandardNaviRequestEditor({
     setEditedConditions((prev) => ({ ...prev, quantity: nextForm.quantity }));
     setValidationErrors((prev) => ({ ...prev, items: undefined, quantity: undefined, unitPrice: undefined }));
   }, [persistDraft]);
+
+  useEffect(() => {
+    if (!pickListingId || !draft) return;
+
+    let isActive = true;
+    setIsLoadingListing(true);
+
+    fetchWithDevHeader(buildApiUrl(`/api/listings/${pickListingId}`), {}, currentUser.id)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: Listing | null) => {
+        if (!isActive || !data) return;
+
+        const nextForm: ManualItemFormState = {
+          gameType: data.type === "SLOT" ? "slot" : "pachinko",
+          bodyType:
+            data.kind === "枠のみ" || data.kind === "セルのみ"
+              ? (data.kind as ManualItemFormState["bodyType"])
+              : "本体",
+          maker: data.maker ?? "",
+          modelName: data.machineName ?? "",
+          frameColor: manualItemForm.frameColor,
+          quantity: data.quantity ?? emptyManualItemForm.quantity,
+        };
+
+        setLinkedListing(data);
+        setManualItemForm(nextForm);
+        persistManualItem(nextForm);
+        setEditedConditions((prev) => ({ ...prev, quantity: nextForm.quantity }));
+
+        const nextParams = new URLSearchParams(safeSearchParams.toString());
+        nextParams.delete("pickListingId");
+        router.replace(nextParams.size ? `/navi?${nextParams.toString()}` : "/navi", { scroll: false });
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!isActive) return;
+        setIsLoadingListing(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [currentUser.id, draft, manualItemForm.frameColor, persistManualItem, pickListingId, router, safeSearchParams]);
 
   useEffect(() => {
     if (!draft) return;
