@@ -903,6 +903,18 @@ export default function InventoryPage() {
     clearSerialDraft(payload.inventoryId);
   };
 
+  const handleSerialUnitsChange = (nextUnits: number) => {
+    if (!editRecord) return;
+    const updated = updateInventoryRecord(editRecord.id, { quantity: nextUnits });
+    setRecords(updated);
+    const latest = updated.find((record) => record.id === editRecord.id) ?? editRecord;
+    setEditRecord(latest);
+    setBulkEditForms((prev) => ({
+      ...prev,
+      [latest.id]: buildEditForm(latest),
+    }));
+  };
+
   const handleSerialPrev = (payload: SerialInputPayload) => {
     saveSerialDraft(payload);
     handleSerialNavigate(-1);
@@ -1703,7 +1715,7 @@ export default function InventoryPage() {
 
       {editRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-6xl border-2 border-gray-300 bg-white">
+          <div className="w-full max-w-[95vw] border-2 border-gray-300 bg-white">
             <div className="flex items-center justify-between bg-slate-700 px-4 py-3 text-sm font-semibold text-white">
               <div className="flex items-center gap-2">
                 <span>在庫編集 / 番号登録</span>
@@ -1765,6 +1777,7 @@ export default function InventoryPage() {
                   onRegister={handleSerialRegister}
                   onPrev={handleSerialPrev}
                   onNext={handleSerialNext}
+                  onUnitsChange={handleSerialUnitsChange}
                   onBack={closeEditModal}
                 />
               )}

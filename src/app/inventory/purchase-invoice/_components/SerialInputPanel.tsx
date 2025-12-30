@@ -38,6 +38,7 @@ type SerialInputPanelProps = {
   onPrev?: (payload: SerialInputPayload) => void;
   onNext?: (payload: SerialInputPayload) => void;
   onBack?: () => void;
+  onUnitsChange?: (nextUnits: number) => void;
 };
 
 export default function SerialInputPanel({
@@ -46,6 +47,7 @@ export default function SerialInputPanel({
   onPrev,
   onNext,
   onBack,
+  onUnitsChange,
 }: SerialInputPanelProps) {
   const [inventory, setInventory] = useState<InventoryRecord | null>(null);
   const [units, setUnits] = useState<number>(1);
@@ -115,6 +117,26 @@ export default function SerialInputPanel({
 
   const updateRowValue = (index: number, key: ColumnKey, value: string) => {
     setRows((prev) => prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: value } : row)));
+  };
+
+  const handleUnitsChange = (nextUnits: number) => {
+    setUnits(nextUnits);
+    onUnitsChange?.(nextUnits);
+  };
+
+  const hasRowInput = (row: SerialInputRow) =>
+    [row.board, row.frame, row.main, row.removalDate].some((value) => value.trim() !== "");
+
+  const handleUnitsInputChange = (value: string) => {
+    const nextUnits = Math.max(1, Number(value) || 1);
+    if (nextUnits < units) {
+      const removedRows = rows.slice(nextUnits);
+      if (removedRows.some(hasRowInput)) {
+        const confirmed = window.confirm("台数を減らすと末尾の番号データが削除されます。よろしいですか？");
+        if (!confirmed) return;
+      }
+    }
+    handleUnitsChange(nextUnits);
   };
 
   const buildPayload = (): SerialInputPayload => ({
@@ -278,7 +300,7 @@ export default function SerialInputPanel({
                 type="number"
                 min={1}
                 value={units}
-                onChange={(event) => setUnits(Math.max(1, Number(event.target.value) || 1))}
+                onChange={(event) => handleUnitsInputChange(event.target.value)}
                 className="w-16 border border-black px-2 py-1 text-right text-[12px] focus:border-emerald-600 focus:outline-none"
               />
             </label>
