@@ -32,6 +32,7 @@ export interface TransactionConditions {
   price: number;
   quantity: number;
   removalDate: string;
+  makerId?: string | null;
   machineShipmentDate: string;
   machineShipmentType: ShippingType;
   documentShipmentDate: string;
@@ -47,6 +48,7 @@ export interface TransactionConditions {
   terms: string;
   memo: string;
   handler: string;
+  machineModelId?: string | null;
 }
 
 const breadcrumbBase = ["ホーム", "マイページ", "取引Navi"];

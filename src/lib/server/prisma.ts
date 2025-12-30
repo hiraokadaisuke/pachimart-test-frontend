@@ -285,6 +285,10 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
     { id: "maker_heiwa", name: "平和" },
     { id: "maker_sankyo", name: "三共" },
     { id: "maker_sammy", name: "サミー" },
+    { id: "maker_olympia", name: "オリンピア" },
+    { id: "maker_kyoraku", name: "京楽" },
+    { id: "maker_kitadenshi", name: "北電子" },
+    { id: "maker_universal", name: "ユニバーサル" },
   ];
   const machineModels: InMemoryMachineModel[] = [
     { id: "model_sanyo_p_1", makerId: "maker_sanyo", type: ListingType.PACHINKO, name: "P海物語5" },
@@ -295,6 +299,23 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
     { id: "model_sankyo_s_1", makerId: "maker_sankyo", type: ListingType.SLOT, name: "Sからくりサーカス" },
     { id: "model_sammy_p_1", makerId: "maker_sammy", type: ListingType.PACHINKO, name: "P北斗の拳9" },
     { id: "model_sammy_s_1", makerId: "maker_sammy", type: ListingType.SLOT, name: "S北斗の拳" },
+    {
+      id: "model_olympia_p_premium",
+      makerId: "maker_olympia",
+      type: ListingType.PACHINKO,
+      name: "Pプレミアムうまい棒",
+    },
+    {
+      id: "model_olympia_s_lupin",
+      makerId: "maker_olympia",
+      type: ListingType.SLOT,
+      name: "Sルパン三世ルパン The First",
+    },
+    { id: "model_kyoraku_p_nogizaka", makerId: "maker_kyoraku", type: ListingType.PACHINKO, name: "P乃木坂46" },
+    { id: "model_kyoraku_s_nogizaka", makerId: "maker_kyoraku", type: ListingType.SLOT, name: "S乃木坂46" },
+    { id: "model_kitadenshi_s_aim", makerId: "maker_kitadenshi", type: ListingType.SLOT, name: "SアイムジャグラーEX" },
+    { id: "model_universal_s_basilisk", makerId: "maker_universal", type: ListingType.SLOT, name: "Sバジリスク絆2" },
+    { id: "model_universal_p_madomagi", makerId: "maker_universal", type: ListingType.PACHINKO, name: "P魔法少女まどか☆マギカ" },
   ];
   let naviSeq = 1;
   let tradeSeq = 1;

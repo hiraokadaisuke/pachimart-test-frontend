@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { ListingType } from "@prisma/client";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
 import { deleteNaviDraft, createEmptyNaviDraft, loadNaviDraft } from "@/lib/navi/storage";
 import { type TradeConditions, type NaviDraft, type ManualNaviItem } from "@/lib/navi/types";
@@ -23,6 +24,7 @@ const mapDraftConditions = (
   conditions: TradeConditions,
   fallback: TransactionConditions
 ): TransactionConditions => ({
+  makerId: conditions.makerId ?? fallback.makerId,
   price: conditions.unitPrice === null ? 0 : conditions.unitPrice ?? fallback.price,
   quantity: conditions.quantity ?? fallback.quantity,
   removalDate: conditions.removalDate ?? fallback.removalDate,
@@ -42,6 +44,7 @@ const mapDraftConditions = (
   terms: conditions.terms ?? fallback.terms,
   memo: conditions.memo ?? fallback.memo,
   handler: conditions.handler ?? fallback.handler,
+  machineModelId: conditions.machineModelId ?? fallback.machineModelId,
 });
 
 const mapTransactionToTradeConditions = (
@@ -49,6 +52,7 @@ const mapTransactionToTradeConditions = (
   prev: TradeConditions
 ): TradeConditions => ({
   ...prev,
+  makerId: conditions.makerId,
   unitPrice: conditions.price,
   quantity: conditions.quantity,
   shippingFee: conditions.freightCost,
@@ -67,6 +71,7 @@ const mapTransactionToTradeConditions = (
   terms: conditions.terms,
   memo: conditions.memo,
   handler: conditions.handler,
+  machineModelId: conditions.machineModelId,
 });
 
 const presetTerms = [
@@ -102,6 +107,7 @@ const emptyTransactionConditions: TransactionConditions = {
   freightCost: 0,
   handlingFee: 0,
   taxRate: 0.1,
+  makerId: null,
   cardboardFee: { label: "段ボール", amount: 0 },
   nailSheetFee: { label: "釘シート", amount: 0 },
   insuranceFee: { label: "保険", amount: 0 },
@@ -109,12 +115,15 @@ const emptyTransactionConditions: TransactionConditions = {
   terms: "",
   memo: "",
   handler: "",
+  machineModelId: null,
 };
 
 type ManualItemFormState = {
   gameType: "pachinko" | "slot";
   bodyType: "本体" | "枠のみ" | "セルのみ";
-  maker: string;
+  makerId: string;
+  makerName: string;
+  modelId: string;
   modelName: string;
   frameColor: string;
 };
@@ -122,10 +131,15 @@ type ManualItemFormState = {
 const emptyManualItemForm: ManualItemFormState = {
   gameType: "pachinko",
   bodyType: "本体",
-  maker: "",
+  makerId: "",
+  makerName: "",
+  modelId: "",
   modelName: "",
   frameColor: "",
 };
+
+const mapGameTypeToListingType = (gameType: ManualItemFormState["gameType"]): ListingType =>
+  gameType === "slot" ? ListingType.SLOT : ListingType.PACHINKO;
 
 const mapListingTypeToGameType = (
   type?: string | null
@@ -148,6 +162,18 @@ const additionalFeeLabels = {
   nailSheetFee: "釘シート",
   insuranceFee: "保険",
 } as const;
+
+type MakerOption = {
+  id: string;
+  name: string;
+};
+
+type MachineModelOption = {
+  id: string;
+  makerId: string;
+  type: ListingType;
+  name: string;
+};
 
 type ValidationErrors = {
   buyer?: string;
@@ -251,6 +277,10 @@ function StandardNaviRequestEditor({
   const [draft, setDraft] = useState<NaviDraft | null>(null);
   const [manualItemForm, setManualItemForm] = useState<ManualItemFormState>(emptyManualItemForm);
   const naviTargetId = draft?.productId ?? transactionId;
+  const [makers, setMakers] = useState<MakerOption[]>([]);
+  const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
+  const [isLoadingMasters, setIsLoadingMasters] = useState(false);
+  const [masterError, setMasterError] = useState<string | null>(null);
   const {
     propertyInfo: defaultPropertyInfo,
     currentConditions: defaultCurrentConditions,
@@ -323,6 +353,40 @@ function StandardNaviRequestEditor({
       setAppliedPickListingId(null);
     }
   }, [pickListingId]);
+
+  useEffect(() => {
+    let isActive = true;
+    const listingType = mapGameTypeToListingType(manualItemForm.gameType);
+
+    const fetchMasters = async () => {
+      setIsLoadingMasters(true);
+      try {
+        const response = await fetch(`/api/machine-masters?type=${listingType}`, { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch master data: ${response.status}`);
+        }
+        const data = (await response.json()) as { makers: MakerOption[]; machineModels: MachineModelOption[] };
+        if (!isActive) return;
+        setMakers(data.makers);
+        setMachineModels(data.machineModels);
+        setMasterError(null);
+      } catch (error) {
+        console.error("Failed to fetch machine masters", error);
+        if (!isActive) return;
+        setMasterError("メーカー・機種マスタの取得に失敗しました。");
+      } finally {
+        if (isActive) {
+          setIsLoadingMasters(false);
+        }
+      }
+    };
+
+    fetchMasters();
+
+    return () => {
+      isActive = false;
+    };
+  }, [manualItemForm.gameType]);
 
   useEffect(() => {
     if (!transactionId || draft) return;
@@ -627,6 +691,11 @@ function StandardNaviRequestEditor({
     };
   }, [linkedListing, propertyInfo]);
 
+  const filteredModels = useMemo(
+    () => machineModels.filter((model) => model.makerId === manualItemForm.makerId),
+    [machineModels, manualItemForm.makerId]
+  );
+
   const generateManualItemId = () =>
     typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `manual-${Date.now()}`;
 
@@ -639,7 +708,9 @@ function StandardNaviRequestEditor({
           id: prev.items?.[0]?.id ?? generateManualItemId(),
           gameType: nextForm.gameType,
           bodyType: nextForm.bodyType,
-          maker: nextForm.maker,
+          makerId: nextForm.makerId || null,
+          maker: nextForm.makerName,
+          modelId: nextForm.modelId || null,
           modelName: nextForm.modelName,
           frameColor: nextForm.frameColor?.trim() ? nextForm.frameColor : null,
           quantity: resolvedQuantity,
@@ -652,6 +723,8 @@ function StandardNaviRequestEditor({
             ...prev.conditions,
             productName: nextItem.modelName,
             makerName: nextItem.maker,
+            makerId: nextItem.makerId ?? null,
+            machineModelId: nextItem.modelId ?? null,
             quantity: resolvedQuantity,
           },
         };
@@ -660,6 +733,41 @@ function StandardNaviRequestEditor({
     },
     [editedConditions.quantity, persistDraft]
   );
+
+  useEffect(() => {
+    if (makers.length === 0) return;
+
+    setManualItemForm((prev) => {
+      const resolvedMaker =
+        (prev.makerId && makers.find((maker) => maker.id === prev.makerId)) ||
+        (prev.makerName && makers.find((maker) => maker.name === prev.makerName)) ||
+        makers[0];
+      const makerId = resolvedMaker?.id ?? "";
+      const makerName = resolvedMaker?.name ?? prev.makerName ?? "";
+
+      const availableModels = machineModels.filter((model) => model.makerId === makerId);
+      const resolvedModel =
+        (prev.modelId && availableModels.find((model) => model.id === prev.modelId)) ||
+        (prev.modelName && availableModels.find((model) => model.name === prev.modelName)) ||
+        availableModels[0];
+
+      const modelId = resolvedModel?.id ?? (makerId ? "" : prev.modelId);
+      const modelName = resolvedModel?.name ?? (makerId ? prev.modelName : "");
+
+      if (
+        makerId === prev.makerId &&
+        makerName === prev.makerName &&
+        modelId === prev.modelId &&
+        modelName === prev.modelName
+      ) {
+        return prev;
+      }
+
+      const nextForm = { ...prev, makerId, makerName, modelId, modelName };
+      persistManualItem(nextForm);
+      return nextForm;
+    });
+  }, [machineModels, makers, persistManualItem]);
 
   useEffect(() => {
     if (!draft?.items?.[0]) return;
@@ -691,7 +799,9 @@ function StandardNaviRequestEditor({
       setManualItemForm({
         gameType: draftItem.gameType ?? emptyManualItemForm.gameType,
         bodyType: draftItem.bodyType ?? emptyManualItemForm.bodyType,
-        maker: draftItem.maker ?? "",
+        makerId: draftItem.makerId ?? "",
+        makerName: draftItem.maker ?? "",
+        modelId: draftItem.modelId ?? "",
         modelName: draftItem.modelName ?? "",
         frameColor: draftItem.frameColor ?? "",
       });
@@ -701,7 +811,9 @@ function StandardNaviRequestEditor({
     const initialForm: ManualItemFormState = {
       gameType: emptyManualItemForm.gameType,
       bodyType: emptyManualItemForm.bodyType,
-      maker: draft.conditions.makerName ?? displayPropertyInfo.maker ?? "",
+      makerId: draft.conditions.makerId ?? "",
+      makerName: draft.conditions.makerName ?? displayPropertyInfo.maker ?? "",
+      modelId: draft.conditions.machineModelId ?? "",
       modelName: draft.conditions.productName ?? displayPropertyInfo.modelName ?? "",
       frameColor: "",
     };
@@ -723,11 +835,23 @@ function StandardNaviRequestEditor({
         : linkedListing.unitPriceExclTax;
     const nextRemovalDate = linkedListing.removalDate ? linkedListing.removalDate.slice(0, 10) : editedConditions.removalDate;
 
+    const matchedMaker = makers.find((maker) => maker.name === (linkedListing.maker ?? manualItemForm.makerName));
+    const makerId = matchedMaker?.id ?? manualItemForm.makerId;
+    const makerName = matchedMaker?.name ?? linkedListing.maker ?? manualItemForm.makerName;
+    const availableModels = machineModels.filter((model) => model.makerId === makerId);
+    const matchedModel = availableModels.find(
+      (model) => model.name === (linkedListing.machineName ?? manualItemForm.modelName)
+    );
+    const modelId = matchedModel?.id ?? availableModels[0]?.id ?? manualItemForm.modelId;
+    const modelName = matchedModel?.name ?? linkedListing.machineName ?? manualItemForm.modelName;
+
     const nextForm: ManualItemFormState = {
       gameType: nextGameType,
       bodyType: nextBodyType,
-      maker: linkedListing.maker ?? manualItemForm.maker,
-      modelName: linkedListing.machineName ?? manualItemForm.modelName,
+      makerId,
+      makerName,
+      modelId,
+      modelName,
       frameColor: manualItemForm.frameColor,
     };
 
@@ -746,8 +870,10 @@ function StandardNaviRequestEditor({
         id: prev.items?.[0]?.id ?? generateManualItemId(),
         gameType: nextForm.gameType,
         bodyType: nextForm.bodyType,
-        maker: nextForm.maker,
-        modelName: nextForm.modelName,
+        makerId: makerId || null,
+        maker: makerName,
+        modelId: modelId || null,
+        modelName: modelName,
         frameColor: prev.items?.[0]?.frameColor ?? null,
         quantity: nextQuantity,
       };
@@ -760,8 +886,10 @@ function StandardNaviRequestEditor({
         items: [updatedItem, ...remainingItems],
         conditions: {
           ...prev.conditions,
-          productName: linkedListing.machineName ?? prev.conditions.productName,
-          makerName: linkedListing.maker ?? prev.conditions.makerName,
+          productName: modelName ?? prev.conditions.productName,
+          makerName: makerName ?? prev.conditions.makerName,
+          makerId: makerId ?? prev.conditions.makerId,
+          machineModelId: modelId ?? prev.conditions.machineModelId,
           quantity: nextQuantity,
           unitPrice: typeof nextUnitPrice === "number" ? nextUnitPrice : prev.conditions.unitPrice,
           location: linkedListing.storageLocation ?? prev.conditions.location,
@@ -786,8 +914,12 @@ function StandardNaviRequestEditor({
     manualItemForm.bodyType,
     manualItemForm.frameColor,
     manualItemForm.gameType,
-    manualItemForm.maker,
+    manualItemForm.makerId,
+    manualItemForm.makerName,
+    manualItemForm.modelId,
     manualItemForm.modelName,
+    machineModels,
+    makers,
     pickListingId,
     persistDraft,
     router,
@@ -825,9 +957,43 @@ function StandardNaviRequestEditor({
     setShowHandlerPresets(false);
   };
 
+  const handleMakerSelect = (makerId: string) => {
+    const selectedMaker = makers.find((maker) => maker.id === makerId);
+    const availableModels = machineModels.filter((model) => model.makerId === makerId);
+    const defaultModel = availableModels[0];
+
+    setManualItemForm((prev) => {
+      const next = {
+        ...prev,
+        makerId,
+        makerName: selectedMaker?.name ?? "",
+        modelId: defaultModel?.id ?? "",
+        modelName: defaultModel?.name ?? "",
+      };
+      persistManualItem(next);
+      return next;
+    });
+  };
+
+  const handleModelSelect = (modelId: string) => {
+    const selectedModel = filteredModels.find((model) => model.id === modelId);
+    setManualItemForm((prev) => {
+      const next = {
+        ...prev,
+        modelId,
+        modelName: selectedModel?.name ?? prev.modelName,
+      };
+      persistManualItem(next);
+      return next;
+    });
+  };
+
   const handleManualItemChange = <K extends keyof ManualItemFormState>(key: K, value: ManualItemFormState[K]) => {
     setManualItemForm((prev) => {
-      const next = { ...prev, [key]: value };
+      const next =
+        key === "gameType"
+          ? { ...prev, [key]: value, makerId: "", makerName: "", modelId: "", modelName: "" }
+          : { ...prev, [key]: value };
       persistManualItem(next);
       return next;
     });
@@ -976,23 +1142,41 @@ function StandardNaviRequestEditor({
                 </EditRow>
 
                 <EditRow label="メーカー" required>
-                  <input
-                    type="text"
-                    className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm"
-                    value={manualItemForm.maker}
-                    onChange={(e) => handleManualItemChange("maker", e.target.value)}
-                    placeholder="メーカー名を入力"
-                  />
+                  <div className="flex flex-col gap-2">
+                    {masterError ? <p className="text-xs text-red-600">{masterError}</p> : null}
+                    <select
+                      className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm disabled:bg-slate-100"
+                      value={manualItemForm.makerId}
+                      onChange={(e) => handleMakerSelect(e.target.value)}
+                      disabled={isLoadingMasters || makers.length === 0}
+                    >
+                      <option value="">{isLoadingMasters ? "読み込み中…" : "メーカーを選択"}</option>
+                      {makers.map((maker) => (
+                        <option key={maker.id} value={maker.id}>
+                          {maker.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </EditRow>
 
                 <EditRow label="機種名" required>
-                  <input
-                    type="text"
-                    className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm"
-                    value={manualItemForm.modelName}
-                    onChange={(e) => handleManualItemChange("modelName", e.target.value)}
-                    placeholder="機種名を入力"
-                  />
+                  <select
+                    className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm disabled:bg-slate-100"
+                    value={manualItemForm.modelId}
+                    onChange={(e) => handleModelSelect(e.target.value)}
+                    disabled={!manualItemForm.makerId || filteredModels.length === 0}
+                  >
+                    {!manualItemForm.makerId && <option value="">メーカーを選択してください</option>}
+                    {manualItemForm.makerId && filteredModels.length === 0 && (
+                      <option value="">選択できる機種がありません</option>
+                    )}
+                    {filteredModels.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.name}
+                      </option>
+                    ))}
+                  </select>
                 </EditRow>
 
                 <EditRow label="枠色">
