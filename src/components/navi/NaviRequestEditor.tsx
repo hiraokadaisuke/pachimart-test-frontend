@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
 import { deleteNaviDraft, createEmptyNaviDraft, loadNaviDraft } from "@/lib/navi/storage";
@@ -157,25 +157,22 @@ const validateDraft = (draft: NaviDraft | null): ValidationErrors => {
 
   const { buyerPending, buyerCompanyName, buyerId, buyerTel, conditions } = draft;
 
-  const manualItems = draft.items ?? [];
+  const manualItem = draft.items?.[0];
 
   if (buyerPending || !buyerCompanyName || !buyerId || !buyerTel) {
     errors.buyer = buyerErrorMessage;
   }
 
   const validateItem = (item: ManualNaviItem) => {
-    if (!item.modelName || !item.maker || !item.bodyType || !item.gameType) {
+    if (!item.modelName?.trim() || !item.maker?.trim() || !item.bodyType || !item.gameType) {
       return false;
     }
     if (!item.quantity || item.quantity <= 0) return false;
     return true;
   };
 
-  if (manualItems.length > 0) {
-    const invalidItem = manualItems.find((item) => !validateItem(item));
-    if (invalidItem) {
-      errors.items = "手入力した物件に未入力または不正な項目があります。";
-    }
+  if (!manualItem || !validateItem(manualItem)) {
+    errors.items = "物件情報に未入力または不正な項目があります。";
   }
 
   const quantity = conditions.quantity ?? 0;
@@ -237,7 +234,6 @@ function StandardNaviRequestEditor({
 
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<NaviDraft | null>(null);
-  const [showManualPropertyForm, setShowManualPropertyForm] = useState(false);
   const [manualItemForm, setManualItemForm] = useState<ManualItemFormState>(emptyManualItemForm);
   const naviTargetId = draft?.productId ?? transactionId;
   const {
@@ -274,7 +270,7 @@ function StandardNaviRequestEditor({
   const [isSending, setIsSending] = useState(false);
   const formattedNumber = formatCurrency;
   const isProductLinked = Boolean(draft?.productId);
-  const manualItems = draft?.items ?? [];
+  const manualItem = draft?.items?.[0];
 
   useEffect(() => {
     if (!listingId) {
@@ -408,36 +404,13 @@ function StandardNaviRequestEditor({
     }
   }, [buyerCandidates, draft?.buyerId]);
 
-  useEffect(() => {
-    if (isProductLinked) {
-      setShowManualPropertyForm(false);
-      return;
-    }
-
-    if (manualItems.length > 0) {
-      setShowManualPropertyForm(false);
-      return;
-    }
-
-    const hasManualInputs = Boolean(
-      draft?.conditions.productName || draft?.conditions.makerName || draft?.conditions.location
-    );
-    setShowManualPropertyForm(hasManualInputs);
-  }, [
-    draft?.conditions.location,
-    draft?.conditions.makerName,
-    draft?.conditions.productName,
-    isProductLinked,
-    manualItems.length,
-  ]);
-
-  const persistDraft = (updater: (prev: NaviDraft) => NaviDraft) => {
+  const persistDraft = useCallback((updater: (prev: NaviDraft) => NaviDraft) => {
     setDraft((prev) => {
       if (!prev) return prev;
       const nextDraft = updater(prev);
       return nextDraft;
     });
-  };
+  }, []);
 
   const syncEditedConditions = (updater: (prev: TransactionConditions) => TransactionConditions) => {
     setEditedConditions((prev) => {
@@ -631,24 +604,45 @@ function StandardNaviRequestEditor({
     };
   }, [linkedListing, propertyInfo]);
 
-  const propertyPrevLocation = useMemo(() => {
-    const locationParts = [displayPropertyInfo.prefecture, displayPropertyInfo.hallName].filter(Boolean);
-    if (locationParts.length) return locationParts.join(" ");
-    return displayPropertyInfo.storageLocation;
-  }, [displayPropertyInfo.hallName, displayPropertyInfo.prefecture, displayPropertyInfo.storageLocation]);
+  useEffect(() => {
+    if (!draft) return;
 
-  const propertySalesPriceLabel = linkedListing
-    ? linkedListing.unitPriceExclTax !== null
-      ? formattedNumber(linkedListing.unitPriceExclTax)
-      : "応相談"
-    : formattedNumber(displayPropertyInfo.salesPrice);
-  const propertyRemovalDateLabel = displayPropertyInfo.removalDate
-    ? displayPropertyInfo.removalDate.replace(/-/g, "/")
-    : "-";
-  const propertyNote = displayPropertyInfo.note ?? "-";
+    const draftItem = draft.items?.[0];
+    if (draftItem) {
+      setManualItemForm({
+        gameType: draftItem.gameType ?? emptyManualItemForm.gameType,
+        bodyType: draftItem.bodyType ?? emptyManualItemForm.bodyType,
+        maker: draftItem.maker ?? "",
+        modelName: draftItem.modelName ?? "",
+        frameColor: draftItem.frameColor ?? "",
+        quantity: draftItem.quantity ?? emptyManualItemForm.quantity,
+      });
+      setEditedConditions((prev) => ({ ...prev, quantity: draftItem.quantity ?? prev.quantity }));
+      return;
+    }
+
+    const initialForm: ManualItemFormState = {
+      gameType: emptyManualItemForm.gameType,
+      bodyType: emptyManualItemForm.bodyType,
+      maker: draft.conditions.makerName ?? displayPropertyInfo.maker ?? "",
+      modelName: draft.conditions.productName ?? displayPropertyInfo.modelName ?? "",
+      frameColor: "",
+      quantity: draft.conditions.quantity ?? displayPropertyInfo.quantity ?? emptyManualItemForm.quantity,
+    };
+
+    persistManualItem(initialForm);
+    setManualItemForm(initialForm);
+  }, [displayPropertyInfo, draft, persistManualItem]);
 
   const handleNumberConditionChange = (field: keyof TransactionConditions, value: number) => {
     syncEditedConditions((prev) => ({ ...prev, [field]: value } as TransactionConditions));
+    if (field === "quantity") {
+      setManualItemForm((prev) => {
+        const next = { ...prev, quantity: value };
+        persistManualItem(next);
+        return next;
+      });
+    }
   };
 
   const handleTextConditionChange = (field: keyof TransactionConditions, value: string) => {
@@ -678,55 +672,43 @@ function StandardNaviRequestEditor({
     setShowHandlerPresets(false);
   };
 
-  const handleManualItemChange = <K extends keyof ManualItemFormState>(key: K, value: ManualItemFormState[K]) => {
-    setManualItemForm((prev) => ({ ...prev, [key]: value }));
-  };
+  const generateManualItemId = () =>
+    typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `manual-${Date.now()}`;
 
-  const isManualFormValid = useMemo(() => {
-    if (!manualItemForm.modelName.trim()) return false;
-    if (!manualItemForm.maker.trim()) return false;
-    if (!manualItemForm.bodyType) return false;
-    if (!manualItemForm.gameType) return false;
-    if (!manualItemForm.quantity || manualItemForm.quantity <= 0) return false;
-    return true;
-  }, [manualItemForm]);
+  const persistManualItem = useCallback((nextForm: ManualItemFormState) => {
+    persistDraft((prev) => {
+      if (!prev) return prev;
+      const nextItem: ManualNaviItem = {
+        id: prev.items?.[0]?.id ?? generateManualItemId(),
+        gameType: nextForm.gameType,
+        bodyType: nextForm.bodyType,
+        maker: nextForm.maker,
+        modelName: nextForm.modelName,
+        frameColor: nextForm.frameColor?.trim() ? nextForm.frameColor : null,
+        quantity: nextForm.quantity,
+      };
 
-  const resetManualForm = () => {
-    setManualItemForm(emptyManualItemForm);
-  };
-
-  const handleManualItemAdd = () => {
-    if (!draft || !isManualFormValid) return;
-
-    const newItem: ManualNaviItem = {
-      id: crypto.randomUUID ? crypto.randomUUID() : `manual-${Date.now()}`,
-      gameType: manualItemForm.gameType,
-      bodyType: manualItemForm.bodyType,
-      maker: manualItemForm.maker.trim(),
-      modelName: manualItemForm.modelName.trim(),
-      frameColor: manualItemForm.frameColor.trim() ? manualItemForm.frameColor.trim() : null,
-      quantity: manualItemForm.quantity,
-    };
-
-    persistDraft((prev) => ({
-      ...prev,
-      items: [...(prev.items ?? []), newItem],
-      conditions: {
-        ...prev.conditions,
-        productName: newItem.modelName,
-        makerName: newItem.maker,
-        quantity: newItem.quantity,
-      },
-    }));
-
-    setEditedConditions((prev) => ({
-      ...prev,
-      quantity: newItem.quantity,
-    }));
-
-    setShowManualPropertyForm(false);
-    resetManualForm();
+      return {
+        ...prev,
+        items: [nextItem],
+        conditions: {
+          ...prev.conditions,
+          productName: nextItem.modelName,
+          makerName: nextItem.maker,
+          quantity: nextItem.quantity,
+        },
+      };
+    });
+    setEditedConditions((prev) => ({ ...prev, quantity: nextForm.quantity }));
     setValidationErrors((prev) => ({ ...prev, items: undefined, quantity: undefined, unitPrice: undefined }));
+  }, [persistDraft]);
+
+  const handleManualItemChange = <K extends keyof ManualItemFormState>(key: K, value: ManualItemFormState[K]) => {
+    setManualItemForm((prev) => {
+      const next = { ...prev, [key]: value };
+      persistManualItem(next);
+      return next;
+    });
   };
 
   return (
@@ -752,231 +734,173 @@ function StandardNaviRequestEditor({
       </section>
 
       <section className="space-y-4">
-        <div className="rounded-lg border border-slate-300 bg-white p-3 shadow-sm">
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                {/* カード見出しを標準文字サイズより一段階大きく */}
-                <h2 className="text-base font-semibold text-slate-900">
-                  {isBuyerSet ? "取引先情報" : "取引先（買手）を選択してください"}
-                </h2>
-                <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
-                {isBuyerSet && !shouldShowBuyerSelector && (
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
-                )}
-              </div>
-              {isBuyerSet && (
-                <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
-                  <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
-                  <span className="text-sm text-neutral-900">{displayBuyer.companyName ?? "未設定"}</span>
-                  <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
-                  <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
-                </div>
-              )}
-            </div>
-
-            <div className="w-full md:max-w-[420px]">
-              {shouldShowBuyerSelector ? (
-                <div className="space-y-2 text-sm">
-                  <label className="block text-xs font-semibold text-neutral-800">取引先（買手）を選択してください</label>
-                  <select
-                    className="w-full rounded border border-slate-300 px-3 py-2"
-                    value={selectedBuyerId}
-                    onChange={(e) => setSelectedBuyerId(e.target.value)}
-                  >
-                    {buyerCandidates.map((candidate) => (
-                      <option key={candidate.id} value={candidate.id}>
-                        {candidate.companyName}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-neutral-600">
-                    取引先として選んだ会社に依頼が送信され、買手側の「届いた依頼」に表示されます。
-                  </p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      className="rounded bg-[#142B5E] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#0f2248]"
-                      onClick={handleBuyerSelectionConfirm}
-                    >
-                      この買手に送信する
-                    </button>
-                    {isBuyerSet && (
+        <div className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2">
+            <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
+            {isBuyerSet && !shouldShowBuyerSelector && (
+              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800">設定済み</span>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-slate-300 text-sm">
+              <tbody className="text-slate-900">
+                <EditRow label="買手" required>
+                  {shouldShowBuyerSelector ? (
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-neutral-800">取引先（買手）を選択してください</label>
+                      <select
+                        className="w-full max-w-xs rounded border border-slate-300 px-2 py-1 text-sm"
+                        value={selectedBuyerId}
+                        onChange={(e) => setSelectedBuyerId(e.target.value)}
+                      >
+                        {buyerCandidates.map((candidate) => (
+                          <option key={candidate.id} value={candidate.id}>
+                            {candidate.companyName}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-neutral-600">
+                        取引先として選んだ会社に依頼が送信され、買手側の「届いた依頼」に表示されます。
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="rounded bg-[#142B5E] px-4 py-2 text-xs font-semibold text-white shadow-sm hover:bg-[#0f2248]"
+                          onClick={handleBuyerSelectionConfirm}
+                        >
+                          この買手に送信する
+                        </button>
+                        {isBuyerSet && (
+                          <button
+                            type="button"
+                            className="rounded border border-slate-300 px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
+                            onClick={() => setIsEditingBuyer(false)}
+                          >
+                            キャンセル
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800">買手</span>
+                      <span className="text-sm text-neutral-900">{displayBuyer.companyName ?? "未設定"}</span>
                       <button
                         type="button"
-                        className="rounded border border-slate-300 px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
-                        onClick={() => setIsEditingBuyer(false)}
+                        className="text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
+                        onClick={handleResetBuyerSelection}
                       >
-                        キャンセル
+                        取引先情報を変更
                       </button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex justify-start">
-                  <button
-                    type="button"
-                    className="text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
-                    onClick={handleResetBuyerSelection}
-                  >
-                    取引先情報を変更
-                  </button>
-                </div>
-              )}
-            </div>
+                    </div>
+                  )}
+                </EditRow>
+
+                {isBuyerSet && (
+                  <EditRow label="取引先詳細">
+                    <input type="hidden" name="seller_id" value={draft?.buyerId ?? ""} />
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <BuyerInfoItem label="会社名" value={displayBuyer.companyName ?? "-"} emphasis />
+                      <BuyerInfoItem label="住所" value={displayBuyer.address ?? "-"} />
+                      <BuyerInfoItem label="担当者" value={displayBuyer.contactPerson ?? "-"} />
+                      <BuyerInfoItem label="電話番号" value={displayBuyer.phoneNumber ?? "-"} />
+                    </div>
+                  </EditRow>
+                )}
+              </tbody>
+            </table>
           </div>
-
           {validationErrors.buyer && !isBuyerSet && (
-            <p className="mt-2 text-sm text-red-600">{validationErrors.buyer}</p>
-          )}
-
-          {isBuyerSet && (
-            <div className="mt-3 space-y-3 text-sm text-neutral-900">
-              <input type="hidden" name="seller_id" value={draft?.buyerId ?? ""} />
-              <div className="grid grid-cols-1 gap-x-6 gap-y-2 rounded border border-slate-300 bg-slate-50 px-4 py-3 sm:grid-cols-2 xl:grid-cols-4">
-                <BuyerInfoItem label="会社名" value={displayBuyer.companyName ?? "-"} emphasis />
-                <BuyerInfoItem label="住所" value={displayBuyer.address ?? "-"} />
-                <BuyerInfoItem label="担当者" value={displayBuyer.contactPerson ?? "-"} />
-                <BuyerInfoItem label="電話番号" value={displayBuyer.phoneNumber ?? "-"} />
-              </div>
-            </div>
+            <p className="px-4 py-2 text-sm text-red-600">{validationErrors.buyer}</p>
           )}
         </div>
 
         <div className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2 text-base font-semibold text-neutral-900">
+          <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2">
             <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
-            {!isProductLinked && manualItems.length > 0 && (
-              <button
-                type="button"
-                className="rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
-                onClick={() => setShowManualPropertyForm((prev) => !prev)}
-              >
-                {showManualPropertyForm ? "入力を閉じる" : "手入力で追加"}
-              </button>
-            )}
-          </div>
-          {isProductLinked ? (
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-t border-slate-300 text-sm">
-                <thead>
-                  <tr className="bg-slate-50 text-xs text-neutral-600">
-                    <th className="px-4 py-2 text-left font-semibold">前設置</th>
-                    <th className="px-4 py-2 text-left font-semibold">メーカー</th>
-                    <th className="px-4 py-2 text-left font-semibold">機種名</th>
-                    <th className="px-4 py-2 text-left font-semibold">台数</th>
-                    <th className="px-4 py-2 text-left font-semibold">売却価格</th>
-                    <th className="px-4 py-2 text-left font-semibold">撤去日</th>
-                    <th className="px-4 py-2 text-left font-semibold">備考</th>
-                  </tr>
-                </thead>
-
-                <tbody>
-                  <tr className="border-t border-slate-300 text-slate-900">
-                    <td className="whitespace-nowrap px-4 py-2">{propertyPrevLocation}</td>
-                    <td className="whitespace-nowrap px-4 py-2">{displayPropertyInfo.maker}</td>
-                    <td className="whitespace-nowrap px-4 py-2">{displayPropertyInfo.modelName}</td>
-                    <td className="whitespace-nowrap px-4 py-2">{displayPropertyInfo.quantity}台</td>
-                    <td className="whitespace-nowrap px-4 py-2">{propertySalesPriceLabel}</td>
-                    <td className="whitespace-nowrap px-4 py-2">{propertyRemovalDateLabel}</td>
-                    <td className="px-4 py-2">{propertyNote}</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-          ) : manualItems.length > 0 ? (
-            <div className="space-y-4 p-4 text-sm text-neutral-900">
-              <div className="overflow-x-auto">
-                <table className="min-w-full border border-slate-300 text-sm">
-                  <thead>
-                    <tr className="bg-slate-50 text-xs text-neutral-600">
-                      <th className="px-4 py-2 text-left font-semibold">遊技種別</th>
-                      <th className="px-4 py-2 text-left font-semibold">種別</th>
-                      <th className="px-4 py-2 text-left font-semibold">メーカー</th>
-                      <th className="px-4 py-2 text-left font-semibold">機種名</th>
-                      <th className="px-4 py-2 text-left font-semibold">枠色</th>
-                      <th className="px-4 py-2 text-left font-semibold">台数</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {manualItems.map((item) => (
-                      <tr key={item.id} className="border-t border-slate-300 text-slate-900">
-                        <td className="whitespace-nowrap px-4 py-2">{item.gameType === "pachinko" ? "パチンコ" : "スロット"}</td>
-                        <td className="whitespace-nowrap px-4 py-2">{item.bodyType}</td>
-                        <td className="whitespace-nowrap px-4 py-2">{item.maker}</td>
-                        <td className="whitespace-nowrap px-4 py-2">
-                          {item.modelName}
-                        </td>
-                        <td className="whitespace-nowrap px-4 py-2">{item.frameColor ?? "-"}</td>
-                        <td className="whitespace-nowrap px-4 py-2">{item.quantity}台</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {!showManualPropertyForm && (
-                <div className="flex justify-start">
-                  <button
-                    type="button"
-                    className="rounded bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                    onClick={() => setShowManualPropertyForm(true)}
-                  >
-                    手入力で追加
-                  </button>
-                </div>
-              )}
-
-              {showManualPropertyForm && (
-                <ManualItemForm
-                  manualItemForm={manualItemForm}
-                  onChange={handleManualItemChange}
-                  onCancel={() => {
-                    setShowManualPropertyForm(false);
-                    resetManualForm();
-                  }}
-                  onSubmit={handleManualItemAdd}
-                  isValid={isManualFormValid}
-                />
-              )}
-            </div>
-          ) : showManualPropertyForm ? (
-            <div className="space-y-4 p-4 text-sm text-neutral-900">
-              <ManualItemForm
-                manualItemForm={manualItemForm}
-                onChange={handleManualItemChange}
-                onCancel={() => {
-                  setShowManualPropertyForm(false);
-                  resetManualForm();
-                }}
-                onSubmit={handleManualItemAdd}
-                isValid={isManualFormValid}
-              />
-            </div>
-          ) : (
-            <div className="space-y-3 p-6 text-sm text-neutral-900">
-              <p className="text-base font-semibold text-neutral-900">物件が未選択です。</p>
-              <p className="text-sm text-neutral-700">
-                出品から選ぶか、手入力で追加してください。
-              </p>
-              <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              {isProductLinked ? (
+                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800">出品情報から入力</span>
+              ) : (
                 <button
                   type="button"
-                  className="rounded border border-slate-300 px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
+                  className="rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
                   onClick={() => router.push("/inventory")}
                 >
                   出品から選ぶ
                 </button>
-                <button
-                  type="button"
-                  className="rounded bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
-                  onClick={() => setShowManualPropertyForm(true)}
-                >
-                  手入力で追加
-                </button>
-              </div>
+              )}
             </div>
-          )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-slate-300 text-sm">
+              <tbody className="text-slate-900">
+                <EditRow label="遊技種別" required>
+                  {renderRadioGroup<ManualItemFormState["gameType"]>(
+                    "game-type",
+                    ["pachinko", "slot"],
+                    manualItemForm.gameType,
+                    (next) => handleManualItemChange("gameType", next)
+                  )}
+                </EditRow>
+
+                <EditRow label="種別" required>
+                  {renderRadioGroup<ManualItemFormState["bodyType"]>(
+                    "body-type",
+                    ["本体", "枠のみ", "セルのみ"],
+                    manualItemForm.bodyType,
+                    (next) => handleManualItemChange("bodyType", next)
+                  )}
+                </EditRow>
+
+                <EditRow label="メーカー" required>
+                  <input
+                    type="text"
+                    className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm"
+                    value={manualItemForm.maker}
+                    onChange={(e) => handleManualItemChange("maker", e.target.value)}
+                    placeholder="メーカー名を入力"
+                  />
+                </EditRow>
+
+                <EditRow label="機種名" required>
+                  <input
+                    type="text"
+                    className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm"
+                    value={manualItemForm.modelName}
+                    onChange={(e) => handleManualItemChange("modelName", e.target.value)}
+                    placeholder="機種名を入力"
+                  />
+                </EditRow>
+
+                <EditRow label="枠色">
+                  <input
+                    type="text"
+                    className="w-full max-w-md rounded border border-slate-300 px-2 py-1 text-sm"
+                    value={manualItemForm.frameColor}
+                    onChange={(e) => handleManualItemChange("frameColor", e.target.value)}
+                    placeholder="例：赤枠"
+                  />
+                </EditRow>
+
+                <EditRow label="台数" required>
+                  <div className="flex flex-col items-start gap-1">
+                    <input
+                      type="number"
+                      min={1}
+                      className="w-24 rounded border border-slate-300 px-2 py-1 text-sm"
+                      value={manualItemForm.quantity}
+                      onChange={(e) => handleManualItemChange("quantity", Number(e.target.value) || 0)}
+                      placeholder="1"
+                    />
+                    {validationErrors.items && (
+                      <p className="text-sm text-red-600">{validationErrors.items}</p>
+                    )}
+                  </div>
+                </EditRow>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
 
@@ -1619,7 +1543,7 @@ function EditRow({
 function BuyerInfoItem({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] font-semibold text-neutral-500">{label}</span>
+      <span className="text-xs font-semibold text-neutral-600">{label}</span>
       <span className={`text-sm ${emphasis ? "font-semibold text-slate-900" : "text-neutral-900"}`}>{value}</span>
     </div>
   );
@@ -1634,126 +1558,3 @@ function SummaryRow({ label, value, emphasis }: { label: string; value: string; 
   );
 }
 
-function ManualItemForm({
-  manualItemForm,
-  onChange,
-  onCancel,
-  onSubmit,
-  isValid,
-}: {
-  manualItemForm: ManualItemFormState;
-  onChange: <K extends keyof ManualItemFormState>(key: K, value: ManualItemFormState[K]) => void;
-  onCancel: () => void;
-  onSubmit: () => void;
-  isValid: boolean;
-}) {
-  return (
-    <div className="space-y-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-center gap-2">
-        <h3 className="text-sm font-semibold text-slate-900">物件情報（手入力）</h3>
-        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
-      </div>
-
-      <div className="space-y-3 text-sm text-neutral-900">
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-neutral-800">遊技種別</label>
-          <div className="flex gap-4 text-sm text-neutral-900">
-            {["pachinko", "slot"].map((type) => (
-              <label key={type} className="inline-flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="gameType"
-                  className="h-4 w-4 text-sky-600 focus:ring-sky-500"
-                  checked={manualItemForm.gameType === type}
-                  onChange={() => onChange("gameType", type as ManualItemFormState["gameType"])}
-                />
-                <span>{type === "pachinko" ? "パチンコ" : "スロット"}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-neutral-800">種別</label>
-          <div className="flex gap-4 text-sm text-neutral-900">
-            {["本体", "枠のみ", "セルのみ"].map((type) => (
-              <label key={type} className="inline-flex items-center gap-1">
-                <input
-                  type="radio"
-                  name="bodyType"
-                  className="h-4 w-4 text-sky-600 focus:ring-sky-500"
-                  checked={manualItemForm.bodyType === type}
-                  onChange={() => onChange("bodyType", type as ManualItemFormState["bodyType"])}
-                />
-                <span>{type}</span>
-              </label>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-neutral-800">メーカー</label>
-          <input
-            type="text"
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            value={manualItemForm.maker}
-            onChange={(e) => onChange("maker", e.target.value)}
-            placeholder="メーカー名を入力"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-neutral-800">機種名</label>
-          <input
-            type="text"
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            value={manualItemForm.modelName}
-            onChange={(e) => onChange("modelName", e.target.value)}
-            placeholder="機種名を入力"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-neutral-800">枠色（任意）</label>
-          <input
-            type="text"
-            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            value={manualItemForm.frameColor}
-            onChange={(e) => onChange("frameColor", e.target.value)}
-            placeholder="例：赤枠"
-          />
-        </div>
-
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-neutral-800">台数</label>
-          <input
-            type="number"
-            min={1}
-            className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
-            value={manualItemForm.quantity}
-            onChange={(e) => onChange("quantity", Number(e.target.value) || 0)}
-            placeholder="1"
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2 pt-1">
-        <button
-          type="button"
-          className="rounded bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
-          onClick={onSubmit}
-          disabled={!isValid}
-        >
-          追加
-        </button>
-        <button
-          type="button"
-          className="rounded border border-slate-300 px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
-          onClick={onCancel}
-        >
-          キャンセル
-        </button>
-      </div>
-    </div>
-  );
-}
