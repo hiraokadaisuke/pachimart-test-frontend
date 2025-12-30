@@ -236,6 +236,7 @@ function StandardNaviRequestEditor({
   const [showHandlerPresets, setShowHandlerPresets] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const formattedNumber = formatCurrency;
+  const isProductLinked = Boolean(draft?.productId);
 
   useEffect(() => {
     if (!listingId) {
@@ -570,7 +571,6 @@ function StandardNaviRequestEditor({
   };
 
   const isBuyerSet = Boolean(draft?.buyerId || draft?.buyerCompanyName);
-  const isProductLinked = Boolean(draft?.productId);
   const referenceConditions = draftConditions ?? currentConditions;
   const displayBuyer = {
     companyName: draft?.buyerCompanyName ?? null,
@@ -754,7 +754,7 @@ function StandardNaviRequestEditor({
             <div className="mt-3 space-y-3 text-sm text-neutral-900">
               <input type="hidden" name="seller_id" value={draft?.buyerId ?? ""} />
               <div className="grid grid-cols-1 gap-x-6 gap-y-2 rounded border border-slate-300 bg-slate-50 px-4 py-3 sm:grid-cols-2 xl:grid-cols-4">
-                <BuyerInfoItem label="会社名" value={displayBuyer.companyName} emphasis />
+                <BuyerInfoItem label="会社名" value={displayBuyer.companyName ?? "-"} emphasis />
                 <BuyerInfoItem label="住所" value={displayBuyer.address ?? "-"} />
                 <BuyerInfoItem label="担当者" value={displayBuyer.contactPerson ?? "-"} />
                 <BuyerInfoItem label="電話番号" value={displayBuyer.phoneNumber ?? "-"} />
