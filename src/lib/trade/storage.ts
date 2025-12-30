@@ -1,6 +1,7 @@
 import { NaviDraft } from "@/lib/navi/types";
 import { DEV_USERS } from "@/lib/dev-user/users";
-import { creditBalance } from "@/lib/balance/BalanceContext";
+import { creditBalance, deductBalanceDirect } from "@/lib/balance/BalanceContext";
+import { addLedgerEntry } from "@/lib/balance/ledger";
 
 import {
   type BuyerContact,
@@ -446,7 +447,27 @@ export function markTradePaid(tradeId: string, actorUserId: string): TradeRecord
   const advanced = advanceTradeTodo(trade, "application_approved", actorUserId);
   if (!advanced) return null;
 
-  return upsertTradeInternal(advanced);
+  const buyerId = advanced.buyerUserId ?? advanced.buyer.userId;
+  if (!buyerId) return null;
+
+  const amount = calculateTradeTotal(advanced);
+  if (!Number.isFinite(amount) || amount <= 0) return null;
+  const buyerBalanceAfter = deductBalanceDirect(buyerId, amount);
+  if (buyerBalanceAfter === null) return null;
+
+  const updated = upsertTradeInternal(advanced);
+
+  addLedgerEntry(buyerId, {
+    category: "PURCHASE",
+    amountYen: amount,
+    tradeId,
+    counterpartyName: advanced.sellerName ?? advanced.seller.companyName,
+    makerName: advanced.items[0]?.maker,
+    itemName: advanced.items[0]?.itemName,
+    balanceAfterYen: buyerBalanceAfter,
+  });
+
+  return updated;
 }
 
 export function markTradeCompleted(tradeId: string, actorUserId: string): TradeRecord | null {
@@ -470,9 +491,21 @@ export function markTradeCompleted(tradeId: string, actorUserId: string): TradeR
     calculateStatementTotals(advanced.items, advanced.taxRate ?? 0.1).total;
 
   if (Number.isFinite(amount) && amount > 0) {
-    creditBalance(advanced.sellerUserId, amount);
-    creditedTradeIds.add(tradeId);
-    saveCreditedTradeIds(creditedTradeIds);
+    const sellerBalanceAfter = creditBalance(advanced.sellerUserId, amount);
+    if (sellerBalanceAfter !== null) {
+      creditedTradeIds.add(tradeId);
+      saveCreditedTradeIds(creditedTradeIds);
+
+      addLedgerEntry(advanced.sellerUserId, {
+        category: "SALE",
+        amountYen: amount,
+        tradeId,
+        counterpartyName: advanced.buyerName ?? advanced.buyer.companyName,
+        makerName: advanced.items[0]?.maker,
+        itemName: advanced.items[0]?.itemName,
+        balanceAfterYen: sellerBalanceAfter,
+      });
+    }
   }
 
   return updated;

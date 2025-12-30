@@ -21,7 +21,6 @@ import { advanceTradeTodo, getTodoPresentation } from "@/lib/trade/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
 import { useBalance } from "@/lib/balance/BalanceContext";
 import { markTradeCompleted, markTradePaid, saveTradeRecord } from "@/lib/trade/storage";
-import { addLedgerEntry } from "@/lib/balance/ledger";
 
 const SECTION_LABELS = {
   approval: todoUiMap["application_sent"],
@@ -107,7 +106,7 @@ export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [trades, setTrades] = useState<TradeRecord[]>([]);
   const router = useRouter();
-  const { deductBalance, getBalance } = useBalance();
+  const { getBalance } = useBalance();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("inProgress");
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -180,22 +179,6 @@ export function InProgressTabContent() {
           return;
         }
 
-        const deducted = deductBalance(row.buyerUserId, paymentAmount);
-        if (!deducted) {
-          console.error("Failed to deduct balance after marking trade as paid", {
-            tradeId: row.id,
-            buyerUserId: row.buyerUserId,
-            paymentAmount,
-          });
-          return;
-        }
-
-        addLedgerEntry(row.buyerUserId, {
-          kind: "PAYMENT",
-          amount: -paymentAmount,
-          tradeId: row.id,
-        });
-
         setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
         return;
       }
@@ -207,13 +190,6 @@ export function InProgressTabContent() {
           console.error("Failed to mark trade as completed", { tradeId: row.id });
           return;
         }
-
-        const saleAmount = row.totalAmount;
-        addLedgerEntry(row.sellerUserId, {
-          kind: "SALE",
-          amount: saleAmount,
-          tradeId: row.id,
-        });
 
         setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
         return;
@@ -232,7 +208,7 @@ export function InProgressTabContent() {
       saveTradeRecord(advanced);
       setTrades((prev) => prev.map((trade) => (trade.id === advanced.id ? advanced : trade)));
     },
-    [currentUser.id, deductBalance, getBalance, trades]
+    [currentUser.id, getBalance, trades]
   );
 
   useEffect(() => {
