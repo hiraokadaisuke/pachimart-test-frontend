@@ -118,11 +118,6 @@ type ManualItemFormState = {
   modelName: string;
   frameColor: string;
   quantity: number;
-  unitPrice: number;
-  receiveMethod: "発送" | "引取" | "その他";
-  removalDate: string;
-  removalCompleted: boolean;
-  note: string;
 };
 
 const emptyManualItemForm: ManualItemFormState = {
@@ -132,11 +127,6 @@ const emptyManualItemForm: ManualItemFormState = {
   modelName: "",
   frameColor: "",
   quantity: 1,
-  unitPrice: 0,
-  receiveMethod: "発送",
-  removalDate: "",
-  removalCompleted: false,
-  note: "",
 };
 
 const additionalFeeLabels = {
@@ -178,8 +168,6 @@ const validateDraft = (draft: NaviDraft | null): ValidationErrors => {
       return false;
     }
     if (!item.quantity || item.quantity <= 0) return false;
-    if (!item.unitPrice || item.unitPrice <= 0) return false;
-    if (!item.removalCompleted && !item.removalDate) return false;
     return true;
   };
 
@@ -188,24 +176,16 @@ const validateDraft = (draft: NaviDraft | null): ValidationErrors => {
     if (invalidItem) {
       errors.items = "手入力した物件に未入力または不正な項目があります。";
     }
-    const invalidQuantity = manualItems.find((item) => !item.quantity || item.quantity <= 0);
-    if (invalidQuantity) {
-      errors.quantity = "台数が正しく入力されていません。1以上の数を入力してください。";
-    }
-    const invalidUnitPrice = manualItems.find((item) => !item.unitPrice || item.unitPrice <= 0);
-    if (invalidUnitPrice) {
-      errors.unitPrice = "単価が正しくありません。";
-    }
-  } else {
-    const quantity = conditions.quantity ?? 0;
-    if (!quantity || quantity <= 0) {
-      errors.quantity = "台数が正しく入力されていません。1以上の数を入力してください。";
-    }
+  }
 
-    const unitPrice = conditions.unitPrice ?? 0;
-    if (!unitPrice || unitPrice <= 0) {
-      errors.unitPrice = "単価が正しくありません。";
-    }
+  const quantity = conditions.quantity ?? 0;
+  if (!quantity || quantity <= 0) {
+    errors.quantity = "台数が正しく入力されていません。1以上の数を入力してください。";
+  }
+
+  const unitPrice = conditions.unitPrice ?? 0;
+  if (!unitPrice || unitPrice <= 0) {
+    errors.unitPrice = "単価が正しくありません。";
   }
 
   const shippingFee = conditions.shippingFee ?? 0;
@@ -708,8 +688,6 @@ function StandardNaviRequestEditor({
     if (!manualItemForm.bodyType) return false;
     if (!manualItemForm.gameType) return false;
     if (!manualItemForm.quantity || manualItemForm.quantity <= 0) return false;
-    if (!manualItemForm.unitPrice || manualItemForm.unitPrice <= 0) return false;
-    if (!manualItemForm.removalCompleted && !manualItemForm.removalDate) return false;
     return true;
   }, [manualItemForm]);
 
@@ -728,11 +706,6 @@ function StandardNaviRequestEditor({
       modelName: manualItemForm.modelName.trim(),
       frameColor: manualItemForm.frameColor.trim() ? manualItemForm.frameColor.trim() : null,
       quantity: manualItemForm.quantity,
-      unitPrice: manualItemForm.unitPrice,
-      receiveMethod: manualItemForm.receiveMethod,
-      removalDate: manualItemForm.removalCompleted ? null : manualItemForm.removalDate,
-      removalCompleted: manualItemForm.removalCompleted,
-      note: manualItemForm.note.trim() ? manualItemForm.note.trim() : null,
     };
 
     persistDraft((prev) => ({
@@ -743,17 +716,12 @@ function StandardNaviRequestEditor({
         productName: newItem.modelName,
         makerName: newItem.maker,
         quantity: newItem.quantity,
-        unitPrice: newItem.unitPrice,
-        removalDate: newItem.removalCompleted ? null : newItem.removalDate,
-        memo: newItem.note ?? prev.conditions.memo ?? null,
       },
     }));
 
     setEditedConditions((prev) => ({
       ...prev,
       quantity: newItem.quantity,
-      price: newItem.unitPrice,
-      removalDate: newItem.removalCompleted ? "" : newItem.removalDate ?? "",
     }));
 
     setShowManualPropertyForm(false);
@@ -926,10 +894,8 @@ function StandardNaviRequestEditor({
                       <th className="px-4 py-2 text-left font-semibold">種別</th>
                       <th className="px-4 py-2 text-left font-semibold">メーカー</th>
                       <th className="px-4 py-2 text-left font-semibold">機種名</th>
+                      <th className="px-4 py-2 text-left font-semibold">枠色</th>
                       <th className="px-4 py-2 text-left font-semibold">台数</th>
-                      <th className="px-4 py-2 text-left font-semibold">売却価格</th>
-                      <th className="px-4 py-2 text-left font-semibold">撤去日</th>
-                      <th className="px-4 py-2 text-left font-semibold">備考</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -940,14 +906,9 @@ function StandardNaviRequestEditor({
                         <td className="whitespace-nowrap px-4 py-2">{item.maker}</td>
                         <td className="whitespace-nowrap px-4 py-2">
                           {item.modelName}
-                          {item.frameColor ? `（${item.frameColor}）` : ""}
                         </td>
+                        <td className="whitespace-nowrap px-4 py-2">{item.frameColor ?? "-"}</td>
                         <td className="whitespace-nowrap px-4 py-2">{item.quantity}台</td>
-                        <td className="whitespace-nowrap px-4 py-2">{formattedNumber(item.unitPrice)}</td>
-                        <td className="whitespace-nowrap px-4 py-2">
-                          {item.removalCompleted ? "撤去済" : item.removalDate ? item.removalDate.replace(/-/g, "/") : "-"}
-                        </td>
-                        <td className="px-4 py-2">{item.note ?? "-"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -1687,19 +1648,16 @@ function ManualItemForm({
   isValid: boolean;
 }) {
   return (
-    <div className="space-y-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-slate-900">基本情報</h3>
-          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
-        </div>
-        <p className="text-xs text-neutral-600">新規出品フォームの項目に合わせて入力してください。</p>
+    <div className="space-y-3 rounded border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex items-center gap-2">
+        <h3 className="text-sm font-semibold text-slate-900">物件情報（手入力）</h3>
+        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="space-y-3 text-sm text-neutral-900">
         <div className="space-y-1">
           <label className="text-xs font-semibold text-neutral-800">遊技種別</label>
-          <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
+          <div className="flex gap-4 text-sm text-neutral-900">
             {["pachinko", "slot"].map((type) => (
               <label key={type} className="inline-flex items-center gap-1">
                 <input
@@ -1717,7 +1675,7 @@ function ManualItemForm({
 
         <div className="space-y-1">
           <label className="text-xs font-semibold text-neutral-800">種別</label>
-          <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
+          <div className="flex gap-4 text-sm text-neutral-900">
             {["本体", "枠のみ", "セルのみ"].map((type) => (
               <label key={type} className="inline-flex items-center gap-1">
                 <input
@@ -1740,7 +1698,7 @@ function ManualItemForm({
             className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
             value={manualItemForm.maker}
             onChange={(e) => onChange("maker", e.target.value)}
-            placeholder="メーカー名"
+            placeholder="メーカー名を入力"
           />
         </div>
 
@@ -1779,84 +1737,7 @@ function ManualItemForm({
         </div>
       </div>
 
-      <div className="space-y-2 border-t border-slate-200 pt-2">
-        <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-slate-900">取引条件（ナビ用）</h3>
-          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2">
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-neutral-800">販売単価（税抜）</label>
-            <input
-              type="number"
-              min={1}
-              className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
-              value={manualItemForm.unitPrice}
-              onChange={(e) => onChange("unitPrice", Number(e.target.value) || 0)}
-              placeholder="例：120000"
-            />
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-neutral-800">受渡方法</label>
-            <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
-              {["発送", "引取"].map((method) => (
-                <label key={method} className="inline-flex items-center gap-1">
-                  <input
-                    type="radio"
-                    name="receiveMethod"
-                    className="h-4 w-4 text-sky-600 focus:ring-sky-500"
-                    checked={manualItemForm.receiveMethod === method}
-                    onChange={() => onChange("receiveMethod", method as ManualItemFormState["receiveMethod"])}
-                  />
-                  <span>{method}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <label className="text-xs font-semibold text-neutral-800">撤去日</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="date"
-                className="w-40 rounded border border-slate-300 px-3 py-2 text-sm"
-                value={manualItemForm.removalDate}
-                onChange={(e) => onChange("removalDate", e.target.value)}
-                disabled={manualItemForm.removalCompleted}
-              />
-              <label className="inline-flex items-center gap-2 text-sm text-neutral-800">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4 text-sky-600 focus:ring-sky-500"
-                  checked={manualItemForm.removalCompleted}
-                  onChange={(e) => {
-                    onChange("removalCompleted", e.target.checked);
-                    if (e.target.checked) {
-                      onChange("removalDate", "");
-                    }
-                  }}
-                />
-                <span>撤去済</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="space-y-1 md:col-span-2">
-            <label className="text-xs font-semibold text-neutral-800">備考（任意）</label>
-            <textarea
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-              rows={3}
-              value={manualItemForm.note}
-              onChange={(e) => onChange("note", e.target.value)}
-              placeholder="搬入条件や注意事項など"
-            />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 pt-1">
         <button
           type="button"
           className="rounded bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
