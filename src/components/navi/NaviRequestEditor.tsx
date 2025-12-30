@@ -111,13 +111,8 @@ const emptyTransactionConditions: TransactionConditions = {
   handler: "",
 };
 
-type ManualItemFormState = {
-  gameType: "pachinko" | "slot";
-  bodyType: "本体" | "枠のみ" | "セルのみ";
-  maker: string;
-  modelName: string;
+type ManualItemFormState = Pick<ManualNaviItem, "gameType" | "bodyType" | "maker" | "modelName" | "quantity"> & {
   frameColor: string;
-  quantity: number;
 };
 
 const emptyManualItemForm: ManualItemFormState = {
