@@ -111,7 +111,10 @@ const emptyTransactionConditions: TransactionConditions = {
   handler: "",
 };
 
-type ManualItemFormState = Pick<ManualNaviItem, "gameType" | "bodyType" | "maker" | "modelName" | "quantity"> & {
+type ManualItemFormState = Pick<
+  ManualNaviItem,
+  "gameType" | "bodyType" | "maker" | "modelName" | "quantity"
+> & {
   frameColor: string;
 };
 
@@ -121,8 +124,9 @@ const emptyManualItemForm: ManualItemFormState = {
   maker: "",
   modelName: "",
   frameColor: "",
-  quantity: emptyTransactionConditions.quantity,
+  quantity: 1,
 };
+
 
 const additionalFeeLabels = {
   cardboardFee: "段ボール",
@@ -162,7 +166,6 @@ const validateDraft = (draft: NaviDraft | null): ValidationErrors => {
     if (!item.modelName?.trim() || !item.maker?.trim() || !item.bodyType || !item.gameType) {
       return false;
     }
-    if (!item.quantity || item.quantity <= 0) return false;
     return true;
   };
 
@@ -603,33 +606,58 @@ function StandardNaviRequestEditor({
   const generateManualItemId = () =>
     typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `manual-${Date.now()}`;
 
-  const persistManualItem = useCallback((nextForm: ManualItemFormState) => {
-    persistDraft((prev) => {
-      if (!prev) return prev;
-      const nextItem: ManualNaviItem = {
-        id: prev.items?.[0]?.id ?? generateManualItemId(),
-        gameType: nextForm.gameType,
-        bodyType: nextForm.bodyType,
-        maker: nextForm.maker,
-        modelName: nextForm.modelName,
-        frameColor: nextForm.frameColor?.trim() ? nextForm.frameColor : null,
-        quantity: nextForm.quantity,
-      };
+  const persistManualItem = useCallback(
+    (nextForm: ManualItemFormState) => {
+      persistDraft((prev) => {
+        if (!prev) return prev;
+        const resolvedQuantity = prev.conditions.quantity ?? editedConditions.quantity ?? 1;
+        const nextItem: ManualNaviItem = {
+          id: prev.items?.[0]?.id ?? generateManualItemId(),
+          gameType: nextForm.gameType,
+          bodyType: nextForm.bodyType,
+          maker: nextForm.maker,
+          modelName: nextForm.modelName,
+          frameColor: nextForm.frameColor?.trim() ? nextForm.frameColor : null,
+          quantity: resolvedQuantity,
+        };
 
+        return {
+          ...prev,
+          items: [nextItem],
+          conditions: {
+            ...prev.conditions,
+            productName: nextItem.modelName,
+            makerName: nextItem.maker,
+            quantity: resolvedQuantity,
+          },
+        };
+      });
+      setValidationErrors((prev) => ({ ...prev, items: undefined, quantity: undefined, unitPrice: undefined }));
+    },
+    [editedConditions.quantity, persistDraft]
+  );
+
+  useEffect(() => {
+    if (!draft?.items?.[0]) return;
+
+    const itemQuantity = draft.items[0].quantity;
+    const conditionQuantity = draft.conditions.quantity;
+    const resolvedQuantity = conditionQuantity ?? itemQuantity ?? 1;
+
+    if (itemQuantity === resolvedQuantity && conditionQuantity === resolvedQuantity) return;
+
+    persistDraft((prev) => {
+      if (!prev?.items?.[0]) return prev;
+      const nextQuantity = prev.conditions.quantity ?? prev.items[0].quantity ?? 1;
+      const updatedItem = { ...prev.items[0], quantity: nextQuantity };
       return {
         ...prev,
-        items: [nextItem],
-        conditions: {
-          ...prev.conditions,
-          productName: nextItem.modelName,
-          makerName: nextItem.maker,
-          quantity: nextItem.quantity,
-        },
+        items: [updatedItem, ...prev.items.slice(1)],
+        conditions: { ...prev.conditions, quantity: nextQuantity },
       };
     });
-    setEditedConditions((prev) => ({ ...prev, quantity: nextForm.quantity }));
-    setValidationErrors((prev) => ({ ...prev, items: undefined, quantity: undefined, unitPrice: undefined }));
-  }, [persistDraft]);
+    setEditedConditions((prev) => ({ ...prev, quantity: resolvedQuantity }));
+  }, [draft?.conditions.quantity, draft?.items, persistDraft]);
 
   useEffect(() => {
     if (!pickListingId || !draft) return;
@@ -685,9 +713,7 @@ function StandardNaviRequestEditor({
         maker: draftItem.maker ?? "",
         modelName: draftItem.modelName ?? "",
         frameColor: draftItem.frameColor ?? "",
-        quantity: draftItem.quantity ?? emptyManualItemForm.quantity,
       });
-      setEditedConditions((prev) => ({ ...prev, quantity: draftItem.quantity ?? prev.quantity }));
       return;
     }
 
@@ -697,7 +723,6 @@ function StandardNaviRequestEditor({
       maker: draft.conditions.makerName ?? displayPropertyInfo.maker ?? "",
       modelName: draft.conditions.productName ?? displayPropertyInfo.modelName ?? "",
       frameColor: "",
-      quantity: draft.conditions.quantity ?? displayPropertyInfo.quantity ?? emptyManualItemForm.quantity,
     };
 
     persistManualItem(initialForm);
@@ -706,13 +731,6 @@ function StandardNaviRequestEditor({
 
   const handleNumberConditionChange = (field: keyof TransactionConditions, value: number) => {
     syncEditedConditions((prev) => ({ ...prev, [field]: value } as TransactionConditions));
-    if (field === "quantity") {
-      setManualItemForm((prev) => {
-        const next = { ...prev, quantity: value };
-        persistManualItem(next);
-        return next;
-      });
-    }
   };
 
   const handleTextConditionChange = (field: keyof TransactionConditions, value: string) => {
@@ -921,25 +939,12 @@ function StandardNaviRequestEditor({
                     placeholder="例：赤枠"
                   />
                 </EditRow>
-
-                <EditRow label="台数" required>
-                  <div className="flex flex-col items-start gap-1">
-                    <input
-                      type="number"
-                      min={1}
-                      className="w-24 rounded border border-slate-300 px-2 py-1 text-sm"
-                      value={manualItemForm.quantity}
-                      onChange={(e) => handleManualItemChange("quantity", Number(e.target.value) || 0)}
-                      placeholder="1"
-                    />
-                    {validationErrors.items && (
-                      <p className="text-sm text-red-600">{validationErrors.items}</p>
-                    )}
-                  </div>
-                </EditRow>
               </tbody>
             </table>
           </div>
+          {validationErrors.items && (
+            <p className="px-4 py-2 text-sm text-red-600">{validationErrors.items}</p>
+          )}
         </div>
       </section>
 
