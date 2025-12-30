@@ -1,4 +1,4 @@
-import { NaviDraft } from "@/lib/navi/types";
+import { ManualNaviItem, NaviDraft } from "@/lib/navi/types";
 import { DEV_USERS } from "@/lib/dev-user/users";
 import { creditBalance, deductBalanceDirect } from "@/lib/balance/BalanceContext";
 import { addLedgerEntry } from "@/lib/balance/ledger";
@@ -545,19 +545,41 @@ export function cancelTrade(tradeId: string, actorUserId: string): TradeRecord |
 
 export function buildItemsFromDraft(draft: NaviDraft): StatementItem[] {
   const items: StatementItem[] = [];
-  const qty = draft.conditions.quantity ?? 1;
-  const unitPrice = draft.conditions.unitPrice ?? 0;
+  const manualItems = draft.items ?? [];
 
-  items.push({
-    lineId: `${draft.id}-item`,
-    maker: draft.conditions.makerName ?? undefined,
-    itemName: draft.conditions.productName ?? "取引商品",
-    category: "本体",
-    qty,
-    unitPrice,
-    isTaxable: true,
-    note: draft.conditions.memo ?? undefined,
-  });
+  const pushManualItem = (item: ManualNaviItem, index: number) => {
+    items.push({
+      lineId: item.id ?? `${draft.id}-item-${index}`,
+      maker: item.maker,
+      itemName: item.modelName,
+      category: item.bodyType,
+      qty: item.quantity,
+      unitPrice: item.unitPrice,
+      isTaxable: true,
+      note: item.note ?? undefined,
+    });
+  };
+
+  if (manualItems.length > 0) {
+    manualItems.forEach((item, index) => pushManualItem(item, index));
+  } else {
+    const qty = draft.conditions.quantity ?? 1;
+    const unitPrice = draft.conditions.unitPrice ?? 0;
+
+    pushManualItem(
+      {
+        id: `${draft.id}-item`,
+        maker: draft.conditions.makerName ?? "",
+        modelName: draft.conditions.productName ?? "取引商品",
+        bodyType: "本体",
+        quantity: qty,
+        unitPrice,
+        receiveMethod: "発送",
+        gameType: "pachinko",
+      },
+      0
+    );
+  }
 
   const pushFee = (amount: number | null | undefined, category: string, label: string) => {
     if (amount == null) return;
@@ -603,7 +625,8 @@ export function createTradeFromDraft(
   const items = buildItemsFromDraft(draft);
   const taxRate = draft.conditions.taxRate ?? 0.1;
   const termsText = draft.conditions.terms ?? defaults?.termsText ?? defaultTermsText;
-  const quantity = draft.conditions.quantity ?? 1;
+  const primaryItem = draft.items?.[0];
+  const quantity = primaryItem?.quantity ?? draft.conditions.quantity ?? 1;
   const initialTodos = buildTodosFromStatus("APPROVAL_REQUIRED");
   const initialStatus = deriveTradeStatusFromTodos({ todos: initialTodos });
   const totalAmount = calculateTradeTotal({
@@ -634,8 +657,8 @@ export function createTradeFromDraft(
     createdAt: draft.createdAt ?? now,
     updatedAt: now,
     contractDate: undefined,
-    makerName: draft.conditions.makerName ?? undefined,
-    itemName: draft.conditions.productName ?? "取引商品",
+    makerName: primaryItem?.maker ?? draft.conditions.makerName ?? undefined,
+    itemName: primaryItem?.modelName ?? draft.conditions.productName ?? "取引商品",
     category: draft.conditions.location ? "pachinko" : undefined,
     quantity,
     totalAmount,
