@@ -77,6 +77,40 @@ const presetTerms = [
 
 const presetHandlers = ["山田 太郎", "佐藤 花子", "鈴木 一郎", "中村 真紀"];
 
+const emptyPropertyInfo = {
+  modelName: "",
+  maker: "",
+  quantity: 0,
+  storageLocation: "",
+  machineNumber: "",
+  prefecture: "",
+  hallName: "",
+  salesPrice: 0,
+  removalDate: "",
+  note: "",
+};
+
+const emptyTransactionConditions: TransactionConditions = {
+  price: 0,
+  quantity: 1,
+  removalDate: "",
+  machineShipmentDate: "",
+  machineShipmentType: "元払",
+  documentShipmentDate: "",
+  documentShipmentType: "同梱",
+  paymentDue: "",
+  freightCost: 0,
+  handlingFee: 0,
+  taxRate: 0.1,
+  cardboardFee: { label: "段ボール", amount: 0 },
+  nailSheetFee: { label: "釘シート", amount: 0 },
+  insuranceFee: { label: "保険", amount: 0 },
+  notes: "",
+  terms: "",
+  memo: "",
+  handler: "",
+};
+
 const additionalFeeLabels = {
   cardboardFee: "段ボール",
   nailSheetFee: "釘シート",
@@ -160,11 +194,23 @@ function StandardNaviRequestEditor({
   const params = useParams<{ id?: string }>();
   const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
   const listingId = safeSearchParams.get("listingId");
+  const hasBuyerPrefill =
+    Boolean(safeSearchParams.get("buyerId")) || Boolean(safeSearchParams.get("buyerCompanyName"));
+  const hasProductPrefill = Boolean(listingId || safeSearchParams.get("productId"));
+  const entryMode = listingId ? "fromListing" : hasBuyerPrefill || hasProductPrefill ? "prefilled" : "new";
 
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<NaviDraft | null>(null);
+  const [showManualPropertyForm, setShowManualPropertyForm] = useState(false);
   const naviTargetId = draft?.productId ?? transactionId;
-  const { buyerInfo, propertyInfo, currentConditions, updatedConditions } = useDummyNavi(naviTargetId);
+  const {
+    propertyInfo: defaultPropertyInfo,
+    currentConditions: defaultCurrentConditions,
+    updatedConditions: defaultUpdatedConditions,
+  } = useDummyNavi(hasProductPrefill ? naviTargetId : undefined);
+  const propertyInfo = entryMode === "new" ? emptyPropertyInfo : defaultPropertyInfo;
+  const currentConditions = entryMode === "new" ? emptyTransactionConditions : defaultCurrentConditions;
+  const updatedConditions = entryMode === "new" ? emptyTransactionConditions : defaultUpdatedConditions;
   const [linkedListing, setLinkedListing] = useState<Listing | null>(null);
   const [isLoadingListing, setIsLoadingListing] = useState(false);
   const [isEditingBuyer, setIsEditingBuyer] = useState(false);
@@ -218,7 +264,7 @@ function StandardNaviRequestEditor({
     return () => {
       isMounted = false;
     };
-  }, [listingId]);
+  }, [currentUser.id, listingId]);
 
   useEffect(() => {
     if (!transactionId || draft) return;
@@ -242,10 +288,12 @@ function StandardNaviRequestEditor({
         ? undefined
         : parseNumberParam(safeSearchParams.get("unitPrice"), listingUnitPrice ?? undefined);
 
+    const shouldAttachProduct = hasProductPrefill;
+    const resolvedProductId = safeSearchParams.get("productId") ?? linkedListing?.id ?? null;
     const initialDraft = createEmptyNaviDraft({
       id: transactionId,
       ownerUserId: currentUser.id,
-      productId: safeSearchParams.get("productId") ?? linkedListing?.id ?? transactionId,
+      productId: shouldAttachProduct ? resolvedProductId : null,
       buyerId: safeSearchParams.get("buyerId"),
       buyerCompanyName: safeSearchParams.get("buyerCompanyName"),
       buyerContactName: safeSearchParams.get("buyerContactName"),
@@ -254,19 +302,41 @@ function StandardNaviRequestEditor({
       buyerNote: safeSearchParams.get("buyerNote"),
       buyerPending: safeSearchParams.has("buyerId") ? false : undefined,
       conditions: {
-        quantity: parseNumberParam(safeSearchParams.get("quantity"), linkedListing?.quantity ?? 1) ?? 1,
-        unitPrice: initialUnitPrice === undefined ? 0 : initialUnitPrice,
+        quantity:
+          shouldAttachProduct
+            ? parseNumberParam(safeSearchParams.get("quantity"), linkedListing?.quantity ?? 1) ?? 1
+            : 1,
+        unitPrice: shouldAttachProduct && initialUnitPrice !== undefined ? initialUnitPrice : 0,
         shippingFee: 0,
         handlingFee: 0,
         taxRate: 0.1,
-        productName: safeSearchParams.get("productName") ?? linkedListing?.machineName ?? undefined,
-        makerName: safeSearchParams.get("makerName") ?? linkedListing?.maker ?? undefined,
-        location: safeSearchParams.get("location") ?? linkedListing?.storageLocation ?? undefined,
+        productName:
+          shouldAttachProduct && (safeSearchParams.get("productName") ?? linkedListing?.machineName)
+            ? safeSearchParams.get("productName") ?? linkedListing?.machineName ?? undefined
+            : undefined,
+        makerName:
+          shouldAttachProduct && (safeSearchParams.get("makerName") ?? linkedListing?.maker)
+            ? safeSearchParams.get("makerName") ?? linkedListing?.maker ?? undefined
+            : undefined,
+        location:
+          shouldAttachProduct && (safeSearchParams.get("location") ?? linkedListing?.storageLocation)
+            ? safeSearchParams.get("location") ?? linkedListing?.storageLocation ?? undefined
+            : undefined,
       },
     });
 
     setDraft(initialDraft);
-  }, [currentUser.id, draft, isLoadingListing, linkedListing, listingId, safeSearchParams, transactionId]);
+  }, [
+    currentUser.id,
+    draft,
+    entryMode,
+    hasProductPrefill,
+    isLoadingListing,
+    linkedListing,
+    listingId,
+    safeSearchParams,
+    transactionId,
+  ]);
 
   useEffect(() => {
     setEditedConditions(initialEditedConditions);
@@ -298,6 +368,18 @@ function StandardNaviRequestEditor({
       setSelectedBuyerId(buyerCandidates[0].id);
     }
   }, [buyerCandidates, draft?.buyerId]);
+
+  useEffect(() => {
+    if (isProductLinked) {
+      setShowManualPropertyForm(true);
+      return;
+    }
+
+    const hasManualInputs = Boolean(
+      draft?.conditions.productName || draft?.conditions.makerName || draft?.conditions.location
+    );
+    setShowManualPropertyForm(hasManualInputs);
+  }, [draft?.conditions.location, draft?.conditions.makerName, draft?.conditions.productName, isProductLinked]);
 
   const persistDraft = (updater: (prev: NaviDraft) => NaviDraft) => {
     setDraft((prev) => {
@@ -491,18 +573,18 @@ function StandardNaviRequestEditor({
   const isProductLinked = Boolean(draft?.productId);
   const referenceConditions = draftConditions ?? currentConditions;
   const displayBuyer = {
-    companyName: draft?.buyerCompanyName ?? buyerInfo.companyName,
-    contactPerson: draft?.buyerContactName ?? buyerInfo.contactPerson,
-    address: draft?.buyerAddress ?? buyerInfo.address,
-    phoneNumber: draft?.buyerTel ?? buyerInfo.phoneNumber,
-    email: draft?.buyerEmail ?? buyerInfo.email,
-    notes: draft?.buyerNote ?? buyerInfo.notes,
+    companyName: draft?.buyerCompanyName ?? null,
+    contactPerson: draft?.buyerContactName ?? null,
+    address: draft?.buyerAddress ?? null,
+    phoneNumber: draft?.buyerTel ?? null,
+    email: draft?.buyerEmail ?? null,
+    notes: draft?.buyerNote ?? null,
   };
   const shouldShowBuyerSelector = !isBuyerSet || isEditingBuyer;
   const editableProperty = {
     modelName: draft?.conditions.productName ?? "",
     maker: draft?.conditions.makerName ?? "",
-    quantity: draft?.conditions.quantity ?? referenceConditions.quantity,
+    quantity: draft?.conditions.quantity ?? referenceConditions.quantity ?? 1,
     location: draft?.conditions.location ?? "",
   };
 
@@ -531,7 +613,9 @@ function StandardNaviRequestEditor({
       ? formattedNumber(linkedListing.unitPriceExclTax)
       : "応相談"
     : formattedNumber(displayPropertyInfo.salesPrice);
-  const propertyRemovalDateLabel = displayPropertyInfo.removalDate.replace(/-/g, "/");
+  const propertyRemovalDateLabel = displayPropertyInfo.removalDate
+    ? displayPropertyInfo.removalDate.replace(/-/g, "/")
+    : "-";
   const propertyNote = displayPropertyInfo.note ?? "-";
 
   const handleNumberConditionChange = (field: keyof TransactionConditions, value: number) => {
@@ -593,18 +677,22 @@ function StandardNaviRequestEditor({
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-2">
                 {/* カード見出しを標準文字サイズより一段階大きく */}
-                <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
+                <h2 className="text-base font-semibold text-slate-900">
+                  {isBuyerSet ? "取引先情報" : "取引先（買手）を選択してください"}
+                </h2>
                 <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
                 {isBuyerSet && !shouldShowBuyerSelector && (
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] text-neutral-800">設定済み</span>
                 )}
               </div>
-              <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
-                <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
-                <span className="text-sm text-neutral-900">{displayBuyer.companyName ?? "未設定"}</span>
-                <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
-                <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
-              </div>
+              {isBuyerSet && (
+                <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
+                  <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
+                  <span className="text-sm text-neutral-900">{displayBuyer.companyName ?? "未設定"}</span>
+                  <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
+                  <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
+                </div>
+              )}
             </div>
 
             <div className="w-full md:max-w-[420px]">
@@ -707,7 +795,7 @@ function StandardNaviRequestEditor({
                 </tbody>
               </table>
             </div>
-          ) : (
+          ) : showManualPropertyForm ? (
             <div className="space-y-3 p-4 text-sm text-neutral-900">
               <p className="text-sm text-neutral-700">商品が紐付いていないため、ここで情報を入力してください。</p>
               <div className="space-y-2">
@@ -745,6 +833,29 @@ function StandardNaviRequestEditor({
                   value={editableProperty.location}
                   onChange={(e) => handlePropertyChange("location", e.target.value)}
                 />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3 p-6 text-sm text-neutral-900">
+              <p className="text-base font-semibold text-neutral-900">物件が未選択です。</p>
+              <p className="text-sm text-neutral-700">
+                出品から選ぶか、手入力で追加してください。
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <button
+                  type="button"
+                  className="rounded border border-slate-300 px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
+                  onClick={() => router.push("/inventory")}
+                >
+                  出品から選ぶ
+                </button>
+                <button
+                  type="button"
+                  className="rounded bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                  onClick={() => setShowManualPropertyForm(true)}
+                >
+                  手入力で追加
+                </button>
               </div>
             </div>
           )}
@@ -1080,7 +1191,7 @@ function OnlineInquiryCreator({
     return () => {
       isMounted = false;
     };
-  }, [listingId]);
+  }, [currentUser.id, listingId]);
 
   const parseNumberParam = (value: string | null, fallback: number): number => {
     if (!value) return fallback;
