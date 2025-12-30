@@ -39,6 +39,16 @@ type SerialInputPanelProps = {
   onNext?: (payload: SerialInputPayload) => void;
   onBack?: () => void;
   onUnitsChange?: (nextUnits: number) => void;
+  onSplit?: (payload: SerialSplitPayload) => string | null;
+  enableSplit?: boolean;
+  refreshToken?: number;
+};
+
+export type SerialSplitPayload = {
+  inventoryId: string;
+  units: number;
+  rows: SerialInputRow[];
+  selectedIndexes: number[];
 };
 
 export default function SerialInputPanel({
@@ -48,6 +58,9 @@ export default function SerialInputPanel({
   onNext,
   onBack,
   onUnitsChange,
+  onSplit,
+  enableSplit = false,
+  refreshToken,
 }: SerialInputPanelProps) {
   const [inventory, setInventory] = useState<InventoryRecord | null>(null);
   const [units, setUnits] = useState<number>(1);
@@ -58,6 +71,7 @@ export default function SerialInputPanel({
     main: "",
     removalDate: "",
   });
+  const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
 
   const machineName = inventory?.machineName ?? "";
   const machineKind = useMemo(() => {
@@ -88,7 +102,8 @@ export default function SerialInputPanel({
         removalDate: saved.rows[0]?.removalDate ?? "",
       });
     }
-  }, [inventoryId]);
+    setSelectedRows(new Set());
+  }, [inventoryId, refreshToken]);
 
   useEffect(() => {
     setRows((prev) =>
@@ -99,6 +114,18 @@ export default function SerialInputPanel({
       }),
     );
   }, [units]);
+
+  useEffect(() => {
+    setSelectedRows((prev) => {
+      const next = new Set<number>();
+      prev.forEach((index) => {
+        if (rows[index] && isRowComplete(rows[index])) {
+          next.add(index);
+        }
+      });
+      return next;
+    });
+  }, [rows]);
 
   const handleInputChange = (key: ColumnKey, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: value }));
@@ -127,6 +154,9 @@ export default function SerialInputPanel({
   const hasRowInput = (row: SerialInputRow) =>
     [row.board, row.frame, row.main, row.removalDate].some((value) => value.trim() !== "");
 
+  const isRowComplete = (row: SerialInputRow) =>
+    [row.board, row.frame, row.main, row.removalDate].every((value) => value.trim() !== "");
+
   const handleUnitsInputChange = (value: string) => {
     const nextUnits = Math.max(1, Number(value) || 1);
     if (nextUnits < units) {
@@ -146,6 +176,32 @@ export default function SerialInputPanel({
     updatedAt: new Date().toISOString(),
   });
 
+  const handleSplit = () => {
+    if (!onSplit) return;
+    if (units < 2) {
+      alert("仕入数が1台のため分離できません。");
+      return;
+    }
+    if (selectedRows.size === 0) {
+      alert("分離する台を選択してください。");
+      return;
+    }
+    const confirmed = window.confirm(
+      `選択した${selectedRows.size}台を別在庫として分離します。仕入先等の情報はコピーされます。よろしいですか？`,
+    );
+    if (!confirmed) return;
+    const newInventoryId = onSplit({
+      inventoryId,
+      units,
+      rows,
+      selectedIndexes: Array.from(selectedRows).sort((a, b) => a - b),
+    });
+    if (newInventoryId) {
+      alert(`分離しました（新在庫ID: ${newInventoryId}）`);
+      setSelectedRows(new Set());
+    }
+  };
+
   const handleRegister = () => {
     if (!inventoryId) return;
     onRegister?.(buildPayload());
@@ -162,6 +218,8 @@ export default function SerialInputPanel({
   };
 
   const noRangeText = useMemo(() => `1 ～ ${units}`, [units]);
+  const canSplit = enableSplit && units > 1;
+  const selectedCount = selectedRows.size;
 
   return (
     <div className="flex justify-center bg-neutral-100 py-4 text-[13px] text-neutral-900">
@@ -309,6 +367,9 @@ export default function SerialInputPanel({
             <table className="w-full table-fixed border-collapse text-[12px]">
               <thead className="bg-white">
                 <tr>
+                  {enableSplit && (
+                    <th className="border-b border-r border-black px-2 py-2 text-center">分離</th>
+                  )}
                   <th className="border-b border-r border-black px-2 py-2 text-center">種別</th>
                   <th className="border-b border-r border-black px-2 py-2 text-center">No</th>
                   <th className="border-b border-r border-black px-2 py-2 text-center">{columnLabels.board}</th>
@@ -320,6 +381,28 @@ export default function SerialInputPanel({
               <tbody>
                 {rows.map((row, index) => (
                   <tr key={row.p} className="odd:bg-white even:bg-neutral-50">
+                    {enableSplit && (
+                      <td className="border-b border-r border-black px-2 py-2 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedRows.has(index)}
+                          disabled={!canSplit || !isRowComplete(row)}
+                          onChange={(event) => {
+                            const checked = event.target.checked;
+                            setSelectedRows((prev) => {
+                              const next = new Set(prev);
+                              if (checked) {
+                                next.add(index);
+                              } else {
+                                next.delete(index);
+                              }
+                              return next;
+                            });
+                          }}
+                          className="h-4 w-4 border-black"
+                        />
+                      </td>
+                    )}
                     <td className="border-b border-r border-black px-2 py-2 text-center font-semibold">{machineKind}</td>
                     <td className="border-b border-r border-black px-2 py-2 text-center font-semibold">{row.p}</td>
                     <td className="border-b border-r border-black px-2 py-1">
@@ -359,6 +442,31 @@ export default function SerialInputPanel({
             </table>
           </div>
         </div>
+
+        {enableSplit && (
+          <div className="border border-black bg-white">
+            <div className="flex items-center justify-between border-b border-black bg-neutral-100 px-3 py-2 text-[12px] font-semibold">
+              <span>分離</span>
+              <span className="text-[11px] font-medium text-neutral-600">番号入力済みのみ選択可</span>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 text-[12px]">
+              <div className="text-neutral-700">選択 {selectedCount} 台</div>
+              <button
+                type="button"
+                onClick={handleSplit}
+                disabled={!canSplit || selectedCount === 0}
+                aria-disabled={!canSplit || selectedCount === 0}
+                className={`border border-black px-4 py-2 text-[12px] font-semibold text-neutral-900 transition ${
+                  canSplit && selectedCount > 0
+                    ? "bg-neutral-200 hover:bg-neutral-300"
+                    : "cursor-not-allowed bg-neutral-100 text-neutral-400"
+                }`}
+              >
+                分離する
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-[13px]">
           <button
