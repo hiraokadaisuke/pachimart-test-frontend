@@ -121,7 +121,7 @@ const emptyManualItemForm: ManualItemFormState = {
   maker: "",
   modelName: "",
   frameColor: "",
-  quantity: 1,
+  quantity: emptyTransactionConditions.quantity,
 };
 
 const additionalFeeLabels = {
