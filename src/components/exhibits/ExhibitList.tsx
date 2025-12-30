@@ -43,6 +43,7 @@ const currencyFormatter = new Intl.NumberFormat("ja-JP", {
 type ExhibitListProps = {
   status: "出品中" | "下書き";
   onNewExhibit?: () => void;
+  isPickMode?: boolean;
 };
 
 type ExhibitFilters = {
@@ -51,7 +52,7 @@ type ExhibitFilters = {
   noteKeyword: string;
 };
 
-export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
+export function ExhibitList({ status, onNewExhibit, isPickMode = false }: ExhibitListProps) {
   const router = useRouter();
   const currentUser = useCurrentDevUser();
   const defaultFilters = useMemo<ExhibitFilters>(
@@ -172,6 +173,11 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
     router.push(`/transactions/navi/${listing.id}/edit?${params.toString()}`);
   };
 
+  const handlePickForNavi = (listing: Listing) => {
+    const params = new URLSearchParams({ tab: "new", pickListingId: listing.id });
+    router.push(`/navi?${params.toString()}`);
+  };
+
   const totalCount = listedProducts.length;
 
   const makerOptions = useMemo(
@@ -184,6 +190,11 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
 
   return (
     <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-4 px-4 text-xs md:px-6 xl:px-8">
+      {isPickMode && (
+        <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 py-3 text-[13px] text-neutral-800">
+          ナビ用に出品を選択中です。任意の出品で「この出品を選択」を押すとナビ作成に反映されます。
+        </div>
+      )}
       <div className="mb-2 flex items-center justify-between text-xs sm:text-sm">
         <div className="text-xs text-neutral-700 sm:text-sm">全件数：{totalCount}件</div>
         <div />
@@ -251,7 +262,7 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
           >
             一覧を更新
           </button>
-          {status === "出品中" && (
+          {status === "出品中" && !isPickMode && (
             <button
               type="button"
               onClick={onNewExhibit}
@@ -391,7 +402,15 @@ export function ExhibitList({ status, onNewExhibit }: ExhibitListProps) {
                       }`}
                     >
                       <div className="flex items-center justify-center">
-                        {canOperate ? (
+                        {isPickMode ? (
+                          <button
+                            type="button"
+                            className="rounded border border-slate-300 px-3 py-1 text-[13px] font-semibold text-neutral-800 transition hover:bg-slate-50"
+                            onClick={() => handlePickForNavi(listing)}
+                          >
+                            この出品を選択
+                          </button>
+                        ) : canOperate ? (
                           <ActionMenu
                             onCreateNavi={() => handleCreateNaviFromListing(listing)}
                             onEdit={() => {}}

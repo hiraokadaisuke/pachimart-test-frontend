@@ -227,6 +227,7 @@ function StandardNaviRequestEditor({
   const params = useParams<{ id?: string }>();
   const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
   const listingId = safeSearchParams.get("listingId");
+  const pickListingId = safeSearchParams.get("pickListingId");
   const hasBuyerPrefill =
     Boolean(safeSearchParams.get("buyerId")) || Boolean(safeSearchParams.get("buyerCompanyName"));
   const hasProductPrefill = Boolean(listingId || safeSearchParams.get("productId"));
@@ -300,6 +301,49 @@ function StandardNaviRequestEditor({
       isMounted = false;
     };
   }, [currentUser.id, listingId]);
+
+  useEffect(() => {
+    if (!pickListingId || !draft) return;
+
+    let isActive = true;
+    setIsLoadingListing(true);
+
+    fetchWithDevHeader(buildApiUrl(`/api/listings/${pickListingId}`), {}, currentUser.id)
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: Listing | null) => {
+        if (!isActive || !data) return;
+
+        const nextForm: ManualItemFormState = {
+          gameType: data.type === "SLOT" ? "slot" : "pachinko",
+          bodyType:
+            data.kind === "枠のみ" || data.kind === "セルのみ"
+              ? (data.kind as ManualItemFormState["bodyType"])
+              : "本体",
+          maker: data.maker ?? "",
+          modelName: data.machineName ?? "",
+          frameColor: manualItemForm.frameColor,
+          quantity: data.quantity ?? emptyManualItemForm.quantity,
+        };
+
+        setLinkedListing(data);
+        setManualItemForm(nextForm);
+        persistManualItem(nextForm);
+        setEditedConditions((prev) => ({ ...prev, quantity: nextForm.quantity }));
+
+        const nextParams = new URLSearchParams(safeSearchParams.toString());
+        nextParams.delete("pickListingId");
+        router.replace(nextParams.size ? `/navi?${nextParams.toString()}` : "/navi", { scroll: false });
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (!isActive) return;
+        setIsLoadingListing(false);
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [currentUser.id, draft, manualItemForm.frameColor, persistManualItem, pickListingId, router, safeSearchParams]);
 
   useEffect(() => {
     if (!transactionId || draft) return;
@@ -825,7 +869,7 @@ function StandardNaviRequestEditor({
                 <button
                   type="button"
                   className="rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
-                  onClick={() => router.push("/inventory")}
+                  onClick={() => router.push("/mypage/exhibits?tab=active&mode=pickForNavi")}
                 >
                   出品から選ぶ
                 </button>

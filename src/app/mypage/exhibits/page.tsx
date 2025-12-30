@@ -26,14 +26,20 @@ function ExhibitHubContent() {
     return "active";
   }, [searchParams]);
 
+  const isPickForNavi = useMemo(() => searchParams?.get("mode") === "pickForNavi", [searchParams]);
+
   return (
     <main className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-6 px-4 md:px-6 xl:px-8">
       <ExhibitSubTabs activeTab={activeTab === "draft" ? "draft" : "active"} />
 
       {activeTab === "active" && (
-        <ExhibitList status="出品中" onNewExhibit={() => router.push("/mypage/exhibits/new")} />
+        <ExhibitList
+          status="出品中"
+          onNewExhibit={() => router.push("/mypage/exhibits/new")}
+          isPickMode={isPickForNavi}
+        />
       )}
-      {activeTab === "draft" && <ExhibitList status="下書き" />}
+      {activeTab === "draft" && <ExhibitList status="下書き" isPickMode={isPickForNavi} />}
     </main>
   );
 }
