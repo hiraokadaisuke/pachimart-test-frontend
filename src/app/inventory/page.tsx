@@ -7,8 +7,6 @@ import {
   loadInventoryRecords,
   resetInventoryRecords,
   saveDraft,
-  saveInventoryRecords,
-  generateInventoryId,
   updateInventoryRecord,
   updateInventoryStatuses,
   updateInventoryStatus,
@@ -17,17 +15,9 @@ import {
 } from "@/lib/demo-data/demoInventory";
 import { DEFAULT_MASTER_DATA, loadMasterData, type MasterData } from "@/lib/demo-data/demoMasterData";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
-import {
-  clearSerialDraft,
-  saveSerialDraft,
-  saveSerialInput,
-  type SerialInputPayload,
-} from "@/lib/serialInputStorage";
-import SerialInputPanel, {
-  type SerialSplitPayload,
-} from "@/app/inventory/purchase-invoice/_components/SerialInputPanel";
-import type { InventoryStatusOption } from "@/types/purchaseInvoices";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
+import InventoryEditTable from "@/components/inventory/InventoryEditTable";
+import { buildEditForm, buildPayload, resolveListingStatus, STATUS_OPTIONS } from "@/lib/inventory/editUtils";
 
 type Column = {
   key: keyof InventoryRecord | "status";
@@ -63,12 +53,6 @@ const COLUMN_SETTINGS_KEY = "inventory_table_columns_v1";
 const NUMERIC_COLUMNS: Array<Column["key"]> = ["quantity", "unitPrice", "saleUnitPrice"];
 const DATE_COLUMNS: Array<Column["key"]> = ["createdAt", "stockInDate", "removeDate"];
 const WRAP_COLUMNS: Array<Column["key"]> = ["maker", "model", "warehouse", "supplier", "staff", "note"];
-
-const STATUS_OPTIONS: Array<{ value: ListingStatusOption; label: string }> = [
-  { value: "listing", label: "出品" },
-  { value: "sold", label: "売却" },
-  { value: "not_listing", label: "非出品" },
-];
 
 const INITIAL_COLUMNS: Column[] = [
   { key: "id", label: "管理ID", width: 64, minWidth: 52, visible: true },
@@ -135,20 +119,6 @@ const matchesDateRange = (value: string | undefined, range: DateRange) => {
   return true;
 };
 
-const resolveListingStatus = (record: InventoryRecord): ListingStatusOption => {
-  if (record.listingStatus) return record.listingStatus;
-  const status = (record.status ?? record.stockStatus ?? "倉庫") as InventoryStatusOption;
-  if (status === "売却済") return "sold";
-  if (status === "出品中") return "listing";
-  return "not_listing";
-};
-
-const mapListingStatusToStockStatus = (status: ListingStatusOption): InventoryStatusOption => {
-  if (status === "sold") return "売却済";
-  if (status === "listing") return "出品中";
-  return "倉庫";
-};
-
 const statusLabelMap = new Map(STATUS_OPTIONS.map((option) => [option.value, option.label]));
 
 const buildManagementId = (index: number) => {
@@ -162,224 +132,6 @@ const buildManagementId = (index: number) => {
     isSplit: sequence >= 100,
   };
 };
-
-const buildEditForm = (record: InventoryRecord): Partial<InventoryRecord> => ({
-  maker: record.maker ?? "",
-  model: record.model ?? record.machineName ?? "",
-  kind: record.kind,
-  type: record.type ?? record.deviceType ?? "",
-  quantity: record.quantity ?? 0,
-  unitPrice: record.unitPrice ?? 0,
-  saleUnitPrice: record.saleUnitPrice ?? 0,
-  hasRemainingDebt: record.hasRemainingDebt ?? false,
-  stockInDate: record.stockInDate ?? record.arrivalDate ?? "",
-  removeDate: record.removeDate ?? record.removalDate ?? "",
-  warehouse: record.warehouse ?? record.storageLocation ?? "",
-  supplier: record.supplier ?? "",
-  staff: record.staff ?? record.buyerStaff ?? "",
-  listingStatus: resolveListingStatus(record),
-  note: record.note ?? record.notes ?? "",
-  isVisible: record.isVisible ?? true,
-  isConsignment: record.isConsignment ?? record.consignment ?? false,
-  taxType: record.taxType ?? "exclusive",
-  pattern: record.pattern ?? "",
-});
-
-const buildPayload = (form: Partial<InventoryRecord>): Partial<InventoryRecord> => ({
-  maker: form.maker?.trim() || undefined,
-  model: form.model?.trim() || undefined,
-  machineName: form.model?.trim() || undefined,
-  kind: form.kind ?? undefined,
-  type: form.type ?? undefined,
-  quantity: typeof form.quantity === "number" ? form.quantity : Number(form.quantity ?? 0),
-  unitPrice: typeof form.unitPrice === "number" ? form.unitPrice : Number(form.unitPrice ?? 0),
-  saleUnitPrice:
-    typeof form.saleUnitPrice === "number" ? form.saleUnitPrice : Number(form.saleUnitPrice ?? 0),
-  stockInDate: form.stockInDate || undefined,
-  arrivalDate: form.stockInDate || undefined,
-  removeDate: form.removeDate || undefined,
-  removalDate: form.removeDate || undefined,
-  pattern: form.pattern?.trim() || undefined,
-  warehouse: form.warehouse?.trim() || undefined,
-  storageLocation: form.warehouse?.trim() || undefined,
-  supplier: form.supplier?.trim() || undefined,
-  staff: form.staff?.trim() || undefined,
-  buyerStaff: form.staff?.trim() || undefined,
-  listingStatus: form.listingStatus,
-  status: mapListingStatusToStockStatus(form.listingStatus ?? "not_listing"),
-  stockStatus: mapListingStatusToStockStatus(form.listingStatus ?? "not_listing"),
-  note: form.note?.trim() || undefined,
-  notes: form.note?.trim() || undefined,
-  isVisible: form.isVisible ?? true,
-  hasRemainingDebt: form.hasRemainingDebt ?? false,
-  isConsignment: form.isConsignment ?? false,
-  consignment: form.isConsignment ?? false,
-  taxType: form.taxType ?? "exclusive",
-});
-
-type InventoryEditTableProps = {
-  groups: Array<[string, InventoryRecord[]]>;
-  bulkEditForms: Record<string, Partial<InventoryRecord>>;
-  onChange: <K extends keyof InventoryRecord>(id: string, key: K, value: InventoryRecord[K]) => void;
-};
-
-const InventoryEditTable = ({ groups, bulkEditForms, onChange }: InventoryEditTableProps) => (
-  <>
-    {groups.map(([supplier, items]) => (
-      <div key={supplier} className="border-2 border-gray-300">
-        <div className="bg-[#e8f5e9] px-2 py-1 text-xs font-semibold">仕入先: {supplier}</div>
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-xs">
-            <thead className="bg-slate-600 text-left text-white font-bold">
-              <tr>
-                <th className="border border-gray-300 px-2 py-1">在庫ID</th>
-                <th className="border border-gray-300 px-2 py-1">種別</th>
-                <th className="border border-gray-300 px-2 py-1">メーカー</th>
-                <th className="border border-gray-300 px-2 py-1">機種名</th>
-                <th className="border border-gray-300 px-2 py-1">仕入数</th>
-                <th className="border border-gray-300 px-2 py-1">仕入単価</th>
-                <th className="border border-gray-300 px-2 py-1">販売単価</th>
-                <th className="border border-gray-300 px-2 py-1">入庫日</th>
-                <th className="border border-gray-300 px-2 py-1">撤去日</th>
-                <th className="border border-gray-300 px-2 py-1">保管先</th>
-                <th className="border border-gray-300 px-2 py-1">担当者</th>
-                <th className="border border-gray-300 px-2 py-1">状況</th>
-                <th className="border border-gray-300 px-2 py-1">表示</th>
-                <th className="border border-gray-300 px-2 py-1">備考</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((record) => {
-                const form = bulkEditForms[record.id] ?? buildEditForm(record);
-                return (
-                  <tr key={record.id} className="odd:bg-white even:bg-[#f8fafc]">
-                    <td className="border border-gray-300 px-2 py-1">{record.id}</td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <select
-                        value={form.kind ?? ""}
-                        onChange={(event) =>
-                          onChange(record.id, "kind", event.target.value as InventoryRecord["kind"])
-                        }
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      >
-                        <option value="">-</option>
-                        <option value="P">P</option>
-                        <option value="S">S</option>
-                      </select>
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        value={form.maker ?? ""}
-                        onChange={(event) => onChange(record.id, "maker", event.target.value)}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      />
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        value={form.model ?? ""}
-                        onChange={(event) => onChange(record.id, "model", event.target.value)}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      />
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        type="number"
-                        min={0}
-                        value={form.quantity ?? 0}
-                        onChange={(event) => onChange(record.id, "quantity", Number(event.target.value))}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
-                      />
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        type="number"
-                        min={0}
-                        value={form.unitPrice ?? 0}
-                        onChange={(event) => onChange(record.id, "unitPrice", Number(event.target.value))}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
-                      />
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        type="number"
-                        min={0}
-                        value={form.saleUnitPrice ?? 0}
-                        onChange={(event) => onChange(record.id, "saleUnitPrice", Number(event.target.value))}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right"
-                      />
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        type="date"
-                        value={form.stockInDate ?? ""}
-                        onChange={(event) => onChange(record.id, "stockInDate", event.target.value)}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      />
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        type="date"
-                        value={form.removeDate ?? ""}
-                        onChange={(event) => onChange(record.id, "removeDate", event.target.value)}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      />
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        value={form.warehouse ?? ""}
-                        onChange={(event) => onChange(record.id, "warehouse", event.target.value)}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      />
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        value={form.staff ?? ""}
-                        onChange={(event) => onChange(record.id, "staff", event.target.value)}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      />
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <select
-                        value={(form.listingStatus as ListingStatusOption) ?? "not_listing"}
-                        onChange={(event) =>
-                          onChange(record.id, "listingStatus", event.target.value as ListingStatusOption)
-                        }
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      >
-                        {STATUS_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <select
-                        value={form.isVisible === false ? "0" : "1"}
-                        onChange={(event) => onChange(record.id, "isVisible", event.target.value === "1")}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      >
-                        <option value="1">する</option>
-                        <option value="0">しない</option>
-                      </select>
-                    </td>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <input
-                        value={form.note ?? ""}
-                        onChange={(event) => onChange(record.id, "note", event.target.value)}
-                        className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
-                      />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    ))}
-  </>
-);
 
 export default function InventoryPage() {
   const [records, setRecords] = useState<InventoryRecord[]>([]);
@@ -402,9 +154,6 @@ export default function InventoryPage() {
   const [showModelSuggestions, setShowModelSuggestions] = useState(false);
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
-  const [editRecord, setEditRecord] = useState<InventoryRecord | null>(null);
-  const [activeTab, setActiveTab] = useState<"edit" | "serial">("edit");
-  const [serialRefreshToken, setSerialRefreshToken] = useState(0);
   const [existingInvoicePrompt, setExistingInvoicePrompt] = useState<{
     invoiceId: string;
     invoiceType: PurchaseInvoice["invoiceType"];
@@ -587,12 +336,6 @@ export default function InventoryPage() {
     });
     return Array.from(groups.entries()).sort(([a], [b]) => a.localeCompare(b, "ja"));
   }, [selectedRecords]);
-
-  const editGroups = useMemo(() => {
-    if (!editRecord) return [];
-    const supplier = editRecord.supplier?.trim() || "未設定";
-    return [[supplier, [editRecord]]] as Array<[string, InventoryRecord[]]>;
-  }, [editRecord]);
 
   const purchaseInvoiceMap = useMemo(
     () => new Map(purchaseInvoices.map((invoice) => [invoice.invoiceId, invoice])),
@@ -862,136 +605,6 @@ export default function InventoryPage() {
     setSaleSavingId(null);
     setEditingSaleId(null);
     setSaleDraft("");
-  };
-
-  const openEditModal = (record: InventoryRecord, initialTab: "edit" | "serial" = "edit") => {
-    setEditRecord(record);
-    setActiveTab(initialTab);
-    setBulkEditForms((prev) => ({
-      ...prev,
-      [record.id]: buildEditForm(record),
-    }));
-  };
-
-  const closeEditModal = () => {
-    setEditRecord(null);
-    setActiveTab("edit");
-  };
-
-  const handleEditSave = () => {
-    if (!editRecord) return;
-    const form = bulkEditForms[editRecord.id] ?? buildEditForm(editRecord);
-    const updated = updateInventoryRecord(editRecord.id, buildPayload(form));
-    setRecords(updated);
-    const latest = updated.find((record) => record.id === editRecord.id) ?? editRecord;
-    setEditRecord(latest);
-    setBulkEditForms((prev) => ({
-      ...prev,
-      [latest.id]: buildEditForm(latest),
-    }));
-  };
-
-  const handleSerialNavigate = (direction: -1 | 1) => {
-    if (!editRecord) return;
-    const currentIndex = displayRecords.findIndex((record) => record.id === editRecord.id);
-    if (currentIndex === -1) return;
-    const nextIndex = currentIndex + direction;
-    if (nextIndex < 0 || nextIndex >= displayRecords.length) {
-      alert(direction < 0 ? "前の在庫が見つかりませんでした。" : "次の在庫が見つかりませんでした。");
-      return;
-    }
-    openEditModal(displayRecords[nextIndex], "serial");
-  };
-
-  const handleSerialRegister = (payload: SerialInputPayload) => {
-    saveSerialInput(payload);
-    clearSerialDraft(payload.inventoryId);
-  };
-
-  const handleSerialSplit = (payload: SerialSplitPayload) => {
-    if (!editRecord) return null;
-    const currentRecords = loadInventoryRecords();
-    const target = currentRecords.find((record) => record.id === payload.inventoryId);
-    if (!target) return null;
-    const baseQuantity = Number(target.quantity ?? payload.units ?? 1);
-    const splitCount = payload.selectedIndexes.length;
-    if (baseQuantity < 2) {
-      alert("仕入数が1台のため分離できません。");
-      return null;
-    }
-    if (splitCount === 0) {
-      alert("分離する台を選択してください。");
-      return null;
-    }
-    if (splitCount >= baseQuantity) {
-      alert("分離後の仕入数が0になります。分離台数を調整してください。");
-      return null;
-    }
-
-    const selectedSet = new Set(payload.selectedIndexes);
-    const remainingRows = payload.rows.filter((_, index) => !selectedSet.has(index));
-    const movedRows = payload.rows.filter((_, index) => selectedSet.has(index));
-    const nextRows = remainingRows.map((row, index) => ({ ...row, p: index + 1 }));
-    const newRows = movedRows.map((row, index) => ({ ...row, p: index + 1 }));
-    const now = new Date().toISOString();
-    const newInventoryId = generateInventoryId();
-    const updatedRecords = currentRecords.map((record) =>
-      record.id === payload.inventoryId ? { ...record, quantity: baseQuantity - splitCount } : record,
-    );
-    const newInventory: InventoryRecord = {
-      ...target,
-      id: newInventoryId,
-      createdAt: now,
-      quantity: splitCount,
-    };
-    const nextRecords = [...updatedRecords, newInventory];
-    saveInventoryRecords(nextRecords);
-    setRecords(nextRecords);
-    const latest = nextRecords.find((record) => record.id === payload.inventoryId) ?? editRecord;
-    setEditRecord(latest);
-    setBulkEditForms((prev) => ({
-      ...prev,
-      [latest.id]: buildEditForm(latest),
-    }));
-
-    saveSerialInput({
-      inventoryId: payload.inventoryId,
-      units: nextRows.length,
-      rows: nextRows,
-      updatedAt: now,
-    });
-    saveSerialInput({
-      inventoryId: newInventoryId,
-      units: newRows.length,
-      rows: newRows,
-      updatedAt: now,
-    });
-    clearSerialDraft(payload.inventoryId);
-    clearSerialDraft(newInventoryId);
-    setSerialRefreshToken((prev) => prev + 1);
-    return newInventoryId;
-  };
-
-  const handleSerialUnitsChange = (nextUnits: number) => {
-    if (!editRecord) return;
-    const updated = updateInventoryRecord(editRecord.id, { quantity: nextUnits });
-    setRecords(updated);
-    const latest = updated.find((record) => record.id === editRecord.id) ?? editRecord;
-    setEditRecord(latest);
-    setBulkEditForms((prev) => ({
-      ...prev,
-      [latest.id]: buildEditForm(latest),
-    }));
-  };
-
-  const handleSerialPrev = (payload: SerialInputPayload) => {
-    saveSerialDraft(payload);
-    handleSerialNavigate(-1);
-  };
-
-  const handleSerialNext = (payload: SerialInputPayload) => {
-    saveSerialDraft(payload);
-    handleSerialNavigate(1);
   };
 
   const handleBulkCreatePurchaseInvoice = () => {
@@ -1667,13 +1280,14 @@ export default function InventoryPage() {
                         );
                       })}
                       <td className="border border-gray-300 px-1 py-0.5 text-center">
-                        <button
-                          type="button"
-                          onClick={() => openEditModal(item)}
-                          className="w-full border border-gray-300 bg-[#f7f3e9] px-1 py-1 text-[11px] font-semibold text-neutral-800 shadow-[inset_0_1px_0_#fff]"
+                        <Link
+                          href={`/inventory/${item.id}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block w-full border border-gray-300 bg-[#f7f3e9] px-1 py-1 text-[11px] font-semibold text-neutral-800 shadow-[inset_0_1px_0_#fff]"
                         >
                           ＋
-                        </button>
+                        </Link>
                       </td>
                       <td className="border border-gray-300 px-1 py-0.5 text-center">
                         {item.purchaseInvoiceId ? (
@@ -1782,81 +1396,6 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {editRecord && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-[95vw] border-2 border-gray-300 bg-white">
-            <div className="flex items-center justify-between bg-slate-700 px-4 py-3 text-sm font-semibold text-white">
-              <div className="flex items-center gap-2">
-                <span>在庫編集 / 番号登録</span>
-                <span className="text-xs text-white/80">ID: {editRecord.id}</span>
-              </div>
-              <button
-                type="button"
-                onClick={closeEditModal}
-                className="border border-white bg-white px-2 py-1 text-xs font-semibold text-slate-700"
-              >
-                閉じる
-              </button>
-            </div>
-            <div className="flex border-b border-gray-300 text-sm font-semibold">
-              {[
-                { key: "edit", label: "在庫編集" },
-                { key: "serial", label: "個体番号" },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  type="button"
-                  onClick={() => setActiveTab(tab.key as "edit" | "serial")}
-                  className={`border-r border-gray-300 px-4 py-2 ${
-                    activeTab === tab.key ? "bg-[#f7f3e9] text-slate-800" : "bg-white text-neutral-500"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-            <div className="p-4">
-              {activeTab === "edit" ? (
-                <div className="space-y-4">
-                  <InventoryEditTable
-                    groups={editGroups}
-                    bulkEditForms={bulkEditForms}
-                    onChange={handleBulkFormChange}
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={closeEditModal}
-                      className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
-                    >
-                      キャンセル
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleEditSave}
-                      className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
-                    >
-                      保存
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <SerialInputPanel
-                  inventoryId={editRecord.id}
-                  onRegister={handleSerialRegister}
-                  onPrev={handleSerialPrev}
-                  onNext={handleSerialNext}
-                  onUnitsChange={handleSerialUnitsChange}
-                  onSplit={handleSerialSplit}
-                  enableSplit
-                  refreshToken={serialRefreshToken}
-                  onBack={closeEditModal}
-                />
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

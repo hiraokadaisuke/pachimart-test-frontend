@@ -42,6 +42,7 @@ type SerialInputPanelProps = {
   onSplit?: (payload: SerialSplitPayload) => string | null;
   enableSplit?: boolean;
   refreshToken?: number;
+  registering?: boolean;
 };
 
 export type SerialSplitPayload = {
@@ -61,6 +62,7 @@ export default function SerialInputPanel({
   onSplit,
   enableSplit = false,
   refreshToken,
+  registering = false,
 }: SerialInputPanelProps) {
   const [inventory, setInventory] = useState<InventoryRecord | null>(null);
   const [units, setUnits] = useState<number>(1);
@@ -71,6 +73,8 @@ export default function SerialInputPanel({
     main: "",
     removalDate: "",
   });
+  const [rangeStart, setRangeStart] = useState("");
+  const [rangeEnd, setRangeEnd] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
 
   const machineName = inventory?.machineName ?? "";
@@ -138,8 +142,42 @@ export default function SerialInputPanel({
     setInputs((prev) => ({ ...prev, [nextKey]: prev[key] }));
   };
 
+  const resolveRange = () => {
+    const parsedStart = Number.parseInt(rangeStart, 10);
+    const parsedEnd = Number.parseInt(rangeEnd, 10);
+    let start = Number.isNaN(parsedStart) ? 1 : parsedStart;
+    let end = Number.isNaN(parsedEnd) ? units : parsedEnd;
+    if (start < 1) start = 1;
+    if (end < 1) end = 1;
+    if (start > units) start = units;
+    if (end > units) end = units;
+    if (start > end) [start, end] = [end, start];
+    return { startIndex: start - 1, endIndex: end - 1, start, end };
+  };
+
+  const buildSequentialValue = (baseValue: string, offset: number) => {
+    const match = baseValue.match(/(\\d+)$/);
+    if (!match) return baseValue;
+    const digits = match[1];
+    const prefix = baseValue.slice(0, -digits.length);
+    const baseNumber = Number.parseInt(digits, 10);
+    if (Number.isNaN(baseNumber)) return baseValue;
+    const nextNumber = baseNumber + offset;
+    return `${prefix}${String(nextNumber).padStart(digits.length, "0")}`;
+  };
+
   const handleApply = (key: ColumnKey) => {
-    setRows((prev) => prev.map((row) => ({ ...row, [key]: inputs[key] })));
+    const { startIndex, endIndex } = resolveRange();
+    setRows((prev) =>
+      prev.map((row, index) => {
+        if (index < startIndex || index > endIndex) return row;
+        if (key === "board") {
+          const sequential = buildSequentialValue(inputs[key], index - startIndex);
+          return { ...row, [key]: sequential };
+        }
+        return { ...row, [key]: inputs[key] };
+      }),
+    );
   };
 
   const updateRowValue = (index: number, key: ColumnKey, value: string) => {
@@ -204,6 +242,7 @@ export default function SerialInputPanel({
 
   const handleRegister = () => {
     if (!inventoryId) return;
+    if (registering) return;
     onRegister?.(buildPayload());
   };
 
@@ -217,7 +256,9 @@ export default function SerialInputPanel({
     onNext?.(buildPayload());
   };
 
-  const noRangeText = useMemo(() => `1 ～ ${units}`, [units]);
+  const rangeInfo = resolveRange();
+  const hasRangeInput = rangeStart.trim() !== "" || rangeEnd.trim() !== "";
+  const rangeLabel = hasRangeInput ? `${rangeInfo.start} ～ ${rangeInfo.end}` : `1 ～ ${units}`;
   const canSplit = enableSplit && units > 1;
   const selectedCount = selectedRows.size;
 
@@ -277,8 +318,30 @@ export default function SerialInputPanel({
 
         <div className="border border-black bg-white">
           <div className="grid grid-cols-[90px_repeat(4,1fr)] text-[12px]">
-            <div className="flex items-center justify-center border-r border-black bg-neutral-100 px-2 py-3 font-semibold">
-              全反映
+            <div className="flex flex-col items-center justify-center gap-2 border-r border-black bg-neutral-100 px-2 py-3 font-semibold">
+              <span>全反映</span>
+              <div className="flex items-center gap-1 text-[11px] font-medium text-neutral-700">
+                <input
+                  type="number"
+                  min={1}
+                  max={units}
+                  value={rangeStart}
+                  onChange={(event) => setRangeStart(event.target.value)}
+                  placeholder="開始"
+                  className="w-12 border border-black bg-white px-1 py-0.5 text-right"
+                />
+                <span>〜</span>
+                <input
+                  type="number"
+                  min={1}
+                  max={units}
+                  value={rangeEnd}
+                  onChange={(event) => setRangeEnd(event.target.value)}
+                  placeholder="終了"
+                  className="w-12 border border-black bg-white px-1 py-0.5 text-right"
+                />
+              </div>
+              <span className="text-[10px] font-medium text-neutral-600">範囲指定</span>
             </div>
             {COLUMN_KEYS.map((key) => (
               <div key={key} className="border-l border-black px-3 py-2">
@@ -288,7 +351,7 @@ export default function SerialInputPanel({
                 </div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <span className="min-w-[76px] border border-black bg-neutral-50 px-2 py-1 text-center text-[12px] font-semibold">
-                    {noRangeText}
+                    {rangeLabel}
                   </span>
                   <input
                     type={key === "removalDate" ? "date" : "text"}
@@ -326,7 +389,7 @@ export default function SerialInputPanel({
               本体
             </div>
             <div className="flex flex-1 flex-col border-r border-black px-3 py-2 text-center">
-              <div className="text-[12px] font-semibold">{noRangeText}</div>
+              <div className="text-[12px] font-semibold">{rangeLabel}</div>
               <div className="text-base font-bold leading-tight">{machineName || "機種名未設定"}</div>
               <div className="mt-2 flex flex-wrap justify-center gap-4 text-[12px]">
                 <span>仕入先: {inventory?.supplier ?? "-"}</span>
@@ -363,8 +426,8 @@ export default function SerialInputPanel({
               />
             </label>
           </div>
-          <div className="overflow-hidden">
-            <table className="w-full table-fixed border-collapse text-[12px]">
+          <div className="overflow-x-auto">
+            <table className="min-w-[720px] w-full table-fixed border-collapse text-[12px]">
               <thead className="bg-white">
                 <tr>
                   {enableSplit && (
@@ -479,9 +542,13 @@ export default function SerialInputPanel({
           <button
             type="button"
             onClick={handleRegister}
-            className="border border-black bg-red-500 px-4 py-2 font-semibold text-white hover:bg-red-400"
+            disabled={registering}
+            aria-disabled={registering}
+            className={`border border-black px-4 py-2 font-semibold text-white transition ${
+              registering ? "cursor-not-allowed bg-red-300" : "bg-red-500 hover:bg-red-400"
+            }`}
           >
-            番号登録
+            {registering ? "保存中..." : "番号登録"}
           </button>
           <button
             type="button"
