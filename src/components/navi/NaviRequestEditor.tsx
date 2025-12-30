@@ -604,6 +604,37 @@ function StandardNaviRequestEditor({
     };
   }, [linkedListing, propertyInfo]);
 
+  const generateManualItemId = () =>
+    typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `manual-${Date.now()}`;
+
+  const persistManualItem = useCallback((nextForm: ManualItemFormState) => {
+    persistDraft((prev) => {
+      if (!prev) return prev;
+      const nextItem: ManualNaviItem = {
+        id: prev.items?.[0]?.id ?? generateManualItemId(),
+        gameType: nextForm.gameType,
+        bodyType: nextForm.bodyType,
+        maker: nextForm.maker,
+        modelName: nextForm.modelName,
+        frameColor: nextForm.frameColor?.trim() ? nextForm.frameColor : null,
+        quantity: nextForm.quantity,
+      };
+
+      return {
+        ...prev,
+        items: [nextItem],
+        conditions: {
+          ...prev.conditions,
+          productName: nextItem.modelName,
+          makerName: nextItem.maker,
+          quantity: nextItem.quantity,
+        },
+      };
+    });
+    setEditedConditions((prev) => ({ ...prev, quantity: nextForm.quantity }));
+    setValidationErrors((prev) => ({ ...prev, items: undefined, quantity: undefined, unitPrice: undefined }));
+  }, [persistDraft]);
+
   useEffect(() => {
     if (!draft) return;
 
@@ -671,37 +702,6 @@ function StandardNaviRequestEditor({
     handleTextConditionChange("handler", value);
     setShowHandlerPresets(false);
   };
-
-  const generateManualItemId = () =>
-    typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `manual-${Date.now()}`;
-
-  const persistManualItem = useCallback((nextForm: ManualItemFormState) => {
-    persistDraft((prev) => {
-      if (!prev) return prev;
-      const nextItem: ManualNaviItem = {
-        id: prev.items?.[0]?.id ?? generateManualItemId(),
-        gameType: nextForm.gameType,
-        bodyType: nextForm.bodyType,
-        maker: nextForm.maker,
-        modelName: nextForm.modelName,
-        frameColor: nextForm.frameColor?.trim() ? nextForm.frameColor : null,
-        quantity: nextForm.quantity,
-      };
-
-      return {
-        ...prev,
-        items: [nextItem],
-        conditions: {
-          ...prev.conditions,
-          productName: nextItem.modelName,
-          makerName: nextItem.maker,
-          quantity: nextItem.quantity,
-        },
-      };
-    });
-    setEditedConditions((prev) => ({ ...prev, quantity: nextForm.quantity }));
-    setValidationErrors((prev) => ({ ...prev, items: undefined, quantity: undefined, unitPrice: undefined }));
-  }, [persistDraft]);
 
   const handleManualItemChange = <K extends keyof ManualItemFormState>(key: K, value: ManualItemFormState[K]) => {
     setManualItemForm((prev) => {
