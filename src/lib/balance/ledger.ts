@@ -1,18 +1,25 @@
-export type LedgerEntryKind = "DEPOSIT" | "PAYMENT" | "SALE";
+export type LedgerEntryCategory = "PURCHASE" | "SALE" | "DEPOSIT" | "WITHDRAWAL";
 
 export type LedgerEntry = {
   id: string;
-  kind: LedgerEntryKind;
-  amount: number;
-  createdAt: string;
+  userId: string;
+  category: LedgerEntryCategory;
+  amountYen: number;
+  occurredAt: string;
   tradeId?: string;
+  counterpartyName?: string;
+  makerName?: string;
+  itemName?: string;
+  memo?: string;
+  balanceAfterYen?: number;
 };
 
 type LedgerState = Record<string, LedgerEntry[]>;
 
-type LedgerEntryInput = Omit<LedgerEntry, "id" | "createdAt"> & {
+type LedgerEntryInput = Omit<LedgerEntry, "id" | "occurredAt" | "userId"> & {
   id?: string;
-  createdAt?: string;
+  occurredAt?: string;
+  userId?: string;
 };
 
 const STORAGE_KEY = "dev_user_ledger";
@@ -30,7 +37,7 @@ const parseStoredLedger = (raw: string | null): LedgerState => {
     return Object.fromEntries(
       Object.entries(parsed).map(([userId, entries]) => {
         if (!Array.isArray(entries)) return [userId, []];
-        return [userId, entries.filter(isLedgerEntry).map(normalizeEntry)];
+        return [userId, entries.map((entry) => normalizeEntry(entry, userId)).filter(Boolean) as LedgerEntry[]];
       }),
     );
   } catch {
@@ -38,24 +45,73 @@ const parseStoredLedger = (raw: string | null): LedgerState => {
   }
 };
 
-const isLedgerEntry = (value: unknown): value is LedgerEntry => {
-  if (!value || typeof value !== "object") return false;
-  const entry = value as LedgerEntry;
-  return (
-    typeof entry.id === "string" &&
-    typeof entry.kind === "string" &&
-    typeof entry.amount === "number" &&
-    typeof entry.createdAt === "string"
-  );
+const normalizeEntry = (value: unknown, userIdHint?: string): LedgerEntry | null => {
+  if (!value || typeof value !== "object") return null;
+  const entry = value as LedgerEntry & {
+    amount?: number;
+    createdAt?: string;
+    kind?: string;
+  };
+
+  const category = resolveCategory(entry);
+  if (!category) return null;
+
+  const amountYen = resolveAmount(entry, category);
+  if (!Number.isFinite(amountYen) || amountYen <= 0) return null;
+
+  const occurredAt = typeof entry.occurredAt === "string" ? entry.occurredAt : entry.createdAt;
+
+  if (!occurredAt || typeof entry.id !== "string") return null;
+
+  return {
+    id: entry.id,
+    userId: entry.userId ?? userIdHint ?? "",
+    category,
+    amountYen,
+    occurredAt,
+    tradeId: entry.tradeId,
+    counterpartyName: entry.counterpartyName,
+    makerName: entry.makerName,
+    itemName: entry.itemName,
+    memo: entry.memo,
+    balanceAfterYen: entry.balanceAfterYen,
+  } satisfies LedgerEntry;
 };
 
-const normalizeEntry = (entry: LedgerEntry): LedgerEntry => ({
-  id: entry.id,
-  kind: entry.kind,
-  amount: Number.isFinite(entry.amount) ? entry.amount : 0,
-  createdAt: entry.createdAt,
-  tradeId: entry.tradeId,
-});
+const resolveCategory = (
+  entry: Partial<LedgerEntry> & { kind?: string; amount?: number }
+): LedgerEntryCategory | null => {
+  if (entry.category === "PURCHASE" || entry.category === "SALE" || entry.category === "DEPOSIT") {
+    return entry.category;
+  }
+  if (entry.category === "WITHDRAWAL") return "WITHDRAWAL";
+
+  if (entry.kind === "PAYMENT") return "PURCHASE";
+  if (entry.kind === "SALE") return "SALE";
+  if (entry.kind === "DEPOSIT") return "DEPOSIT";
+
+  if (typeof entry.amount === "number") {
+    return entry.amount < 0 ? "PURCHASE" : "DEPOSIT";
+  }
+
+  return null;
+};
+
+const resolveAmount = (
+  entry: Partial<LedgerEntry> & { amount?: number },
+  category: LedgerEntryCategory
+): number => {
+  if (typeof entry.amountYen === "number") return Math.abs(entry.amountYen);
+  if (typeof entry.amount === "number") return Math.abs(entry.amount);
+
+  switch (category) {
+    case "PURCHASE":
+    case "WITHDRAWAL":
+      return Math.abs(entry.amount ?? 0);
+    default:
+      return Math.abs(entry.amount ?? 0);
+  }
+};
 
 const generateEntryId = () => {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
@@ -66,19 +122,25 @@ const generateEntryId = () => {
 
 export function addLedgerEntry(userId: string, entry: LedgerEntryInput): LedgerEntry | null {
   if (typeof window === "undefined") return null;
-  if (!userId || !entry || !Number.isFinite(entry.amount)) return null;
+  if (!userId || !entry || !Number.isFinite(entry.amountYen)) return null;
 
-  const amount = entry.amount;
-  if (amount === 0) return null;
+  const amountYen = entry.amountYen;
+  if (amountYen === 0) return null;
 
   const ledger = parseStoredLedger(window.localStorage.getItem(STORAGE_KEY));
-  const createdAt = entry.createdAt ?? new Date().toISOString();
+  const occurredAt = entry.occurredAt ?? new Date().toISOString();
   const newEntry: LedgerEntry = {
     id: entry.id ?? generateEntryId(),
-    kind: entry.kind,
-    amount,
-    createdAt,
+    userId: entry.userId ?? userId,
+    category: entry.category,
+    amountYen,
+    occurredAt,
     tradeId: entry.tradeId,
+    counterpartyName: entry.counterpartyName,
+    makerName: entry.makerName,
+    itemName: entry.itemName,
+    memo: entry.memo,
+    balanceAfterYen: entry.balanceAfterYen,
   };
 
   ledger[userId] = [...(ledger[userId] ?? []), newEntry];
