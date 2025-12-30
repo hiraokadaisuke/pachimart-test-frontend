@@ -139,7 +139,7 @@ export function InProgressTabContent() {
   const refreshTrades = useCallback(async () => {
     try {
       const [navis, inquiries] = await Promise.all([loadAllTradesWithApi(), loadAcceptedOnlineInquiryTrades()]);
-      const data = [...navis, ...inquiries];
+      const data = [...navis, ...inquiries].filter((trade) => trade.status !== "APPROVAL_REQUIRED");
       const ownedTrades = data.filter(
         (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
       );
@@ -217,16 +217,25 @@ export function InProgressTabContent() {
 
   const tradeRows = useMemo(() => trades.map((trade) => buildTradeRow(trade, currentUser.id)), [currentUser.id, trades]);
 
-  const filteredTrades = useMemo(() => filterTrades(tradeRows), [filterTrades, tradeRows]);
+  const acceptedTrades = useMemo(
+    () => tradeRows.filter((trade) => trade.status !== "application_sent"),
+    [tradeRows]
+  );
+
+  const filteredTrades = useMemo(() => filterTrades(acceptedTrades), [acceptedTrades, filterTrades]);
 
   const buyPayment = filteredTrades.filter(
-    (trade) => trade.kind === "buy" && (trade.section === "payment" || trade.section === "approval")
+    (trade) => trade.kind === "buy" && trade.status === "application_approved"
   );
-  const buyConfirmation = filteredTrades.filter((trade) => trade.kind === "buy" && trade.section === "confirmation");
+  const buyConfirmation = filteredTrades.filter(
+    (trade) => trade.kind === "buy" && trade.status === "payment_confirmed"
+  );
   const sellPayment = filteredTrades.filter(
-    (trade) => trade.kind === "sell" && (trade.section === "payment" || trade.section === "approval")
+    (trade) => trade.kind === "sell" && trade.status === "application_approved"
   );
-  const sellConfirmation = filteredTrades.filter((trade) => trade.kind === "sell" && trade.section === "confirmation");
+  const sellConfirmation = filteredTrades.filter(
+    (trade) => trade.kind === "sell" && trade.status === "payment_confirmed"
+  );
 
   const getStatementDestination = (row: TradeRow) =>
     getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller", {
