@@ -5,6 +5,21 @@ export type AdditionalFee = {
   amount: number;
 };
 
+export type ManualNaviItem = {
+  id: string;
+  gameType: "pachinko" | "slot";
+  bodyType: "本体" | "枠のみ" | "セルのみ";
+  maker: string;
+  modelName: string;
+  frameColor?: string | null;
+  quantity: number;
+  unitPrice: number;
+  receiveMethod: "発送" | "引取" | "その他";
+  removalDate?: string | null;
+  removalCompleted?: boolean;
+  note?: string | null;
+};
+
 export type TradeConditions = {
   unitPrice: number;
   quantity: number;
@@ -42,6 +57,7 @@ export type NaviDraft = {
   buyerEmail?: string | null;
   buyerNote?: string | null;
   buyerPending?: boolean;
+  items?: ManualNaviItem[];
   conditions: TradeConditions;
   createdAt: string;
   updatedAt: string;

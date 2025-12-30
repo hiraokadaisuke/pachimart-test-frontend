@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
 import { deleteNaviDraft, createEmptyNaviDraft, loadNaviDraft } from "@/lib/navi/storage";
-import { type TradeConditions, type NaviDraft } from "@/lib/navi/types";
+import { type TradeConditions, type NaviDraft, type ManualNaviItem } from "@/lib/navi/types";
 import {
   formatCurrency,
   useDummyNavi,
@@ -111,6 +111,34 @@ const emptyTransactionConditions: TransactionConditions = {
   handler: "",
 };
 
+type ManualItemFormState = {
+  gameType: "pachinko" | "slot";
+  bodyType: "本体" | "枠のみ" | "セルのみ";
+  maker: string;
+  modelName: string;
+  frameColor: string;
+  quantity: number;
+  unitPrice: number;
+  receiveMethod: "発送" | "引取" | "その他";
+  removalDate: string;
+  removalCompleted: boolean;
+  note: string;
+};
+
+const emptyManualItemForm: ManualItemFormState = {
+  gameType: "pachinko",
+  bodyType: "本体",
+  maker: "",
+  modelName: "",
+  frameColor: "",
+  quantity: 1,
+  unitPrice: 0,
+  receiveMethod: "発送",
+  removalDate: "",
+  removalCompleted: false,
+  note: "",
+};
+
 const additionalFeeLabels = {
   cardboardFee: "段ボール",
   nailSheetFee: "釘シート",
@@ -124,6 +152,7 @@ type ValidationErrors = {
   shippingFee?: string;
   handlingFee?: string;
   taxRate?: string;
+  items?: string;
 };
 
 const buyerErrorMessage = "取引先が未設定です。このNaviを送信するには先に取引先を設定してください。";
@@ -138,18 +167,45 @@ const validateDraft = (draft: NaviDraft | null): ValidationErrors => {
 
   const { buyerPending, buyerCompanyName, buyerId, buyerTel, conditions } = draft;
 
+  const manualItems = draft.items ?? [];
+
   if (buyerPending || !buyerCompanyName || !buyerId || !buyerTel) {
     errors.buyer = buyerErrorMessage;
   }
 
-  const quantity = conditions.quantity ?? 0;
-  if (!quantity || quantity <= 0) {
-    errors.quantity = "台数が正しく入力されていません。1以上の数を入力してください。";
-  }
+  const validateItem = (item: ManualNaviItem) => {
+    if (!item.modelName || !item.maker || !item.bodyType || !item.gameType) {
+      return false;
+    }
+    if (!item.quantity || item.quantity <= 0) return false;
+    if (!item.unitPrice || item.unitPrice <= 0) return false;
+    if (!item.removalCompleted && !item.removalDate) return false;
+    return true;
+  };
 
-  const unitPrice = conditions.unitPrice ?? 0;
-  if (!unitPrice || unitPrice <= 0) {
-    errors.unitPrice = "単価が正しくありません。";
+  if (manualItems.length > 0) {
+    const invalidItem = manualItems.find((item) => !validateItem(item));
+    if (invalidItem) {
+      errors.items = "手入力した物件に未入力または不正な項目があります。";
+    }
+    const invalidQuantity = manualItems.find((item) => !item.quantity || item.quantity <= 0);
+    if (invalidQuantity) {
+      errors.quantity = "台数が正しく入力されていません。1以上の数を入力してください。";
+    }
+    const invalidUnitPrice = manualItems.find((item) => !item.unitPrice || item.unitPrice <= 0);
+    if (invalidUnitPrice) {
+      errors.unitPrice = "単価が正しくありません。";
+    }
+  } else {
+    const quantity = conditions.quantity ?? 0;
+    if (!quantity || quantity <= 0) {
+      errors.quantity = "台数が正しく入力されていません。1以上の数を入力してください。";
+    }
+
+    const unitPrice = conditions.unitPrice ?? 0;
+    if (!unitPrice || unitPrice <= 0) {
+      errors.unitPrice = "単価が正しくありません。";
+    }
   }
 
   const shippingFee = conditions.shippingFee ?? 0;
@@ -202,6 +258,7 @@ function StandardNaviRequestEditor({
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<NaviDraft | null>(null);
   const [showManualPropertyForm, setShowManualPropertyForm] = useState(false);
+  const [manualItemForm, setManualItemForm] = useState<ManualItemFormState>(emptyManualItemForm);
   const naviTargetId = draft?.productId ?? transactionId;
   const {
     propertyInfo: defaultPropertyInfo,
@@ -237,6 +294,7 @@ function StandardNaviRequestEditor({
   const [isSending, setIsSending] = useState(false);
   const formattedNumber = formatCurrency;
   const isProductLinked = Boolean(draft?.productId);
+  const manualItems = draft?.items ?? [];
 
   useEffect(() => {
     if (!listingId) {
@@ -372,7 +430,12 @@ function StandardNaviRequestEditor({
 
   useEffect(() => {
     if (isProductLinked) {
-      setShowManualPropertyForm(true);
+      setShowManualPropertyForm(false);
+      return;
+    }
+
+    if (manualItems.length > 0) {
+      setShowManualPropertyForm(false);
       return;
     }
 
@@ -380,7 +443,13 @@ function StandardNaviRequestEditor({
       draft?.conditions.productName || draft?.conditions.makerName || draft?.conditions.location
     );
     setShowManualPropertyForm(hasManualInputs);
-  }, [draft?.conditions.location, draft?.conditions.makerName, draft?.conditions.productName, isProductLinked]);
+  }, [
+    draft?.conditions.location,
+    draft?.conditions.makerName,
+    draft?.conditions.productName,
+    isProductLinked,
+    manualItems.length,
+  ]);
 
   const persistDraft = (updater: (prev: NaviDraft) => NaviDraft) => {
     setDraft((prev) => {
@@ -459,20 +528,6 @@ function StandardNaviRequestEditor({
       buyerEmail: null,
       buyerPending: true,
     }));
-  };
-
-  const handlePropertyChange = (key: keyof TradeConditions, value: string | number | null) => {
-    persistDraft((prev) => ({
-      ...prev,
-      conditions: {
-        ...prev.conditions,
-        [key]: value,
-      },
-    }));
-
-    if (key === "quantity" && typeof value === "number") {
-      syncEditedConditions((prev) => ({ ...prev, quantity: value }));
-    }
   };
 
   const quoteResult = useMemo(() => {
@@ -581,12 +636,6 @@ function StandardNaviRequestEditor({
     notes: draft?.buyerNote ?? null,
   };
   const shouldShowBuyerSelector = !isBuyerSet || isEditingBuyer;
-  const editableProperty = {
-    modelName: draft?.conditions.productName ?? "",
-    maker: draft?.conditions.makerName ?? "",
-    quantity: draft?.conditions.quantity ?? referenceConditions.quantity ?? 1,
-    location: draft?.conditions.location ?? "",
-  };
 
   const displayPropertyInfo = useMemo(() => {
     if (!linkedListing) return propertyInfo;
@@ -647,6 +696,69 @@ function StandardNaviRequestEditor({
   const handleApplyHandlerPreset = (value: string) => {
     handleTextConditionChange("handler", value);
     setShowHandlerPresets(false);
+  };
+
+  const handleManualItemChange = <K extends keyof ManualItemFormState>(key: K, value: ManualItemFormState[K]) => {
+    setManualItemForm((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const isManualFormValid = useMemo(() => {
+    if (!manualItemForm.modelName.trim()) return false;
+    if (!manualItemForm.maker.trim()) return false;
+    if (!manualItemForm.bodyType) return false;
+    if (!manualItemForm.gameType) return false;
+    if (!manualItemForm.quantity || manualItemForm.quantity <= 0) return false;
+    if (!manualItemForm.unitPrice || manualItemForm.unitPrice <= 0) return false;
+    if (!manualItemForm.removalCompleted && !manualItemForm.removalDate) return false;
+    return true;
+  }, [manualItemForm]);
+
+  const resetManualForm = () => {
+    setManualItemForm(emptyManualItemForm);
+  };
+
+  const handleManualItemAdd = () => {
+    if (!draft || !isManualFormValid) return;
+
+    const newItem: ManualNaviItem = {
+      id: crypto.randomUUID ? crypto.randomUUID() : `manual-${Date.now()}`,
+      gameType: manualItemForm.gameType,
+      bodyType: manualItemForm.bodyType,
+      maker: manualItemForm.maker.trim(),
+      modelName: manualItemForm.modelName.trim(),
+      frameColor: manualItemForm.frameColor.trim() ? manualItemForm.frameColor.trim() : null,
+      quantity: manualItemForm.quantity,
+      unitPrice: manualItemForm.unitPrice,
+      receiveMethod: manualItemForm.receiveMethod,
+      removalDate: manualItemForm.removalCompleted ? null : manualItemForm.removalDate,
+      removalCompleted: manualItemForm.removalCompleted,
+      note: manualItemForm.note.trim() ? manualItemForm.note.trim() : null,
+    };
+
+    persistDraft((prev) => ({
+      ...prev,
+      items: [...(prev.items ?? []), newItem],
+      conditions: {
+        ...prev.conditions,
+        productName: newItem.modelName,
+        makerName: newItem.maker,
+        quantity: newItem.quantity,
+        unitPrice: newItem.unitPrice,
+        removalDate: newItem.removalCompleted ? null : newItem.removalDate,
+        memo: newItem.note ?? prev.conditions.memo ?? null,
+      },
+    }));
+
+    setEditedConditions((prev) => ({
+      ...prev,
+      quantity: newItem.quantity,
+      price: newItem.unitPrice,
+      removalDate: newItem.removalCompleted ? "" : newItem.removalDate ?? "",
+    }));
+
+    setShowManualPropertyForm(false);
+    resetManualForm();
+    setValidationErrors((prev) => ({ ...prev, items: undefined, quantity: undefined, unitPrice: undefined }));
   };
 
   return (
@@ -766,6 +878,15 @@ function StandardNaviRequestEditor({
         <div className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2 text-base font-semibold text-neutral-900">
             <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
+            {!isProductLinked && manualItems.length > 0 && (
+              <button
+                type="button"
+                className="rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
+                onClick={() => setShowManualPropertyForm((prev) => !prev)}
+              >
+                {showManualPropertyForm ? "入力を閉じる" : "手入力で追加"}
+              </button>
+            )}
           </div>
           {isProductLinked ? (
             <div className="overflow-x-auto">
@@ -795,45 +916,81 @@ function StandardNaviRequestEditor({
                 </tbody>
               </table>
             </div>
+          ) : manualItems.length > 0 ? (
+            <div className="space-y-4 p-4 text-sm text-neutral-900">
+              <div className="overflow-x-auto">
+                <table className="min-w-full border border-slate-300 text-sm">
+                  <thead>
+                    <tr className="bg-slate-50 text-xs text-neutral-600">
+                      <th className="px-4 py-2 text-left font-semibold">遊技種別</th>
+                      <th className="px-4 py-2 text-left font-semibold">種別</th>
+                      <th className="px-4 py-2 text-left font-semibold">メーカー</th>
+                      <th className="px-4 py-2 text-left font-semibold">機種名</th>
+                      <th className="px-4 py-2 text-left font-semibold">台数</th>
+                      <th className="px-4 py-2 text-left font-semibold">売却価格</th>
+                      <th className="px-4 py-2 text-left font-semibold">撤去日</th>
+                      <th className="px-4 py-2 text-left font-semibold">備考</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {manualItems.map((item) => (
+                      <tr key={item.id} className="border-t border-slate-300 text-slate-900">
+                        <td className="whitespace-nowrap px-4 py-2">{item.gameType === "pachinko" ? "パチンコ" : "スロット"}</td>
+                        <td className="whitespace-nowrap px-4 py-2">{item.bodyType}</td>
+                        <td className="whitespace-nowrap px-4 py-2">{item.maker}</td>
+                        <td className="whitespace-nowrap px-4 py-2">
+                          {item.modelName}
+                          {item.frameColor ? `（${item.frameColor}）` : ""}
+                        </td>
+                        <td className="whitespace-nowrap px-4 py-2">{item.quantity}台</td>
+                        <td className="whitespace-nowrap px-4 py-2">{formattedNumber(item.unitPrice)}</td>
+                        <td className="whitespace-nowrap px-4 py-2">
+                          {item.removalCompleted ? "撤去済" : item.removalDate ? item.removalDate.replace(/-/g, "/") : "-"}
+                        </td>
+                        <td className="px-4 py-2">{item.note ?? "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {!showManualPropertyForm && (
+                <div className="flex justify-start">
+                  <button
+                    type="button"
+                    className="rounded bg-slate-900 px-4 py-2 text-xs font-semibold text-white hover:bg-slate-800"
+                    onClick={() => setShowManualPropertyForm(true)}
+                  >
+                    手入力で追加
+                  </button>
+                </div>
+              )}
+
+              {showManualPropertyForm && (
+                <ManualItemForm
+                  manualItemForm={manualItemForm}
+                  onChange={handleManualItemChange}
+                  onCancel={() => {
+                    setShowManualPropertyForm(false);
+                    resetManualForm();
+                  }}
+                  onSubmit={handleManualItemAdd}
+                  isValid={isManualFormValid}
+                />
+              )}
+            </div>
           ) : showManualPropertyForm ? (
-            <div className="space-y-3 p-4 text-sm text-neutral-900">
-              <p className="text-sm text-neutral-700">商品が紐付いていないため、ここで情報を入力してください。</p>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-neutral-800">機種名</label>
-                <input
-                  type="text"
-                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                  value={editableProperty.modelName}
-                  onChange={(e) => handlePropertyChange("productName", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-neutral-800">メーカー</label>
-                <input
-                  type="text"
-                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                  value={editableProperty.maker}
-                  onChange={(e) => handlePropertyChange("makerName", e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-neutral-800">台数</label>
-                <input
-                  type="number"
-                  className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
-                  value={editableProperty.quantity}
-                  onChange={(e) => handlePropertyChange("quantity", Number(e.target.value) || 0)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-neutral-800">保管場所</label>
-                <input
-                  type="text"
-                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                  value={editableProperty.location}
-                  onChange={(e) => handlePropertyChange("location", e.target.value)}
-                />
-              </div>
+            <div className="space-y-4 p-4 text-sm text-neutral-900">
+              <ManualItemForm
+                manualItemForm={manualItemForm}
+                onChange={handleManualItemChange}
+                onCancel={() => {
+                  setShowManualPropertyForm(false);
+                  resetManualForm();
+                }}
+                onSubmit={handleManualItemAdd}
+                isValid={isManualFormValid}
+              />
             </div>
           ) : (
             <div className="space-y-3 p-6 text-sm text-neutral-900">
@@ -1512,6 +1669,210 @@ function SummaryRow({ label, value, emphasis }: { label: string; value: string; 
     <div className="flex items-center justify-between text-sm">
       <span className="text-neutral-800">{label}</span>
       <span className={`font-semibold ${emphasis ? "text-sky-700" : "text-slate-900"}`}>{value}</span>
+    </div>
+  );
+}
+
+function ManualItemForm({
+  manualItemForm,
+  onChange,
+  onCancel,
+  onSubmit,
+  isValid,
+}: {
+  manualItemForm: ManualItemFormState;
+  onChange: <K extends keyof ManualItemFormState>(key: K, value: ManualItemFormState[K]) => void;
+  onCancel: () => void;
+  onSubmit: () => void;
+  isValid: boolean;
+}) {
+  return (
+    <div className="space-y-4 rounded border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-900">基本情報</h3>
+          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
+        </div>
+        <p className="text-xs text-neutral-600">新規出品フォームの項目に合わせて入力してください。</p>
+      </div>
+
+      <div className="grid gap-3 md:grid-cols-2">
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-neutral-800">遊技種別</label>
+          <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
+            {["pachinko", "slot"].map((type) => (
+              <label key={type} className="inline-flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="gameType"
+                  className="h-4 w-4 text-sky-600 focus:ring-sky-500"
+                  checked={manualItemForm.gameType === type}
+                  onChange={() => onChange("gameType", type as ManualItemFormState["gameType"])}
+                />
+                <span>{type === "pachinko" ? "パチンコ" : "スロット"}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-neutral-800">種別</label>
+          <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
+            {["本体", "枠のみ", "セルのみ"].map((type) => (
+              <label key={type} className="inline-flex items-center gap-1">
+                <input
+                  type="radio"
+                  name="bodyType"
+                  className="h-4 w-4 text-sky-600 focus:ring-sky-500"
+                  checked={manualItemForm.bodyType === type}
+                  onChange={() => onChange("bodyType", type as ManualItemFormState["bodyType"])}
+                />
+                <span>{type}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-neutral-800">メーカー</label>
+          <input
+            type="text"
+            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            value={manualItemForm.maker}
+            onChange={(e) => onChange("maker", e.target.value)}
+            placeholder="メーカー名"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-neutral-800">機種名</label>
+          <input
+            type="text"
+            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            value={manualItemForm.modelName}
+            onChange={(e) => onChange("modelName", e.target.value)}
+            placeholder="機種名を入力"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-neutral-800">枠色（任意）</label>
+          <input
+            type="text"
+            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+            value={manualItemForm.frameColor}
+            onChange={(e) => onChange("frameColor", e.target.value)}
+            placeholder="例：赤枠"
+          />
+        </div>
+
+        <div className="space-y-1">
+          <label className="text-xs font-semibold text-neutral-800">台数</label>
+          <input
+            type="number"
+            min={1}
+            className="w-32 rounded border border-slate-300 px-3 py-2 text-sm"
+            value={manualItemForm.quantity}
+            onChange={(e) => onChange("quantity", Number(e.target.value) || 0)}
+            placeholder="1"
+          />
+        </div>
+      </div>
+
+      <div className="space-y-2 border-t border-slate-200 pt-2">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-semibold text-slate-900">取引条件（ナビ用）</h3>
+          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-neutral-800">販売単価（税抜）</label>
+            <input
+              type="number"
+              min={1}
+              className="w-48 rounded border border-slate-300 px-3 py-2 text-sm"
+              value={manualItemForm.unitPrice}
+              onChange={(e) => onChange("unitPrice", Number(e.target.value) || 0)}
+              placeholder="例：120000"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-neutral-800">受渡方法</label>
+            <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
+              {["発送", "引取"].map((method) => (
+                <label key={method} className="inline-flex items-center gap-1">
+                  <input
+                    type="radio"
+                    name="receiveMethod"
+                    className="h-4 w-4 text-sky-600 focus:ring-sky-500"
+                    checked={manualItemForm.receiveMethod === method}
+                    onChange={() => onChange("receiveMethod", method as ManualItemFormState["receiveMethod"])}
+                  />
+                  <span>{method}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-semibold text-neutral-800">撤去日</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="date"
+                className="w-40 rounded border border-slate-300 px-3 py-2 text-sm"
+                value={manualItemForm.removalDate}
+                onChange={(e) => onChange("removalDate", e.target.value)}
+                disabled={manualItemForm.removalCompleted}
+              />
+              <label className="inline-flex items-center gap-2 text-sm text-neutral-800">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 text-sky-600 focus:ring-sky-500"
+                  checked={manualItemForm.removalCompleted}
+                  onChange={(e) => {
+                    onChange("removalCompleted", e.target.checked);
+                    if (e.target.checked) {
+                      onChange("removalDate", "");
+                    }
+                  }}
+                />
+                <span>撤去済</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="space-y-1 md:col-span-2">
+            <label className="text-xs font-semibold text-neutral-800">備考（任意）</label>
+            <textarea
+              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+              rows={3}
+              value={manualItemForm.note}
+              onChange={(e) => onChange("note", e.target.value)}
+              placeholder="搬入条件や注意事項など"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="rounded bg-slate-900 px-4 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+          onClick={onSubmit}
+          disabled={!isValid}
+        >
+          追加
+        </button>
+        <button
+          type="button"
+          className="rounded border border-slate-300 px-4 py-2 text-xs font-semibold text-neutral-800 hover:bg-slate-50"
+          onClick={onCancel}
+        >
+          キャンセル
+        </button>
+      </div>
     </div>
   );
 }

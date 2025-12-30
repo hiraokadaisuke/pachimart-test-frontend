@@ -105,6 +105,7 @@ export function createEmptyNaviDraft(initial?: Partial<NaviDraft>): NaviDraft {
     buyerEmail: initial?.buyerEmail ?? null,
     buyerNote: initial?.buyerNote ?? null,
     buyerPending: initial?.buyerPending ?? true,
+    items: initial?.items ?? [],
     conditions: {
       unitPrice: initialUnitPrice === undefined ? 0 : initialUnitPrice,
       quantity: initial?.conditions?.quantity ?? 1,
