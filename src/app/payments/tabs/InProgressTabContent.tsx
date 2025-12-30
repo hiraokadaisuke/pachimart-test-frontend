@@ -139,7 +139,19 @@ export function InProgressTabContent() {
   const refreshTrades = useCallback(async () => {
     try {
       const [navis, inquiries] = await Promise.all([loadAllTradesWithApi(), loadAcceptedOnlineInquiryTrades()]);
-      const data = [...navis, ...inquiries].filter((trade) => trade.status !== "APPROVAL_REQUIRED");
+      const combinedTrades = [...navis, ...inquiries];
+
+      console.table(
+        combinedTrades.map((trade) => ({
+          id: trade.id,
+          status: trade.status,
+          source: trade.naviType ?? "UNKNOWN",
+          buyerId: trade.buyerUserId,
+          sellerId: trade.sellerUserId,
+        }))
+      );
+
+      const data = combinedTrades.filter((trade) => trade.status !== "APPROVAL_REQUIRED");
       const ownedTrades = data.filter(
         (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
       );
@@ -173,7 +185,7 @@ export function InProgressTabContent() {
           return;
         }
 
-        const updated = markTradePaid(row.id, currentUser.id);
+        const updated = markTradePaid(row.id, currentUser.id, targetTrade);
         if (!updated) {
           console.error("Failed to mark trade as paid", { tradeId: row.id });
           return;
@@ -185,7 +197,7 @@ export function InProgressTabContent() {
 
       // 完了
       if (row.status === "payment_confirmed") {
-        const updated = markTradeCompleted(row.id, currentUser.id);
+        const updated = markTradeCompleted(row.id, currentUser.id, targetTrade);
         if (!updated) {
           console.error("Failed to mark trade as completed", { tradeId: row.id });
           return;
@@ -223,6 +235,11 @@ export function InProgressTabContent() {
   );
 
   const filteredTrades = useMemo(() => filterTrades(acceptedTrades), [acceptedTrades, filterTrades]);
+
+  useEffect(() => {
+    const paymentRows = filteredTrades.filter((trade) => trade.status === "application_approved");
+    console.table(paymentRows.map((trade) => ({ id: trade.id, status: trade.status })));
+  }, [filteredTrades]);
 
   const buyPayment = filteredTrades.filter(
     (trade) => trade.kind === "buy" && trade.status === "application_approved"

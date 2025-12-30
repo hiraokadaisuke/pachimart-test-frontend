@@ -439,8 +439,12 @@ export function saveContactsToTrade(tradeId: string, contacts: BuyerContact[]): 
   });
 }
 
-export function markTradePaid(tradeId: string, actorUserId: string): TradeRecord | null {
-  const trade = loadTrade(tradeId);
+export function markTradePaid(
+  tradeId: string,
+  actorUserId: string,
+  fallbackTrade?: TradeRecord | null
+): TradeRecord | null {
+  const trade = loadTrade(tradeId) ?? fallbackTrade;
   if (!trade) return null;
   if (!canMarkPaid(trade, actorUserId)) return null;
 
@@ -470,8 +474,12 @@ export function markTradePaid(tradeId: string, actorUserId: string): TradeRecord
   return updated;
 }
 
-export function markTradeCompleted(tradeId: string, actorUserId: string): TradeRecord | null {
-  const trade = loadTrade(tradeId);
+export function markTradeCompleted(
+  tradeId: string,
+  actorUserId: string,
+  fallbackTrade?: TradeRecord | null
+): TradeRecord | null {
+  const trade = loadTrade(tradeId) ?? fallbackTrade;
   if (!trade) return null;
   if (!canMarkCompleted(trade, actorUserId)) return null;
 
