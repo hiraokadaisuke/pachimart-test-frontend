@@ -15,7 +15,7 @@ import {
 } from "@/lib/demo-data/demoInventory";
 import { DEFAULT_MASTER_DATA, loadMasterData, type MasterData } from "@/lib/demo-data/demoMasterData";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
-import type { PurchaseInvoice } from "@/types/purchaseInvoices";
+import type { InventoryStatusOption, PurchaseInvoice } from "@/types/purchaseInvoices";
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import { buildEditForm, buildPayload, resolveListingStatus, STATUS_OPTIONS } from "@/lib/inventory/editUtils";
 
