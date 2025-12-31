@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 
 import { formatCurrency, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import { BUYER_OPTIONS, findBuyerById, type BuyerInfo } from "@/lib/demo-data/buyers";
-import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
+import { loadAllSalesInvoices } from "@/lib/demo-data/salesInvoices";
+import { loadSalesInvoiceGroups } from "@/lib/demo-data/salesInvoiceGroups";
 import { loadSerialDraft, loadSerialInput, type SerialInputRow } from "@/lib/serialInputStorage";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { SalesInvoice } from "@/types/salesInvoices";
@@ -28,201 +29,6 @@ const PRINT_ACTIONS = [
 ] as const;
 
 const REQUIRED_SERIAL_FIELDS: Array<keyof SerialInputRow> = ["board", "frame", "main"];
-
-const SEED_SALES_INVOICES: SalesInvoice[] = [
-  {
-    invoiceId: "S-V-230001",
-    invoiceType: "vendor",
-    createdAt: "2023-03-12T09:00:00Z",
-    issuedDate: "2023/03/12",
-    vendorName: "株式会社あさひ商事",
-    staff: "木村",
-    items: [
-      {
-        maker: "サミー",
-        productName: "パチスロ炎舞",
-        type: "スロット",
-        quantity: 1,
-        unitPrice: 328000,
-        amount: 328000,
-        note: "―",
-      },
-    ],
-    subtotal: 298182,
-    tax: 29818,
-    insurance: 0,
-    totalAmount: 328000,
-    remarks: "",
-  },
-  {
-    invoiceId: "S-H-230014",
-    invoiceType: "hall",
-    createdAt: "2023-04-02T09:00:00Z",
-    issuedDate: "2023/04/02",
-    vendorName: "ダイナム渋谷店",
-    staff: "佐々木",
-    items: [
-      {
-        maker: "京楽",
-        productName: "ぱちんこ銀河伝説",
-        type: "パチンコ",
-        quantity: 1,
-        unitPrice: 742000,
-        amount: 742000,
-        note: "",
-      },
-    ],
-    subtotal: 707619,
-    tax: 35381,
-    insurance: 0,
-    totalAmount: 742000,
-    remarks: "",
-  },
-  {
-    invoiceId: "S-V-230019",
-    invoiceType: "vendor",
-    createdAt: "2023-05-18T09:00:00Z",
-    issuedDate: "2023/05/18",
-    vendorName: "株式会社イーストトレーディング",
-    staff: "高橋",
-    items: [
-      {
-        maker: "三洋",
-        productName: "海物語ライト",
-        type: "パチンコ",
-        quantity: 1,
-        unitPrice: 215000,
-        amount: 215000,
-        note: "",
-      },
-    ],
-    subtotal: 195455,
-    tax: 19545,
-    insurance: 0,
-    totalAmount: 215000,
-    remarks: "",
-  },
-  {
-    invoiceId: "S-H-230025",
-    invoiceType: "hall",
-    createdAt: "2023-06-01T09:00:00Z",
-    issuedDate: "2023/06/01",
-    vendorName: "メガガイア新宿店",
-    staff: "鈴木",
-    items: [
-      {
-        maker: "平和",
-        productName: "ルパン三世MAX",
-        type: "パチンコ",
-        quantity: 1,
-        unitPrice: 980000,
-        amount: 980000,
-        note: "",
-      },
-    ],
-    subtotal: 933333,
-    tax: 46667,
-    insurance: 0,
-    totalAmount: 980000,
-    remarks: "",
-  },
-  {
-    invoiceId: "S-V-230028",
-    invoiceType: "vendor",
-    createdAt: "2023-06-22T09:00:00Z",
-    issuedDate: "2023/06/22",
-    vendorName: "北斗商会",
-    staff: "田中",
-    items: [
-      {
-        maker: "北電子",
-        productName: "ジャグラーSP",
-        type: "スロット",
-        quantity: 1,
-        unitPrice: 465000,
-        amount: 465000,
-        note: "",
-      },
-    ],
-    subtotal: 422728,
-    tax: 42272,
-    insurance: 0,
-    totalAmount: 465000,
-    remarks: "",
-  },
-  {
-    invoiceId: "S-H-230033",
-    invoiceType: "hall",
-    createdAt: "2023-07-09T09:00:00Z",
-    issuedDate: "2023/07/09",
-    vendorName: "キング観光難波店",
-    staff: "山本",
-    items: [
-      {
-        maker: "大都技研",
-        productName: "番長ZERO",
-        type: "スロット",
-        quantity: 1,
-        unitPrice: 588000,
-        amount: 588000,
-        note: "",
-      },
-    ],
-    subtotal: 560000,
-    tax: 28000,
-    insurance: 0,
-    totalAmount: 588000,
-    remarks: "",
-  },
-  {
-    invoiceId: "S-V-230037",
-    invoiceType: "vendor",
-    createdAt: "2023-08-15T09:00:00Z",
-    issuedDate: "2023/08/15",
-    vendorName: "株式会社ロータス",
-    staff: "加藤",
-    items: [
-      {
-        maker: "SANKYO",
-        productName: "フィーバーX",
-        type: "パチンコ",
-        quantity: 1,
-        unitPrice: 312000,
-        amount: 312000,
-        note: "",
-      },
-    ],
-    subtotal: 283637,
-    tax: 28363,
-    insurance: 0,
-    totalAmount: 312000,
-    remarks: "",
-  },
-  {
-    invoiceId: "S-H-230041",
-    invoiceType: "hall",
-    createdAt: "2023-09-04T09:00:00Z",
-    issuedDate: "2023/09/04",
-    vendorName: "キコーナ阪神店",
-    staff: "斎藤",
-    items: [
-      {
-        maker: "サミー",
-        productName: "パチスロ炎舞",
-        type: "スロット",
-        quantity: 1,
-        unitPrice: 702000,
-        amount: 702000,
-        note: "",
-      },
-    ],
-    subtotal: 668571,
-    tax: 33429,
-    insurance: 0,
-    totalAmount: 702000,
-    remarks: "",
-  },
-];
 
 type Props = {
   invoiceId: string;
@@ -254,6 +60,67 @@ const formatNumber = (value?: number): string => {
   return value.toLocaleString("ja-JP");
 };
 
+const resolveInvoiceSubtotal = (invoice: SalesInvoice): number => {
+  if (invoice.subtotal != null) return invoice.subtotal;
+  return (invoice.items ?? []).reduce((sum, item) => {
+    const amount = item.amount ?? (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+    return sum + (Number.isNaN(amount) ? 0 : amount);
+  }, 0);
+};
+
+const resolveInvoiceTax = (invoice: SalesInvoice): number => {
+  if (invoice.tax != null) return invoice.tax;
+  const subtotal = resolveInvoiceSubtotal(invoice);
+  const rate = invoice.invoiceType === "hall" ? 0.05 : 0.1;
+  return Math.floor(subtotal * rate);
+};
+
+const resolveInvoiceTotal = (invoice: SalesInvoice): number => {
+  if (invoice.totalAmount != null) return invoice.totalAmount;
+  const subtotal = resolveInvoiceSubtotal(invoice);
+  const tax = resolveInvoiceTax(invoice);
+  const insurance = Number(invoice.insurance || 0);
+  return subtotal + tax + insurance;
+};
+
+const resolveCommonValue = (values: Array<string | undefined>): string | undefined => {
+  const filtered = values.filter((value) => value && value.trim() !== "");
+  if (filtered.length === 0) return undefined;
+  const [first] = filtered;
+  if (filtered.every((value) => value === first)) return first;
+  return undefined;
+};
+
+const buildMergedInvoice = (invoices: SalesInvoice[], groupName: string, groupId: string, groupTransferDate?: string) => {
+  if (invoices.length === 0) return null;
+  const items = invoices.flatMap((entry) => entry.items ?? []);
+  const subtotal = invoices.reduce((sum, entry) => sum + resolveInvoiceSubtotal(entry), 0);
+  const tax = invoices.reduce((sum, entry) => sum + resolveInvoiceTax(entry), 0);
+  const insurance = invoices.reduce((sum, entry) => sum + Number(entry.insurance || 0), 0);
+  const totalAmount = invoices.reduce((sum, entry) => sum + resolveInvoiceTotal(entry), 0);
+  const issuedDates = invoices.map((entry) => entry.issuedDate || entry.createdAt).filter(Boolean);
+  const issuedDate = issuedDates.sort()[0];
+  const invoiceTypes = Array.from(new Set(invoices.map((entry) => entry.invoiceType)));
+  const invoiceType = invoiceTypes[0] ?? "vendor";
+
+  return {
+    invoiceId: groupId,
+    invoiceType,
+    createdAt: invoices[0]?.createdAt ?? new Date().toISOString(),
+    issuedDate,
+    vendorName: groupName,
+    staff: resolveCommonValue(invoices.map((entry) => entry.staff)) ?? "―",
+    manager: resolveCommonValue(invoices.map((entry) => entry.manager)) ?? "―",
+    transferDate: groupTransferDate ?? resolveCommonValue(invoices.map((entry) => entry.transferDate)),
+    items,
+    subtotal,
+    tax,
+    insurance,
+    totalAmount,
+    remarks: resolveCommonValue(invoices.map((entry) => entry.remarks)) ?? "",
+  };
+};
+
 export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props) {
   const router = useRouter();
   const [invoice, setInvoice] = useState<SalesInvoice | null>(null);
@@ -264,7 +131,18 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const [selectedSellerId, setSelectedSellerId] = useState<string>(BUYER_OPTIONS[0].id);
 
   useEffect(() => {
-    const invoices = [...SEED_SALES_INVOICES, ...loadSalesInvoices()];
+    const invoices = loadAllSalesInvoices();
+    const groups = loadSalesInvoiceGroups();
+    const group = groups.find((entry) => entry.id === invoiceId);
+    if (group) {
+      const grouped = group.invoiceIds
+        .map((id) => invoices.find((entry) => entry.invoiceId === id))
+        .filter((entry): entry is SalesInvoice => Boolean(entry));
+      const merged = buildMergedInvoice(grouped, group.salesToName, group.id, group.transferDate);
+      setInvoice(merged);
+      setAttemptedLoad(true);
+      return;
+    }
     const target = invoices.find((entry) => entry.invoiceId === invoiceId);
     setInvoice(target ?? null);
     setAttemptedLoad(true);
@@ -352,6 +230,7 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const invoiceOriginalRequiredLabel = invoice?.invoiceOriginalRequired === false ? "不要" : "要";
   const paymentDateLabel = formatMonthDay(invoice?.issuedDate || invoice?.createdAt);
   const warehousingDateLabel = formatMonthDay(invoice?.issuedDate || invoice?.createdAt);
+  const transferDateLabel = formatFullDate(invoice?.transferDate);
 
   const handlePrintMenu = (label: string) => {
     const action = PRINT_ACTIONS.find((entry) => entry.label === label);
@@ -497,6 +376,13 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
         <div className="flex items-center gap-2 rounded border border-slate-300 bg-slate-200 px-3 py-2 text-sm font-semibold text-neutral-800">
           <span className="h-5 w-1.5 rounded bg-emerald-700" aria-hidden />
           <span>詳細情報</span>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-6 rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 shadow-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-neutral-700">振り込み日：</span>
+            <span>{transferDateLabel}</span>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 shadow-sm">

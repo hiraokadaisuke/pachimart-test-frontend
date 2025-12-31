@@ -3,107 +3,111 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
+import {
+  deleteSalesInvoices,
+  loadAllSalesInvoices,
+  loadSalesInvoices,
+  saveSalesInvoices,
+} from "@/lib/demo-data/salesInvoices";
+import {
+  addSalesInvoiceGroup,
+  generateSalesInvoiceGroupId,
+  loadSalesInvoiceGroups,
+} from "@/lib/demo-data/salesInvoiceGroups";
+import type { SalesInvoice, SalesInvoiceGroup } from "@/types/salesInvoices";
 
 interface SalesInvoiceRow {
   id: string;
-  type: "vendor" | "hall";
+  rowType: "invoice" | "group";
   issueDate: string;
   maker: string;
-  model: string;
+  modelDisplay: string;
+  modelSearch: string;
+  modelTooltip?: string;
   customer: string;
   staff: string;
   totalAmount: number;
+  invoiceType: "vendor" | "hall" | "mixed";
+  transferDate?: string;
 }
-
-const initialInvoices: SalesInvoiceRow[] = [
-  {
-    id: "S-V-230001",
-    type: "vendor",
-    issueDate: "2023-03-12",
-    maker: "サミー",
-    model: "パチスロ炎舞",
-    customer: "株式会社あさひ商事",
-    staff: "木村",
-    totalAmount: 328000,
-  },
-  {
-    id: "S-H-230014",
-    type: "hall",
-    issueDate: "2023-04-02",
-    maker: "京楽",
-    model: "ぱちんこ銀河伝説",
-    customer: "ダイナム渋谷店",
-    staff: "佐々木",
-    totalAmount: 742000,
-  },
-  {
-    id: "S-V-230019",
-    type: "vendor",
-    issueDate: "2023-05-18",
-    maker: "三洋",
-    model: "海物語ライト",
-    customer: "株式会社イーストトレーディング",
-    staff: "高橋",
-    totalAmount: 215000,
-  },
-  {
-    id: "S-H-230025",
-    type: "hall",
-    issueDate: "2023-06-01",
-    maker: "平和",
-    model: "ルパン三世MAX",
-    customer: "メガガイア新宿店",
-    staff: "鈴木",
-    totalAmount: 980000,
-  },
-  {
-    id: "S-V-230028",
-    type: "vendor",
-    issueDate: "2023-06-22",
-    maker: "北電子",
-    model: "ジャグラーSP",
-    customer: "北斗商会",
-    staff: "田中",
-    totalAmount: 465000,
-  },
-  {
-    id: "S-H-230033",
-    type: "hall",
-    issueDate: "2023-07-09",
-    maker: "大都技研",
-    model: "番長ZERO",
-    customer: "キング観光難波店",
-    staff: "山本",
-    totalAmount: 588000,
-  },
-  {
-    id: "S-V-230037",
-    type: "vendor",
-    issueDate: "2023-08-15",
-    maker: "SANKYO",
-    model: "フィーバーX",
-    customer: "株式会社ロータス",
-    staff: "加藤",
-    totalAmount: 312000,
-  },
-  {
-    id: "S-H-230041",
-    type: "hall",
-    issueDate: "2023-09-04",
-    maker: "サミー",
-    model: "パチスロ炎舞",
-    customer: "キコーナ阪神店",
-    staff: "斎藤",
-    totalAmount: 702000,
-  },
-];
 
 const inputCell =
   "w-full rounded-none border border-gray-300 bg-white px-2 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-600";
 
+const toDateKey = (value?: string) => {
+  if (!value) return "";
+  const normalized = value.includes("T") ? value.slice(0, 10) : value;
+  return normalized.replaceAll("/", "-");
+};
+
+const formatDate = (value?: string) => {
+  if (!value) return "-";
+  return value.replaceAll("-", "/");
+};
+
+const formatCurrency = (value: number) => value.toLocaleString("ja-JP");
+
+const resolveInvoiceSubtotal = (invoice: SalesInvoice): number => {
+  if (invoice.subtotal != null) return invoice.subtotal;
+  return (invoice.items ?? []).reduce((sum, item) => {
+    const amount = item.amount ?? (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+    return sum + (Number.isNaN(amount) ? 0 : amount);
+  }, 0);
+};
+
+const resolveInvoiceTax = (invoice: SalesInvoice): number => {
+  if (invoice.tax != null) return invoice.tax;
+  const subtotal = resolveInvoiceSubtotal(invoice);
+  const rate = invoice.invoiceType === "hall" ? 0.05 : 0.1;
+  return Math.floor(subtotal * rate);
+};
+
+const resolveInvoiceTotal = (invoice: SalesInvoice): number => {
+  if (invoice.totalAmount != null) return invoice.totalAmount;
+  const subtotal = resolveInvoiceSubtotal(invoice);
+  const tax = resolveInvoiceTax(invoice);
+  const insurance = Number(invoice.insurance || 0);
+  return subtotal + tax + insurance;
+};
+
+const buildModelSummary = (items: SalesInvoice["items"]) => {
+  const counts = new Map<string, number>();
+  items.forEach((item) => {
+    const name = (item.productName ?? "").trim();
+    if (!name) return;
+    const quantity = Number(item.quantity) || 1;
+    counts.set(name, (counts.get(name) ?? 0) + quantity);
+  });
+  const entries = Array.from(counts.entries());
+  if (entries.length === 0) {
+    return { display: "-", search: "", tooltip: undefined };
+  }
+  const [firstName] = entries[0];
+  const tooltip = entries
+    .map(([name, quantity]) => (quantity > 1 ? `${name} ×${quantity}` : name))
+    .join("\n");
+  const display = entries.length > 1 ? `${firstName} + 他` : firstName;
+  const search = entries.map(([name]) => name).join(" ");
+  return { display, search, tooltip };
+};
+
+const resolveSalesToKey = (invoice: SalesInvoice) => {
+  const salesToId = invoice.salesToId?.trim();
+  const name = (invoice.vendorName || invoice.buyerName || "").trim();
+  return salesToId ? `id:${salesToId}` : name ? `name:${name}` : "";
+};
+
+const resolveCommonValue = (values: Array<string | undefined>) => {
+  const filtered = values.filter((value) => value && value.trim() !== "");
+  if (filtered.length === 0) return "";
+  const [first] = filtered;
+  if (filtered.every((value) => value === first)) return first;
+  return "";
+};
+
 export default function SalesInvoiceListPage() {
-  const [invoices, setInvoices] = useState<SalesInvoiceRow[]>(initialInvoices);
+  const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
+  const [groups, setGroups] = useState<SalesInvoiceGroup[]>([]);
   const [formValues, setFormValues] = useState({
     id: "",
     maker: "",
@@ -116,11 +120,87 @@ export default function SalesInvoiceListPage() {
   const [appliedFilters, setAppliedFilters] = useState(formValues);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  useEffect(() => {
+    setInvoices(loadAllSalesInvoices());
+    setGroups(loadSalesInvoiceGroups());
+  }, []);
+
+  const mergedInvoiceIds = useMemo(() => {
+    const ids = new Set<string>();
+    groups.forEach((group) => {
+      group.invoiceIds.forEach((id) => ids.add(id));
+    });
+    return ids;
+  }, [groups]);
+
+  const invoiceRows = useMemo<SalesInvoiceRow[]>(() => {
+    return invoices
+      .filter((invoice) => !mergedInvoiceIds.has(invoice.invoiceId))
+      .map((invoice) => {
+        const modelSummary = buildModelSummary(invoice.items ?? []);
+        return {
+          id: invoice.invoiceId,
+          rowType: "invoice",
+          issueDate: toDateKey(invoice.issuedDate || invoice.createdAt),
+          maker: invoice.items?.[0]?.maker ?? "",
+          modelDisplay: modelSummary.display,
+          modelSearch: modelSummary.search,
+          modelTooltip: modelSummary.tooltip,
+          customer: (invoice.vendorName || invoice.buyerName || "").trim(),
+          staff: invoice.staff ?? "",
+          totalAmount: resolveInvoiceTotal(invoice),
+          invoiceType: invoice.invoiceType,
+          transferDate: invoice.transferDate,
+        };
+      });
+  }, [invoices, mergedInvoiceIds]);
+
+  const groupRows = useMemo(() => {
+    const invoiceMap = new Map(invoices.map((invoice) => [invoice.invoiceId, invoice]));
+    return groups.reduce<SalesInvoiceRow[]>((acc, group) => {
+      const groupedInvoices = group.invoiceIds
+        .map((id) => invoiceMap.get(id))
+        .filter((entry): entry is SalesInvoice => Boolean(entry));
+      if (groupedInvoices.length === 0) return acc;
+      const items = groupedInvoices.flatMap((entry) => entry.items ?? []);
+      const modelSummary = buildModelSummary(items);
+      const invoiceTypes = Array.from(new Set(groupedInvoices.map((entry) => entry.invoiceType)));
+      const issueDateCandidates = groupedInvoices
+        .map((entry) => toDateKey(entry.issuedDate || entry.createdAt))
+        .filter(Boolean)
+        .sort();
+      const issueDate = issueDateCandidates[0] ?? "";
+      const staff = resolveCommonValue(groupedInvoices.map((entry) => entry.staff)) || "-";
+      const maker = items[0]?.maker ?? "";
+      const totalAmount = groupedInvoices.reduce((sum, entry) => sum + resolveInvoiceTotal(entry), 0);
+      const transferDate =
+        group.transferDate || resolveCommonValue(groupedInvoices.map((entry) => entry.transferDate)) || "";
+
+      acc.push({
+        id: group.id,
+        rowType: "group",
+        issueDate,
+        maker,
+        modelDisplay: modelSummary.display,
+        modelSearch: modelSummary.search,
+        modelTooltip: modelSummary.tooltip,
+        customer: group.salesToName,
+        staff,
+        totalAmount,
+        invoiceType: invoiceTypes.length === 1 ? invoiceTypes[0] : "mixed",
+        transferDate,
+      });
+      return acc;
+    }, []);
+  }, [groups, invoices]);
+
+  const rows = useMemo(() => [...groupRows, ...invoiceRows], [groupRows, invoiceRows]);
+
   const filteredInvoices = useMemo(() => {
-    const filtered = invoices
+    const filtered = rows
       .filter((invoice) => invoice.id.toLowerCase().includes(appliedFilters.id.toLowerCase()))
       .filter((invoice) => invoice.maker.toLowerCase().includes(appliedFilters.maker.toLowerCase()))
-      .filter((invoice) => invoice.model.toLowerCase().includes(appliedFilters.model.toLowerCase()))
+      .filter((invoice) => invoice.modelSearch.toLowerCase().includes(appliedFilters.model.toLowerCase()))
       .filter((invoice) => invoice.customer.toLowerCase().includes(appliedFilters.customer.toLowerCase()))
       .filter((invoice) => invoice.staff.toLowerCase().includes(appliedFilters.staff.toLowerCase()))
       .filter((invoice) => {
@@ -130,22 +210,7 @@ export default function SalesInvoiceListPage() {
 
     const limit = Number(appliedFilters.displayCount) || filtered.length;
     return filtered.slice(0, limit);
-  }, [appliedFilters, invoices]);
-
-  useEffect(() => {
-    const stored = loadSalesInvoices();
-    const mapped: SalesInvoiceRow[] = stored.map((invoice) => ({
-      id: invoice.invoiceId,
-      type: invoice.invoiceType,
-      issueDate: (invoice.issuedDate ?? "").replaceAll("/", "-") || invoice.createdAt.slice(0, 10),
-      maker: invoice.items[0]?.maker ?? "",
-      model: invoice.items[0]?.productName ?? "",
-      customer: invoice.vendorName ?? "",
-      staff: invoice.staff ?? "",
-      totalAmount: invoice.totalAmount ?? invoice.subtotal ?? 0,
-    }));
-    setInvoices([...mapped, ...initialInvoices]);
-  }, []);
+  }, [appliedFilters, rows]);
 
   const toggleSelect = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -160,7 +225,7 @@ export default function SalesInvoiceListPage() {
   };
 
   const handleSelectPage = () => {
-    setSelectedIds(new Set(filteredInvoices.map((invoice) => invoice.id)));
+    setSelectedIds(new Set(filteredInvoices.filter((row) => row.rowType === "invoice").map((invoice) => invoice.id)));
   };
 
   const handleClearSelection = () => {
@@ -169,7 +234,46 @@ export default function SalesInvoiceListPage() {
 
   const handleDelete = () => {
     if (selectedIds.size === 0) return;
-    setInvoices((prev) => prev.filter((invoice) => !selectedIds.has(invoice.id)));
+    deleteSalesInvoices(Array.from(selectedIds));
+    setInvoices((prev) => prev.filter((invoice) => !selectedIds.has(invoice.invoiceId)));
+    setSelectedIds(new Set());
+  };
+
+  const handleMerge = () => {
+    if (selectedIds.size < 2) return;
+    const selectedInvoices = invoices.filter((invoice) => selectedIds.has(invoice.invoiceId));
+    if (selectedInvoices.length < 2) return;
+    const salesToKey = resolveSalesToKey(selectedInvoices[0]);
+    if (!salesToKey || selectedInvoices.some((invoice) => resolveSalesToKey(invoice) !== salesToKey)) {
+      alert("販売先が同一の伝票のみ結合できます");
+      return;
+    }
+
+    const salesToName = (selectedInvoices[0].vendorName || selectedInvoices[0].buyerName || "").trim();
+    const transferDate = resolveCommonValue(selectedInvoices.map((invoice) => invoice.transferDate)) || undefined;
+    const groupId = generateSalesInvoiceGroupId();
+    const now = new Date().toISOString();
+    const group: SalesInvoiceGroup = {
+      id: groupId,
+      salesToId: selectedInvoices[0].salesToId,
+      salesToName,
+      invoiceIds: selectedInvoices.map((invoice) => invoice.invoiceId),
+      transferDate,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const updatedGroups = addSalesInvoiceGroup(group);
+    const storedInvoices = loadSalesInvoices();
+    if (storedInvoices.length > 0) {
+      const updatedStored = storedInvoices.map((invoice) =>
+        selectedIds.has(invoice.invoiceId) ? { ...invoice, mergedGroupId: groupId } : invoice,
+      );
+      saveSalesInvoices(updatedStored);
+    }
+
+    setGroups(updatedGroups);
+    setInvoices(loadAllSalesInvoices());
     setSelectedIds(new Set());
   };
 
@@ -191,8 +295,6 @@ export default function SalesInvoiceListPage() {
     setAppliedFilters(resetValues);
     setSelectedIds(new Set());
   };
-
-  const formatCurrency = (value: number) => value.toLocaleString("ja-JP");
 
   const searchRowClass = "border border-gray-300";
   const headerCellClass = "border border-gray-300 px-3 py-2 text-sm";
@@ -364,31 +466,16 @@ export default function SalesInvoiceListPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
-        <button
-          type="button"
-          onClick={handleDelete}
-          className="border border-gray-300 bg-white px-3 py-1"
-        >
+        <button type="button" onClick={handleDelete} className="border border-gray-300 bg-white px-3 py-1">
           削除
         </button>
-        <button
-          type="button"
-          className="border border-gray-300 bg-white px-3 py-1"
-        >
+        <button type="button" onClick={handleMerge} className="border border-gray-300 bg-white px-3 py-1">
           結合
         </button>
-        <button
-          type="button"
-          onClick={handleSelectPage}
-          className="border border-gray-300 bg-white px-3 py-1"
-        >
+        <button type="button" onClick={handleSelectPage} className="border border-gray-300 bg-white px-3 py-1">
           ページ内全選択
         </button>
-        <button
-          type="button"
-          onClick={handleClearSelection}
-          className="border border-gray-300 bg-white px-3 py-1"
-        >
+        <button type="button" onClick={handleClearSelection} className="border border-gray-300 bg-white px-3 py-1">
           全解除
         </button>
       </div>
@@ -404,6 +491,7 @@ export default function SalesInvoiceListPage() {
               <th className="border border-gray-300 px-3 py-2 text-left">販売先</th>
               <th className="border border-gray-300 px-3 py-2 text-left">区分</th>
               <th className="border border-gray-300 px-3 py-2 text-left">担当</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">振り込み日</th>
               <th className="border border-gray-300 px-3 py-2 text-right">合計金額</th>
               <th className="border border-gray-300 px-3 py-2 text-center">選択</th>
               <th className="border border-gray-300 px-3 py-2 text-center">詳細</th>
@@ -412,7 +500,7 @@ export default function SalesInvoiceListPage() {
           <tbody>
             {filteredInvoices.length === 0 && (
               <tr>
-                <td colSpan={10} className="border border-gray-300 px-4 py-8 text-center text-sm text-slate-700">
+                <td colSpan={11} className="border border-gray-300 px-4 py-8 text-center text-sm text-slate-700">
                   該当データがありません。
                 </td>
               </tr>
@@ -420,27 +508,39 @@ export default function SalesInvoiceListPage() {
             {filteredInvoices.map((invoice, index) => {
               const rowColor = index % 2 === 0 ? "bg-amber-50" : "bg-white";
               const detailHref =
-                invoice.type === "vendor"
-                  ? `/inventory/sales-invoice/vendor/${invoice.id}`
-                  : `/inventory/sales-invoice/hall/${invoice.id}`;
-              const typeLabel = invoice.type === "vendor" ? "業者" : invoice.type === "hall" ? "ホール" : "-";
+                invoice.rowType === "group"
+                  ? `/inventory/sales-invoice/group/${invoice.id}`
+                  : invoice.invoiceType === "vendor"
+                    ? `/inventory/sales-invoice/vendor/${invoice.id}`
+                    : `/inventory/sales-invoice/hall/${invoice.id}`;
+              const typeLabel =
+                invoice.invoiceType === "vendor" ? "業者" : invoice.invoiceType === "hall" ? "ホール" : "混在";
               return (
                 <tr key={invoice.id} className={`${rowColor}`}>
                   <td className="border border-gray-300 px-3 py-2 font-semibold">{invoice.id}</td>
-                  <td className="border border-gray-300 px-3 py-2">{invoice.issueDate.replaceAll("-", "/")}</td>
+                  <td className="border border-gray-300 px-3 py-2">{formatDate(invoice.issueDate)}</td>
                   <td className="border border-gray-300 px-3 py-2">{invoice.maker}</td>
-                  <td className="border border-gray-300 px-3 py-2">{invoice.model}</td>
+                  <td className="border border-gray-300 px-3 py-2" title={invoice.modelTooltip}>
+                    {invoice.modelDisplay}
+                  </td>
                   <td className="border border-gray-300 px-3 py-2">{invoice.customer}</td>
                   <td className="border border-gray-300 px-3 py-2">{typeLabel}</td>
                   <td className="border border-gray-300 px-3 py-2">{invoice.staff}</td>
-                  <td className="border border-gray-300 px-3 py-2 text-right">{formatCurrency(invoice.totalAmount)}</td>
+                  <td className="border border-gray-300 px-3 py-2">{formatDate(invoice.transferDate)}</td>
+                  <td className="border border-gray-300 px-3 py-2 text-right">
+                    {formatCurrency(invoice.totalAmount)}
+                  </td>
                   <td className="border border-gray-300 px-3 py-2 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedIds.has(invoice.id)}
-                      onChange={(e) => toggleSelect(invoice.id, e.target.checked)}
-                      className="h-4 w-4"
-                    />
+                    {invoice.rowType === "invoice" ? (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(invoice.id)}
+                        onChange={(e) => toggleSelect(invoice.id, e.target.checked)}
+                        className="h-4 w-4"
+                      />
+                    ) : (
+                      <span className="text-slate-500">-</span>
+                    )}
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-center">
                     <Link
