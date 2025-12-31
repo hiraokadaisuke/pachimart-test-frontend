@@ -3,13 +3,24 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { formatCurrency, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
+import {
+  formatCurrency,
+  generateInventoryId,
+  loadInventoryRecords,
+  saveInventoryRecords,
+} from "@/lib/demo-data/demoInventory";
 import { BUYER_OPTIONS, findBuyerById, type BuyerInfo } from "@/lib/demo-data/buyers";
-import { loadAllSalesInvoices } from "@/lib/demo-data/salesInvoices";
+import { loadAllSalesInvoices, upsertSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { loadSalesInvoiceGroups } from "@/lib/demo-data/salesInvoiceGroups";
-import { loadSerialDraft, loadSerialInput, type SerialInputRow } from "@/lib/serialInputStorage";
+import {
+  loadSerialDraft,
+  loadSerialInput,
+  saveSerialInput,
+  saveSerialRows,
+  type SerialInputRow,
+} from "@/lib/serialInputStorage";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
-import type { SalesInvoice } from "@/types/salesInvoices";
+import type { SalesInvoice, SalesInvoiceGroup } from "@/types/salesInvoices";
 
 const COMPANY_INFO = {
   name: "p-kanriclub",
@@ -29,6 +40,20 @@ const PRINT_ACTIONS = [
 ] as const;
 
 const REQUIRED_SERIAL_FIELDS: Array<keyof SerialInputRow> = ["board", "frame", "main"];
+
+type CancelUnitRow = {
+  id: string;
+  invoiceId: string;
+  itemKey: string;
+  inventoryId?: string;
+  inventoryLabel: string;
+  unitIndex: number;
+  serialRow: SerialInputRow;
+  maker?: string;
+  productName?: string;
+  type?: string;
+  unitPrice?: number;
+};
 
 type Props = {
   invoiceId: string;
@@ -91,6 +116,20 @@ const resolveCommonValue = (values: Array<string | undefined>): string | undefin
   return undefined;
 };
 
+const createEmptySerialRow = (index: number): SerialInputRow => ({
+  p: index + 1,
+  board: "",
+  frame: "",
+  main: "",
+  removalDate: "",
+});
+
+const appendCancelMemo = (memo: string | undefined, invoiceId: string) => {
+  const base = memo?.trim() ?? "";
+  const tag = `売却取り消し台（伝票ID: ${invoiceId}）`;
+  return base ? `${base}\n${tag}` : tag;
+};
+
 const buildMergedInvoice = (invoices: SalesInvoice[], groupName: string, groupId: string, groupTransferDate?: string) => {
   if (invoices.length === 0) return null;
   const items = invoices.flatMap((entry) => entry.items ?? []);
@@ -124,11 +163,16 @@ const buildMergedInvoice = (invoices: SalesInvoice[], groupName: string, groupId
 export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props) {
   const router = useRouter();
   const [invoice, setInvoice] = useState<SalesInvoice | null>(null);
+  const [invoiceGroup, setInvoiceGroup] = useState<SalesInvoiceGroup | null>(null);
   const [inventories, setInventories] = useState<Map<string, InventoryRecord>>(new Map());
   const [attemptedLoad, setAttemptedLoad] = useState(false);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
+  const [selectedCancelRows, setSelectedCancelRows] = useState<Set<string>>(new Set());
   const [selectedPrintLabel, setSelectedPrintLabel] = useState<string | null>(null);
   const [selectedSellerId, setSelectedSellerId] = useState<string>(BUYER_OPTIONS[0].id);
+  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
     const invoices = loadAllSalesInvoices();
@@ -140,19 +184,26 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
         .filter((entry): entry is SalesInvoice => Boolean(entry));
       const merged = buildMergedInvoice(grouped, group.salesToName, group.id, group.transferDate);
       setInvoice(merged);
+      setInvoiceGroup(group);
       setAttemptedLoad(true);
       return;
     }
     const target = invoices.find((entry) => entry.invoiceId === invoiceId);
     setInvoice(target ?? null);
+    setInvoiceGroup(null);
     setAttemptedLoad(true);
-  }, [invoiceId]);
+  }, [invoiceId, refreshToken]);
 
   useEffect(() => {
     setIsPrintModalOpen(false);
     setSelectedPrintLabel(null);
     setSelectedSellerId(BUYER_OPTIONS[0].id);
   }, [invoiceId]);
+
+  useEffect(() => {
+    if (!isCancelModalOpen) return;
+    setSelectedCancelRows(new Set());
+  }, [isCancelModalOpen]);
 
   useEffect(() => {
     const records = loadInventoryRecords();
@@ -170,6 +221,7 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   }, [invoice]);
 
   const serialStatus = useMemo(() => {
+    void refreshToken;
     if (invoiceInventoryIds.length === 0) {
       return { allComplete: true, filledCount: 0, totalCount: 0 };
     }
@@ -192,7 +244,63 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
       }
     });
     return { allComplete, filledCount, totalCount };
-  }, [invoiceInventoryIds, inventories]);
+  }, [invoiceInventoryIds, inventories, refreshToken]);
+
+  const sourceInvoices = useMemo(() => {
+    void refreshToken;
+    const all = loadAllSalesInvoices();
+    if (invoiceGroup) {
+      return invoiceGroup.invoiceIds
+        .map((id) => all.find((entry) => entry.invoiceId === id))
+        .filter((entry): entry is SalesInvoice => Boolean(entry));
+    }
+    const target = all.find((entry) => entry.invoiceId === invoiceId);
+    if (target) return [target];
+    return invoice ? [invoice] : [];
+  }, [invoiceGroup, invoiceId, invoice, refreshToken]);
+
+  const { cancelRows, serialRowsMap } = useMemo(() => {
+    void refreshToken;
+    const rows: CancelUnitRow[] = [];
+    const serialMap = new Map<string, SerialInputRow[]>();
+    sourceInvoices.forEach((source) => {
+      (source.items ?? []).forEach((item, itemIndex) => {
+        const quantity = Number(item.quantity) || 0;
+        if (quantity <= 0) return;
+        const inventoryId = item.inventoryId;
+        const itemKey = inventoryId ?? `${source.invoiceId}-item-${itemIndex}`;
+        const inventoryLabel = item.productName || item.maker || "―";
+        let resolvedRows: SerialInputRow[] = [];
+        if (inventoryId) {
+          const stored = loadSerialInput(inventoryId) ?? loadSerialDraft(inventoryId);
+          const storedRows = stored?.rows ?? [];
+          resolvedRows = Array.from({ length: quantity }, (_, index) => {
+            const existing = storedRows[index];
+            return existing ? { ...existing, p: index + 1 } : createEmptySerialRow(index);
+          });
+          serialMap.set(inventoryId, resolvedRows);
+        } else {
+          resolvedRows = Array.from({ length: quantity }, (_, index) => createEmptySerialRow(index));
+        }
+        resolvedRows.forEach((serialRow, unitIndex) => {
+          rows.push({
+            id: `${source.invoiceId}-${itemKey}-${unitIndex}`,
+            invoiceId: source.invoiceId,
+            itemKey,
+            inventoryId,
+            inventoryLabel,
+            unitIndex,
+            serialRow,
+            maker: item.maker,
+            productName: item.productName,
+            type: item.type,
+            unitPrice: item.unitPrice,
+          });
+        });
+      });
+    });
+    return { cancelRows: rows, serialRowsMap: serialMap };
+  }, [sourceInvoices, refreshToken]);
 
   const primaryInventory = useMemo(() => {
     if (!invoice) return null;
@@ -231,6 +339,7 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const paymentDateLabel = formatMonthDay(invoice?.issuedDate || invoice?.createdAt);
   const warehousingDateLabel = formatMonthDay(invoice?.issuedDate || invoice?.createdAt);
   const transferDateLabel = formatFullDate(invoice?.transferDate);
+  const cancelSelectionCount = selectedCancelRows.size;
 
   const handlePrintMenu = (label: string) => {
     const action = PRINT_ACTIONS.find((entry) => entry.label === label);
@@ -272,6 +381,202 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
 
   const handleDelete = () => {
     alert("削除機能はデモでは無効です");
+  };
+
+  const handleCancelToggle = (rowId: string, checked: boolean) => {
+    setSelectedCancelRows((prev) => {
+      const next = new Set(prev);
+      if (checked) {
+        next.add(rowId);
+      } else {
+        next.delete(rowId);
+      }
+      return next;
+    });
+  };
+
+  const handleCancelConfirm = async () => {
+    if (isCancelling) return;
+    if (selectedCancelRows.size === 0) return;
+    const selectedRows = cancelRows.filter((row) => selectedCancelRows.has(row.id));
+    const totalPerInvoice = new Map<string, number>();
+    cancelRows.forEach((row) => {
+      totalPerInvoice.set(row.invoiceId, (totalPerInvoice.get(row.invoiceId) ?? 0) + 1);
+    });
+    const selectedPerInvoice = new Map<string, number>();
+    selectedRows.forEach((row) => {
+      selectedPerInvoice.set(row.invoiceId, (selectedPerInvoice.get(row.invoiceId) ?? 0) + 1);
+    });
+    const invalidInvoice = Array.from(totalPerInvoice.entries()).find(([invoiceId, total]) => {
+      const remaining = total - (selectedPerInvoice.get(invoiceId) ?? 0);
+      return remaining <= 0;
+    });
+    if (invalidInvoice) {
+      alert("減台後の台数が0台になるため実行できません。1台以上残るように調整してください。");
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      const now = new Date().toISOString();
+      const currentInventories = loadInventoryRecords();
+      const inventoryMap = new Map(currentInventories.map((record) => [record.id, record]));
+      const newInventories: InventoryRecord[] = [];
+
+      const selectedByInventory = new Map<string, CancelUnitRow[]>();
+      const selectedByItemKey = new Map<string, CancelUnitRow[]>();
+      selectedRows.forEach((row) => {
+        if (row.inventoryId) {
+          const list = selectedByInventory.get(row.inventoryId) ?? [];
+          list.push(row);
+          selectedByInventory.set(row.inventoryId, list);
+        }
+        const itemList = selectedByItemKey.get(row.itemKey) ?? [];
+        itemList.push(row);
+        selectedByItemKey.set(row.itemKey, itemList);
+      });
+
+      selectedByInventory.forEach((rows, inventoryId) => {
+        const source = inventoryMap.get(inventoryId);
+        const baseQuantity = Number(source?.quantity ?? rows.length);
+        const reduceCount = rows.length;
+        const remaining = baseQuantity - reduceCount;
+        if (remaining <= 0) {
+          throw new Error("減台後の台数が0台になります。");
+        }
+        if (source) {
+          inventoryMap.set(inventoryId, { ...source, quantity: remaining });
+        }
+
+        const selectedIndexes = new Set(rows.map((row) => row.unitIndex));
+        const allRows = serialRowsMap.get(inventoryId) ?? [];
+        const remainingRows = allRows.filter((_, index) => !selectedIndexes.has(index));
+        const nextRows = remainingRows.map((row, index) => ({ ...row, p: index + 1 }));
+        saveSerialInput({
+          inventoryId,
+          units: nextRows.length,
+          rows: nextRows,
+          updatedAt: now,
+        });
+        void saveSerialRows(inventoryId, nextRows);
+
+        const newRows = rows.map((row, index) => ({ ...row.serialRow, p: index + 1 }));
+        const newInventoryId = generateInventoryId();
+        const baseMemo = source?.note ?? source?.notes;
+        const memo = appendCancelMemo(baseMemo, rows[0]?.invoiceId ?? "");
+        const baseRecord: InventoryRecord = source
+          ? { ...source }
+          : {
+              id: newInventoryId,
+              createdAt: now,
+              status: "倉庫",
+              stockStatus: "倉庫",
+              listingStatus: "not_listing",
+              quantity: reduceCount,
+            };
+        const recovered: InventoryRecord = {
+          ...baseRecord,
+          id: newInventoryId,
+          createdAt: now,
+          quantity: reduceCount,
+          status: "倉庫",
+          stockStatus: "倉庫",
+          listingStatus: "not_listing",
+          isVisible: true,
+          note: memo,
+          notes: memo,
+        };
+        newInventories.push(recovered);
+        saveSerialInput({
+          inventoryId: newInventoryId,
+          units: newRows.length,
+          rows: newRows,
+          updatedAt: now,
+        });
+        void saveSerialRows(newInventoryId, newRows);
+      });
+
+      selectedByItemKey.forEach((rows) => {
+        if (rows.every((row) => row.inventoryId)) return;
+        const baseRow = rows[0];
+        const newRows = rows.map((row, index) => ({ ...row.serialRow, p: index + 1 }));
+        const newInventoryId = generateInventoryId();
+        const memo = appendCancelMemo(undefined, baseRow.invoiceId);
+        const recovered: InventoryRecord = {
+          id: newInventoryId,
+          createdAt: now,
+          status: "倉庫",
+          stockStatus: "倉庫",
+          listingStatus: "not_listing",
+          quantity: rows.length,
+          maker: baseRow.maker,
+          model: baseRow.productName,
+          machineName: baseRow.productName,
+          type: baseRow.type,
+          unitPrice: baseRow.unitPrice,
+          note: memo,
+          notes: memo,
+          isVisible: true,
+        };
+        newInventories.push(recovered);
+        saveSerialInput({
+          inventoryId: newInventoryId,
+          units: newRows.length,
+          rows: newRows,
+          updatedAt: now,
+        });
+        void saveSerialRows(newInventoryId, newRows);
+      });
+
+      const updatedInventories = [...inventoryMap.values(), ...newInventories];
+      saveInventoryRecords(updatedInventories);
+      setInventories(new Map(updatedInventories.map((record) => [record.id, record])));
+
+      const updatedInvoices = sourceInvoices.map((source) => {
+        const updatedItems = (source.items ?? [])
+          .map((item, itemIndex) => {
+            const itemKey = item.inventoryId ?? `${source.invoiceId}-item-${itemIndex}`;
+            const selectedCount = selectedByItemKey.get(itemKey)?.length ?? 0;
+            if (selectedCount === 0) return item;
+            const nextQuantity = (Number(item.quantity) || 0) - selectedCount;
+            if (nextQuantity <= 0) return null;
+            return {
+              ...item,
+              quantity: nextQuantity,
+              amount: nextQuantity * (Number(item.unitPrice) || 0),
+            };
+          })
+          .filter((item): item is NonNullable<typeof item> => Boolean(item));
+        const nextSubtotal = updatedItems.reduce((sum, item) => {
+          const amount = item.amount ?? (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+          return sum + (Number.isNaN(amount) ? 0 : amount);
+        }, 0);
+        const rate = source.invoiceType === "hall" ? 0.05 : 0.1;
+        const nextTax = Math.floor(nextSubtotal * rate);
+        const nextTotal = nextSubtotal + nextTax + Number(source.insurance || 0);
+        return {
+          ...source,
+          items: updatedItems,
+          inventoryIds: updatedItems
+            .map((item) => item.inventoryId)
+            .filter((id): id is string => Boolean(id)),
+          subtotal: nextSubtotal,
+          tax: nextTax,
+          totalAmount: nextTotal,
+        };
+      });
+      upsertSalesInvoices(updatedInvoices);
+
+      setIsCancelModalOpen(false);
+      setSelectedCancelRows(new Set());
+      setRefreshToken((prev) => prev + 1);
+      alert("減台が完了しました。在庫へ復帰しています。");
+    } catch (error) {
+      console.error("Failed to cancel sale units", error);
+      alert("減台処理に失敗しました。もう一度お試しください。");
+    } finally {
+      setIsCancelling(false);
+    }
   };
 
   if (!invoice && attemptedLoad) {
@@ -360,6 +665,93 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
               >
                 印刷
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {isCancelModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-4xl border-2 border-neutral-700 bg-white text-neutral-900">
+            <div className="border-b-2 border-neutral-700 bg-slate-200 px-4 py-2 text-sm font-semibold">
+              減台（売却取り消し）
+            </div>
+            <div className="p-4">
+              <div className="mb-3 flex items-center justify-between text-sm font-semibold">
+                <span>選択 {cancelSelectionCount}台</span>
+                <span className="text-xs text-neutral-600">伝票対象台の一覧です。外したい台を選択してください。</span>
+              </div>
+              <div className="max-h-[50vh] overflow-auto border border-neutral-600">
+                <table className="w-full table-fixed text-[12px]" style={{ borderCollapse: "collapse" }}>
+                  <colgroup>
+                    <col style={{ width: "6%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "18%" }} />
+                    <col style={{ width: "19%" }} />
+                    <col style={{ width: "19%" }} />
+                    <col style={{ width: "20%" }} />
+                  </colgroup>
+                  <thead className="bg-slate-100 text-[12px] font-semibold">
+                    <tr>
+                      <th className="border border-neutral-600 px-2 py-1">選択</th>
+                      <th className="border border-neutral-600 px-2 py-1">元伝票</th>
+                      <th className="border border-neutral-600 px-2 py-1">機種</th>
+                      <th className="border border-neutral-600 px-2 py-1">遊技盤番号等</th>
+                      <th className="border border-neutral-600 px-2 py-1">枠番号等</th>
+                      <th className="border border-neutral-600 px-2 py-1">主基板番号等</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {cancelRows.map((row) => (
+                      <tr key={row.id} className="bg-white">
+                        <td className="border border-neutral-600 px-2 py-1 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedCancelRows.has(row.id)}
+                            onChange={(event) => handleCancelToggle(row.id, event.target.checked)}
+                            className="h-4 w-4"
+                          />
+                        </td>
+                        <td className="border border-neutral-600 px-2 py-1">{row.invoiceId}</td>
+                        <td className="border border-neutral-600 px-2 py-1">{row.inventoryLabel}</td>
+                        <td className="border border-neutral-600 px-2 py-1">
+                          {row.serialRow.board.trim() ? row.serialRow.board : "未入力"}
+                        </td>
+                        <td className="border border-neutral-600 px-2 py-1">
+                          {row.serialRow.frame.trim() ? row.serialRow.frame : "未入力"}
+                        </td>
+                        <td className="border border-neutral-600 px-2 py-1">
+                          {row.serialRow.main.trim() ? row.serialRow.main : "未入力"}
+                        </td>
+                      </tr>
+                    ))}
+                    {cancelRows.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="border border-neutral-600 px-3 py-6 text-center text-sm">
+                          対象となる個体がありません。
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+              <div className="mt-4 flex justify-end gap-2 text-sm font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setIsCancelModalOpen(false)}
+                  disabled={isCancelling}
+                  className="border border-neutral-600 bg-slate-200 px-5 py-2 text-neutral-800"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelConfirm}
+                  disabled={isCancelling || cancelSelectionCount === 0}
+                  className="border border-emerald-700 bg-emerald-100 px-5 py-2 text-emerald-900 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  減台確定（在庫へ戻す）
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -463,6 +855,13 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
         </div>
 
         <div className="flex items-center justify-center gap-3 pb-6">
+          <button
+            type="button"
+            onClick={() => setIsCancelModalOpen(true)}
+            className="rounded border border-red-600 bg-red-100 px-6 py-2 text-sm font-bold text-red-900 shadow hover:bg-red-200"
+          >
+            減台（売却取り消し）
+          </button>
           <button
             type="button"
             onClick={handleEdit}
