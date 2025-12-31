@@ -222,7 +222,15 @@ export const loadSalesInvoices = (): SalesInvoice[] => {
   return [];
 };
 
-export const loadAllSalesInvoices = (): SalesInvoice[] => [...SEED_SALES_INVOICES, ...loadSalesInvoices()];
+const mergeInvoicesById = (seed: SalesInvoice[], stored: SalesInvoice[]): SalesInvoice[] => {
+  const map = new Map<string, SalesInvoice>();
+  seed.forEach((invoice) => map.set(invoice.invoiceId, invoice));
+  stored.forEach((invoice) => map.set(invoice.invoiceId, invoice));
+  return Array.from(map.values());
+};
+
+export const loadAllSalesInvoices = (): SalesInvoice[] =>
+  mergeInvoicesById(SEED_SALES_INVOICES, loadSalesInvoices());
 
 export const saveSalesInvoices = (invoices: SalesInvoice[]): void => {
   if (typeof window === "undefined") return;
@@ -232,6 +240,17 @@ export const saveSalesInvoices = (invoices: SalesInvoice[]): void => {
 export const addSalesInvoice = (invoice: SalesInvoice): void => {
   const current = loadSalesInvoices();
   saveSalesInvoices([invoice, ...current]);
+};
+
+export const upsertSalesInvoices = (nextInvoices: SalesInvoice[]): SalesInvoice[] => {
+  const current = loadSalesInvoices();
+  const map = new Map(current.map((invoice) => [invoice.invoiceId, invoice]));
+  nextInvoices.forEach((invoice) => {
+    map.set(invoice.invoiceId, invoice);
+  });
+  const updated = Array.from(map.values());
+  saveSalesInvoices(updated);
+  return updated;
 };
 
 export const deleteSalesInvoices = (invoiceIds: string[]): SalesInvoice[] => {
