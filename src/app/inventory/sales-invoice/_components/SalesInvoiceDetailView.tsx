@@ -380,7 +380,7 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
 
         <div className="flex flex-wrap items-center gap-6 rounded border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-800 shadow-sm">
           <div className="flex items-center gap-2">
-            <span className="text-neutral-700">振り込み日：</span>
+            <span className="text-neutral-700">入金日：</span>
             <span>{transferDateLabel}</span>
           </div>
         </div>

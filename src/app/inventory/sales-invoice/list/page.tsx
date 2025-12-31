@@ -491,7 +491,7 @@ export default function SalesInvoiceListPage() {
               <th className="border border-gray-300 px-3 py-2 text-left">販売先</th>
               <th className="border border-gray-300 px-3 py-2 text-left">区分</th>
               <th className="border border-gray-300 px-3 py-2 text-left">担当</th>
-              <th className="border border-gray-300 px-3 py-2 text-left">振り込み日</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">入金日</th>
               <th className="border border-gray-300 px-3 py-2 text-right">合計金額</th>
               <th className="border border-gray-300 px-3 py-2 text-center">選択</th>
               <th className="border border-gray-300 px-3 py-2 text-center">詳細</th>
