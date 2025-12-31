@@ -1893,7 +1893,12 @@ function OnlineInquiryCreator({
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械発送日</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">
+                      <div className="flex items-center gap-1.5">
+                        <span>機械発送日</span>
+                        <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
+                      </div>
+                    </th>
                     <td className="px-3 py-2">
                       <div className="space-y-1">
                         <input
@@ -1910,7 +1915,12 @@ function OnlineInquiryCreator({
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">書類発送日</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">
+                      <div className="flex items-center gap-1.5">
+                        <span>書類発送日</span>
+                        <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
+                      </div>
+                    </th>
                     <td className="px-3 py-2">
                       <div className="space-y-1">
                         <input
@@ -1927,7 +1937,12 @@ function OnlineInquiryCreator({
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">支払日</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">
+                      <div className="flex items-center gap-1.5">
+                        <span>支払日</span>
+                        <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
+                      </div>
+                    </th>
                     <td className="px-3 py-2">
                       <div className="space-y-1">
                         <input
@@ -1991,7 +2006,6 @@ function OnlineInquiryCreator({
 
           <section className="rounded-lg border border-dashed border-slate-400 bg-slate-100 p-4 text-sm text-neutral-800">
             <p className="font-semibold text-slate-900">金額内訳</p>
-            <p className="mt-1 text-neutral-700">問い合わせでは金額内訳は表示のみです。ナビ確定後に自動計算されます。</p>
             <div className="mt-3 space-y-1 text-sm text-neutral-900">
               <SummaryRow label="単価" value={formattedNumber(unitPrice)} />
               <SummaryRow label="台数" value={`${quantity}台`} />
