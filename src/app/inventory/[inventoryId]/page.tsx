@@ -49,7 +49,10 @@ export default function InventoryDetailPage() {
   const [serialRefreshToken, setSerialRefreshToken] = useState(0);
   const [registering, setRegistering] = useState(false);
   const [splitting, setSplitting] = useState(false);
+  const [selling, setSelling] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
+  const [salePayload, setSalePayload] = useState<SerialSplitPayload | null>(null);
+  const [saleModalOpen, setSaleModalOpen] = useState(false);
 
   useEffect(() => {
     const all = loadInventoryRecords();
@@ -242,6 +245,119 @@ export default function InventoryDetailPage() {
     return newInventoryId;
   };
 
+  const isSalesTargetBlocked = (target: InventoryRecord) => {
+    const status = target.status ?? target.stockStatus;
+    if (status === "売却済") return true;
+    return loadSalesInvoices().some((invoice) => {
+      const inIds = invoice.inventoryIds?.includes(target.id) ?? false;
+      const inItems = invoice.items?.some((item) => item.inventoryId === target.id) ?? false;
+      return inIds || inItems;
+    });
+  };
+
+  const handleSaleSplit = (payload: SerialSplitPayload) => {
+    if (!record) return null;
+    const currentRecords = loadInventoryRecords();
+    const target = currentRecords.find((item) => item.id === payload.inventoryId);
+    if (!target) return null;
+
+    if (isSalesTargetBlocked(target)) {
+      showToast("error", "販売済みの在庫は販売伝票を作成できません。");
+      return null;
+    }
+
+    const baseQuantity = Number(target.quantity ?? payload.units ?? 1);
+    const splitCount = payload.selectedIndexes.length;
+    if (baseQuantity < 2) {
+      showToast("error", "仕入数が1台のため分離できません。");
+      return null;
+    }
+    if (splitCount === 0) {
+      showToast("error", "売却する台を選択してください。");
+      return null;
+    }
+    if (splitCount >= baseQuantity) {
+      showToast("error", "全台売却は在庫一覧から行ってください。");
+      return null;
+    }
+
+    const selectedSet = new Set(payload.selectedIndexes);
+    const remainingRows = payload.rows.filter((_, index) => !selectedSet.has(index));
+    const movedRows = payload.rows.filter((_, index) => selectedSet.has(index));
+    const nextRows = remainingRows.map((row, index) => ({ ...row, p: index + 1 }));
+    const newRows = movedRows.map((row, index) => ({ ...row, p: index + 1 }));
+    const now = new Date().toISOString();
+    const newInventoryId = generateInventoryId();
+    const updatedRecords = currentRecords.map((item) =>
+      item.id === payload.inventoryId ? { ...item, quantity: baseQuantity - splitCount } : item,
+    );
+    const newInventory: InventoryRecord = {
+      ...target,
+      id: newInventoryId,
+      createdAt: now,
+      quantity: splitCount,
+    };
+    const nextRecords = [...updatedRecords, newInventory];
+    saveInventoryRecords(nextRecords);
+    refreshRecord();
+
+    saveSerialInput({
+      inventoryId: payload.inventoryId,
+      units: nextRows.length,
+      rows: nextRows,
+      updatedAt: now,
+    });
+    saveSerialInput({
+      inventoryId: newInventoryId,
+      units: newRows.length,
+      rows: newRows,
+      updatedAt: now,
+    });
+    void saveSerialRows(payload.inventoryId, nextRows);
+    void saveSerialRows(newInventoryId, newRows);
+    clearSerialDraft(payload.inventoryId);
+    clearSerialDraft(newInventoryId);
+    setSerialRefreshToken((prev) => prev + 1);
+    showToast("success", `販売対象を分離しました（新在庫ID: ${newInventoryId}）`);
+    return newInventoryId;
+  };
+
+  const handleSaleRequest = (payload: SerialSplitPayload) => {
+    if (!record || splitting || selling) return;
+    const currentRecords = loadInventoryRecords();
+    const target = currentRecords.find((item) => item.id === payload.inventoryId);
+    if (!target) return;
+    if (isSalesTargetBlocked(target)) {
+      showToast("error", "販売済みの在庫は販売伝票を作成できません。");
+      return;
+    }
+    setSalePayload(payload);
+    setSaleModalOpen(true);
+  };
+
+  const handleSaleTypeSelect = (type: "hall" | "vendor") => {
+    if (!salePayload) return;
+    if (selling) return;
+    setSelling(true);
+    try {
+      const newInventoryId = handleSaleSplit(salePayload);
+      if (!newInventoryId) return;
+      const params = new URLSearchParams({
+        ids: newInventoryId,
+        inventoryId: salePayload.inventoryId,
+        childInventoryId: newInventoryId,
+        selectedRowIndexes: salePayload.selectedIndexes.join(","),
+        buyerType: type,
+      });
+      const url = `/inventory/sales-invoice/${type}/create?${params.toString()}`;
+      window.open(url, "_blank", "noopener,noreferrer");
+      setSalePayload(null);
+      setSaleModalOpen(false);
+    } finally {
+      setSelling(false);
+    }
+  };
+
   if (!record) {
     return (
       <div className="min-h-screen bg-white py-10">
@@ -263,6 +379,42 @@ export default function InventoryDetailPage() {
   return (
     <div className="min-h-screen bg-white py-6 mx-[1cm]">
       <div className="mx-auto max-w-[1600px] px-[38px]">
+        {saleModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+            <div className="w-[320px] border border-gray-400 bg-white px-5 py-4 text-sm text-neutral-900 shadow-md">
+              <div className="mb-4 text-base font-semibold">売り先種別を選択</div>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => handleSaleTypeSelect("hall")}
+                  disabled={selling}
+                  className="w-full border border-gray-400 bg-[#f7f3e9] px-4 py-2 text-sm font-semibold"
+                >
+                  ホール
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaleTypeSelect("vendor")}
+                  disabled={selling}
+                  className="w-full border border-gray-400 bg-[#f7f3e9] px-4 py-2 text-sm font-semibold"
+                >
+                  業者
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSaleModalOpen(false);
+                    setSalePayload(null);
+                  }}
+                  disabled={selling}
+                  className="w-full border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-neutral-600"
+                >
+                  キャンセル
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-300 pb-3">
           <div>
             <h1 className="text-2xl font-semibold text-neutral-900">在庫編集 / 番号登録</h1>
@@ -339,10 +491,13 @@ export default function InventoryDetailPage() {
                 onUnitsChange={handleSerialUnitsChange}
                 onSplit={handleSerialSplit}
                 enableSplit
+                enableSale
+                onSell={handleSaleRequest}
                 refreshToken={serialRefreshToken}
                 onBack={() => router.push("/inventory")}
                 registering={registering}
                 splitting={splitting}
+                selling={selling}
               />
             )}
           </div>

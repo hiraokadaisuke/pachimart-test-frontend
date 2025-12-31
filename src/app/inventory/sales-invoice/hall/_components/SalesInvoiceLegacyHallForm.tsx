@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
-import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
 const yellowInput =
@@ -215,6 +215,12 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       storageLocation,
       remarks: memoLines,
     });
+    const invoiceInventoryIds = rows
+      .map((row) => row.inventoryId)
+      .filter((id): id is string => Boolean(id));
+    if (invoiceInventoryIds.length > 0) {
+      updateInventoryStatuses(invoiceInventoryIds, "sold");
+    }
 
     alert("登録完了");
     router.push("/inventory/sales-invoice/list");
