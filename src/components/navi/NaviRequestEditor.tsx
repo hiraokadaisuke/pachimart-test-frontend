@@ -18,6 +18,7 @@ import { DEV_USERS, getDevUsers, findDevUserById, type DevUser } from "@/lib/dev
 import { buildApiUrl } from "@/lib/http/apiBaseUrl";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { products } from "@/lib/dummyData";
+import { loadMasterData, type Warehouse } from "@/lib/demo-data/demoMasterData";
 import type { Listing } from "@/lib/listings/types";
 
 const mapDraftConditions = (
@@ -1553,9 +1554,20 @@ function OnlineInquiryCreator({
     currentUser.id;
   const seller = findDevUserById(sellerUserId) ?? devUsers.find((user) => user.id !== currentUser.id) ?? currentUser;
 
-  const [shippingAddress, setShippingAddress] = useState(currentUser.address);
+  const masterData = useMemo(() => loadMasterData(), []);
+  const warehouseDetails = useMemo(() => masterData.warehouseDetails ?? [], [masterData]);
+  const hasWarehouses = warehouseDetails.length > 0;
+
+  const [shippingAddressMode, setShippingAddressMode] = useState<"warehouse" | "manual">(
+    hasWarehouses ? "warehouse" : "manual"
+  );
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(
+    warehouseDetails[0]?.id ?? ""
+  );
+  const [manualShippingAddress, setManualShippingAddress] = useState(currentUser.address);
   const [contactPerson, setContactPerson] = useState(currentUser.contactName);
   const [desiredShipDate, setDesiredShipDate] = useState("");
+  const [desiredDocumentShipDate, setDesiredDocumentShipDate] = useState("");
   const [desiredPaymentDate, setDesiredPaymentDate] = useState("");
   const [memo, setMemo] = useState("");
   const [errors, setErrors] = useState<string[]>([]);
@@ -1566,9 +1578,15 @@ function OnlineInquiryCreator({
 
   const handleSubmit = async () => {
     const missing: string[] = [];
-    if (!shippingAddress.trim()) missing.push("発送先住所を入力してください。");
-    if (!contactPerson.trim()) missing.push("担当者を入力してください。");
-    if (!desiredShipDate) missing.push("発送指定日を入力してください。");
+    if (!contactPerson.trim()) missing.push("買手担当者を入力してください。");
+    if (shippingAddressMode === "warehouse") {
+      if (!selectedWarehouseId) missing.push("発送先の倉庫を選択してください。");
+      if (!resolvedShippingAddress) missing.push("発送先住所を選択してください。");
+    } else if (!manualShippingAddress.trim()) {
+      missing.push("発送先住所を入力してください。");
+    }
+    if (!desiredShipDate) missing.push("機械発送日を入力してください。");
+    if (!desiredDocumentShipDate) missing.push("書類発送日を入力してください。");
     if (!desiredPaymentDate) missing.push("支払日を入力してください。");
 
     setErrors(missing);
@@ -1587,7 +1605,7 @@ function OnlineInquiryCreator({
             quantity,
             buyerUserId: currentUser.id,
             buyerMemo: memo,
-            shippingAddress,
+            shippingAddress: resolvedShippingAddress,
             contactPerson,
             desiredShipDate,
             desiredPaymentDate,
@@ -1613,6 +1631,27 @@ function OnlineInquiryCreator({
     }
   };
 
+  const selectedWarehouse: Warehouse | undefined = useMemo(
+    () => warehouseDetails.find((warehouse) => warehouse.id === selectedWarehouseId),
+    [selectedWarehouseId, warehouseDetails]
+  );
+
+  const resolvedShippingAddress = useMemo(() => {
+    if (shippingAddressMode === "warehouse") {
+      if (!selectedWarehouse) return "";
+      const detail = selectedWarehouse.address?.trim();
+      return detail ? `${selectedWarehouse.name} ${detail}`.trim() : selectedWarehouse.name;
+    }
+    return manualShippingAddress.trim();
+  }, [manualShippingAddress, selectedWarehouse, shippingAddressMode]);
+
+  const isFormValid =
+    Boolean(contactPerson.trim()) &&
+    Boolean(resolvedShippingAddress) &&
+    Boolean(desiredShipDate) &&
+    Boolean(desiredDocumentShipDate) &&
+    Boolean(desiredPaymentDate);
+
   return (
     <div className="flex flex-col gap-6 pb-10">
       <section className="flex flex-col gap-2 border-b border-slate-300 pb-4">
@@ -1627,73 +1666,149 @@ function OnlineInquiryCreator({
         )}
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-        <div className="space-y-4">
-          <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
-            <div className="flex flex-col gap-1 border-b border-slate-200 px-4 py-2">
-              <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
-              <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
-                <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
-                <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
-                <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
-                <span className="text-sm text-neutral-900">{seller.companyName}</span>
-              </div>
-            </div>
-            <div className="space-y-3 px-4 py-3 text-sm text-neutral-900">
-              <div className="grid gap-3 md:grid-cols-2">
-                <BuyerInfoItem label="メーカー" value={makerName || "-"} emphasis />
-                <BuyerInfoItem label="機種名" value={productName || "-"} />
-                <BuyerInfoItem label="台数" value={`${quantity}台`} />
-                <BuyerInfoItem label="単価" value={formattedNumber(unitPrice)} />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-neutral-800">発送先住所</label>
-                <textarea
-                  className="min-h-[72px] w-full rounded border border-slate-300 px-3 py-2"
-                  value={shippingAddress}
-                  onChange={(e) => setShippingAddress(e.target.value)}
-                  placeholder="例：東京都〇〇市1-2-3"
-                />
-              </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-neutral-800">担当者</label>
-                  <input
-                    type="text"
-                    className="w-full rounded border border-slate-300 px-3 py-2"
-                    value={contactPerson}
-                    onChange={(e) => setContactPerson(e.target.value)}
-                    placeholder="氏名を入力"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-neutral-800">支払予定日</label>
-                  <input
-                    type="date"
-                    className="w-full rounded border border-slate-300 px-3 py-2"
-                    value={desiredPaymentDate}
-                    onChange={(e) => setDesiredPaymentDate(e.target.value)}
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
+      <div className="space-y-4">
+        <section className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2">
+            <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
+            <span className="text-xs font-semibold text-neutral-700">ナビ作成と同じ配置</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-slate-300 text-sm">
+              <tbody className="text-slate-900">
+                <EditRow label="買手" required>
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800">買手</span>
+                      <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-neutral-800">買手担当者</label>
+                      <input
+                        type="text"
+                        className="w-full max-w-md rounded border border-slate-300 px-3 py-2"
+                        value={contactPerson}
+                        onChange={(e) => setContactPerson(e.target.value)}
+                        placeholder="氏名を入力"
+                      />
+                    </div>
+                  </div>
+                </EditRow>
 
-          <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
-              <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
-              <span className="text-xs font-semibold text-neutral-700">問い合わせ対象</span>
-            </div>
-            <div className="grid gap-3 px-4 py-3 text-sm text-neutral-900 md:grid-cols-2">
-              <BuyerInfoItem label="合計金額" value={formattedNumber(totalAmount)} />
-              {product?.warehouseName && <BuyerInfoItem label="倉庫" value={product.warehouseName} />}
-              <BuyerInfoItem label="発送指定日" value={desiredShipDate ? desiredShipDate : "未入力"} />
-              <BuyerInfoItem label="問い合わせ先" value={seller.companyName} />
-            </div>
-          </section>
+                <EditRow label="売手">
+                  <div className="space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800">売手</span>
+                      <span className="text-sm text-neutral-900">{seller.companyName}</span>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs font-semibold text-neutral-800">売手担当者</span>
+                      <p className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-neutral-900">
+                        {seller.contactName || "-"}
+                      </p>
+                    </div>
+                  </div>
+                </EditRow>
 
-          <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+                <EditRow label="発送先住所" required>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="shipping-address-mode"
+                          value="warehouse"
+                          checked={shippingAddressMode === "warehouse"}
+                          onChange={() => setShippingAddressMode("warehouse")}
+                          className="h-4 w-4"
+                          disabled={!hasWarehouses}
+                        />
+                        <span>倉庫から選択</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          name="shipping-address-mode"
+                          value="manual"
+                          checked={shippingAddressMode === "manual"}
+                          onChange={() => setShippingAddressMode("manual")}
+                          className="h-4 w-4"
+                        />
+                        <span>手入力</span>
+                      </label>
+                    </div>
+                    {shippingAddressMode === "warehouse" ? (
+                      <div className="space-y-2">
+                        <select
+                          className="w-full max-w-md rounded border border-slate-300 px-3 py-2"
+                          value={selectedWarehouseId}
+                          onChange={(e) => setSelectedWarehouseId(e.target.value)}
+                          disabled={!hasWarehouses}
+                        >
+                          <option value="">倉庫を選択</option>
+                          {warehouseDetails.map((warehouse) => (
+                            <option key={warehouse.id} value={warehouse.id}>
+                              {warehouse.name}
+                            </option>
+                          ))}
+                        </select>
+                        {!hasWarehouses && (
+                          <p className="text-xs text-neutral-600">登録済み倉庫がありません。手入力で発送先住所を記入してください。</p>
+                        )}
+                        <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                          <p className="text-xs text-neutral-600">倉庫住所</p>
+                          <p className="text-neutral-900">
+                            {selectedWarehouse
+                              ? selectedWarehouse.address?.trim() || selectedWarehouse.name
+                              : "-"}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <textarea
+                        className="min-h-[88px] w-full rounded border border-slate-300 px-3 py-2"
+                        value={manualShippingAddress}
+                        onChange={(e) => setManualShippingAddress(e.target.value)}
+                        placeholder="例：東京都〇〇市1-2-3 ビル名"
+                      />
+                    )}
+                  </div>
+                </EditRow>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2">
+            <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
+            <span className="text-xs font-semibold text-neutral-700">問い合わせ対象</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full border border-slate-300 text-sm">
+              <tbody className="text-slate-900">
+                <EditRow label="遊技種別">
+                  <span>{linkedListing?.kind ?? product?.type ?? "-"}</span>
+                </EditRow>
+                <EditRow label="種別">
+                  <span>{linkedListing?.type ?? product?.type ?? "-"}</span>
+                </EditRow>
+                <EditRow label="メーカー">
+                  <span>{makerName || "-"}</span>
+                </EditRow>
+                <EditRow label="機種名">
+                  <span>{productName || "-"}</span>
+                </EditRow>
+                <EditRow label="枠色">
+                  <span>-</span>
+                </EditRow>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
+          <section className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2 text-base font-semibold text-neutral-900">
               <h2 className="text-base font-semibold text-slate-900">取引条件</h2>
               <span className="text-xs font-semibold text-neutral-600">ナビ作成の順序に準拠</span>
             </div>
@@ -1716,29 +1831,43 @@ function OnlineInquiryCreator({
                   </tr>
                   <tr className="border-t border-slate-300">
                     <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">撤去日</th>
-                    <td className="px-3 py-2">-</td>
+                    <td className="px-3 py-2">{linkedListing?.removalDate ?? product?.removalDate ?? "-"}</td>
                   </tr>
                   <tr className="border-t border-slate-300">
                     <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械発送日</th>
                     <td className="px-3 py-2">
                       <input
                         type="date"
-                        className="w-full rounded border border-slate-300 px-3 py-2"
+                        className="w-full max-w-xs rounded border border-slate-300 px-3 py-2"
                         value={desiredShipDate}
                         onChange={(e) => setDesiredShipDate(e.target.value)}
                       />
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">書類発送予定日</th>
-                    <td className="px-3 py-2">-</td>
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">書類発送日</th>
+                    <td className="px-3 py-2">
+                      <input
+                        type="date"
+                        className="w-full max-w-xs rounded border border-slate-300 px-3 py-2"
+                        value={desiredDocumentShipDate}
+                        onChange={(e) => setDesiredDocumentShipDate(e.target.value)}
+                      />
+                    </td>
                   </tr>
                   <tr className="border-t border-slate-300">
                     <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">支払日</th>
-                    <td className="px-3 py-2">{desiredPaymentDate || "未入力"}</td>
+                    <td className="px-3 py-2">
+                      <input
+                        type="date"
+                        className="w-full max-w-xs rounded border border-slate-300 px-3 py-2"
+                        value={desiredPaymentDate}
+                        onChange={(e) => setDesiredPaymentDate(e.target.value)}
+                      />
+                    </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械運賃</th>
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">運賃</th>
                     <td className="px-3 py-2">-</td>
                   </tr>
                   <tr className="border-t border-slate-300">
@@ -1758,39 +1887,34 @@ function OnlineInquiryCreator({
                     <td className="px-3 py-2">-</td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">特記事項</th>
-                    <td className="px-3 py-2">-</td>
-                  </tr>
-                  <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">取引条件（テキスト）</th>
-                    <td className="px-3 py-2">-</td>
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">特記事項/取引条件</th>
+                    <td className="px-3 py-2">{linkedListing?.note ?? product?.note ?? "-"}</td>
                   </tr>
                   <tr className="border-t border-slate-300">
                     <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">備考</th>
                     <td className="px-3 py-2">
                       <textarea
-                        className="min-h-[72px] w-full rounded border border-slate-300 px-3 py-2"
+                        className="min-h-[88px] w-full rounded border border-slate-300 px-3 py-2"
                         value={memo}
                         onChange={(e) => setMemo(e.target.value)}
                         placeholder="問い合わせ内容を入力"
                       />
                     </td>
                   </tr>
-                  <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">担当者</th>
-                    <td className="px-3 py-2">{contactPerson || "未入力"}</td>
-                  </tr>
                 </tbody>
               </table>
             </div>
           </section>
-        </div>
 
-        <div className="space-y-4">
           <section className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-neutral-800">
             <p className="font-semibold text-slate-900">金額内訳</p>
             <p className="mt-1 text-neutral-700">問い合わせでは金額内訳は表示のみです。ナビ確定後に自動計算されます。</p>
-            <p className="mt-2 font-semibold text-slate-900">合計（目安）：{formattedNumber(totalAmount)}</p>
+            <div className="mt-3 space-y-1 text-sm text-neutral-900">
+              <SummaryRow label="単価" value={formattedNumber(unitPrice)} />
+              <SummaryRow label="台数" value={`${quantity}台`} />
+              <SummaryRow label="小計（税抜）" value={formattedNumber(unitPrice * quantity)} />
+              <SummaryRow label="合計（目安）" value={formattedNumber(totalAmount)} emphasis />
+            </div>
           </section>
         </div>
       </div>
@@ -1800,7 +1924,7 @@ function OnlineInquiryCreator({
           type="button"
           className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
           onClick={handleSubmit}
-          disabled={isSubmitting}
+          disabled={isSubmitting || !isFormValid}
         >
           {isSubmitting ? "送信中..." : "売手に問い合わせを送信する"}
         </button>
