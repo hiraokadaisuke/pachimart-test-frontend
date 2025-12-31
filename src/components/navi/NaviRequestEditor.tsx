@@ -1728,16 +1728,16 @@ function OnlineInquiryCreator({
       </section>
 
       <div className="space-y-4">
-        <section className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2">
+        <section className="rounded-lg border border-slate-400 bg-white text-sm shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50 px-4 py-2">
             <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-slate-300 text-sm">
+            <table className="min-w-full border border-slate-400 text-sm">
               <tbody className="text-slate-900">
                 <EditRow label="会社名">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800">買手</span>
+                    <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">買手</span>
                     <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
                   </div>
                 </EditRow>
@@ -1804,14 +1804,6 @@ function OnlineInquiryCreator({
                         {!hasWarehouses && (
                           <p className="text-xs text-neutral-600">登録済み倉庫がありません。手入力で発送先住所を記入してください。</p>
                         )}
-                        <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
-                          <p className="text-xs text-neutral-600">倉庫住所</p>
-                          <p className="text-neutral-900">
-                            {selectedWarehouse
-                              ? selectedWarehouse.address?.trim() || selectedWarehouse.name
-                              : "-"}
-                          </p>
-                        </div>
                         {showShippingAddressError && <p className="text-xs text-red-600">必須項目です</p>}
                       </div>
                     ) : (
@@ -1833,26 +1825,24 @@ function OnlineInquiryCreator({
 
                 <EditRow label="会社名">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-800">売手</span>
+                    <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">売手</span>
                     <span className="text-sm text-neutral-900">{seller.companyName}</span>
                   </div>
                 </EditRow>
                 <EditRow label="担当者">
-                  <p className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-neutral-900">
-                    {seller.contactName || "-"}
-                  </p>
+                  <p className="text-sm text-neutral-900">{seller.contactName || "-"}</p>
                 </EditRow>
               </tbody>
             </table>
           </div>
         </section>
 
-        <section className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2">
+        <section className="rounded-lg border border-slate-400 bg-white text-sm shadow-sm">
+          <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50 px-4 py-2">
             <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-slate-300 text-sm">
+            <table className="min-w-full border border-slate-400 text-sm">
               <tbody className="text-slate-900">
                 <EditRow label="遊技種別">
                   <span>{linkedListing?.kind ?? product?.type ?? "-"}</span>
@@ -1875,35 +1865,35 @@ function OnlineInquiryCreator({
         </section>
 
         <div className="grid gap-4 lg:grid-cols-[2fr_1fr]">
-          <section className="rounded-lg border border-slate-300 bg-white text-sm shadow-sm">
-            <div className="flex items-center justify-between border-b border-slate-300 px-4 py-2 text-base font-semibold text-neutral-900">
+          <section className="rounded-lg border border-slate-400 bg-white text-sm shadow-sm">
+            <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50 px-4 py-2 text-base font-semibold text-neutral-900">
               <h2 className="text-base font-semibold text-slate-900">取引条件</h2>
             </div>
             <div className="overflow-x-auto px-2 py-3">
-              <table className="min-w-full border border-slate-300 text-sm">
+              <table className="min-w-full border border-slate-400 text-sm">
                 <thead>
-                  <tr className="bg-slate-50 text-left text-xs text-neutral-700">
+                  <tr className="bg-slate-100 text-left text-xs text-neutral-700">
                     <th className="w-40 px-3 py-1.5">項目</th>
                     <th className="px-3 py-1.5">内容</th>
                   </tr>
                 </thead>
                 <tbody className="text-neutral-900">
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">単価</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">単価</th>
                     <td className="px-3 py-2">{formattedNumber(unitPrice)}</td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">台数</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">台数</th>
                     <td className="px-3 py-2">{quantity}台</td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">撤去日</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">撤去日</th>
                     <td className="px-3 py-2">
                       {formatInquiryDate(linkedListing?.removalDate ?? product?.removalDate ?? "-")}
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械発送日</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械発送日</th>
                     <td className="px-3 py-2">
                       <div className="space-y-1">
                         <input
@@ -1920,7 +1910,7 @@ function OnlineInquiryCreator({
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">書類発送日</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">書類発送日</th>
                     <td className="px-3 py-2">
                       <div className="space-y-1">
                         <input
@@ -1937,7 +1927,7 @@ function OnlineInquiryCreator({
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">支払日</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">支払日</th>
                     <td className="px-3 py-2">
                       <div className="space-y-1">
                         <input
@@ -1954,35 +1944,37 @@ function OnlineInquiryCreator({
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械送料</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械送料</th>
                     <td className="px-3 py-2">
                       {hasEstimateParams ? formattedNumber(machineShippingTotal) : "-"}
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">出庫手数料</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">出庫手数料</th>
                     <td className="px-3 py-2">
                       {hasEstimateParams ? formattedNumber(shippingHandlingTotal) : "-"}
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">段ボール</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">段ボール</th>
                     <td className="px-3 py-2">-</td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">釘シート</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">釘シート</th>
                     <td className="px-3 py-2">-</td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">保険</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">保険</th>
                     <td className="px-3 py-2">-</td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">特記事項/取引条件</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">
+                      特記事項/取引条件
+                    </th>
                     <td className="px-3 py-2">{linkedListing?.note ?? product?.note ?? "-"}</td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">備考</th>
+                    <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">備考</th>
                     <td className="px-3 py-2">
                       <textarea
                         className="min-h-[88px] w-full rounded border border-slate-300 px-3 py-2"
@@ -1997,7 +1989,7 @@ function OnlineInquiryCreator({
             </div>
           </section>
 
-          <section className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-4 text-sm text-neutral-800">
+          <section className="rounded-lg border border-dashed border-slate-400 bg-slate-100 p-4 text-sm text-neutral-800">
             <p className="font-semibold text-slate-900">金額内訳</p>
             <p className="mt-1 text-neutral-700">問い合わせでは金額内訳は表示のみです。ナビ確定後に自動計算されます。</p>
             <div className="mt-3 space-y-1 text-sm text-neutral-900">
@@ -2045,7 +2037,7 @@ function EditRow({
 }) {
   return (
     <tr className="border-t border-slate-300">
-      <th className="w-40 bg-slate-50 px-3 py-1.5 text-left text-xs font-semibold text-neutral-900 align-top">
+      <th className="w-40 bg-slate-100 px-3 py-1.5 text-left text-xs font-semibold text-neutral-900 align-top">
         <div className="flex items-center gap-1.5">
           <span>{label}</span>
           {required && (
