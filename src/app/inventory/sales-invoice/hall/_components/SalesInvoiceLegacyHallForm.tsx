@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
+import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
@@ -117,6 +118,22 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
 
   const tax = useMemo(() => Math.floor(subtotal * 0.1), [subtotal]);
   const totalAmount = useMemo(() => subtotal + tax + (Number(insurance) || 0), [subtotal, tax, insurance]);
+  const existingSalesInvoiceIds = useMemo(() => {
+    if (!inventories || inventories.length === 0) return [] as string[];
+    const targetIds = new Set(inventories.map((item) => item.id));
+    const invoiceMap = new Map<string, string>();
+    loadSalesInvoices().forEach((invoice) => {
+      invoice.inventoryIds?.forEach((id) => invoiceMap.set(id, invoice.invoiceId));
+      invoice.items?.forEach((item) => {
+        if (item.inventoryId) {
+          invoiceMap.set(item.inventoryId, invoice.invoiceId);
+        }
+      });
+    });
+    return Array.from(targetIds)
+      .map((id) => invoiceMap.get(id))
+      .filter((id): id is string => Boolean(id));
+  }, [inventories]);
 
   const handleChange = (index: number, key: keyof BaseRow, value: string) => {
     setRows((prev) =>
@@ -148,6 +165,10 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   const handleSubmit = () => {
     if (!hallName) {
       alert("販売先を入力してください");
+      return;
+    }
+    if (existingSalesInvoiceIds.length > 0) {
+      alert("作成済みの販売伝票が含まれています。既存伝票を確認してください。");
       return;
     }
     if (rows.length === 0) {
@@ -235,6 +256,11 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   return (
     <div className="flex justify-center bg-[#e5e5e5] py-4 text-[13px] text-[#222]">
       <div className="w-[1200px] border-[1.5px] border-[#333] bg-white px-4 py-3">
+        {existingSalesInvoiceIds.length > 0 && (
+          <div className="mb-3 border-2 border-amber-600 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            作成済みの販売伝票が含まれています。二重作成はできません。
+          </div>
+        )}
         <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-2 text-[14px] font-bold text-[#0f5132]">
             <span className="inline-block h-3.5 w-3.5 rounded-full bg-green-600" aria-hidden />

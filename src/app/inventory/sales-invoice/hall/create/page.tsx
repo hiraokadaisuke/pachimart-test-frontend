@@ -18,12 +18,12 @@ function HallSalesInvoiceCreateContent() {
 
   useEffect(() => {
     const all = loadInventoryRecords();
-    const sold = all.filter((item) => (item.status ?? item.stockStatus) === "売却済");
     if (requestedIds.length > 0) {
       const map = new Set(requestedIds);
-      setInventories(sold.filter((item) => map.has(item.id)));
+      setInventories(all.filter((item) => map.has(item.id)));
       return;
     }
+    const sold = all.filter((item) => (item.status ?? item.stockStatus) === "売却済");
     setInventories(sold.slice(0, 1));
   }, [requestedIds]);
 

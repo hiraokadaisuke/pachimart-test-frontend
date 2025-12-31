@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
+import { addSalesInvoice, generateSalesInvoiceId, loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { loadInventoryRecords, updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
@@ -141,6 +141,22 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     () => (inventoryRecords.length > 0 ? inventoryRecords.map((item) => item.id) : selectedIds ?? []),
     [inventoryRecords, selectedIds],
   );
+  const existingSalesInvoiceIds = useMemo(() => {
+    if (invoiceInventoryIds.length === 0) return [] as string[];
+    const targetIds = new Set(invoiceInventoryIds);
+    const invoiceMap = new Map<string, string>();
+    loadSalesInvoices().forEach((invoice) => {
+      invoice.inventoryIds?.forEach((id) => invoiceMap.set(id, invoice.invoiceId));
+      invoice.items?.forEach((item) => {
+        if (item.inventoryId) {
+          invoiceMap.set(item.inventoryId, invoice.invoiceId);
+        }
+      });
+    });
+    return Array.from(targetIds)
+      .map((id) => invoiceMap.get(id))
+      .filter((id): id is string => Boolean(id));
+  }, [invoiceInventoryIds]);
 
   const handleChange = (index: number, key: keyof BaseRow, value: string) => {
     setRows((prev) => {
@@ -180,6 +196,10 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     if (error) return;
     if (!vendorName) {
       alert("販売先を入力してください");
+      return;
+    }
+    if (existingSalesInvoiceIds.length > 0) {
+      alert("作成済みの販売伝票が含まれています。既存伝票を確認してください。");
       return;
     }
     if (rows.length === 0) {
@@ -265,6 +285,11 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               {error} / <button onClick={() => router.back()}>戻る</button>
             </div>
           ) : null}
+          {!error && existingSalesInvoiceIds.length > 0 && (
+            <div className="mb-2 border-2 border-amber-600 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              作成済みの販売伝票が含まれています。二重作成はできません。
+            </div>
+          )}
 
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold">
             <div className="flex items-center gap-2">

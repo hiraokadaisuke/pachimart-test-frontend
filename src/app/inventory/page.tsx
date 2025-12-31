@@ -15,7 +15,9 @@ import {
 } from "@/lib/demo-data/demoInventory";
 import { DEFAULT_MASTER_DATA, loadMasterData, type MasterData } from "@/lib/demo-data/demoMasterData";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
+import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import type { InventoryStatusOption, PurchaseInvoice } from "@/types/purchaseInvoices";
+import type { SalesInvoice } from "@/types/salesInvoices";
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import { buildEditForm, buildPayload, resolveListingStatus, STATUS_OPTIONS } from "@/lib/inventory/editUtils";
 
@@ -153,11 +155,18 @@ export default function InventoryPage() {
   const [showMakerSuggestions, setShowMakerSuggestions] = useState(false);
   const [showModelSuggestions, setShowModelSuggestions] = useState(false);
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
+  const [salesInvoices, setSalesInvoices] = useState<SalesInvoice[]>([]);
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
   const [existingInvoicePrompt, setExistingInvoicePrompt] = useState<{
     invoiceId: string;
     invoiceType: PurchaseInvoice["invoiceType"];
   } | null>(null);
+  const [existingSalesInvoicePrompt, setExistingSalesInvoicePrompt] = useState<{
+    invoiceId: string;
+    invoiceType: SalesInvoice["invoiceType"];
+  } | null>(null);
+  const [salesModalOpen, setSalesModalOpen] = useState(false);
+  const [salesCandidateIds, setSalesCandidateIds] = useState<string[]>([]);
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
@@ -169,6 +178,13 @@ export default function InventoryPage() {
 
   useEffect(() => {
     const refreshInvoices = () => setPurchaseInvoices(loadPurchaseInvoices());
+    refreshInvoices();
+    window.addEventListener("focus", refreshInvoices);
+    return () => window.removeEventListener("focus", refreshInvoices);
+  }, []);
+
+  useEffect(() => {
+    const refreshInvoices = () => setSalesInvoices(loadSalesInvoices());
     refreshInvoices();
     window.addEventListener("focus", refreshInvoices);
     return () => window.removeEventListener("focus", refreshInvoices);
@@ -341,6 +357,20 @@ export default function InventoryPage() {
     () => new Map(purchaseInvoices.map((invoice) => [invoice.invoiceId, invoice])),
     [purchaseInvoices],
   );
+
+  const salesInvoiceMap = useMemo(() => {
+    const map = new Map<string, { invoiceId: string; invoiceType: SalesInvoice["invoiceType"] }>();
+    salesInvoices.forEach((invoice) => {
+      const inventoryIds = invoice.inventoryIds ?? [];
+      inventoryIds.forEach((id) => map.set(id, { invoiceId: invoice.invoiceId, invoiceType: invoice.invoiceType }));
+      invoice.items?.forEach((item) => {
+        if (item.inventoryId) {
+          map.set(item.inventoryId, { invoiceId: invoice.invoiceId, invoiceType: invoice.invoiceType });
+        }
+      });
+    });
+    return map;
+  }, [salesInvoices]);
 
   const resolveSupplierCategory = (record: InventoryRecord): PurchaseInvoice["invoiceType"] => {
     if (record.supplierCategory) {
@@ -651,6 +681,37 @@ export default function InventoryPage() {
       const url = `/inventory/purchase-invoice/${invoiceType}/${draftId}`;
       window.open(url, "_blank", "noopener,noreferrer");
     });
+  };
+
+  const handleBulkCreateSalesInvoice = () => {
+    if (selectedRecords.length === 0) {
+      alert("在庫を選択してください。");
+      return;
+    }
+
+    const blocked = selectedRecords
+      .map((record) => salesInvoiceMap.get(record.id))
+      .filter((item): item is { invoiceId: string; invoiceType: SalesInvoice["invoiceType"] } => Boolean(item));
+
+    if (blocked.length > 0) {
+      setExistingSalesInvoicePrompt(blocked[0]);
+      return;
+    }
+
+    setSalesCandidateIds(selectedRecords.map((record) => record.id));
+    setSalesModalOpen(true);
+  };
+
+  const handleSalesTypeSelect = (type: "hall" | "vendor") => {
+    if (salesCandidateIds.length === 0) return;
+    const params = new URLSearchParams({
+      ids: salesCandidateIds.join(","),
+      sellToType: type,
+    });
+    const url = `/inventory/sales-invoice/${type}/create?${params.toString()}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+    setSalesModalOpen(false);
+    setSalesCandidateIds([]);
   };
 
   return (
@@ -1025,12 +1086,28 @@ export default function InventoryPage() {
             </form>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border border-gray-300 px-2 py-2 text-xs">
+          <div className="mt-3 flex flex-wrap items-center gap-2 border border-gray-300 px-2 py-2 text-xs">
             <div className="flex flex-wrap items-center gap-2 text-neutral-700">
               <span className="font-semibold">表示操作：</span>
               <span>ヘッダーをドラッグして並び替え</span>
+              <button
+                type="button"
+                onClick={handleBulkCreatePurchaseInvoice}
+                disabled={selectedIds.size === 0}
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                購入伝票作成
+              </button>
+              <button
+                type="button"
+                onClick={handleBulkCreateSalesInvoice}
+                disabled={selectedIds.size === 0}
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                販売伝票作成
+              </button>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="ml-auto flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => handleBulkUpdate("sold")}
@@ -1054,14 +1131,6 @@ export default function InventoryPage() {
                 className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 一括：非出品
-              </button>
-              <button
-                type="button"
-                onClick={handleBulkCreatePurchaseInvoice}
-                disabled={selectedIds.size === 0}
-                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                購入伝票作成
               </button>
               <button
                 type="button"
@@ -1307,7 +1376,24 @@ export default function InventoryPage() {
                           <span className="text-transparent">-</span>
                         )}
                       </td>
-                      <td className="border border-gray-300 px-1 py-0.5 text-center text-transparent">-</td>
+                      <td className="border border-gray-300 px-1 py-0.5 text-center">
+                        {salesInvoiceMap.has(item.id) ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const invoice = salesInvoiceMap.get(item.id);
+                              if (!invoice) return;
+                              const url = `/inventory/sales-invoice/${invoice.invoiceType}/${invoice.invoiceId}`;
+                              window.open(url, "_blank", "noopener,noreferrer");
+                            }}
+                            className="w-full border border-gray-300 bg-[#fff4d6] px-1 py-1 text-[11px] font-semibold text-emerald-700"
+                          >
+                            済
+                          </button>
+                        ) : (
+                          <span className="text-transparent">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -1387,6 +1473,74 @@ export default function InventoryPage() {
               <button
                 type="button"
                 onClick={() => setExistingInvoicePrompt(null)}
+                className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {salesModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm border-2 border-gray-400 bg-white">
+            <div className="border-b-2 border-gray-400 bg-gray-200 px-4 py-2 text-sm font-semibold text-neutral-800">
+              売り先種別を選択
+            </div>
+            <div className="space-y-2 px-4 py-4 text-sm text-neutral-800">
+              <button
+                type="button"
+                onClick={() => handleSalesTypeSelect("hall")}
+                className="w-full border-2 border-gray-400 bg-[#f7f3e9] px-4 py-2 text-sm font-semibold"
+              >
+                ホール
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSalesTypeSelect("vendor")}
+                className="w-full border-2 border-gray-400 bg-[#f7f3e9] px-4 py-2 text-sm font-semibold"
+              >
+                業者
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setSalesModalOpen(false);
+                  setSalesCandidateIds([]);
+                }}
+                className="w-full border-2 border-gray-400 bg-white px-4 py-2 text-sm font-semibold text-neutral-600"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {existingSalesInvoicePrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md border-2 border-gray-300 bg-white">
+            <div className="bg-slate-600 px-4 py-3 text-sm font-semibold text-white">販売伝票ガード</div>
+            <div className="space-y-4 px-4 py-4 text-sm text-neutral-800">
+              <p>作成済みの在庫が含まれています。作成済み伝票を開きますか？</p>
+              <p className="text-xs text-neutral-500">伝票ID: {existingSalesInvoicePrompt.invoiceId}</p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-300 px-4 py-3">
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `/inventory/sales-invoice/${existingSalesInvoicePrompt.invoiceType}/${existingSalesInvoicePrompt.invoiceId}`;
+                  window.open(url, "_blank", "noopener,noreferrer");
+                  setExistingSalesInvoicePrompt(null);
+                }}
+                className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+              >
+                作成済み伝票を開く
+              </button>
+              <button
+                type="button"
+                onClick={() => setExistingSalesInvoicePrompt(null)}
                 className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
               >
                 キャンセル
