@@ -100,6 +100,7 @@ export function PurchaseProcedureCard({
   }, [listing.allowPartial, maxQuantity]);
   const [quantity, setQuantity] = useState(quantityOptions[0] ?? 1);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
+  const [pickupRequested, setPickupRequested] = useState(false);
   const [showEstimate, setShowEstimate] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -125,30 +126,31 @@ export function PurchaseProcedureCard({
 
   const shippingHandlingFeePerUnit = storageSnapshot?.handlingFeePerUnit ?? 0;
   const unitPrice = listing.unitPriceExclTax ?? 0;
+  const effectiveMachineShippingFeePerUnit = pickupRequested ? 0 : machineShippingFeePerUnit;
 
   const estimate = useMemo<EstimateResult>(() => {
     const subtotal = unitPrice * quantity;
-    const machineShippingTotal = machineShippingFeePerUnit * listing.shippingFeeCount * quantity;
+    const machineShippingTotal = effectiveMachineShippingFeePerUnit * listing.shippingFeeCount * quantity;
     const shippingHandlingTotal = shippingHandlingFeePerUnit * listing.handlingFeeCount * quantity;
     return {
       subtotal,
       machineShippingTotal,
       shippingHandlingTotal,
       total: subtotal + machineShippingTotal + shippingHandlingTotal,
-      machineShippingFeePerUnit,
+      machineShippingFeePerUnit: effectiveMachineShippingFeePerUnit,
       shippingHandlingFeePerUnit,
     };
   }, [
     unitPrice,
     quantity,
-    machineShippingFeePerUnit,
+    effectiveMachineShippingFeePerUnit,
     listing.shippingFeeCount,
     shippingHandlingFeePerUnit,
     listing.handlingFeeCount,
   ]);
 
   const handleEstimateClick = () => {
-    if (!selectedWarehouseId) {
+    if (!pickupRequested && !selectedWarehouseId) {
       setErrorMessage("お届け先の倉庫を選択してください。");
       setShowEstimate(false);
       return;
@@ -158,13 +160,15 @@ export function PurchaseProcedureCard({
   };
 
   const inquiryHref = useMemo(() => {
-    if (!showEstimate || !selectedWarehouseId) return "";
+    if (!showEstimate || (!selectedWarehouseId && !pickupRequested)) return "";
     const params = new URLSearchParams();
     params.set("tab", "new");
     params.set("mode", "inquiry");
     params.set("listingId", listing.id);
     params.set("qty", String(quantity));
-    params.set("buyerWarehouseId", selectedWarehouseId);
+    if (selectedWarehouseId) {
+      params.set("buyerWarehouseId", selectedWarehouseId);
+    }
     params.set("unitPrice", String(unitPrice));
     params.set("subtotal", String(estimate.subtotal));
     params.set("machineShippingFeePerUnit", String(estimate.machineShippingFeePerUnit));
@@ -174,12 +178,14 @@ export function PurchaseProcedureCard({
     params.set("shippingHandlingPackages", String(listing.handlingFeeCount));
     params.set("shippingHandlingTotal", String(estimate.shippingHandlingTotal));
     params.set("total", String(estimate.total));
+    params.set("pickupRequested", pickupRequested ? "true" : "false");
     return `/navi?${params.toString()}`;
   }, [
     estimate,
     listing.id,
     listing.handlingFeeCount,
     listing.shippingFeeCount,
+    pickupRequested,
     quantity,
     selectedWarehouseId,
     showEstimate,
@@ -193,7 +199,7 @@ export function PurchaseProcedureCard({
       <div className="space-y-1">
         <h3 className="text-[14px] font-semibold text-slate-900">購入手続き</h3>
         <p className="text-[12px] leading-[16px] text-neutral-700">
-          台数とお届け先を選択して簡易見積りを確認できます。
+          台数と条件を選択して簡易見積りを確認できます。
         </p>
       </div>
 
@@ -213,28 +219,66 @@ export function PurchaseProcedureCard({
           </select>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-xs font-semibold text-neutral-700">お届け先</label>
-          <select
-            className="w-full rounded-md border border-slate-300 px-3 py-2 text-[13px]"
-            value={selectedWarehouseId}
-            onChange={(event) => setSelectedWarehouseId(event.target.value)}
-          >
-            <option value="">倉庫を選択</option>
-            {warehouseDetails.map((warehouse) => (
-              <option key={warehouse.id} value={warehouse.id}>
-                {warehouse.name}
-              </option>
-            ))}
-          </select>
-        </div>
+        {listing.pickupAvailable && (
+          <fieldset className="space-y-1">
+            <legend className="text-xs font-semibold text-neutral-700">自社引き取りを希望しますか？</legend>
+            <div className="flex items-center gap-4 text-[13px] text-neutral-900">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="pickup-requested"
+                  value="false"
+                  checked={!pickupRequested}
+                  onChange={() => {
+                    setPickupRequested(false);
+                    setErrorMessage(null);
+                  }}
+                />
+                希望しない
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="pickup-requested"
+                  value="true"
+                  checked={pickupRequested}
+                  onChange={() => {
+                    setPickupRequested(true);
+                    setErrorMessage(null);
+                  }}
+                />
+                希望する
+              </label>
+            </div>
+          </fieldset>
+        )}
 
-        <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-[12px]">
-          <p className="text-xs text-neutral-600">倉庫住所</p>
-          <p className="text-neutral-900">
-            {selectedWarehouse ? selectedWarehouse.address || selectedWarehouse.name : "-"}
-          </p>
-        </div>
+        {!pickupRequested && (
+          <>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-neutral-700">お届け先</label>
+              <select
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-[13px]"
+                value={selectedWarehouseId}
+                onChange={(event) => setSelectedWarehouseId(event.target.value)}
+              >
+                <option value="">倉庫を選択</option>
+                {warehouseDetails.map((warehouse) => (
+                  <option key={warehouse.id} value={warehouse.id}>
+                    {warehouse.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-[12px]">
+              <p className="text-xs text-neutral-600">倉庫住所</p>
+              <p className="text-neutral-900">
+                {selectedWarehouse ? selectedWarehouse.address || selectedWarehouse.name : "-"}
+              </p>
+            </div>
+          </>
+        )}
       </div>
 
       {errorMessage && <p className="text-xs text-red-600">{errorMessage}</p>}

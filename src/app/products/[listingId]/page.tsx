@@ -1,9 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 
 import { DEV_USERS } from "@/lib/dev-user/users";
 import { getPublicListingById } from "@/lib/listings/getPublicListingById";
+import { prisma } from "@/lib/server/prisma";
 
 import MainContainer from "@/components/layout/MainContainer";
 import { SectionHeader } from "@/components/ui/SectionHeader";
@@ -17,6 +17,13 @@ const formatPrice = (listing: Listing) => {
   }
 
   return `¥${listing.unitPriceExclTax.toLocaleString("ja-JP")}（税抜）`;
+};
+
+const formatDate = (value: string | null) => {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "-";
+  return date.toLocaleDateString("ja-JP");
 };
 
 const resolveInquiryStatus = (listing: Listing, isSellerViewing: boolean) => {
@@ -40,10 +47,16 @@ export default async function ProductDetailPage({ params }: { params: { listingI
 
   const isSellerViewing = listing.sellerUserId === devUserId;
   const inquiryStatus = resolveInquiryStatus(listing, isSellerViewing);
-  const isSold = listing.status === "SOLD";
-  const canCreateNavi = !isSold && !isSellerViewing;
-  const naviDisabledReason = isSold ? "成約済みのため受付できません" : "出品者は操作できません";
-  const naviCreateHref = `/navi?tab=new&listingId=${listing.id}`;
+  const seller = await prisma.user.findUnique({
+    where: { id: listing.sellerUserId },
+    select: {
+      companyName: true,
+      contactName: true,
+      tel: true,
+    },
+  });
+  const removalLabel =
+    listing.removalStatus === "REMOVED" ? "撤去済" : formatDate(listing.removalDate);
 
   return (
     <MainContainer>
@@ -57,15 +70,19 @@ export default async function ProductDetailPage({ params }: { params: { listingI
           </div>
 
           <div className="rounded border border-slate-200">
-            <SectionHeader>基本情報</SectionHeader>
+            <SectionHeader>詳細情報</SectionHeader>
             <div className="grid grid-cols-1 gap-2 bg-white p-3 md:grid-cols-2">
               <DetailRow label="種別" value={listing.kind} />
-              <DetailRow label="メーカー" value={listing.maker ?? "-"} />
-              <DetailRow label="機種名" value={listing.machineName ?? "-"} />
-              <DetailRow label="台数" value={`${listing.quantity}台`} />
-              <DetailRow label="単価" value={formatPrice(listing)} />
+              <DetailRow label="枠色" value="-" />
+              <DetailRow label="機械送料回数" value={`${listing.shippingFeeCount}個口`} />
+              <DetailRow label="出庫手数料回数" value={`${listing.handlingFeeCount}個口`} />
+              <DetailRow label="釘シート" value={listing.hasNailSheet ? "あり" : "なし"} />
+              <DetailRow label="取扱説明書" value={listing.hasManual ? "あり" : "なし"} />
+              <DetailRow label="引き取り" value={listing.pickupAvailable ? "可" : "不可"} />
+              <DetailRow label="撤去日" value={removalLabel} />
+              <DetailRow label="配送までの指定日" value="-" />
               <DetailRow
-                label="保管場所"
+                label="前設置"
                 value={formatStorageLocationFull(
                   listing.storageLocationSnapshot,
                   listing.storageLocation ?? undefined
@@ -73,40 +90,20 @@ export default async function ProductDetailPage({ params }: { params: { listingI
               />
             </div>
           </div>
-
-          <div className="rounded border border-slate-200">
-            <SectionHeader>取引条件</SectionHeader>
-            <div className="grid grid-cols-1 gap-2 bg-white p-3 md:grid-cols-2">
-              <DetailRow label="機械送料回数" value={`${listing.shippingFeeCount}個口`} />
-              <DetailRow label="出庫手数料回数" value={`${listing.handlingFeeCount}個口`} />
-              <DetailRow label="バラ売り可否" value={listing.allowPartial ? "可" : "不可"} />
-              <DetailRow label="備考" value={listing.note ?? "-"} />
-            </div>
-          </div>
         </div>
 
         <div className="space-y-3 text-[13px]">
-          <PurchaseProcedureCard listing={listing} inquiryStatus={inquiryStatus} />
           <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="space-y-1">
-              <h3 className="text-[14px] font-semibold text-slate-900">ナビ作成</h3>
-              <p className="text-[12px] leading-[16px] text-neutral-700">出品情報をもとにナビを作成します。</p>
+            <h3 className="text-[14px] font-semibold text-slate-900">出品者</h3>
+            <div className="space-y-1 text-[12px] text-neutral-700">
+              <SellerInfoRow label="会社名" value={seller?.companyName ?? "-"} />
+              <SellerInfoRow label="担当者名" value={seller?.contactName ?? "-"} />
+              <SellerInfoRow label="会社電話番号" value={seller?.tel ?? "-"} />
+              <SellerInfoRow label="担当者電話番号" value="-" />
+              <SellerInfoRow label="組合加盟状況" value="-" />
             </div>
-            <Link
-              href={naviCreateHref}
-              aria-disabled={!canCreateNavi}
-              className={`flex h-10 w-full items-center justify-center rounded-md px-3 text-[13px] font-semibold shadow ${
-                canCreateNavi
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "cursor-not-allowed bg-slate-200 text-neutral-500"
-              } ${!canCreateNavi ? "pointer-events-none" : ""}`}
-            >
-              ナビ作成
-            </Link>
-            {!canCreateNavi && (
-              <p className="text-[12px] leading-[16px] text-neutral-700">{naviDisabledReason}</p>
-            )}
           </div>
+          <PurchaseProcedureCard listing={listing} inquiryStatus={inquiryStatus} />
         </div>
       </div>
     </MainContainer>
@@ -118,6 +115,15 @@ function DetailRow({ label, value }: { label: string; value: string | number }) 
     <div className="flex gap-3 rounded-md border border-slate-200 bg-white px-3 py-1.5">
       <span className="w-32 shrink-0 text-[12px] font-semibold text-neutral-700">{label}</span>
       <span className="text-[13px] font-semibold text-slate-900">{value}</span>
+    </div>
+  );
+}
+
+function SellerInfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-2">
+      <span className="text-xs font-semibold text-neutral-600">{label}</span>
+      <span className="text-[12px] font-semibold text-slate-900">{value}</span>
     </div>
   );
 }
