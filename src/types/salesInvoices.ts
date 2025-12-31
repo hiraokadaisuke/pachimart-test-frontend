@@ -21,11 +21,14 @@ export type SalesInvoice = {
   paymentMethod?: string;
   paymentDate?: string;
   paymentAmount?: number;
+  transferDate?: string;
   invoiceOriginalRequired?: boolean;
   vendorName?: string;
   buyerName?: string;
+  salesToId?: string;
   staff?: string;
   manager?: string;
+  mergedGroupId?: string;
   inventoryIds?: string[];
   items: SalesInvoiceItem[];
   subtotal?: number;
@@ -38,4 +41,14 @@ export type SalesInvoice = {
   documentArrivalDate?: string;
   storageLocation?: string;
   remarks?: string;
+};
+
+export type SalesInvoiceGroup = {
+  id: string;
+  salesToId?: string;
+  salesToName: string;
+  invoiceIds: string[];
+  transferDate?: string;
+  createdAt: string;
+  updatedAt: string;
 };
