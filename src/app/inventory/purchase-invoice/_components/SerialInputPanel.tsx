@@ -49,6 +49,7 @@ type SerialInputPanelProps = {
   enableSplit?: boolean;
   refreshToken?: number;
   registering?: boolean;
+  splitting?: boolean;
 };
 
 export type SerialSplitPayload = {
@@ -69,6 +70,7 @@ export default function SerialInputPanel({
   enableSplit = false,
   refreshToken,
   registering = false,
+  splitting = false,
 }: SerialInputPanelProps) {
   const [inventory, setInventory] = useState<InventoryRecord | null>(null);
   const [units, setUnits] = useState<number>(1);
@@ -238,6 +240,7 @@ export default function SerialInputPanel({
 
   const handleSplit = () => {
     if (!onSplit) return;
+    if (splitting) return;
     if (units < 2) {
       alert("仕入数が1台のため分離できません。");
       return;
@@ -281,7 +284,7 @@ export default function SerialInputPanel({
   const rangeInfo = resolveRange();
   const hasRangeInput = rangeStart.trim() !== "" || rangeEnd.trim() !== "";
   const rangeLabel = hasRangeInput ? `${rangeInfo.start} ～ ${rangeInfo.end}` : `1 ～ ${units}`;
-  const canSplit = enableSplit && units > 1;
+  const canSplit = enableSplit && units > 1 && !splitting;
   const selectedCount = selectedRows.size;
 
   return (
@@ -547,7 +550,7 @@ export default function SerialInputPanel({
                     : "cursor-not-allowed bg-neutral-100 text-neutral-400"
                 }`}
               >
-                分離する
+                {splitting ? "分離中..." : "分離する"}
               </button>
             </div>
           </div>
