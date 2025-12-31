@@ -47,9 +47,12 @@ type SerialInputPanelProps = {
   onUnitsChange?: (nextUnits: number) => void;
   onSplit?: (payload: SerialSplitPayload) => string | null;
   enableSplit?: boolean;
+  onSell?: (payload: SerialSplitPayload) => void;
+  enableSale?: boolean;
   refreshToken?: number;
   registering?: boolean;
   splitting?: boolean;
+  selling?: boolean;
 };
 
 export type SerialSplitPayload = {
@@ -68,9 +71,12 @@ export default function SerialInputPanel({
   onUnitsChange,
   onSplit,
   enableSplit = false,
+  onSell,
+  enableSale = false,
   refreshToken,
   registering = false,
   splitting = false,
+  selling = false,
 }: SerialInputPanelProps) {
   const [inventory, setInventory] = useState<InventoryRecord | null>(null);
   const [units, setUnits] = useState<number>(1);
@@ -139,17 +145,21 @@ export default function SerialInputPanel({
     );
   }, [units]);
 
+  const allowIncompleteSelection = enableSale;
+
   useEffect(() => {
     setSelectedRows((prev) => {
       const next = new Set<number>();
       prev.forEach((index) => {
-        if (rows[index] && isRowComplete(rows[index])) {
+        const row = rows[index];
+        if (!row) return;
+        if (allowIncompleteSelection || isRowComplete(row)) {
           next.add(index);
         }
       });
       return next;
     });
-  }, [rows]);
+  }, [rows, allowIncompleteSelection]);
 
   const handleInputChange = (key: ColumnKey, value: string) => {
     setInputs((prev) => ({ ...prev, [key]: value }));
@@ -284,8 +294,25 @@ export default function SerialInputPanel({
   const rangeInfo = resolveRange();
   const hasRangeInput = rangeStart.trim() !== "" || rangeEnd.trim() !== "";
   const rangeLabel = hasRangeInput ? `${rangeInfo.start} ～ ${rangeInfo.end}` : `1 ～ ${units}`;
-  const canSplit = enableSplit && units > 1 && !splitting;
+  const canSplit = enableSplit && units > 1 && !splitting && !selling;
+  const canSelect = (enableSplit || enableSale) && !splitting && !selling;
   const selectedCount = selectedRows.size;
+  const canSell = enableSale && !splitting && !selling && selectedCount > 0;
+
+  const handleSell = () => {
+    if (!onSell) return;
+    if (selling) return;
+    if (selectedRows.size === 0) {
+      alert("売却する台を選択してください。");
+      return;
+    }
+    onSell({
+      inventoryId,
+      units,
+      rows,
+      selectedIndexes: Array.from(selectedRows).sort((a, b) => a - b),
+    });
+  };
 
   return (
     <div className="flex justify-center bg-neutral-100 py-4 text-[13px] text-neutral-900">
@@ -455,7 +482,7 @@ export default function SerialInputPanel({
             <table className="min-w-[720px] w-full table-fixed border-collapse text-[12px]">
               <thead className="sticky top-0 z-10 bg-white">
                 <tr>
-                  {enableSplit && (
+                  {(enableSplit || enableSale) && (
                     <th className="border-b border-r border-black px-2 py-2 text-center">分離</th>
                   )}
                   <th className="border-b border-r border-black px-2 py-2 text-center">種別</th>
@@ -469,12 +496,12 @@ export default function SerialInputPanel({
               <tbody>
                 {rows.map((row, index) => (
                   <tr key={row.p} className="odd:bg-white even:bg-neutral-50">
-                    {enableSplit && (
+                    {(enableSplit || enableSale) && (
                       <td className="border-b border-r border-black px-2 py-2 text-center">
                         <input
                           type="checkbox"
                           checked={selectedRows.has(index)}
-                          disabled={!canSplit || !isRowComplete(row)}
+                          disabled={!canSelect || (!allowIncompleteSelection && !isRowComplete(row))}
                           onChange={(event) => {
                             const checked = event.target.checked;
                             setSelectedRows((prev) => {
@@ -535,7 +562,7 @@ export default function SerialInputPanel({
           <div className="border border-black bg-white">
             <div className="flex items-center justify-between border-b border-black bg-neutral-100 px-3 py-2 text-[12px] font-semibold">
               <span>分離</span>
-              <span className="text-[11px] font-medium text-neutral-600">番号入力済みのみ選択可</span>
+              <span className="text-[11px] font-medium text-neutral-600">番号入力済みのみ対象</span>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 text-[12px]">
               <div className="text-neutral-700">選択 {selectedCount} 台</div>
@@ -551,6 +578,29 @@ export default function SerialInputPanel({
                 }`}
               >
                 {splitting ? "分離中..." : "分離する"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {enableSale && (
+          <div className="border border-black bg-white">
+            <div className="flex items-center justify-between border-b border-black bg-neutral-100 px-3 py-2 text-[12px] font-semibold">
+              <span>販売伝票作成</span>
+              <span className="text-[11px] font-medium text-neutral-600">番号未入力でも選択可</span>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 px-3 py-3 text-[12px]">
+              <div className="text-neutral-700">選択 {selectedCount} 台</div>
+              <button
+                type="button"
+                onClick={handleSell}
+                disabled={!canSell}
+                aria-disabled={!canSell}
+                className={`border border-black px-4 py-2 text-[12px] font-semibold text-neutral-900 transition ${
+                  canSell ? "bg-neutral-200 hover:bg-neutral-300" : "cursor-not-allowed bg-neutral-100 text-neutral-400"
+                }`}
+              >
+                {selling ? "作成中..." : "販売伝票作成"}
               </button>
             </div>
           </div>

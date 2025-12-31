@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { formatCurrency, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import { BUYER_OPTIONS, findBuyerById, type BuyerInfo } from "@/lib/demo-data/buyers";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
+import { loadSerialDraft, loadSerialInput, type SerialInputRow } from "@/lib/serialInputStorage";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { SalesInvoice } from "@/types/salesInvoices";
 
@@ -19,7 +20,14 @@ const COMPANY_INFO = {
   mail: "info@p-kanriclub.jp",
 };
 
-const PRINT_ACTIONS = ["売却証明書", "請求書", "発送依頼書", "書類一括"];
+const PRINT_ACTIONS = [
+  { label: "売却証明書", path: "sale-certificate", requiresSerial: true },
+  { label: "請求書", path: "invoice", requiresSerial: false },
+  { label: "発送依頼書", path: "shipping-request", requiresSerial: true },
+  { label: "書類一括", path: "bundle", requiresSerial: true },
+] as const;
+
+const REQUIRED_SERIAL_FIELDS: Array<keyof SerialInputRow> = ["board", "frame", "main"];
 
 const SEED_SALES_INVOICES: SalesInvoice[] = [
   {
@@ -274,6 +282,39 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   }, []);
 
   const items = useMemo(() => invoice?.items ?? [], [invoice]);
+  const invoiceInventoryIds = useMemo(() => {
+    if (!invoice) return [] as string[];
+    if (invoice.inventoryIds && invoice.inventoryIds.length > 0) return invoice.inventoryIds;
+    const ids = (invoice.items ?? [])
+      .map((item) => item.inventoryId)
+      .filter((id): id is string => Boolean(id));
+    return ids;
+  }, [invoice]);
+
+  const serialStatus = useMemo(() => {
+    if (invoiceInventoryIds.length === 0) {
+      return { allComplete: true, filledCount: 0, totalCount: 0 };
+    }
+    let filledCount = 0;
+    let totalCount = 0;
+    let allComplete = true;
+    invoiceInventoryIds.forEach((id) => {
+      const inventory = inventories.get(id);
+      const targetQuantity = Number(inventory?.quantity ?? 1) || 1;
+      totalCount += targetQuantity;
+      const stored = loadSerialInput(id) ?? loadSerialDraft(id);
+      const rows = stored?.rows ?? [];
+      const slice = rows.slice(0, targetQuantity);
+      const completeCount = slice.filter((row) =>
+        REQUIRED_SERIAL_FIELDS.every((key) => String(row[key] ?? "").trim() !== ""),
+      ).length;
+      filledCount += completeCount;
+      if (completeCount < targetQuantity) {
+        allComplete = false;
+      }
+    });
+    return { allComplete, filledCount, totalCount };
+  }, [invoiceInventoryIds, inventories]);
 
   const primaryInventory = useMemo(() => {
     if (!invoice) return null;
@@ -313,6 +354,14 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const warehousingDateLabel = formatMonthDay(invoice?.issuedDate || invoice?.createdAt);
 
   const handlePrintMenu = (label: string) => {
+    const action = PRINT_ACTIONS.find((entry) => entry.label === label);
+    if (!action) return;
+    if (action.requiresSerial && !serialStatus.allComplete) {
+      alert(
+        `番号が揃っていないため印刷できません（${serialStatus.filledCount}/${serialStatus.totalCount}台入力済み）`,
+      );
+      return;
+    }
     setSelectedPrintLabel(label);
     setIsPrintModalOpen(true);
   };
@@ -320,14 +369,15 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const handlePrint = () => {
     if (!invoice || !selectedPrintLabel) return;
     const seller = findBuyerById(selectedSellerId);
-    const path =
-      selectedPrintLabel === "売却証明書"
-        ? "sale-certificate"
-        : selectedPrintLabel === "請求書"
-          ? "invoice"
-          : selectedPrintLabel === "発送依頼書"
-            ? "shipping-request"
-            : "bundle";
+    const action = PRINT_ACTIONS.find((entry) => entry.label === selectedPrintLabel);
+    if (!action) return;
+    if (action.requiresSerial && !serialStatus.allComplete) {
+      alert(
+        `番号が揃っていないため印刷できません（${serialStatus.filledCount}/${serialStatus.totalCount}台入力済み）`,
+      );
+      return;
+    }
+    const path = action.path;
     const url = `/inventory/sales-invoice/print/vendor/${path}/${invoice.invoiceId}?sellerId=${encodeURIComponent(seller.id)}`;
     window.open(url, "_blank", "noopener,noreferrer");
     setIsPrintModalOpen(false);
@@ -453,16 +503,20 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-neutral-700">印刷メニュー：</span>
             <div className="flex flex-wrap items-center gap-2">
-              {PRINT_ACTIONS.map((label) => (
-                <button
-                  key={label}
-                  type="button"
-                  onClick={() => handlePrintMenu(label)}
-                  className="rounded border border-slate-400 bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800 shadow hover:bg-slate-200"
-                >
-                  {label}
-                </button>
-              ))}
+              {PRINT_ACTIONS.map((action) => {
+                const disabled = action.requiresSerial && !serialStatus.allComplete;
+                return (
+                  <button
+                    key={action.label}
+                    type="button"
+                    onClick={() => handlePrintMenu(action.label)}
+                    disabled={disabled}
+                    className="rounded border border-slate-400 bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800 shadow hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    {action.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -476,6 +530,12 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
             </button>
           </div>
         </div>
+        {!serialStatus.allComplete && serialStatus.totalCount > 0 && (
+          <div className="text-[11px] font-medium text-amber-700">
+            番号が揃っていないため印刷できません（{serialStatus.filledCount}/{serialStatus.totalCount}
+            台入力済み）
+          </div>
+        )}
 
         <div className="flex justify-center">
           <div className="w-full max-w-5xl border border-black bg-white p-6 shadow-sm">

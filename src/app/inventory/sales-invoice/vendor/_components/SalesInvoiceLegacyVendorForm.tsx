@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
-import { loadInventoryRecords, type InventoryRecord } from "@/lib/demo-data/demoInventory";
+import { loadInventoryRecords, updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
 type BaseRow = {
@@ -226,6 +226,9 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
       paymentDueDate: paymentDate,
       invoiceOriginalRequired: invoiceOriginal === "要",
     });
+    if (invoiceInventoryIds.length > 0) {
+      updateInventoryStatuses(invoiceInventoryIds, "sold");
+    }
 
     alert("登録完了");
     router.push("/inventory/sales-invoice/list");
