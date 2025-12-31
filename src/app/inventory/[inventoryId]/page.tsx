@@ -48,6 +48,7 @@ export default function InventoryDetailPage() {
   );
   const [serialRefreshToken, setSerialRefreshToken] = useState(0);
   const [registering, setRegistering] = useState(false);
+  const [splitting, setSplitting] = useState(false);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   useEffect(() => {
@@ -150,9 +151,14 @@ export default function InventoryDetailPage() {
 
   const handleSerialSplit = (payload: SerialSplitPayload) => {
     if (!record) return null;
+    if (splitting) return null;
+    setSplitting(true);
     const currentRecords = loadInventoryRecords();
     const target = currentRecords.find((item) => item.id === payload.inventoryId);
-    if (!target) return null;
+    if (!target) {
+      setSplitting(false);
+      return null;
+    }
 
     const hasPurchaseInvoice =
       Boolean(target.purchaseInvoiceId) ||
@@ -165,12 +171,14 @@ export default function InventoryDetailPage() {
 
     if (hasPurchaseInvoice || hasSalesInvoice) {
       showToast("error", "購入/販売伝票が作成済みの在庫は分離できません。");
+      setSplitting(false);
       return null;
     }
 
     const selectedRows = payload.selectedIndexes.map((index) => payload.rows[index]);
     if (selectedRows.some((row) => !isRowComplete(row))) {
       showToast("error", "番号未入力の行は分離できません。");
+      setSplitting(false);
       return null;
     }
 
@@ -178,14 +186,17 @@ export default function InventoryDetailPage() {
     const splitCount = payload.selectedIndexes.length;
     if (baseQuantity < 2) {
       showToast("error", "仕入数が1台のため分離できません。");
+      setSplitting(false);
       return null;
     }
     if (splitCount === 0) {
       showToast("error", "分離する台を選択してください。");
+      setSplitting(false);
       return null;
     }
     if (splitCount >= baseQuantity) {
       showToast("error", "分離後の仕入数が0になります。分離台数を調整してください。");
+      setSplitting(false);
       return null;
     }
 
@@ -207,7 +218,7 @@ export default function InventoryDetailPage() {
     };
     const nextRecords = [...updatedRecords, newInventory];
     saveInventoryRecords(nextRecords);
-    setRecord(nextRecords.find((item) => item.id === payload.inventoryId) ?? target);
+    refreshRecord();
 
     saveSerialInput({
       inventoryId: payload.inventoryId,
@@ -227,6 +238,7 @@ export default function InventoryDetailPage() {
     clearSerialDraft(newInventoryId);
     setSerialRefreshToken((prev) => prev + 1);
     showToast("success", `分離しました（新在庫ID: ${newInventoryId}）`);
+    setSplitting(false);
     return newInventoryId;
   };
 
@@ -330,6 +342,7 @@ export default function InventoryDetailPage() {
                 refreshToken={serialRefreshToken}
                 onBack={() => router.push("/inventory")}
                 registering={registering}
+                splitting={splitting}
               />
             )}
           </div>
