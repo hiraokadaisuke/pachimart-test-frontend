@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { loadInventoryRecords, type InventoryRecord } from "@/lib/demo-data/demoInventory";
-import { loadSerialDraft, loadSerialInput, type SerialInputPayload, type SerialInputRow } from "@/lib/serialInputStorage";
+import {
+  loadSerialDraft,
+  loadSerialInput,
+  loadSerialRows,
+  type SerialInputPayload,
+  type SerialInputRow,
+} from "@/lib/serialInputStorage";
 
 const COLUMN_KEYS = ["board", "frame", "main", "removalDate"] as const;
 type ColumnKey = (typeof COLUMN_KEYS)[number];
@@ -86,27 +92,39 @@ export default function SerialInputPanel({
 
   useEffect(() => {
     if (!inventoryId) return;
-    const all = loadInventoryRecords();
-    const target = all.find((record) => record.id === inventoryId) ?? null;
-    const saved = loadSerialInput(inventoryId) ?? loadSerialDraft(inventoryId);
-    const baseUnits = (saved?.units ?? Number(target?.quantity ?? 1)) || 1;
-    setInventory(target);
-    setUnits(baseUnits);
-    const initialRows = Array.from({ length: baseUnits }, (_, index) => {
-      const existing = saved?.rows?.[index];
-      if (existing) return { ...existing, p: index + 1 };
-      return createEmptyRow(index);
-    });
-    setRows(initialRows);
-    if (saved?.rows?.length) {
-      setInputs({
-        board: saved.rows[0]?.board ?? "",
-        frame: saved.rows[0]?.frame ?? "",
-        main: saved.rows[0]?.main ?? "",
-        removalDate: saved.rows[0]?.removalDate ?? "",
+    let active = true;
+    const loadData = async () => {
+      const all = loadInventoryRecords();
+      const target = all.find((record) => record.id === inventoryId) ?? null;
+      const savedRows = await loadSerialRows(inventoryId);
+      const savedPayload = loadSerialInput(inventoryId) ?? loadSerialDraft(inventoryId);
+      const fallbackRows = savedPayload?.rows ?? [];
+      const resolvedRows = savedRows.length > 0 ? savedRows : fallbackRows;
+      const resolvedUnits = Number(target?.quantity ?? 1) || 1;
+      const adjustedRows = resolvedRows.slice(0, resolvedUnits);
+      if (!active) return;
+      setInventory(target);
+      setUnits(resolvedUnits);
+      const initialRows = Array.from({ length: resolvedUnits }, (_, index) => {
+        const existing = adjustedRows[index];
+        if (existing) return { ...existing, p: index + 1 };
+        return createEmptyRow(index);
       });
-    }
-    setSelectedRows(new Set());
+      setRows(initialRows);
+      if (adjustedRows.length > 0) {
+        setInputs({
+          board: adjustedRows[0]?.board ?? "",
+          frame: adjustedRows[0]?.frame ?? "",
+          main: adjustedRows[0]?.main ?? "",
+          removalDate: adjustedRows[0]?.removalDate ?? "",
+        });
+      }
+      setSelectedRows(new Set());
+    };
+    void loadData();
+    return () => {
+      active = false;
+    };
   }, [inventoryId, refreshToken]);
 
   useEffect(() => {
@@ -156,8 +174,11 @@ export default function SerialInputPanel({
   };
 
   const buildSequentialValue = (baseValue: string, offset: number) => {
-    const match = baseValue.match(/(\\d+)$/);
-    if (!match) return baseValue;
+    if (baseValue.trim() === "") return "";
+    const match = baseValue.match(/(\d+)$/);
+    if (!match) {
+      return `${baseValue}${offset + 1}`;
+    }
     const digits = match[1];
     const prefix = baseValue.slice(0, -digits.length);
     const baseNumber = Number.parseInt(digits, 10);
@@ -168,10 +189,11 @@ export default function SerialInputPanel({
 
   const handleApply = (key: ColumnKey) => {
     const { startIndex, endIndex } = resolveRange();
+    const shouldSequence = key === "board" || key === "main";
     setRows((prev) =>
       prev.map((row, index) => {
         if (index < startIndex || index > endIndex) return row;
-        if (key === "board") {
+        if (shouldSequence) {
           const sequential = buildSequentialValue(inputs[key], index - startIndex);
           return { ...row, [key]: sequential };
         }
@@ -426,9 +448,9 @@ export default function SerialInputPanel({
               />
             </label>
           </div>
-          <div className="overflow-x-auto">
+          <div className="max-h-[480px] overflow-auto">
             <table className="min-w-[720px] w-full table-fixed border-collapse text-[12px]">
-              <thead className="bg-white">
+              <thead className="sticky top-0 z-10 bg-white">
                 <tr>
                   {enableSplit && (
                     <th className="border-b border-r border-black px-2 py-2 text-center">分離</th>
@@ -531,7 +553,7 @@ export default function SerialInputPanel({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-2 text-[13px]">
+        <div className="sticky bottom-0 z-10 flex flex-wrap items-center justify-center gap-3 bg-neutral-100/95 py-3 text-[13px] backdrop-blur">
           <button
             type="button"
             onClick={handlePrev}

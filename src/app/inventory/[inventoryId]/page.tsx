@@ -19,6 +19,7 @@ import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { buildEditForm, buildPayload } from "@/lib/inventory/editUtils";
 import {
   clearSerialDraft,
+  saveSerialRows,
   saveSerialInput,
   type SerialInputPayload,
   type SerialInputRow,
@@ -100,6 +101,7 @@ export default function InventoryDetailPage() {
 
   const handleEditSave = () => {
     if (!record) return;
+    const previousQuantity = Number(record.quantity ?? 1);
     const form = bulkEditForms[record.id] ?? buildEditForm(record);
     const updated = updateInventoryRecord(record.id, buildPayload(form));
     const latest = updated.find((item) => item.id === record.id) ?? record;
@@ -108,6 +110,9 @@ export default function InventoryDetailPage() {
       ...prev,
       [latest.id]: buildEditForm(latest),
     }));
+    if (Number(latest.quantity ?? 1) !== previousQuantity) {
+      setSerialRefreshToken((prev) => prev + 1);
+    }
     showToast("success", "在庫情報を保存しました。");
   };
 
@@ -116,12 +121,20 @@ export default function InventoryDetailPage() {
     const updated = updateInventoryRecord(record.id, { quantity: nextUnits });
     const latest = updated.find((item) => item.id === record.id) ?? record;
     setRecord(latest);
+    setBulkEditForms((prev) => ({
+      ...prev,
+      [latest.id]: {
+        ...prev[latest.id],
+        quantity: nextUnits,
+      },
+    }));
   };
 
   const handleSerialRegister = async (payload: SerialInputPayload) => {
     if (!record) return;
     setRegistering(true);
     try {
+      await saveSerialRows(payload.inventoryId, payload.rows);
       saveSerialInput(payload);
       clearSerialDraft(payload.inventoryId);
       setSerialRefreshToken((prev) => prev + 1);
@@ -208,6 +221,8 @@ export default function InventoryDetailPage() {
       rows: newRows,
       updatedAt: now,
     });
+    void saveSerialRows(payload.inventoryId, nextRows);
+    void saveSerialRows(newInventoryId, newRows);
     clearSerialDraft(payload.inventoryId);
     clearSerialDraft(newInventoryId);
     setSerialRefreshToken((prev) => prev + 1);

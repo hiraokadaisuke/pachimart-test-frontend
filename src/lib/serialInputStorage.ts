@@ -14,6 +14,7 @@ export type SerialInputPayload = {
 };
 
 const SERIAL_INPUT_PREFIX = "pachimart:serialInput:";
+const SERIAL_ROWS_PREFIX = "pachimart:inventory:serialRows:";
 const ORDER_KEY = `${SERIAL_INPUT_PREFIX}order`;
 const DRAFT_SUFFIX = ":draft";
 
@@ -45,6 +46,14 @@ const removeLocalStorage = (key: string) => {
 
 const serialKey = (inventoryId: string) => `${SERIAL_INPUT_PREFIX}${inventoryId}`;
 const serialDraftKey = (inventoryId: string) => `${serialKey(inventoryId)}${DRAFT_SUFFIX}`;
+const serialRowsKey = (inventoryId: string) => `${SERIAL_ROWS_PREFIX}${inventoryId}`;
+
+export const loadSerialRows = async (inventoryId: string): Promise<SerialInputRow[]> =>
+  readLocalStorage<SerialInputRow[]>(serialRowsKey(inventoryId)) ?? [];
+
+export const saveSerialRows = async (inventoryId: string, rows: SerialInputRow[]): Promise<void> => {
+  writeLocalStorage(serialRowsKey(inventoryId), rows);
+};
 
 export const loadSerialInput = (inventoryId: string): SerialInputPayload | null =>
   readLocalStorage<SerialInputPayload>(serialKey(inventoryId));
