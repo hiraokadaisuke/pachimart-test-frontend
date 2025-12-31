@@ -128,6 +128,16 @@ type ManualItemFormState = {
   frameColor: string;
 };
 
+const gameTypeLabelMap: Record<ManualItemFormState["gameType"], string> = {
+  pachinko: "パチンコ",
+  slot: "スロット",
+};
+
+const formatGameTypeLabel = (value?: string | null) => {
+  if (!value) return "-";
+  return (gameTypeLabelMap as Record<string, string | undefined>)[value] ?? value;
+};
+
 const emptyManualItemForm: ManualItemFormState = {
   gameType: "pachinko",
   bodyType: "本体",
@@ -690,14 +700,6 @@ function StandardNaviRequestEditor({
   const buyerCompanyDisplay = displayBuyer.companyName ?? "未設定";
   const sellerContactDisplay = currentUser.contactName || "-";
   const shouldShowBuyerSelector = !isBuyerSet || isEditingBuyer;
-  const gameTypeLabelMap: Record<ManualItemFormState["gameType"], string> = {
-    pachinko: "パチンコ",
-    slot: "スロット",
-  };
-  const formatGameTypeLabel = (value?: string | null) => {
-    if (!value) return "-";
-    return (gameTypeLabelMap as Record<string, string | undefined>)[value] ?? value;
-  };
 
   const displayPropertyInfo = useMemo(() => {
     if (!linkedListing) return propertyInfo;
