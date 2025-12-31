@@ -20,6 +20,7 @@ import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { products } from "@/lib/dummyData";
 import { loadMasterData, type Warehouse } from "@/lib/demo-data/demoMasterData";
 import type { Listing } from "@/lib/listings/types";
+import { Button } from "@/components/ui/button";
 
 const mapDraftConditions = (
   conditions: TradeConditions,
@@ -323,10 +324,43 @@ function StandardNaviRequestEditor({
   const [showTermPresets, setShowTermPresets] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [isRemovalCompleted, setIsRemovalCompleted] = useState(false);
   const formattedNumber = formatCurrency;
   const isProductLinked = Boolean(draft?.productId);
   const manualItem = draft?.items?.[0];
   const [appliedPickListingId, setAppliedPickListingId] = useState<string | null>(null);
+  const formatDateForInput = useCallback((value?: string | null) => {
+    if (!value) return "";
+    const trimmed = String(value).trim();
+    if (!trimmed) return "";
+    if (/^\d{4}\/\d{2}\/\d{2}/.test(trimmed)) {
+      return trimmed.replace(/\//g, "-");
+    }
+    if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+      return trimmed.slice(0, 10);
+    }
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().slice(0, 10);
+    }
+    return trimmed;
+  }, []);
+
+  const formatDateForStorage = useCallback((value: string) => {
+    if (!value) return "";
+    return value.replace(/-/g, "/");
+  }, []);
+
+  const handleRemovalCompletedChange = useCallback(
+    (checked: boolean) => {
+      setIsRemovalCompleted(checked);
+      if (checked && !editedConditions.removalDate) {
+        const today = new Date().toISOString().slice(0, 10);
+        handleTextConditionChange("removalDate", formatDateForStorage(today));
+      }
+    },
+    [editedConditions.removalDate, formatDateForStorage]
+  );
 
   useEffect(() => {
     if (!listingSourceId) {
@@ -1043,7 +1077,19 @@ function StandardNaviRequestEditor({
       <div className="space-y-4">
         <section className="rounded-lg border border-slate-400 bg-white text-sm shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50 px-4 py-2">
-            <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
+            <div className="flex items-center gap-3">
+              <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
+              {isBuyerSet && !shouldShowBuyerSelector && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-7 px-3 text-xs"
+                  onClick={handleResetBuyerSelection}
+                >
+                  取引先情報を変更
+                </Button>
+              )}
+            </div>
             {isBuyerSet && !shouldShowBuyerSelector && (
               <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800">設定済み</span>
             )}
@@ -1051,7 +1097,7 @@ function StandardNaviRequestEditor({
           <div className="overflow-x-auto">
             <table className="min-w-full border border-slate-400 text-sm">
               <tbody className="text-slate-900">
-                <EditRow label="会社名">
+                <EditRow label="会社名" required>
                   {shouldShowBuyerSelector ? (
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1095,18 +1141,9 @@ function StandardNaviRequestEditor({
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">買手</span>
-                        <span className="text-sm text-neutral-900">{buyerCompanyDisplay}</span>
-                      </div>
-                      <button
-                        type="button"
-                        className="whitespace-nowrap text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
-                        onClick={handleResetBuyerSelection}
-                      >
-                        取引先情報を変更
-                      </button>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">買手</span>
+                      <span className="text-sm text-neutral-900">{buyerCompanyDisplay}</span>
                     </div>
                   )}
                 </EditRow>
@@ -1136,18 +1173,21 @@ function StandardNaviRequestEditor({
 
         <section className="rounded-lg border border-slate-400 bg-white text-sm shadow-sm">
           <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50 px-4 py-2">
-            <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
-            {isProductLinked ? (
-              <span className="text-xs font-semibold text-neutral-600">出品情報から入力</span>
-            ) : (
-              <button
-                type="button"
-                className="text-sm font-semibold text-sky-700 underline-offset-2 hover:underline"
-                onClick={() => router.push("/mypage/exhibits?tab=active&mode=pickForNavi")}
-              >
-                出品から選ぶ
-              </button>
-            )}
+            <div className="flex items-center gap-3">
+              <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
+              {isProductLinked ? (
+                <span className="text-xs font-semibold text-neutral-600">出品情報から入力</span>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-7 px-3 text-xs"
+                  onClick={() => router.push("/mypage/exhibits?tab=active&mode=pickForNavi")}
+                >
+                  出品から選ぶ
+                </Button>
+              )}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full border border-slate-400 text-sm">
@@ -1240,7 +1280,7 @@ function StandardNaviRequestEditor({
                   </tr>
                 </thead>
                 <tbody className="text-slate-900">
-                  <EditRow label="単価">
+                  <EditRow label="単価" required>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -1254,7 +1294,7 @@ function StandardNaviRequestEditor({
                     </div>
                   </EditRow>
 
-                  <EditRow label="台数">
+                  <EditRow label="台数" required>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -1269,13 +1309,25 @@ function StandardNaviRequestEditor({
                   </EditRow>
 
                   <EditRow label="撤去日">
-                    <input
-                      type="date"
-                      className="w-full max-w-xs rounded border border-slate-300 px-3 py-2 text-sm"
-                      placeholder="yyyy/mm/dd"
-                      value={editedConditions.removalDate}
-                      onChange={(e) => handleTextConditionChange("removalDate", e.target.value)}
-                    />
+                    <div className="flex flex-wrap items-center gap-3">
+                      <input
+                        type="date"
+                        className="w-full max-w-xs rounded border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
+                        placeholder="yyyy/mm/dd"
+                        value={formatDateForInput(editedConditions.removalDate)}
+                        onChange={(e) => handleTextConditionChange("removalDate", formatDateForStorage(e.target.value))}
+                        disabled={isRemovalCompleted}
+                      />
+                      <label className="flex items-center gap-2 text-sm text-neutral-900">
+                        <input
+                          type="checkbox"
+                          className="h-4 w-4"
+                          checked={isRemovalCompleted}
+                          onChange={(e) => handleRemovalCompletedChange(e.target.checked)}
+                        />
+                        撤去済
+                      </label>
+                    </div>
                   </EditRow>
 
                   <EditRow label="機械発送日" required>
