@@ -20,6 +20,7 @@ import type { InventoryStatusOption, PurchaseInvoice } from "@/types/purchaseInv
 import type { SalesInvoice } from "@/types/salesInvoices";
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import { buildEditForm, buildPayload, resolveListingStatus, STATUS_OPTIONS } from "@/lib/inventory/editUtils";
+import { loadSerialRows, type SerialInputRow } from "@/lib/serialInputStorage";
 
 type Column = {
   key: keyof InventoryRecord | "status";
@@ -55,6 +56,7 @@ const COLUMN_SETTINGS_KEY = "inventory_table_columns_v1";
 const NUMERIC_COLUMNS: Array<Column["key"]> = ["quantity", "unitPrice", "saleUnitPrice"];
 const DATE_COLUMNS: Array<Column["key"]> = ["createdAt", "stockInDate", "removeDate"];
 const WRAP_COLUMNS: Array<Column["key"]> = ["maker", "model", "warehouse", "supplier", "staff", "note"];
+const REQUIRED_SERIAL_KEYS: Array<keyof SerialInputRow> = ["board"];
 
 const INITIAL_COLUMNS: Column[] = [
   { key: "id", label: "管理ID", width: 64, minWidth: 52, visible: true },
@@ -135,6 +137,14 @@ const buildManagementId = (index: number) => {
   };
 };
 
+const isSerialRowComplete = (row: SerialInputRow) =>
+  REQUIRED_SERIAL_KEYS.every((key) => String(row[key] ?? "").trim() !== "");
+
+const isSerialCompleteForQuantity = (rows: SerialInputRow[], quantity: number) => {
+  if (rows.length !== quantity) return false;
+  return rows.every((row) => isSerialRowComplete(row));
+};
+
 export default function InventoryPage() {
   const [records, setRecords] = useState<InventoryRecord[]>([]);
   const [columns, setColumns] = useState<Column[]>(INITIAL_COLUMNS);
@@ -167,6 +177,7 @@ export default function InventoryPage() {
   } | null>(null);
   const [salesModalOpen, setSalesModalOpen] = useState(false);
   const [salesCandidateIds, setSalesCandidateIds] = useState<string[]>([]);
+  const [serialCompletionMap, setSerialCompletionMap] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
@@ -331,6 +342,38 @@ export default function InventoryPage() {
     if (searchFilters.displayCount === "all") return filteredRecords;
     return filteredRecords.slice(0, Number(searchFilters.displayCount));
   }, [filteredRecords, searchFilters.displayCount]);
+
+  useEffect(() => {
+    let active = true;
+
+    const refreshSerialCompletion = async () => {
+      if (displayRecords.length === 0) {
+        if (active) setSerialCompletionMap({});
+        return;
+      }
+
+      const entries = await Promise.all(
+        displayRecords.map(async (record) => {
+          const rows = await loadSerialRows(record.id);
+          const targetQuantity = Math.max(1, Number(record.quantity ?? 1) || 1);
+          const isComplete = isSerialCompleteForQuantity(rows, targetQuantity);
+          return [record.id, isComplete] as const;
+        }),
+      );
+
+      if (!active) return;
+      setSerialCompletionMap(Object.fromEntries(entries));
+    };
+
+    void refreshSerialCompletion();
+
+    const handleFocus = () => void refreshSerialCompletion();
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      active = false;
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [displayRecords]);
 
   useEffect(() => {
     const allowed = new Set(displayRecords.map((record) => record.id));
@@ -715,8 +758,8 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white py-6 mx-[1cm]">
-      <div className="mx-auto max-w-[1600px] px-[38px]">
+    <div className="min-h-screen bg-white py-4">
+      <div className="mx-auto max-w-[1800px] px-8">
         <div className="p-3">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-300 pb-3">
             <div>
@@ -743,7 +786,7 @@ export default function InventoryPage() {
           <div className="mt-4 border-2 border-gray-300">
             <div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">検索条件</div>
             <form onSubmit={handleSearchSubmit} className="bg-white">
-              <table className="w-full border-collapse text-sm">
+              <table className="w-full border-collapse text-[12px]">
                 <tbody>
                   <tr>
                     <th className="w-32 border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
@@ -1086,10 +1129,8 @@ export default function InventoryPage() {
             </form>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 border border-gray-300 px-2 py-2 text-xs">
+          <div className="mt-3 flex flex-wrap items-center gap-2 border border-gray-300 px-2 py-2 text-[11px]">
             <div className="flex flex-wrap items-center gap-2 text-neutral-700">
-              <span className="font-semibold">表示操作：</span>
-              <span>ヘッダーをドラッグして並び替え</span>
               <button
                 type="button"
                 onClick={handleBulkCreatePurchaseInvoice}
@@ -1149,6 +1190,9 @@ export default function InventoryPage() {
               </button>
             </div>
           </div>
+          <p className="mt-1 text-[11px] text-neutral-600">
+            ・項目をドラッグして並び替えすることができます。
+          </p>
 
           {bulkEditOpen && (
             <div className="mt-4 border-2 border-gray-300">
@@ -1353,7 +1397,11 @@ export default function InventoryPage() {
                           href={`/inventory/${item.id}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block w-full border border-gray-300 bg-[#f7f3e9] px-1 py-1 text-[11px] font-semibold text-neutral-800 shadow-[inset_0_1px_0_#fff]"
+                          className={`block w-full border border-gray-300 px-1 py-1 text-[11px] font-semibold shadow-[inset_0_1px_0_#fff] ${
+                            serialCompletionMap[item.id]
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-[#f7f3e9] text-neutral-800"
+                          }`}
                         >
                           ＋
                         </Link>
