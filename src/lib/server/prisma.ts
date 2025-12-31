@@ -193,8 +193,16 @@ type InMemoryPrisma = {
     >;
   };
   user: {
-    findMany: ({ where }?: { where?: { id?: { in?: string[] } } }) => Promise<{ id: string; companyName: string }[]>;
-    findUnique: ({ where }: { where: { id?: string | null } }) => Promise<{ id: string; companyName: string } | null>;
+    findMany: ({
+      where,
+    }?: {
+      where?: { id?: { in?: string[] } };
+    }) => Promise<{ id: string; companyName: string; contactName?: string; tel?: string }[]>;
+    findUnique: ({
+      where,
+    }: {
+      where: { id?: string | null };
+    }) => Promise<{ id: string; companyName: string; contactName?: string; tel?: string } | null>;
   };
   message: {
     findMany: ({ where, orderBy }?: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
@@ -265,9 +273,15 @@ type InMemoryPrisma = {
 };
 
 const buildInMemoryPrisma = (): InMemoryPrisma => {
-  const userDirectory = Object.values(DEV_USERS).reduce<Record<string, { id: string; companyName: string }>>(
-    (acc, user) => {
-      acc[user.id] = { id: user.id, companyName: user.companyName };
+  const userDirectory = Object.values(DEV_USERS).reduce<
+    Record<string, { id: string; companyName: string; contactName?: string; tel?: string }>
+  >((acc, user) => {
+      acc[user.id] = {
+        id: user.id,
+        companyName: user.companyName,
+        contactName: user.contactName,
+        tel: user.tel,
+      };
       return acc;
     },
     {}
