@@ -1538,13 +1538,23 @@ function OnlineInquiryCreator({
   const makerName = searchParams.get("makerName") ?? linkedListing?.maker ?? product?.maker ?? "";
   const productName = searchParams.get("productName") ?? linkedListing?.machineName ?? product?.name ?? "";
   const quantity = parseNumberParam(
-    searchParams.get("quantity"),
+    searchParams.get("qty") ?? searchParams.get("quantity"),
     linkedListing?.quantity ?? product?.quantity ?? 1
   );
   const unitPrice = parseNumberParam(
     searchParams.get("unitPrice"),
     linkedListing?.unitPriceExclTax ?? product?.price ?? 0
   );
+  const hasEstimateParams = Boolean(
+    searchParams.get("subtotal") ||
+      searchParams.get("machineShippingTotal") ||
+      searchParams.get("shippingHandlingTotal") ||
+      searchParams.get("total")
+  );
+  const subtotal = parseNumberParam(searchParams.get("subtotal"), unitPrice * quantity);
+  const machineShippingTotal = parseNumberParam(searchParams.get("machineShippingTotal"), 0);
+  const shippingHandlingTotal = parseNumberParam(searchParams.get("shippingHandlingTotal"), 0);
+  const totalAmount = parseNumberParam(searchParams.get("total"), subtotal + machineShippingTotal + shippingHandlingTotal);
 
   const devUsers = useMemo(() => getDevUsers(), []);
   const sellerUserId =
@@ -1561,9 +1571,8 @@ function OnlineInquiryCreator({
   const [shippingAddressMode, setShippingAddressMode] = useState<"warehouse" | "manual">(
     hasWarehouses ? "warehouse" : "manual"
   );
-  const [selectedWarehouseId, setSelectedWarehouseId] = useState(
-    warehouseDetails[0]?.id ?? ""
-  );
+  const initialWarehouseId = searchParams.get("buyerWarehouseId") ?? warehouseDetails[0]?.id ?? "";
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState(initialWarehouseId);
   const [manualShippingAddress, setManualShippingAddress] = useState(currentUser.address);
   const [contactPerson, setContactPerson] = useState(currentUser.contactName);
   const [desiredShipDate, setDesiredShipDate] = useState("");
@@ -1573,8 +1582,6 @@ function OnlineInquiryCreator({
   const [errors, setErrors] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const formattedNumber = formatCurrency;
-
-  const totalAmount = unitPrice * quantity;
 
   const handleSubmit = async () => {
     const missing: string[] = [];
@@ -1867,12 +1874,16 @@ function OnlineInquiryCreator({
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
-                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">運賃</th>
-                    <td className="px-3 py-2">-</td>
+                    <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械送料</th>
+                    <td className="px-3 py-2">
+                      {hasEstimateParams ? formattedNumber(machineShippingTotal) : "-"}
+                    </td>
                   </tr>
                   <tr className="border-t border-slate-300">
                     <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">出庫手数料</th>
-                    <td className="px-3 py-2">-</td>
+                    <td className="px-3 py-2">
+                      {hasEstimateParams ? formattedNumber(shippingHandlingTotal) : "-"}
+                    </td>
                   </tr>
                   <tr className="border-t border-slate-300">
                     <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">段ボール</th>
@@ -1912,8 +1923,18 @@ function OnlineInquiryCreator({
             <div className="mt-3 space-y-1 text-sm text-neutral-900">
               <SummaryRow label="単価" value={formattedNumber(unitPrice)} />
               <SummaryRow label="台数" value={`${quantity}台`} />
-              <SummaryRow label="小計（税抜）" value={formattedNumber(unitPrice * quantity)} />
-              <SummaryRow label="合計（目安）" value={formattedNumber(totalAmount)} emphasis />
+              <SummaryRow label="商品代金" value={formattedNumber(subtotal)} />
+              {hasEstimateParams && (
+                <>
+                  <SummaryRow label="機械送料" value={formattedNumber(machineShippingTotal)} />
+                  <SummaryRow label="出庫手数料" value={formattedNumber(shippingHandlingTotal)} />
+                </>
+              )}
+              <SummaryRow
+                label={hasEstimateParams ? "合計" : "合計（目安）"}
+                value={formattedNumber(totalAmount)}
+                emphasis
+              />
             </div>
           </section>
         </div>
@@ -1974,4 +1995,3 @@ function SummaryRow({ label, value, emphasis }: { label: string; value: string; 
     </div>
   );
 }
-
