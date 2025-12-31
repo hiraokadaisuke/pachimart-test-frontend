@@ -9,6 +9,7 @@ import MainContainer from "@/components/layout/MainContainer";
 import { SectionHeader } from "@/components/ui/SectionHeader";
 import type { Listing } from "@/lib/listings/types";
 import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
+import { PurchaseProcedureCard } from "@/components/products/PurchaseProcedureCard";
 
 const formatPrice = (listing: Listing) => {
   if (listing.isNegotiable || listing.unitPriceExclTax === null) {
@@ -43,7 +44,6 @@ export default async function ProductDetailPage({ params }: { params: { listingI
   const canCreateNavi = !isSold && !isSellerViewing;
   const naviDisabledReason = isSold ? "成約済みのため受付できません" : "出品者は操作できません";
   const naviCreateHref = `/navi?tab=new&listingId=${listing.id}`;
-  const inquiryHref = `/navi?tab=new&mode=inquiry&listingId=${listing.id}`;
 
   return (
     <MainContainer>
@@ -77,7 +77,7 @@ export default async function ProductDetailPage({ params }: { params: { listingI
           <div className="rounded border border-slate-200">
             <SectionHeader>取引条件</SectionHeader>
             <div className="grid grid-cols-1 gap-2 bg-white p-3 md:grid-cols-2">
-              <DetailRow label="送料回数" value={`${listing.shippingFeeCount}個口`} />
+              <DetailRow label="機械送料回数" value={`${listing.shippingFeeCount}個口`} />
               <DetailRow label="出庫手数料回数" value={`${listing.handlingFeeCount}個口`} />
               <DetailRow label="バラ売り可否" value={listing.allowPartial ? "可" : "不可"} />
               <DetailRow label="備考" value={listing.note ?? "-"} />
@@ -86,6 +86,7 @@ export default async function ProductDetailPage({ params }: { params: { listingI
         </div>
 
         <div className="space-y-3 text-[13px]">
+          <PurchaseProcedureCard listing={listing} inquiryStatus={inquiryStatus} />
           <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
             <div className="space-y-1">
               <h3 className="text-[14px] font-semibold text-slate-900">ナビ作成</h3>
@@ -104,27 +105,6 @@ export default async function ProductDetailPage({ params }: { params: { listingI
             </Link>
             {!canCreateNavi && (
               <p className="text-[12px] leading-[16px] text-neutral-700">{naviDisabledReason}</p>
-            )}
-          </div>
-
-          <div className="space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-            <div className="space-y-1">
-              <h3 className="text-[14px] font-semibold text-slate-900">オンライン問い合わせ</h3>
-              <p className="text-[12px] leading-[16px] text-neutral-700">オンラインで問い合わせを送信できます。</p>
-            </div>
-            <Link
-              href={inquiryHref}
-              aria-disabled={!inquiryStatus.available}
-              className={`flex h-10 w-full items-center justify-center rounded-md px-3 text-[13px] font-semibold shadow ${
-                inquiryStatus.available
-                  ? "bg-blue-600 text-white hover:bg-blue-700"
-                  : "cursor-not-allowed bg-slate-200 text-neutral-500"
-              } ${!inquiryStatus.available ? "pointer-events-none" : ""}`}
-            >
-              オンライン問い合わせ
-            </Link>
-            {!inquiryStatus.available && (
-              <p className="text-[12px] leading-[16px] text-neutral-700">{inquiryStatus.reason}</p>
             )}
           </div>
         </div>
