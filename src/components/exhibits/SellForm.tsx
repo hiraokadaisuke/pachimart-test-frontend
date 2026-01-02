@@ -9,10 +9,10 @@ import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 
 type SellFormProps = {
   showHeader?: boolean;
-  listingType: ListingType;
+  exhibitType: ExhibitType;
 };
 
-type ListingType = "PACHINKO" | "SLOT";
+type ExhibitType = "PACHINKO" | "SLOT";
 
 type StorageLocation = {
   id: string;
@@ -33,7 +33,7 @@ type MakerOption = {
 type MachineModelOption = {
   id: string;
   makerId: string;
-  type: ListingType;
+  type: ExhibitType;
   name: string;
 };
 
@@ -64,12 +64,12 @@ const FieldRow = ({
   </div>
 );
 
-const exhibitTypeLabels: Record<ListingType, string> = {
+const exhibitTypeLabels: Record<ExhibitType, string> = {
   PACHINKO: "パチンコ",
   SLOT: "スロット",
 };
 
-export function SellForm({ showHeader = true, listingType }: SellFormProps) {
+export function SellForm({ showHeader = true, exhibitType }: SellFormProps) {
   const router = useRouter();
   const currentUser = useCurrentDevUser();
 
@@ -142,7 +142,7 @@ export function SellForm({ showHeader = true, listingType }: SellFormProps) {
     const fetchMasters = async () => {
       setIsLoadingMasters(true);
       try {
-        const response = await fetch(`/api/machine-masters?type=${listingType}`, {
+        const response = await fetch(`/api/machine-masters?type=${exhibitType}`, {
           cache: "no-store",
         });
         if (!response.ok) {
@@ -172,7 +172,7 @@ export function SellForm({ showHeader = true, listingType }: SellFormProps) {
     return () => {
       isActive = false;
     };
-  }, [listingType]);
+  }, [exhibitType]);
 
   useEffect(() => {
     if (!makerId && makers.length > 0) {
@@ -251,7 +251,7 @@ export function SellForm({ showHeader = true, listingType }: SellFormProps) {
     );
 
     const payload = {
-      type: listingType,
+      type: exhibitType,
       kind,
       maker: selectedMaker.name,
       machineName: machineName.trim(),
@@ -316,7 +316,7 @@ export function SellForm({ showHeader = true, listingType }: SellFormProps) {
             <Section title="基本情報">
               <FieldRow label="遊技種別" required>
                 <div className="w-full rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
-                  {exhibitTypeLabels[listingType]}
+                  {exhibitTypeLabels[exhibitType]}
                 </div>
               </FieldRow>
 

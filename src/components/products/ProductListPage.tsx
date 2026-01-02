@@ -9,12 +9,12 @@ import { resolveStorageLocationSnapshot } from "@/lib/exhibits/storageLocation";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { findDevUserById } from "@/lib/dev-user/users";
 
-type ListingType = "PACHINKO" | "SLOT";
+type ExhibitType = "PACHINKO" | "SLOT";
 
 type MakerOption = { id: string; name: string };
-type MachineModelOption = { id: string; makerId: string; type: ListingType; name: string };
+type MachineModelOption = { id: string; makerId: string; type: ExhibitType; name: string };
 
-const LISTING_TYPE_LABELS: Record<ListingType, string> = {
+const EXHIBIT_TYPE_LABELS: Record<ExhibitType, string> = {
   PACHINKO: "パチンコ",
   SLOT: "スロット",
 };
@@ -111,7 +111,7 @@ function getSellerCompanyName(sellerUserId: string) {
 
 export default function ProductListPage() {
   const [exhibits, setExhibits] = useState<Exhibit[]>([]);
-  const [selectedType, setSelectedType] = useState<ListingType>("PACHINKO");
+  const [selectedType, setSelectedType] = useState<ExhibitType>("PACHINKO");
   const [makers, setMakers] = useState<MakerOption[]>([]);
   const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
   const [filters, setFilters] = useState({ makerId: "", machineModelId: "", frameOnly: false });
@@ -205,7 +205,7 @@ export default function ProductListPage() {
     [filters.machineModelId, machineModels]
   );
 
-  const filteredListings = useMemo(() => {
+  const filteredExhibits = useMemo(() => {
     return exhibits
       .filter((exhibit) => exhibit.type === selectedType)
       .filter((exhibit) => {
@@ -221,8 +221,8 @@ export default function ProductListPage() {
       });
   }, [appliedMachineName, appliedMakerName, filters.frameOnly, exhibits, selectedType]);
 
-  const sortedListings = useMemo(() => {
-    const base = [...filteredListings];
+  const sortedExhibits = useMemo(() => {
+    const base = [...filteredExhibits];
 
     switch (sortKey) {
       case "oldest":
@@ -248,7 +248,7 @@ export default function ProductListPage() {
       default:
         return base;
     }
-  }, [filteredListings, sortKey]);
+  }, [filteredExhibits, sortKey]);
 
   const columns: NaviTableColumn[] = useMemo(
     () => [
@@ -353,7 +353,7 @@ export default function ProductListPage() {
       <div className="w-full bg-[#0f2d62] text-white">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3 px-4 py-4 xl:px-8">
           <div className="flex items-center gap-2 rounded-md bg-white/5 p-1">
-            {(Object.keys(LISTING_TYPE_LABELS) as ListingType[]).map((type) => (
+            {(Object.keys(EXHIBIT_TYPE_LABELS) as ExhibitType[]).map((type) => (
               <button
                 key={type}
                 type="button"
@@ -364,7 +364,7 @@ export default function ProductListPage() {
                 }`}
                 onClick={() => setSelectedType(type)}
               >
-                {LISTING_TYPE_LABELS[type]}
+                {EXHIBIT_TYPE_LABELS[type]}
               </button>
             ))}
           </div>
@@ -430,9 +430,9 @@ export default function ProductListPage() {
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
             <span className="text-lg font-semibold text-[#0f2d62]">
-              {LISTING_TYPE_LABELS[selectedType]}商品一覧
+              {EXHIBIT_TYPE_LABELS[selectedType]}商品一覧
             </span>
-            <span className="text-sm">対象機種：{filteredListings.length}件</span>
+            <span className="text-sm">対象機種：{filteredExhibits.length}件</span>
           </div>
         </div>
 
@@ -448,7 +448,7 @@ export default function ProductListPage() {
 
         <NaviTable
           columns={columns}
-          rows={sortedListings}
+          rows={sortedExhibits}
           onRowClick={(row) => {
             if (!row?.id) return;
             router.push(`/products/${row.id}`);
