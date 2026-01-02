@@ -64,7 +64,7 @@ const FieldRow = ({
   </div>
 );
 
-const listingTypeLabels: Record<ListingType, string> = {
+const exhibitTypeLabels: Record<ListingType, string> = {
   PACHINKO: "パチンコ",
   SLOT: "スロット",
 };
@@ -316,7 +316,7 @@ export function SellForm({ showHeader = true, listingType }: SellFormProps) {
             <Section title="基本情報">
               <FieldRow label="遊技種別" required>
                 <div className="w-full rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">
-                  {listingTypeLabels[listingType]}
+                  {exhibitTypeLabels[listingType]}
                 </div>
               </FieldRow>
 

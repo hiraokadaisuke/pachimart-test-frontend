@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { formatStorageLocationShort } from "@/lib/exhibits/storageLocation";
-import type { Listing } from "@/lib/exhibits/types";
+import type { Exhibit } from "@/lib/exhibits/types";
 
 function formatDate(isoString: string) {
   const date = new Date(isoString);
@@ -20,10 +20,10 @@ function formatDate(isoString: string) {
   return `${year}/${month}/${day}`;
 }
 
-function getStatusLabel(listing: Listing) {
-  if (listing.status === "DRAFT") return "下書き";
-  if (listing.status === "SOLD") return "成約済み";
-  if (listing.status === "PUBLISHED" && !listing.isVisible) return "公開停止";
+function getStatusLabel(exhibit: Exhibit) {
+  if (exhibit.status === "DRAFT") return "下書き";
+  if (exhibit.status === "SOLD") return "成約済み";
+  if (exhibit.status === "PUBLISHED" && !exhibit.isVisible) return "公開停止";
   return "出品中";
 }
 
@@ -66,7 +66,7 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
 
   const [draftFilters, setDraftFilters] = useState(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [exhibits, setExhibits] = useState<Exhibit[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -74,7 +74,7 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
     setAppliedFilters(defaultFilters);
   }, [defaultFilters]);
 
-  const fetchListings = useCallback(async () => {
+  const fetchExhibits = useCallback(async () => {
     setLoading(true);
     try {
       const response = await fetchWithDevHeader(
@@ -85,24 +85,24 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
       if (!response.ok) {
         throw new Error(`Failed to fetch listings: ${response.status}`);
       }
-      const data: Listing[] = await response.json();
-      setListings(data);
+      const data: Exhibit[] = await response.json();
+      setExhibits(data);
     } catch (error) {
       console.error("Failed to load listings", error);
-      setListings([]);
+      setExhibits([]);
     } finally {
       setLoading(false);
     }
   }, [currentUser.id]);
 
   useEffect(() => {
-    fetchListings();
-  }, [fetchListings]);
+    fetchExhibits();
+  }, [fetchExhibits]);
 
-  const updateListing = useCallback(
-    async (listingId: string, payload: { status?: string; isVisible?: boolean }) => {
+  const updateExhibit = useCallback(
+    async (exhibitId: string, payload: { status?: string; isVisible?: boolean }) => {
       try {
-        const response = await fetch(`/api/listings/${listingId}`, {
+        const response = await fetch(`/api/listings/${exhibitId}`, {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
@@ -115,34 +115,34 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
           throw new Error(`Failed to update listing: ${response.status}`);
         }
 
-        await fetchListings();
+        await fetchExhibits();
       } catch (error) {
         console.error("Failed to update listing", error);
       }
     },
-    [currentUser.id, fetchListings]
+    [currentUser.id, fetchExhibits]
   );
 
-  const baseListings = useMemo(() => {
+  const baseExhibits = useMemo(() => {
     if (status === "下書き") {
-      return listings.filter((listing) => listing.status === "DRAFT");
+      return exhibits.filter((exhibit) => exhibit.status === "DRAFT");
     }
-    return listings.filter((listing) => listing.status !== "DRAFT");
-  }, [listings, status]);
+    return exhibits.filter((exhibit) => exhibit.status !== "DRAFT");
+  }, [exhibits, status]);
 
   const listedProducts = useMemo(() => {
-    return baseListings.filter((listing) => {
-      const makerMatched = appliedFilters.maker ? listing.maker === appliedFilters.maker : true;
+    return baseExhibits.filter((exhibit) => {
+      const makerMatched = appliedFilters.maker ? exhibit.maker === appliedFilters.maker : true;
       const modelMatched = appliedFilters.model
-        ? (listing.machineName ?? "").toLowerCase().includes(appliedFilters.model.toLowerCase())
+        ? (exhibit.machineName ?? "").toLowerCase().includes(appliedFilters.model.toLowerCase())
         : true;
       const noteMatched = appliedFilters.noteKeyword
-        ? (listing.note ?? "").toLowerCase().includes(appliedFilters.noteKeyword.toLowerCase())
+        ? (exhibit.note ?? "").toLowerCase().includes(appliedFilters.noteKeyword.toLowerCase())
         : true;
 
       return makerMatched && modelMatched && noteMatched;
     });
-  }, [appliedFilters, baseListings]);
+  }, [appliedFilters, baseExhibits]);
 
   const handleApplyFilters = () => {
     setAppliedFilters(draftFilters);
@@ -154,28 +154,28 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
   };
 
   const handleReload = () => {
-    fetchListings();
+    fetchExhibits();
   };
 
-  const handleSelectForNavi = (listingId: string) => {
-    const params = new URLSearchParams({ tab: "new", pickListingId: listingId });
+  const handleSelectForNavi = (exhibitId: string) => {
+    const params = new URLSearchParams({ tab: "new", pickListingId: exhibitId });
     router.push(`/navi?${params.toString()}`);
   };
 
-  const handleCreateNaviFromListing = (listing: Listing) => {
+  const handleCreateNaviFromExhibit = (exhibit: Exhibit) => {
     const params = new URLSearchParams({
-      productId: listing.id.toString(),
+      productId: exhibit.id.toString(),
       quantity: "1",
-      unitPrice: listing.unitPriceExclTax?.toString() ?? "0",
-      productName: listing.machineName ?? "",
-      makerName: listing.maker ?? "",
+      unitPrice: exhibit.unitPriceExclTax?.toString() ?? "0",
+      productName: exhibit.machineName ?? "",
+      makerName: exhibit.maker ?? "",
     });
 
-    if (listing.storageLocation) {
-      params.set("location", listing.storageLocation);
+    if (exhibit.storageLocation) {
+      params.set("location", exhibit.storageLocation);
     }
 
-    router.push(`/transactions/navi/${listing.id}/edit?${params.toString()}`);
+    router.push(`/transactions/navi/${exhibit.id}/edit?${params.toString()}`);
   };
 
   const totalCount = listedProducts.length;
@@ -183,9 +183,9 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
   const makerOptions = useMemo(
     () =>
       Array.from(
-        new Set(baseListings.map((listing) => listing.maker).filter((maker): maker is string => Boolean(maker)))
+        new Set(baseExhibits.map((exhibit) => exhibit.maker).filter((maker): maker is string => Boolean(maker)))
       ),
-    [baseListings]
+    [baseExhibits]
   );
 
   return (
@@ -316,43 +316,43 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
               </tr>
             </thead>
             <tbody>
-              {listedProducts.map((listing, idx) => {
+              {listedProducts.map((exhibit, idx) => {
                 const zebra = idx % 2 === 0 ? "bg-white" : "bg-slate-50";
-                const statusLabel = getStatusLabel(listing);
-                const soldCount = listing.status === "SOLD" ? listing.quantity : 0;
-                const remainingCount = Math.max(listing.quantity - soldCount, 0);
+                const statusLabel = getStatusLabel(exhibit);
+                const soldCount = exhibit.status === "SOLD" ? exhibit.quantity : 0;
+                const remainingCount = Math.max(exhibit.quantity - soldCount, 0);
                 const rowTone =
-                  listing.status === "SOLD"
+                  exhibit.status === "SOLD"
                     ? "opacity-60"
-                    : listing.status === "PUBLISHED" && !listing.isVisible
+                    : exhibit.status === "PUBLISHED" && !exhibit.isVisible
                       ? "opacity-80"
                       : "";
-                const canOperate = listing.status !== "SOLD";
+                const canOperate = exhibit.status !== "SOLD";
                 const statusActionLabel =
-                  listing.status === "DRAFT"
+                  exhibit.status === "DRAFT"
                     ? "公開する"
-                    : listing.status === "PUBLISHED" && listing.isVisible
+                    : exhibit.status === "PUBLISHED" && exhibit.isVisible
                       ? "公開停止"
-                      : listing.status === "PUBLISHED"
+                      : exhibit.status === "PUBLISHED"
                         ? "再公開"
                         : null;
                 const statusActionPayload =
-                  listing.status === "DRAFT"
+                  exhibit.status === "DRAFT"
                     ? { status: "PUBLISHED", isVisible: true }
-                    : listing.status === "PUBLISHED" && listing.isVisible
+                    : exhibit.status === "PUBLISHED" && exhibit.isVisible
                       ? { isVisible: false }
-                      : listing.status === "PUBLISHED"
+                      : exhibit.status === "PUBLISHED"
                         ? { isVisible: true }
                         : null;
                 const storageLocationLabel = formatStorageLocationShort(
-                  listing.storageLocationSnapshot,
-                  listing.storageLocation ?? undefined
+                  exhibit.storageLocationSnapshot,
+                  exhibit.storageLocation ?? undefined
                 );
 
                 return (
-                  <tr key={listing.id} className={`${zebra} ${rowTone} border-b border-slate-100 text-xs`}>
+                  <tr key={exhibit.id} className={`${zebra} ${rowTone} border-b border-slate-100 text-xs`}>
                     <td className="whitespace-nowrap px-2 py-1.5 align-top text-neutral-900">
-                      {formatDate(listing.updatedAt)}
+                      {formatDate(exhibit.updatedAt)}
                     </td>
                     <td className="px-2 py-1.5 align-top">
                       <span
@@ -368,33 +368,35 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
                         {storageLocationLabel}
                       </span>
                     </td>
-                    <td className="px-2 py-1.5 align-top text-neutral-900" title={listing.maker ?? ""}>
-                      <span className="block max-w-[110px] truncate whitespace-nowrap">{listing.maker ?? "-"}</span>
+                    <td className="px-2 py-1.5 align-top text-neutral-900" title={exhibit.maker ?? ""}>
+                      <span className="block max-w-[110px] truncate whitespace-nowrap">{exhibit.maker ?? "-"}</span>
                     </td>
                     <td className="px-2 py-1.5 align-top">
                       <Link
-                        href={`/products/${listing.id}`}
+                        href={`/products/${exhibit.id}`}
                         className="block max-w-[220px] truncate text-xs font-semibold text-sky-700 underline-offset-2 hover:underline"
-                        title={listing.machineName ?? ""}
+                        title={exhibit.machineName ?? ""}
                       >
-                        {listing.machineName ?? "-"}
+                        {exhibit.machineName ?? "-"}
                       </Link>
                     </td>
                     <td className="whitespace-nowrap px-2 py-1.5 align-top text-right font-semibold tabular-nums">
-                      {listing.quantity}
+                      {exhibit.quantity}
                     </td>
                     <td className="whitespace-nowrap px-2 py-1.5 align-top text-right tabular-nums">{soldCount}</td>
                     <td className="whitespace-nowrap px-2 py-1.5 align-top text-right tabular-nums">
                       {remainingCount}
                     </td>
                     <td className="whitespace-nowrap px-2 py-1.5 align-top text-right font-semibold tabular-nums">
-                      {listing.isNegotiable || listing.unitPriceExclTax === null
+                      {exhibit.isNegotiable || exhibit.unitPriceExclTax === null
                         ? "応相談"
-                        : currencyFormatter.format(listing.unitPriceExclTax)}
+                        : currencyFormatter.format(exhibit.unitPriceExclTax)}
                     </td>
                     <td className="whitespace-nowrap px-2 py-1.5 align-top font-semibold text-slate-800">-</td>
-                    <td className="px-2 py-1.5 align-top text-neutral-900" title={listing.note ?? ""}>
-                      <span className="block max-w-[220px] truncate whitespace-nowrap">{listing.note ?? "-"}</span>
+                    <td className="px-2 py-1.5 align-top text-neutral-900" title={exhibit.note ?? ""}>
+                      <span className="block max-w-[220px] truncate whitespace-nowrap">
+                        {exhibit.note ?? "-"}
+                      </span>
                     </td>
                     <td
                       className={`sticky right-0 px-2 py-1.5 align-top border-l border-slate-200 ${
@@ -406,18 +408,18 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
                           <button
                             type="button"
                             className="inline-flex h-8 items-center justify-center rounded bg-blue-600 px-3 text-[13px] font-semibold text-white shadow-sm transition hover:bg-blue-700"
-                            onClick={() => handleSelectForNavi(listing.id)}
+                            onClick={() => handleSelectForNavi(exhibit.id)}
                           >
                             この出品を選択
                           </button>
                         ) : canOperate ? (
                           <ActionMenu
-                            onCreateNavi={() => handleCreateNaviFromListing(listing)}
+                            onCreateNavi={() => handleCreateNaviFromExhibit(exhibit)}
                             onEdit={() => {}}
                             statusActionLabel={statusActionLabel ?? undefined}
                             onStatusAction={
                               statusActionPayload
-                                ? () => updateListing(listing.id, statusActionPayload)
+                                ? () => updateExhibit(exhibit.id, statusActionPayload)
                                 : undefined
                             }
                           />

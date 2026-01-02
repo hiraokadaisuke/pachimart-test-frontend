@@ -19,7 +19,7 @@ import { buildApiUrl } from "@/lib/http/apiBaseUrl";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { products } from "@/lib/dummyData";
 import { loadMasterData, type Warehouse } from "@/lib/demo-data/demoMasterData";
-import type { Listing } from "@/lib/exhibits/types";
+import type { Exhibit } from "@/lib/exhibits/types";
 import { Button } from "@/components/ui/button";
 
 const mapDraftConditions = (
@@ -149,10 +149,10 @@ const emptyManualItemForm: ManualItemFormState = {
   frameColor: "",
 };
 
-const mapGameTypeToListingType = (gameType: ManualItemFormState["gameType"]): ListingType =>
+const mapGameTypeToExhibitType = (gameType: ManualItemFormState["gameType"]): ListingType =>
   gameType === "slot" ? ListingType.SLOT : ListingType.PACHINKO;
 
-const mapListingTypeToGameType = (
+const mapExhibitTypeToGameType = (
   type?: string | null
 ): ManualItemFormState["gameType"] | undefined => {
   const normalized = type?.toString().toLowerCase();
@@ -161,7 +161,7 @@ const mapListingTypeToGameType = (
   return undefined;
 };
 
-const mapListingKindToBodyType = (
+const mapExhibitKindToBodyType = (
   kind?: string | null
 ): ManualItemFormState["bodyType"] | undefined => {
   if (kind === "本体" || kind === "枠のみ" || kind === "セルのみ") return kind;
@@ -276,13 +276,13 @@ function StandardNaviRequestEditor({
   const router = useRouter();
   const params = useParams<{ id?: string }>();
   const safeSearchParams = useMemo(() => searchParams ?? new URLSearchParams(), [searchParams]);
-  const listingId = safeSearchParams.get("listingId");
-  const pickListingId = safeSearchParams.get("pickListingId");
-  const listingSourceId = listingId ?? pickListingId ?? undefined;
+  const exhibitId = safeSearchParams.get("listingId");
+  const pickExhibitId = safeSearchParams.get("pickListingId");
+  const exhibitSourceId = exhibitId ?? pickExhibitId ?? undefined;
   const hasBuyerPrefill =
     Boolean(safeSearchParams.get("buyerId")) || Boolean(safeSearchParams.get("buyerCompanyName"));
-  const hasProductPrefill = Boolean(listingSourceId || safeSearchParams.get("productId"));
-  const entryMode = listingSourceId ? "fromListing" : hasBuyerPrefill || hasProductPrefill ? "prefilled" : "new";
+  const hasProductPrefill = Boolean(exhibitSourceId || safeSearchParams.get("productId"));
+  const entryMode = exhibitSourceId ? "fromListing" : hasBuyerPrefill || hasProductPrefill ? "prefilled" : "new";
 
   const transactionId = Array.isArray(params?.id) ? params?.id[0] : params?.id ?? "dummy-1";
   const [draft, setDraft] = useState<NaviDraft | null>(null);
@@ -300,8 +300,8 @@ function StandardNaviRequestEditor({
   const propertyInfo = entryMode === "new" ? emptyPropertyInfo : defaultPropertyInfo;
   const currentConditions = entryMode === "new" ? emptyTransactionConditions : defaultCurrentConditions;
   const updatedConditions = entryMode === "new" ? emptyTransactionConditions : defaultUpdatedConditions;
-  const [linkedListing, setLinkedListing] = useState<Listing | null>(null);
-  const [isLoadingListing, setIsLoadingListing] = useState(false);
+  const [linkedExhibit, setLinkedExhibit] = useState<Exhibit | null>(null);
+  const [isLoadingExhibit, setIsLoadingExhibit] = useState(false);
   const [isEditingBuyer, setIsEditingBuyer] = useState(false);
   const buyerCandidates = useMemo(
     () => getDevUsers().filter((user) => user.id !== currentUser.id),
@@ -328,7 +328,7 @@ function StandardNaviRequestEditor({
   const formattedNumber = formatCurrency;
   const isProductLinked = Boolean(draft?.productId);
   const manualItem = draft?.items?.[0];
-  const [appliedPickListingId, setAppliedPickListingId] = useState<string | null>(null);
+  const [appliedPickExhibitId, setAppliedPickExhibitId] = useState<string | null>(null);
   const formatDateForInput = useCallback((value?: string | null) => {
     if (!value) return "";
     const trimmed = String(value).trim();
@@ -363,49 +363,49 @@ function StandardNaviRequestEditor({
   );
 
   useEffect(() => {
-    if (!listingSourceId) {
-      setLinkedListing(null);
-      setIsLoadingListing(false);
+    if (!exhibitSourceId) {
+      setLinkedExhibit(null);
+      setIsLoadingExhibit(false);
       return;
     }
 
     let isMounted = true;
-    setIsLoadingListing(true);
+    setIsLoadingExhibit(true);
 
-    fetchWithDevHeader(buildApiUrl(`/api/listings/${listingSourceId}`), {}, currentUser.id)
+    fetchWithDevHeader(buildApiUrl(`/api/listings/${exhibitSourceId}`), {}, currentUser.id)
       .then((response) => (response.ok ? response.json() : null))
-      .then((data: Listing | null) => {
+      .then((data: Exhibit | null) => {
         if (!isMounted) return;
-        setLinkedListing(data);
+        setLinkedExhibit(data);
       })
       .catch(() => {
         if (!isMounted) return;
-        setLinkedListing(null);
+        setLinkedExhibit(null);
       })
       .finally(() => {
         if (!isMounted) return;
-        setIsLoadingListing(false);
+        setIsLoadingExhibit(false);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [currentUser.id, listingSourceId]);
+  }, [currentUser.id, exhibitSourceId]);
 
   useEffect(() => {
-    if (!pickListingId) {
-      setAppliedPickListingId(null);
+    if (!pickExhibitId) {
+      setAppliedPickExhibitId(null);
     }
-  }, [pickListingId]);
+  }, [pickExhibitId]);
 
   useEffect(() => {
     let isActive = true;
-    const listingType = mapGameTypeToListingType(manualItemForm.gameType);
+    const exhibitType = mapGameTypeToExhibitType(manualItemForm.gameType);
 
     const fetchMasters = async () => {
       setIsLoadingMasters(true);
       try {
-        const response = await fetch(`/api/machine-masters?type=${listingType}`, { cache: "no-store" });
+        const response = await fetch(`/api/machine-masters?type=${exhibitType}`, { cache: "no-store" });
         if (!response.ok) {
           throw new Error(`Failed to fetch master data: ${response.status}`);
         }
@@ -434,7 +434,7 @@ function StandardNaviRequestEditor({
 
   useEffect(() => {
     if (!transactionId || draft) return;
-    if (listingSourceId && isLoadingListing) return;
+    if (exhibitSourceId && isLoadingExhibit) return;
 
     const storedDraft = loadNaviDraft(currentUser.id, transactionId);
     if (storedDraft) {
@@ -448,14 +448,14 @@ function StandardNaviRequestEditor({
       return Number.isFinite(parsed) ? parsed : fallback;
     };
 
-    const listingUnitPrice = linkedListing ? linkedListing.unitPriceExclTax : undefined;
+    const exhibitUnitPrice = linkedExhibit ? linkedExhibit.unitPriceExclTax : undefined;
     const initialUnitPrice =
-      listingUnitPrice === null
+      exhibitUnitPrice === null
         ? undefined
-        : parseNumberParam(safeSearchParams.get("unitPrice"), listingUnitPrice ?? undefined);
+        : parseNumberParam(safeSearchParams.get("unitPrice"), exhibitUnitPrice ?? undefined);
 
     const shouldAttachProduct = hasProductPrefill;
-    const resolvedProductId = safeSearchParams.get("productId") ?? linkedListing?.id ?? null;
+    const resolvedProductId = safeSearchParams.get("productId") ?? linkedExhibit?.id ?? null;
     const initialDraft = createEmptyNaviDraft({
       id: transactionId,
       ownerUserId: currentUser.id,
@@ -470,23 +470,23 @@ function StandardNaviRequestEditor({
       conditions: {
         quantity:
           shouldAttachProduct
-            ? parseNumberParam(safeSearchParams.get("quantity"), linkedListing?.quantity ?? 1) ?? 1
+            ? parseNumberParam(safeSearchParams.get("quantity"), linkedExhibit?.quantity ?? 1) ?? 1
             : 1,
         unitPrice: shouldAttachProduct && initialUnitPrice !== undefined ? initialUnitPrice : 0,
         shippingFee: 0,
         handlingFee: 0,
         taxRate: 0.1,
         productName:
-          shouldAttachProduct && (safeSearchParams.get("productName") ?? linkedListing?.machineName)
-            ? safeSearchParams.get("productName") ?? linkedListing?.machineName ?? undefined
+          shouldAttachProduct && (safeSearchParams.get("productName") ?? linkedExhibit?.machineName)
+            ? safeSearchParams.get("productName") ?? linkedExhibit?.machineName ?? undefined
             : undefined,
         makerName:
-          shouldAttachProduct && (safeSearchParams.get("makerName") ?? linkedListing?.maker)
-            ? safeSearchParams.get("makerName") ?? linkedListing?.maker ?? undefined
+          shouldAttachProduct && (safeSearchParams.get("makerName") ?? linkedExhibit?.maker)
+            ? safeSearchParams.get("makerName") ?? linkedExhibit?.maker ?? undefined
             : undefined,
         location:
-          shouldAttachProduct && (safeSearchParams.get("location") ?? linkedListing?.storageLocation)
-            ? safeSearchParams.get("location") ?? linkedListing?.storageLocation ?? undefined
+          shouldAttachProduct && (safeSearchParams.get("location") ?? linkedExhibit?.storageLocation)
+            ? safeSearchParams.get("location") ?? linkedExhibit?.storageLocation ?? undefined
             : undefined,
       },
     });
@@ -497,9 +497,9 @@ function StandardNaviRequestEditor({
     draft,
     entryMode,
     hasProductPrefill,
-    isLoadingListing,
-    linkedListing,
-    listingSourceId,
+    isLoadingExhibit,
+    linkedExhibit,
+    exhibitSourceId,
     safeSearchParams,
     transactionId,
   ]);
@@ -662,7 +662,7 @@ function StandardNaviRequestEditor({
           body: JSON.stringify({
             ownerUserId: currentUser.id,
             buyerUserId: updatedDraft.buyerId ?? undefined,
-            listingId: listingId ?? linkedListing?.id ?? undefined,
+            listingId: exhibitId ?? linkedExhibit?.id ?? undefined,
             status: "SENT",
             payload: updatedDraft,
           }),
@@ -736,18 +736,18 @@ function StandardNaviRequestEditor({
   const shouldShowBuyerSelector = !isBuyerSet || isEditingBuyer;
 
   const displayPropertyInfo = useMemo(() => {
-    if (!linkedListing) return propertyInfo;
+    if (!linkedExhibit) return propertyInfo;
 
     return {
       ...propertyInfo,
-      modelName: linkedListing.machineName ?? propertyInfo.modelName,
-      maker: linkedListing.maker ?? propertyInfo.maker,
-      quantity: linkedListing.quantity,
-      storageLocation: linkedListing.storageLocation,
-      salesPrice: linkedListing.unitPriceExclTax ?? propertyInfo.salesPrice,
-      note: linkedListing.note ?? propertyInfo.note,
+      modelName: linkedExhibit.machineName ?? propertyInfo.modelName,
+      maker: linkedExhibit.maker ?? propertyInfo.maker,
+      quantity: linkedExhibit.quantity,
+      storageLocation: linkedExhibit.storageLocation,
+      salesPrice: linkedExhibit.unitPriceExclTax ?? propertyInfo.salesPrice,
+      note: linkedExhibit.note ?? propertyInfo.note,
     };
-  }, [linkedListing, propertyInfo]);
+  }, [linkedExhibit, propertyInfo]);
 
   const filteredModels = useMemo(
     () => machineModels.filter((model) => model.makerId === manualItemForm.makerId),
@@ -881,27 +881,27 @@ function StandardNaviRequestEditor({
   }, [displayPropertyInfo, draft, persistManualItem]);
 
   useEffect(() => {
-    if (!pickListingId || !linkedListing || !draft) return;
-    if (appliedPickListingId === pickListingId) return;
+    if (!pickExhibitId || !linkedExhibit || !draft) return;
+    if (appliedPickExhibitId === pickExhibitId) return;
 
-    const nextGameType = mapListingTypeToGameType(linkedListing.type) ?? manualItemForm.gameType;
-    const nextBodyType = mapListingKindToBodyType(linkedListing.kind) ?? manualItemForm.bodyType;
-    const nextQuantity = linkedListing.quantity ?? draft.conditions.quantity ?? 1;
+    const nextGameType = mapExhibitTypeToGameType(linkedExhibit.type) ?? manualItemForm.gameType;
+    const nextBodyType = mapExhibitKindToBodyType(linkedExhibit.kind) ?? manualItemForm.bodyType;
+    const nextQuantity = linkedExhibit.quantity ?? draft.conditions.quantity ?? 1;
     const nextUnitPrice =
-      linkedListing.unitPriceExclTax === null || linkedListing.unitPriceExclTax === undefined
+      linkedExhibit.unitPriceExclTax === null || linkedExhibit.unitPriceExclTax === undefined
         ? editedConditions.price
-        : linkedListing.unitPriceExclTax;
-    const nextRemovalDate = linkedListing.removalDate ? linkedListing.removalDate.slice(0, 10) : editedConditions.removalDate;
+        : linkedExhibit.unitPriceExclTax;
+    const nextRemovalDate = linkedExhibit.removalDate ? linkedExhibit.removalDate.slice(0, 10) : editedConditions.removalDate;
 
-    const matchedMaker = makers.find((maker) => maker.name === (linkedListing.maker ?? manualItemForm.makerName));
+    const matchedMaker = makers.find((maker) => maker.name === (linkedExhibit.maker ?? manualItemForm.makerName));
     const makerId = matchedMaker?.id ?? manualItemForm.makerId;
-    const makerName = matchedMaker?.name ?? linkedListing.maker ?? manualItemForm.makerName;
+    const makerName = matchedMaker?.name ?? linkedExhibit.maker ?? manualItemForm.makerName;
     const availableModels = machineModels.filter((model) => model.makerId === makerId);
     const matchedModel = availableModels.find(
-      (model) => model.name === (linkedListing.machineName ?? manualItemForm.modelName)
+      (model) => model.name === (linkedExhibit.machineName ?? manualItemForm.modelName)
     );
     const modelId = matchedModel?.id ?? availableModels[0]?.id ?? manualItemForm.modelId;
-    const modelName = matchedModel?.name ?? linkedListing.machineName ?? manualItemForm.modelName;
+    const modelName = matchedModel?.name ?? linkedExhibit.machineName ?? manualItemForm.modelName;
 
     const nextForm: ManualItemFormState = {
       gameType: nextGameType,
@@ -940,7 +940,7 @@ function StandardNaviRequestEditor({
 
       return {
         ...prev,
-        productId: linkedListing.id,
+        productId: linkedExhibit.id,
         items: [updatedItem, ...remainingItems],
         conditions: {
           ...prev.conditions,
@@ -950,25 +950,25 @@ function StandardNaviRequestEditor({
           machineModelId: modelId ?? prev.conditions.machineModelId,
           quantity: nextQuantity,
           unitPrice: typeof nextUnitPrice === "number" ? nextUnitPrice : prev.conditions.unitPrice,
-          location: linkedListing.storageLocation ?? prev.conditions.location,
+          location: linkedExhibit.storageLocation ?? prev.conditions.location,
           removalDate: nextRemovalDate ?? prev.conditions.removalDate,
         },
       };
     });
 
     setValidationErrors((prev) => ({ ...prev, items: undefined, quantity: undefined, unitPrice: undefined }));
-    setAppliedPickListingId(pickListingId);
+    setAppliedPickExhibitId(pickExhibitId);
 
     const nextParams = new URLSearchParams(safeSearchParams);
     nextParams.delete("pickListingId");
     const queryString = nextParams.toString();
     router.replace(`/navi${queryString ? `?${queryString}` : ""}`);
   }, [
-    appliedPickListingId,
+    appliedPickExhibitId,
     draft,
     editedConditions.price,
     editedConditions.removalDate,
-    linkedListing,
+    linkedExhibit,
     manualItemForm.bodyType,
     manualItemForm.frameColor,
     manualItemForm.gameType,
@@ -978,7 +978,7 @@ function StandardNaviRequestEditor({
     manualItemForm.modelName,
     machineModels,
     makers,
-    pickListingId,
+    pickExhibitId,
     persistDraft,
     router,
     safeSearchParams,
@@ -1556,8 +1556,8 @@ function OnlineInquiryCreator({
 }) {
   const router = useRouter();
   const productId = searchParams.get("productId");
-  const listingId = searchParams.get("listingId");
-  const [linkedListing, setLinkedListing] = useState<Listing | null>(null);
+  const exhibitId = searchParams.get("listingId");
+  const [linkedExhibit, setLinkedExhibit] = useState<Exhibit | null>(null);
 
   const product = useMemo(
     () => products.find((item) => String(item.id) === String(productId)),
@@ -1565,28 +1565,28 @@ function OnlineInquiryCreator({
   );
 
   useEffect(() => {
-    if (!listingId) {
-      setLinkedListing(null);
+    if (!exhibitId) {
+      setLinkedExhibit(null);
       return;
     }
 
     let isMounted = true;
 
-    fetchWithDevHeader(buildApiUrl(`/api/listings/${listingId}`), {}, currentUser.id)
+    fetchWithDevHeader(buildApiUrl(`/api/listings/${exhibitId}`), {}, currentUser.id)
       .then((response) => (response.ok ? response.json() : null))
-      .then((data: Listing | null) => {
+      .then((data: Exhibit | null) => {
         if (!isMounted) return;
-        setLinkedListing(data);
+        setLinkedExhibit(data);
       })
       .catch(() => {
         if (!isMounted) return;
-        setLinkedListing(null);
+        setLinkedExhibit(null);
       });
 
     return () => {
       isMounted = false;
     };
-  }, [currentUser.id, listingId]);
+  }, [currentUser.id, exhibitId]);
 
   const parseNumberParam = (value: string | null, fallback: number): number => {
     if (!value) return fallback;
@@ -1594,15 +1594,15 @@ function OnlineInquiryCreator({
     return Number.isFinite(parsed) ? parsed : fallback;
   };
 
-  const makerName = searchParams.get("makerName") ?? linkedListing?.maker ?? product?.maker ?? "";
-  const productName = searchParams.get("productName") ?? linkedListing?.machineName ?? product?.name ?? "";
+  const makerName = searchParams.get("makerName") ?? linkedExhibit?.maker ?? product?.maker ?? "";
+  const productName = searchParams.get("productName") ?? linkedExhibit?.machineName ?? product?.name ?? "";
   const quantity = parseNumberParam(
     searchParams.get("qty") ?? searchParams.get("quantity"),
-    linkedListing?.quantity ?? product?.quantity ?? 1
+    linkedExhibit?.quantity ?? product?.quantity ?? 1
   );
   const unitPrice = parseNumberParam(
     searchParams.get("unitPrice"),
-    linkedListing?.unitPriceExclTax ?? product?.price ?? 0
+    linkedExhibit?.unitPriceExclTax ?? product?.price ?? 0
   );
   const hasEstimateParams = Boolean(
     searchParams.get("subtotal") ||
@@ -1617,7 +1617,7 @@ function OnlineInquiryCreator({
 
   const devUsers = useMemo(() => getDevUsers(), []);
   const sellerUserId =
-    linkedListing?.sellerUserId ??
+    linkedExhibit?.sellerUserId ??
     product?.ownerUserId ??
     devUsers.find((user) => user.id !== currentUser.id)?.id ??
     currentUser.id;
@@ -1706,7 +1706,7 @@ function OnlineInquiryCreator({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            listingId: listingId ?? productId ?? "",
+            listingId: exhibitId ?? productId ?? "",
             quantity,
             buyerUserId: currentUser.id,
             buyerMemo: memo,
@@ -1904,10 +1904,10 @@ function OnlineInquiryCreator({
             <table className="min-w-full border border-slate-400 text-sm">
               <tbody className="text-slate-900">
                 <EditRow label="分類">
-                  <span>{formatGameTypeLabel(linkedListing?.kind ?? product?.type ?? null)}</span>
+                  <span>{formatGameTypeLabel(linkedExhibit?.kind ?? product?.type ?? null)}</span>
                 </EditRow>
                 <EditRow label="種別">
-                  <span>{linkedListing?.type ?? product?.type ?? "-"}</span>
+                  <span>{linkedExhibit?.type ?? product?.type ?? "-"}</span>
                 </EditRow>
                 <EditRow label="メーカー">
                   <span>{makerName || "-"}</span>
@@ -1948,7 +1948,7 @@ function OnlineInquiryCreator({
                   <tr className="border-t border-slate-300">
                     <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">撤去日</th>
                     <td className="px-3 py-2">
-                      {formatInquiryDate(linkedListing?.removalDate ?? product?.removalDate ?? "-")}
+                      {formatInquiryDate(linkedExhibit?.removalDate ?? product?.removalDate ?? "-")}
                     </td>
                   </tr>
                   <tr className="border-t border-slate-300">
@@ -2045,7 +2045,7 @@ function OnlineInquiryCreator({
                     <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">
                       特記事項/取引条件
                     </th>
-                    <td className="px-3 py-2">{linkedListing?.note ?? product?.note ?? "-"}</td>
+                    <td className="px-3 py-2">{linkedExhibit?.note ?? product?.note ?? "-"}</td>
                   </tr>
                   <tr className="border-t border-slate-300">
                     <th className="bg-slate-100 px-3 py-2 text-left text-xs font-semibold text-neutral-900">備考</th>
