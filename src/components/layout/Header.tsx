@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 
 import { formatCurrency } from "@/lib/currency";
 import type { BalanceSummary } from "@/types/balance";
@@ -28,8 +28,6 @@ const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
   { label: "設定", href: "/mypage/settings", matchPrefixes: ["/mypage/user", "/mypage/company", "/mypage/machine-storage-locations", "/mypage/pachi-notification-settings", "/mypage/settings"] },
 ];
 
-const searchTabs = ["パチンコ", "スロット"];
-
 const isActiveLink = (pathname: string | null, href: string, matchPrefixes?: string[]) => {
   if (!pathname) return false;
   if (pathname === href) return true;
@@ -51,9 +49,7 @@ export default function Header() {
     available: availableBalance,
   };
   const pathname = usePathname();
-  const isProductsPage = pathname === "/products" || pathname?.startsWith("/products/");
   const isInventoryPage = pathname?.startsWith("/inventory");
-  const [activeTab, setActiveTab] = useState<string>("パチンコ");
   const devUserLabel = `${currentUser.companyName}で閲覧中`;
   const isProd = process.env.NEXT_PUBLIC_ENV === "production";
 
@@ -130,54 +126,6 @@ export default function Header() {
           </div>
         </div>
       </div>
-
-      {isProductsPage && (
-        <div className="w-full bg-[#0A2A43] py-3">
-          <div className="mx-auto flex max-w-[1400px] items-center gap-3 px-4">
-            <div className="flex bg-[#082337] p-1 rounded-full">
-              {searchTabs.map((tab) => {
-                const isActive = tab === activeTab;
-                return (
-                  <button
-                    key={tab}
-                    type="button"
-                    onClick={() => setActiveTab(tab)}
-                    className={
-                      isActive
-                        ? "rounded-full bg-white px-4 py-1 text-sm font-semibold text-blue-900"
-                        : "px-4 py-1 text-sm text-white"
-                    }
-                  >
-                    {tab}
-                  </button>
-                );
-              })}
-            </div>
-
-            <select className="h-10 rounded border border-gray-300 bg-white px-3 text-sm text-gray-800">
-              <option>メーカーを指定しない</option>
-            </select>
-
-            <input
-              type="text"
-              placeholder="機種名を指定"
-              className="h-10 flex-1 rounded border border-gray-300 bg-white px-3 text-sm text-gray-800"
-            />
-
-            <div className="ml-auto flex items-center gap-3">
-              <button type="button" className="text-xs text-blue-100 underline">
-                絞り込み条件を追加
-              </button>
-              <button
-                type="button"
-                className="h-10 rounded bg-[#007BFF] px-5 text-sm font-semibold text-white"
-              >
-                検索
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
   );
 }
