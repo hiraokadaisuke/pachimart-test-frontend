@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviTable";
-import type { Listing } from "@/lib/exhibits/types";
+import type { Exhibit } from "@/lib/exhibits/types";
 import { resolveStorageLocationSnapshot } from "@/lib/exhibits/storageLocation";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { findDevUserById } from "@/lib/dev-user/users";
@@ -71,12 +71,12 @@ const PREFECTURES = [
   "沖縄県",
 ];
 
-function formatPrice(listing: Listing) {
-  if (listing.isNegotiable || listing.unitPriceExclTax === null) {
+function formatPrice(exhibit: Exhibit) {
+  if (exhibit.isNegotiable || exhibit.unitPriceExclTax === null) {
     return "応相談";
   }
 
-  return `¥${listing.unitPriceExclTax.toLocaleString("ja-JP")}`;
+  return `¥${exhibit.unitPriceExclTax.toLocaleString("ja-JP")}`;
 }
 
 function formatDate(isoString: string | null) {
@@ -90,9 +90,9 @@ function formatDate(isoString: string | null) {
   return `${month}/${day}`;
 }
 
-function extractPrefecture(listing: Listing) {
-  const snapshot = resolveStorageLocationSnapshot(listing.storageLocationSnapshot);
-  const candidates = [snapshot?.prefecture, snapshot?.address, listing.storageLocation];
+function extractPrefecture(exhibit: Exhibit) {
+  const snapshot = resolveStorageLocationSnapshot(exhibit.storageLocationSnapshot);
+  const candidates = [snapshot?.prefecture, snapshot?.address, exhibit.storageLocation];
   const joined = candidates.find((value) => typeof value === "string" && value.trim() !== "") ?? "";
 
   if (!joined) return "";
@@ -110,7 +110,7 @@ function getSellerCompanyName(sellerUserId: string) {
 }
 
 export default function ProductListPage() {
-  const [listings, setListings] = useState<Listing[]>([]);
+  const [exhibits, setExhibits] = useState<Exhibit[]>([]);
   const [selectedType, setSelectedType] = useState<ListingType>("PACHINKO");
   const [makers, setMakers] = useState<MakerOption[]>([]);
   const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
@@ -120,10 +120,10 @@ export default function ProductListPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const normalizeListing = (listing: unknown): Listing | null => {
-      if (!listing || typeof listing !== "object") return null;
+    const normalizeExhibit = (exhibit: unknown): Exhibit | null => {
+      if (!exhibit || typeof exhibit !== "object") return null;
 
-      const candidate = listing as Record<string, unknown>;
+      const candidate = exhibit as Record<string, unknown>;
       const id = candidate.id ?? candidate.listingId;
 
       if (!id) return null;
@@ -131,10 +131,10 @@ export default function ProductListPage() {
       return {
         ...candidate,
         id: String(id),
-      } as Listing;
+      } as Exhibit;
     };
 
-    const fetchListings = async () => {
+    const fetchExhibits = async () => {
       try {
         const response = await fetchWithDevHeader("/api/listings", { cache: "no-store" });
         if (!response.ok) {
@@ -147,17 +147,17 @@ export default function ProductListPage() {
         }
 
         const normalized = data
-          .map((listing) => normalizeListing(listing))
-          .filter((listing): listing is Listing => Boolean(listing));
+          .map((exhibit) => normalizeExhibit(exhibit))
+          .filter((exhibit): exhibit is Exhibit => Boolean(exhibit));
 
-        setListings(normalized);
+        setExhibits(normalized);
       } catch (error) {
         console.error("Failed to load listings", error);
-        setListings([]);
+        setExhibits([]);
       }
     };
 
-    fetchListings();
+    fetchExhibits();
   }, []);
 
   useEffect(() => {
@@ -206,20 +206,20 @@ export default function ProductListPage() {
   );
 
   const filteredListings = useMemo(() => {
-    return listings
-      .filter((listing) => listing.type === selectedType)
-      .filter((listing) => {
-        if (filters.frameOnly && !listing.kind?.includes("枠")) return false;
-        if (appliedMakerName && listing.maker !== appliedMakerName) return false;
+    return exhibits
+      .filter((exhibit) => exhibit.type === selectedType)
+      .filter((exhibit) => {
+        if (filters.frameOnly && !exhibit.kind?.includes("枠")) return false;
+        if (appliedMakerName && exhibit.maker !== appliedMakerName) return false;
         if (
           appliedMachineName &&
-          !(listing.machineName ?? "").toLowerCase().includes(appliedMachineName.toLowerCase())
+          !(exhibit.machineName ?? "").toLowerCase().includes(appliedMachineName.toLowerCase())
         ) {
           return false;
         }
         return true;
       });
-  }, [appliedMachineName, appliedMakerName, filters.frameOnly, listings, selectedType]);
+  }, [appliedMachineName, appliedMakerName, filters.frameOnly, exhibits, selectedType]);
 
   const sortedListings = useMemo(() => {
     const base = [...filteredListings];
@@ -256,13 +256,13 @@ export default function ProductListPage() {
         key: "updatedAt",
         label: "更新日",
         width: "82px",
-        render: (row: Listing) => formatDate(row.updatedAt),
+        render: (row: Exhibit) => formatDate(row.updatedAt),
       },
       {
         key: "status",
         label: "状況",
         width: "72px",
-        render: (row: Listing) =>
+        render: (row: Exhibit) =>
           row.status === "SOLD" ? (
             <span className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-neutral-700">
               成約済
@@ -275,14 +275,14 @@ export default function ProductListPage() {
         key: "previousLocation",
         label: "前設置",
         width: "92px",
-        render: (row: Listing) => extractPrefecture(row),
+        render: (row: Exhibit) => extractPrefecture(row),
       },
       { key: "maker", label: "メーカー", width: "140px" },
       {
         key: "machineName",
         label: "機種名",
         width: "210px",
-        render: (row: Listing) => (
+        render: (row: Exhibit) => (
           <span className="text-sm font-semibold text-[#1e5aad] underline">
             {row.machineName ?? "機種名未設定"}
           </span>
@@ -298,31 +298,31 @@ export default function ProductListPage() {
         key: "quantity",
         label: "台数",
         width: "70px",
-        render: (row: Listing) => row.quantity,
+        render: (row: Exhibit) => row.quantity,
       },
       {
         key: "unitPriceExclTax",
         label: "価格",
         width: "110px",
-        render: (row: Listing) => formatPrice(row),
+        render: (row: Exhibit) => formatPrice(row),
       },
       {
         key: "removalDate",
         label: "撤去日",
         width: "110px",
-        render: (row: Listing) => formatDate(row.removalDate),
+        render: (row: Exhibit) => formatDate(row.removalDate),
       },
       {
         key: "seller",
         label: "出品者",
         width: "170px",
-        render: (row: Listing) => getSellerCompanyName(row.sellerUserId),
+        render: (row: Exhibit) => getSellerCompanyName(row.sellerUserId),
       },
       {
         key: "note",
         label: "備考",
         width: "200px",
-        render: (row: Listing) => row.note ?? "",
+        render: (row: Exhibit) => row.note ?? "",
       },
     ],
     []
@@ -454,7 +454,7 @@ export default function ProductListPage() {
             router.push(`/products/${row.id}`);
           }}
           emptyMessage="出品がありません"
-          getRowClassName={(row: Listing) => (row.status === "SOLD" ? "opacity-60" : "")}
+          getRowClassName={(row: Exhibit) => (row.status === "SOLD" ? "opacity-60" : "")}
         />
       </div>
     </div>

@@ -5,7 +5,7 @@ import Link from "next/link";
 
 import { loadMasterData, type Warehouse } from "@/lib/demo-data/demoMasterData";
 import { resolveStorageLocationSnapshot } from "@/lib/exhibits/storageLocation";
-import type { Listing } from "@/lib/exhibits/types";
+import type { Exhibit } from "@/lib/exhibits/types";
 import { formatCurrency } from "@/lib/useDummyNavi";
 
 type InquiryStatus = {
@@ -85,19 +85,19 @@ const resolveShippingFeePerUnit = (
 };
 
 export function PurchaseProcedureCard({
-  listing,
+  listing: exhibit,
   inquiryStatus,
 }: {
-  listing: Listing;
+  listing: Exhibit;
   inquiryStatus: InquiryStatus;
 }) {
   const masterData = useMemo(() => loadMasterData(), []);
   const warehouseDetails = useMemo(() => masterData.warehouseDetails ?? [], [masterData]);
-  const maxQuantity = Math.max(listing.quantity, 1);
+  const maxQuantity = Math.max(exhibit.quantity, 1);
   const quantityOptions = useMemo(() => {
-    if (!listing.allowPartial) return [maxQuantity];
+    if (!exhibit.allowPartial) return [maxQuantity];
     return Array.from({ length: maxQuantity }, (_, index) => index + 1);
-  }, [listing.allowPartial, maxQuantity]);
+  }, [exhibit.allowPartial, maxQuantity]);
   const [quantity, setQuantity] = useState(quantityOptions[0] ?? 1);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [pickupRequested, setPickupRequested] = useState(false);
@@ -110,8 +110,8 @@ export function PurchaseProcedureCard({
   );
 
   const storageSnapshot = useMemo(
-    () => resolveStorageLocationSnapshot(listing.storageLocationSnapshot),
-    [listing.storageLocationSnapshot]
+    () => resolveStorageLocationSnapshot(exhibit.storageLocationSnapshot),
+    [exhibit.storageLocationSnapshot]
   );
 
   const shippingFeesByRegion = useMemo(
@@ -125,13 +125,13 @@ export function PurchaseProcedureCard({
   );
 
   const shippingHandlingFeePerUnit = storageSnapshot?.handlingFeePerUnit ?? 0;
-  const unitPrice = listing.unitPriceExclTax ?? 0;
+  const unitPrice = exhibit.unitPriceExclTax ?? 0;
   const effectiveMachineShippingFeePerUnit = pickupRequested ? 0 : machineShippingFeePerUnit;
 
   const estimate = useMemo<EstimateResult>(() => {
     const subtotal = unitPrice * quantity;
-    const machineShippingTotal = effectiveMachineShippingFeePerUnit * listing.shippingFeeCount * quantity;
-    const shippingHandlingTotal = shippingHandlingFeePerUnit * listing.handlingFeeCount * quantity;
+    const machineShippingTotal = effectiveMachineShippingFeePerUnit * exhibit.shippingFeeCount * quantity;
+    const shippingHandlingTotal = shippingHandlingFeePerUnit * exhibit.handlingFeeCount * quantity;
     return {
       subtotal,
       machineShippingTotal,
@@ -144,9 +144,9 @@ export function PurchaseProcedureCard({
     unitPrice,
     quantity,
     effectiveMachineShippingFeePerUnit,
-    listing.shippingFeeCount,
+    exhibit.shippingFeeCount,
     shippingHandlingFeePerUnit,
-    listing.handlingFeeCount,
+    exhibit.handlingFeeCount,
   ]);
 
   const handleEstimateClick = () => {
@@ -164,7 +164,7 @@ export function PurchaseProcedureCard({
     const params = new URLSearchParams();
     params.set("tab", "new");
     params.set("mode", "inquiry");
-    params.set("listingId", listing.id);
+    params.set("listingId", exhibit.id);
     params.set("qty", String(quantity));
     if (selectedWarehouseId) {
       params.set("buyerWarehouseId", selectedWarehouseId);
@@ -172,19 +172,19 @@ export function PurchaseProcedureCard({
     params.set("unitPrice", String(unitPrice));
     params.set("subtotal", String(estimate.subtotal));
     params.set("machineShippingFeePerUnit", String(estimate.machineShippingFeePerUnit));
-    params.set("machineShippingPackages", String(listing.shippingFeeCount));
+    params.set("machineShippingPackages", String(exhibit.shippingFeeCount));
     params.set("machineShippingTotal", String(estimate.machineShippingTotal));
     params.set("shippingHandlingFeePerUnit", String(estimate.shippingHandlingFeePerUnit));
-    params.set("shippingHandlingPackages", String(listing.handlingFeeCount));
+    params.set("shippingHandlingPackages", String(exhibit.handlingFeeCount));
     params.set("shippingHandlingTotal", String(estimate.shippingHandlingTotal));
     params.set("total", String(estimate.total));
     params.set("pickupRequested", pickupRequested ? "true" : "false");
     return `/navi?${params.toString()}`;
   }, [
     estimate,
-    listing.id,
-    listing.handlingFeeCount,
-    listing.shippingFeeCount,
+    exhibit.id,
+    exhibit.handlingFeeCount,
+    exhibit.shippingFeeCount,
     pickupRequested,
     quantity,
     selectedWarehouseId,
@@ -219,7 +219,7 @@ export function PurchaseProcedureCard({
           </select>
         </div>
 
-        {listing.pickupAvailable && (
+        {exhibit.pickupAvailable && (
           <fieldset className="space-y-1">
             <legend className="text-xs font-semibold text-neutral-700">自社引き取りを希望しますか？</legend>
             <div className="flex items-center gap-4 text-[13px] text-neutral-900">
