@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { BuyerContact } from "@/lib/trade/types";
+import { BuyerContact } from "@/lib/dealings/types";
 
 type ContactSelectorProps = {
   contacts: BuyerContact[];

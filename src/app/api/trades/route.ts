@@ -4,7 +4,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
-import { buildListingSnapshot } from "@/lib/trade/listingSnapshot";
+import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
 
 const naviClient = prisma.navi;
 const exhibitClient = prisma.listing;

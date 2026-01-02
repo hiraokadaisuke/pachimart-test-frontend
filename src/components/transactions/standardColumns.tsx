@@ -3,7 +3,7 @@ import React from "react";
 import { NaviTableColumn } from "./NaviTable";
 import { StatusBadge } from "./StatusBadge";
 import { type TradeStatusKey } from "./status";
-import { resolveCurrentTodoKind } from "@/lib/trade/todo";
+import { resolveCurrentTodoKind } from "@/lib/dealings/todo";
 
 const currencyFormatter = new Intl.NumberFormat("ja-JP", { style: "currency", currency: "JPY" });
 

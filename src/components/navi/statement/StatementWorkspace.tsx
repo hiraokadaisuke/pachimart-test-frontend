@@ -5,22 +5,22 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TradeStatusKey } from "@/components/transactions/status";
-import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
-import { getActorRole } from "@/lib/trade/navigation";
-import { canApprove, canCancel } from "@/lib/trade/permissions";
-import { addBuyerContact, ensureContactsLoaded, saveContactsToTrade, updateTradeShipping } from "@/lib/trade/storage";
+import { calculateStatementTotals, formatYen } from "@/lib/dealings/calcTotals";
+import { getActorRole } from "@/lib/dealings/navigation";
+import { canApprove, canCancel } from "@/lib/dealings/permissions";
+import { addBuyerContact, ensureContactsLoaded, saveContactsToTrade, updateTradeShipping } from "@/lib/dealings/storage";
 import {
   fetchNaviById,
   fetchTradeRecordById,
   mapNaviToTradeRecord,
   saveTradeShippingInfo,
   updateTradeStatus,
-} from "@/lib/trade/api";
-import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
+} from "@/lib/dealings/api";
+import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/dealings/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { getTodoPresentation } from "@/lib/trade/todo";
-import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
-import { buildTradeDiffNotes } from "@/lib/trade/diff";
+import { getTodoPresentation } from "@/lib/dealings/todo";
+import { deriveTradeStatusFromTodos } from "@/lib/dealings/deriveStatus";
+import { buildTradeDiffNotes } from "@/lib/dealings/diff";
 import {
   createShippingAddress,
   fetchShippingAddresses,

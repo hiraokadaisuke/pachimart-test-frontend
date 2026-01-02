@@ -1,9 +1,9 @@
 "use client";
 
-import { calculateStatementTotals, formatYen } from "@/lib/trade/calcTotals";
-import { buildTradeDiffNotes } from "@/lib/trade/diff";
-import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
-import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/trade/types";
+import { calculateStatementTotals, formatYen } from "@/lib/dealings/calcTotals";
+import { buildTradeDiffNotes } from "@/lib/dealings/diff";
+import { deriveTradeStatusFromTodos } from "@/lib/dealings/deriveStatus";
+import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/dealings/types";
 
 import { ContactSelector } from "./ContactSelector";
 import { EditableCellInput } from "./EditableCellInput";
