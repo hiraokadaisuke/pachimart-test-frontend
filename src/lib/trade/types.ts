@@ -44,6 +44,9 @@ export type BuyerContact = {
   name: string;
 };
 
+export type Trade = TradeRecord;
+export type Dealing = Trade;
+
 export type TradeRecord = {
   id: string;
   naviId?: number;

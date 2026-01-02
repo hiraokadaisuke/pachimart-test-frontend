@@ -25,3 +25,5 @@ export type Listing = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type Exhibit = Listing;
