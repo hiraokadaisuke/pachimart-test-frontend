@@ -2,8 +2,8 @@ import { NaviType } from "@prisma/client";
 
 import { fetchOnlineInquiries, type OnlineInquiryListItem } from "@/lib/online-inquiries/api";
 import { findDevUserById } from "@/lib/dev-user/users";
-import { buildTodosFromStatus } from "@/lib/trade/todo";
-import { type StatementItem, type TradeRecord } from "@/lib/trade/types";
+import { buildTodosFromStatus } from "@/lib/dealings/todo";
+import { type StatementItem, type TradeRecord } from "@/lib/dealings/types";
 
 const buildInquiryItems = (inquiry: OnlineInquiryListItem): StatementItem[] => {
   return [

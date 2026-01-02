@@ -3,7 +3,7 @@ import { Prisma } from "@prisma/client";
 import {
   formatStorageLocationAddress,
   resolveStorageLocationSnapshot,
-} from "@/lib/listings/storageLocation";
+} from "@/lib/exhibits/storageLocation";
 
 export type TradeStorageLocationSnapshot = Prisma.JsonObject & {
   name: string;

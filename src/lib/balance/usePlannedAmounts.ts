@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { NaviType } from "@prisma/client";
 
-import { calculateStatementTotals } from "@/lib/trade/calcTotals";
-import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
-import { loadAcceptedOnlineInquiryTrades } from "@/lib/trade/onlineInquiryTrades";
-import { resolveCurrentTodoKind } from "@/lib/trade/todo";
-import { TradeRecord } from "@/lib/trade/types";
+import { calculateStatementTotals } from "@/lib/dealings/calcTotals";
+import { loadAllTradesWithApi } from "@/lib/dealings/dataSources";
+import { loadAcceptedOnlineInquiryTrades } from "@/lib/dealings/onlineInquiryTrades";
+import { resolveCurrentTodoKind } from "@/lib/dealings/todo";
+import { TradeRecord } from "@/lib/dealings/types";
 
 type PlannedAmounts = {
   plannedPurchase: number;

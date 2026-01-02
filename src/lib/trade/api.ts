@@ -9,7 +9,7 @@ import {
   formatListingStorageLocation,
   resolveListingSnapshot,
   type ListingSnapshot,
-} from "@/lib/trade/listingSnapshot";
+} from "@/lib/dealings/listingSnapshot";
 
 import { createTradeFromDraft } from "./storage";
 import { type BuyerContact, type ShippingInfo, type TradeRecord } from "./types";
