@@ -863,24 +863,6 @@ async function seedNavis(listings: ListingSeed[]) {
     },
   });
 
-  const onlineInquiryParticipants = {
-    sellerUserId: comparisonListing.sellerUserId,
-    buyerUserId: "dev_user_1",
-  };
-
-  const resolveReceiverUserId = (
-    senderUserId: string,
-    participants: { sellerUserId: string; buyerUserId: string }
-  ) => {
-    if (senderUserId === participants.sellerUserId) {
-      return participants.buyerUserId;
-    }
-    if (senderUserId === participants.buyerUserId) {
-      return participants.sellerUserId;
-    }
-    return null;
-  };
-
   const onlineInquiryMessages = [
     {
       naviId: onlineInquiryNavi.id,
@@ -906,22 +888,11 @@ async function seedNavis(listings: ListingSeed[]) {
       senderRole: MessageSenderRole.seller,
       body: "承知しました。発送準備を進めます。",
     },
-  ].map((message) => ({
-    ...message,
-    receiverUserId: resolveReceiverUserId(message.senderUserId, onlineInquiryParticipants),
-  }));
+  ];
 
-  const validOnlineInquiryMessages = onlineInquiryMessages.filter((message) => {
-    if (!message.receiverUserId) {
-      console.warn("Skipping message without receiverUserId", message);
-      return false;
-    }
-    return true;
-  });
-
-  if (validOnlineInquiryMessages.length > 0) {
+  if (onlineInquiryMessages.length > 0) {
     await prisma.message.createMany({
-      data: validOnlineInquiryMessages,
+      data: onlineInquiryMessages,
     });
   }
 
