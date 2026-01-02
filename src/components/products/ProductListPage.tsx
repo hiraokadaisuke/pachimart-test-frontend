@@ -418,7 +418,7 @@ export default function ProductListPage() {
 
           <button
             type="button"
-            className="rounded bg-[#f5c400] px-5 py-2 text-sm font-semibold text-[#0f2d62] shadow hover:brightness-95"
+            className="rounded bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
             onClick={handleSearch}
           >
             検索
@@ -428,7 +428,6 @@ export default function ProductListPage() {
 
       <div className="w-full max-w-[1400px] mx-auto px-4 xl:px-8 py-6 space-y-4 bg-white">
         <div className="space-y-1">
-          <h1 className="text-xl font-bold text-slate-800">商品一覧から探す</h1>
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
             <span className="text-lg font-semibold text-[#0f2d62]">
               {LISTING_TYPE_LABELS[selectedType]}商品一覧
