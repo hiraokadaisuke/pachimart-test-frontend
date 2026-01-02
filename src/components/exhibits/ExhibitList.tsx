@@ -6,8 +6,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { formatStorageLocationShort } from "@/lib/listings/storageLocation";
-import type { Listing } from "@/lib/listings/types";
+import { formatStorageLocationShort } from "@/lib/exhibits/storageLocation";
+import type { Listing } from "@/lib/exhibits/types";
 
 function formatDate(isoString: string) {
   const date = new Date(isoString);

@@ -4,8 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviTable";
-import type { Listing } from "@/lib/listings/types";
-import { resolveStorageLocationSnapshot } from "@/lib/listings/storageLocation";
+import type { Listing } from "@/lib/exhibits/types";
+import { resolveStorageLocationSnapshot } from "@/lib/exhibits/storageLocation";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { findDevUserById } from "@/lib/dev-user/users";
 
