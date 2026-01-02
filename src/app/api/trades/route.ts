@@ -7,7 +7,7 @@ import { getCurrentUserId } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
 
 const naviClient = prisma.navi;
-const exhibitClient = prisma.listing;
+const exhibitClient = prisma.exhibit;
 
 type NaviDto = {
   id: number;

@@ -28,16 +28,20 @@ enum MessageSenderRole {
   seller
 }
 
-enum TradeStatus {
+enum DealingStatus {
   IN_PROGRESS
   COMPLETED
   CANCELED
+
+  @@map("TradeStatus")
 }
 
-enum ListingStatus {
+enum ExhibitStatus {
   DRAFT
   PUBLISHED
   SOLD
+
+  @@map("ListingStatus")
 }
 
 enum RemovalStatus {
@@ -45,9 +49,11 @@ enum RemovalStatus {
   SCHEDULED
 }
 
-enum ListingType {
+enum ExhibitType {
   PACHINKO
   SLOT
+
+  @@map("ListingType")
 }
 
 enum OnlineInquiryStatus {
@@ -64,8 +70,8 @@ model User {
   tel             String?
   navisOwned      Navi[]     @relation("NaviOwner")
   navisBought     Navi[]     @relation("NaviBuyer")
-  tradesAsSeller  Trade[]          @relation("TradeSeller")
-  tradesAsBuyer   Trade[]          @relation("TradeBuyer")
+  dealingsAsSeller  Dealing[]          @relation("TradeSeller")
+  dealingsAsBuyer   Dealing[]          @relation("TradeBuyer")
   messagesSent    Message[]        @relation("Sender")
   storageLocations StorageLocation[]
 }
@@ -84,17 +90,17 @@ model Navi {
 
   ownerUser User  @relation("NaviOwner", fields: [ownerUserId], references: [id])
   buyerUser User? @relation("NaviBuyer", fields: [buyerUserId], references: [id])
-  trade     Trade?
+  trade     Dealing?
   messages  Message[]
 
   @@map("TradeNavi")
 }
 
-model Trade {
+model Dealing {
   id            Int          @id @default(autoincrement())
   sellerUserId  String
   buyerUserId   String
-  status        TradeStatus
+  status        DealingStatus
   payload       Json?
   naviId        Int?         @unique
   createdAt     DateTime     @default(now())
@@ -103,6 +109,8 @@ model Trade {
   sellerUser User  @relation("TradeSeller", fields: [sellerUserId], references: [id])
   buyerUser  User  @relation("TradeBuyer", fields: [buyerUserId], references: [id])
   navi       Navi? @relation(fields: [naviId], references: [id])
+
+  @@map("Trade")
 }
 
 model Message {
@@ -133,12 +141,12 @@ model OnlineInquiry {
   updatedAt         DateTime @updatedAt
 }
 
-model Listing {
+model Exhibit {
   id               String         @id @default(cuid())
   sellerUserId     String
-  status           ListingStatus  @default(DRAFT)
+  status           ExhibitStatus  @default(DRAFT)
   isVisible        Boolean        @default(true)
-  type             ListingType    @default(PACHINKO)
+  type             ExhibitType    @default(PACHINKO)
   kind             String
   maker            String?
   machineName      String?
@@ -167,6 +175,8 @@ model Listing {
   @@index([isVisible])
   @@index([updatedAt])
   @@index([storageLocationId])
+
+  @@map("Listing")
 }
 
 model Maker {
@@ -178,7 +188,7 @@ model Maker {
 model MachineModel {
   id      String      @id @default(cuid())
   makerId String
-  type    ListingType
+  type    ExhibitType
   name    String
 
   maker Maker @relation(fields: [makerId], references: [id])
@@ -202,7 +212,7 @@ model StorageLocation {
   updatedAt           DateTime @updatedAt
 
   ownerUser User     @relation(fields: [ownerUserId], references: [id])
-  listings  Listing[]
+  exhibits  Exhibit[]
 
   @@index([ownerUserId])
   @@index([isActive])

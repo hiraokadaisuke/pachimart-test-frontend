@@ -1,4 +1,4 @@
-import { Prisma, TradeStatus } from "@prisma/client";
+import { Prisma, DealingStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
@@ -8,7 +8,7 @@ type DealingRecord = {
   id: number;
   sellerUserId: string;
   buyerUserId: string;
-  status: TradeStatus;
+  status: DealingStatus;
   payload: Prisma.JsonValue | null;
   naviId: number | null;
   createdAt: Date;
@@ -76,7 +76,7 @@ const toRecord = (dealing: unknown): DealingRecord => {
     id: Number(candidate.id),
     sellerUserId: String(candidate.sellerUserId),
     buyerUserId: String(candidate.buyerUserId),
-    status: candidate.status as TradeStatus,
+    status: candidate.status as DealingStatus,
     payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
     naviId: (candidate.naviId as number | null) ?? null,
     createdAt: toDate(candidate.createdAt),
@@ -112,9 +112,9 @@ export async function GET(request: Request) {
   }
 
   try {
-    const dealings = await prisma.trade.findMany({
+    const dealings = await prisma.dealing.findMany({
       where: {
-        status: TradeStatus.IN_PROGRESS,
+        status: DealingStatus.IN_PROGRESS,
         OR: [{ sellerUserId: currentUserId }, { buyerUserId: currentUserId }],
       },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order

@@ -1,4 +1,4 @@
-import { ListingType as ExhibitType } from "@prisma/client";
+import { ExhibitType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 

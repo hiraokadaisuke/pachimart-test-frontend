@@ -34,7 +34,7 @@ const buildInquiryDetail = async (inquiry: {
   updatedAt: Date;
 }) => {
   const [listing, buyerUser, sellerUser] = await Promise.all([
-    prisma.listing.findUnique({
+    prisma.exhibit.findUnique({
       where: { id: inquiry.listingId },
       select: { maker: true, machineName: true, unitPriceExclTax: true },
     }),

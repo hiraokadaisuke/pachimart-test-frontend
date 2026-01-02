@@ -1,4 +1,4 @@
-import { ListingStatus, Prisma, PrismaClient } from "@prisma/client";
+import { ExhibitStatus, Prisma, PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 
     const [exhibits, users] = await Promise.all([
       listingIds.length > 0
-        ? prisma.listing.findMany({
+        ? prisma.exhibit.findMany({
             where: { id: { in: listingIds } },
             select: {
               id: true,
@@ -160,7 +160,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const exhibit = await prisma.listing.findUnique({ where: { id: listingId } });
+    const exhibit = await prisma.exhibit.findUnique({ where: { id: listingId } });
 
     if (!exhibit) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (exhibit.status === ListingStatus.SOLD) {
+    if (exhibit.status === ExhibitStatus.SOLD) {
       return NextResponse.json(
         { error: "成約済みのためオンライン問い合わせは利用できません" },
         { status: 400 }
