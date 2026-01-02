@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TradeStatusKey } from "@/components/transactions/status";
+import { DetailEmptyState } from "@/components/transactions/DetailEmptyState";
 import { calculateStatementTotals, formatYen } from "@/lib/dealings/calcTotals";
 import { getActorRole } from "@/lib/dealings/navigation";
 import { canApprove, canCancel } from "@/lib/dealings/permissions";
@@ -343,9 +344,13 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
   if (!dealing) {
     return (
-      <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-        明細書データが見つかりませんでした。
-      </div>
+      <DetailEmptyState
+        title={pageTitle ?? "ナビ確認"}
+        description={description ?? "ナビ作成と同じ順序で明細書を確認できます。"}
+        message="明細書データが見つかりませんでした。"
+        hint="取引がまだ確定していない、または明細書が作成されていない可能性があります。取引一覧からご確認ください。"
+        onBack={handleBack}
+      />
     );
   }
 
