@@ -1,1 +1,363 @@
-export * from "../trade/api";
+import { NaviStatus, NaviType, type Prisma } from "@prisma/client";
+import { z } from "zod";
+
+import { findDevUserById } from "@/lib/dev-user/users";
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
+import { buildTodosFromStatus } from "./todo";
+import { type NaviDraft } from "@/lib/navi/types";
+import {
+  formatListingStorageLocation,
+  resolveListingSnapshot,
+  type ListingSnapshot,
+} from "@/lib/dealings/listingSnapshot";
+
+import { createTradeFromDraft } from "./storage";
+import { type BuyerContact, type ShippingInfo, type TradeRecord } from "./types";
+import { tradeDtoListSchema, type TradeDto, transformTrade } from "./transform";
+
+const naviSchema = z.object({
+  id: z.number(),
+  status: z.nativeEnum(NaviStatus),
+  naviType: z.nativeEnum(NaviType),
+  ownerUserId: z.string(),
+  buyerUserId: z.string().nullable(),
+  payload: z.unknown().nullable(),
+  listingSnapshot: z.unknown().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+
+export type NaviDto = z.infer<typeof naviSchema>;
+
+const naviListSchema = z.array(naviSchema);
+
+const isNaviDraft = (payload: unknown): payload is NaviDraft => {
+  if (!payload || typeof payload !== "object") return false;
+  return "id" in payload && "ownerUserId" in payload && "conditions" in payload;
+};
+
+type OnlineInquiryPayload = {
+  unitPriceExclTax?: number | null;
+  quantity?: number | null;
+  taxRate?: number | null;
+  shippingFee?: number | null;
+  handlingFee?: number | null;
+  buyerMemo?: string | null;
+  productName?: string | null;
+  makerName?: string | null;
+  location?: string | null;
+  buyerAddress?: string | null;
+  buyerContactName?: string | null;
+};
+
+const isOnlineInquiryPayload = (payload: unknown): payload is OnlineInquiryPayload => {
+  if (!payload || typeof payload !== "object") return false;
+  const candidate = payload as Record<string, unknown>;
+  return "quantity" in candidate || "unitPriceExclTax" in candidate || "buyerMemo" in candidate;
+};
+
+const normalizeContacts = (input: unknown, fallback: BuyerContact[] = []): BuyerContact[] => {
+  if (!Array.isArray(input)) return fallback;
+
+  return input
+    .map((candidate) => {
+      if (!candidate || typeof candidate !== "object") return null;
+      const record = candidate as Record<string, unknown>;
+      const contactId = record.contactId ?? record.id ?? record.name;
+
+      if (typeof contactId !== "string" || typeof record.name !== "string") return null;
+      return { contactId, name: record.name } satisfies BuyerContact;
+    })
+    .filter(Boolean) as BuyerContact[];
+};
+
+const buildOnlineInquiryDraft = (
+  trade: NaviDto,
+  payload: OnlineInquiryPayload,
+  snapshot: ListingSnapshot | null
+): NaviDraft => {
+  const now = new Date().toISOString();
+  const listingUnitPrice = snapshot?.unitPriceExclTax ?? null;
+  const unitPrice =
+    payload.unitPriceExclTax === null || payload.unitPriceExclTax === undefined
+      ? listingUnitPrice ?? 0
+      : payload.unitPriceExclTax;
+  const location = formatListingStorageLocation(snapshot);
+
+  return {
+    id: String(trade.id),
+    ownerUserId: trade.ownerUserId,
+    status: "sent_to_buyer",
+    productId: snapshot?.listingId ?? undefined,
+    buyerId: trade.buyerUserId ?? undefined,
+    buyerCompanyName: findDevUserById(trade.buyerUserId ?? "")?.companyName ?? null,
+    buyerContactName: payload.buyerContactName ?? undefined,
+    buyerAddress: payload.buyerAddress ?? undefined,
+    buyerPending: false,
+    conditions: {
+      unitPrice,
+      quantity: payload.quantity ?? 1,
+      shippingFee: payload.shippingFee ?? 0,
+      handlingFee: payload.handlingFee ?? 0,
+      taxRate: payload.taxRate ?? 0.1,
+      memo: payload.buyerMemo ?? null,
+      productName: payload.productName ?? snapshot?.machineName ?? snapshot?.title ?? undefined,
+      makerName: payload.makerName ?? snapshot?.maker ?? undefined,
+      location: payload.location ?? location ?? undefined,
+    },
+    createdAt: trade.createdAt,
+    updatedAt: trade.updatedAt ?? now,
+  };
+};
+
+export function mapNaviToTradeRecord(trade: NaviDto): TradeRecord | null {
+  if (trade.naviType === NaviType.ONLINE_INQUIRY) {
+    const inquiryRecord = mapOnlineInquiryToTradeRecord(trade);
+    if (inquiryRecord) return inquiryRecord;
+  }
+
+  if (!isNaviDraft(trade.payload)) return null;
+
+  const listingSnapshot = resolveListingSnapshot(trade.listingSnapshot);
+
+  const draft: NaviDraft = {
+    ...trade.payload,
+    status: trade.payload.status ?? "sent_to_buyer",
+    ownerUserId: trade.ownerUserId,
+    buyerId: trade.payload.buyerId ?? trade.buyerUserId,
+    createdAt: trade.payload.createdAt ?? trade.createdAt,
+    updatedAt: trade.payload.updatedAt ?? trade.updatedAt,
+  };
+
+  const record = createTradeFromDraft(draft, trade.ownerUserId);
+
+  const payloadShipping =
+    trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)
+      ? ((trade.payload as { buyerShippingAddress?: ShippingInfo }).buyerShippingAddress ??
+          (trade.payload as { shipping?: ShippingInfo }).shipping ??
+          undefined)
+      : undefined;
+
+  const payloadContacts =
+    trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)
+      ? (trade.payload as { buyerContacts?: BuyerContact[] }).buyerContacts
+      : undefined;
+
+  const payloadContactName =
+    trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)
+      ? (trade.payload as { buyerContactName?: string }).buyerContactName
+      : undefined;
+
+  const normalizedShipping = payloadShipping ?? record.buyerShippingAddress ?? record.shipping ?? {};
+  const normalizedContacts = normalizeContacts(payloadContacts, record.buyerContacts ?? []);
+  const normalizedContactName = payloadContactName ?? normalizedShipping.personName ?? record.buyerContactName;
+
+  return {
+    ...record,
+    naviId: trade.id,
+    naviType: trade.naviType,
+    id: draft.id,
+    buyerUserId: draft.buyerId ?? trade.buyerUserId ?? record.buyerUserId,
+    createdAt: draft.createdAt ?? trade.createdAt,
+    updatedAt: draft.updatedAt ?? trade.updatedAt,
+    listingSnapshot,
+    shipping: normalizedShipping,
+    buyerShippingAddress: normalizedShipping,
+    buyerContactName: normalizedContactName,
+    buyerContacts: normalizedContacts,
+  };
+}
+
+export function mapOnlineInquiryToTradeRecord(trade: NaviDto): TradeRecord | null {
+  if (trade.naviType !== NaviType.ONLINE_INQUIRY || !trade.payload) return null;
+  if (!isOnlineInquiryPayload(trade.payload)) return null;
+
+  const snapshot = resolveListingSnapshot(trade.listingSnapshot);
+  const draft = buildOnlineInquiryDraft(trade, trade.payload, snapshot);
+  const record = createTradeFromDraft(draft, trade.ownerUserId, {
+    termsText: undefined,
+  });
+
+  return {
+    ...record,
+    naviId: trade.id,
+    naviType: trade.naviType,
+    id: draft.id,
+    buyerUserId: draft.buyerId ?? trade.buyerUserId ?? record.buyerUserId,
+    createdAt: draft.createdAt ?? trade.createdAt,
+    updatedAt: draft.updatedAt ?? trade.updatedAt,
+    todos: buildTodosFromStatus("APPROVAL_REQUIRED"),
+    listingSnapshot: snapshot,
+  };
+}
+
+const normalizeTradeRecord = (trade: TradeRecord): TradeRecord => {
+  const sellerUserId = trade.sellerUserId ?? trade.seller?.userId ?? "seller";
+  const buyerUserId = trade.buyerUserId ?? trade.buyer?.userId ?? "buyer";
+
+  const seller = {
+    companyName: trade.seller?.companyName ?? trade.sellerName ?? "-",
+    userId: trade.seller?.userId ?? sellerUserId,
+    address: trade.seller?.address ?? "",
+    tel: trade.seller?.tel ?? "",
+    fax: trade.seller?.fax ?? "",
+    contactName: trade.seller?.contactName ?? "",
+  };
+
+  const buyer = {
+    companyName: trade.buyer?.companyName ?? trade.buyerName ?? "-",
+    userId: trade.buyer?.userId ?? buyerUserId,
+    address: trade.buyer?.address ?? "",
+    tel: trade.buyer?.tel ?? "",
+    fax: trade.buyer?.fax ?? "",
+    contactName: trade.buyer?.contactName ?? "",
+  };
+
+  const items = Array.isArray(trade.items)
+    ? trade.items.map((item, index) => {
+        const { lineId, itemName, ...rest } = item ?? {};
+
+        return {
+          ...rest,
+          lineId: lineId ?? `${trade.id || trade.naviId || "item"}-${index}`,
+          itemName: itemName ?? "商品",
+        };
+      })
+    : [];
+
+  return {
+    ...trade,
+    id: trade.id || (trade.naviId ? String(trade.naviId) : ""),
+    sellerUserId,
+    buyerUserId,
+    seller,
+    buyer,
+    items,
+    todos: Array.isArray(trade.todos) ? trade.todos : [],
+    shipping: trade.shipping ?? trade.buyerShippingAddress ?? {},
+    buyerShippingAddress: trade.buyerShippingAddress ?? trade.shipping ?? {},
+    buyerContacts: Array.isArray(trade.buyerContacts) ? trade.buyerContacts : [],
+    listingSnapshot: trade.listingSnapshot ?? null,
+    storageLocationName: trade.storageLocationName ?? undefined,
+  };
+};
+
+export async function fetchNavis(): Promise<NaviDto[]> {
+  const response = await fetchWithDevHeader("/api/trades");
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Failed to fetch trades: ${response.status} ${detail}`);
+  }
+
+  const json = (await response.json()) as unknown;
+  const parsed = naviListSchema.safeParse(json);
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.message);
+  }
+
+  return parsed.data.map((trade) => ({
+    ...trade,
+    payload: (trade.payload as Prisma.JsonValue | null) ?? null,
+    listingSnapshot: (trade.listingSnapshot as Prisma.JsonValue | null) ?? null,
+  }));
+}
+
+export async function fetchTradeRecordsFromApi(): Promise<TradeRecord[]> {
+  const trades = await fetchNavis();
+
+  return trades
+    .map((trade) => mapNaviToTradeRecord(trade))
+    .filter((trade): trade is TradeRecord => Boolean(trade));
+}
+
+export async function fetchNaviById(tradeId: string): Promise<NaviDto | null> {
+  const response = await fetchWithDevHeader(`/api/trades/${tradeId}`);
+
+  if (response.status === 404) return null;
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Failed to fetch trade ${tradeId}: ${response.status} ${detail}`);
+  }
+
+  const json = (await response.json()) as unknown;
+  const parsed = naviSchema.safeParse(json);
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.message);
+  }
+
+  return {
+    ...parsed.data,
+    payload: (parsed.data.payload as Prisma.JsonValue | null) ?? null,
+    listingSnapshot: (parsed.data.listingSnapshot as Prisma.JsonValue | null) ?? null,
+  } satisfies NaviDto;
+}
+
+export async function fetchTradeRecordById(tradeId: string): Promise<TradeRecord | null> {
+  const response = await fetchWithDevHeader("/api/trades/records");
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch trades: ${response.status}`);
+  }
+
+  const json = (await response.json()) as unknown;
+  const parsed = tradeDtoListSchema.safeParse(json);
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.message);
+  }
+
+  const numericId = Number(tradeId);
+  const matchingTrade = parsed.data.find(
+    (candidate) => candidate.id === numericId || String(candidate.id) === tradeId
+  );
+
+  if (!matchingTrade) return null;
+
+  return normalizeTradeRecord(transformTrade(matchingTrade as TradeDto));
+}
+
+export async function updateTradeStatus(tradeId: string, status: "APPROVED" | "REJECTED") {
+  const response = await fetchWithDevHeader(
+    `/api/trades/${tradeId}`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ status }),
+    }
+  );
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Failed to update trade ${tradeId}: ${response.status} ${detail}`);
+  }
+}
+
+export async function saveTradeShippingInfo(
+  tradeId: string,
+  shipping: ShippingInfo,
+  contacts?: BuyerContact[],
+  actorUserId?: string
+) {
+  const response = await fetchWithDevHeader(
+    `/api/trades/${tradeId}/shipping`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ shipping, contacts: contacts ?? undefined }),
+    },
+    actorUserId
+  );
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Failed to update shipping for trade ${tradeId}: ${response.status} ${detail}`);
+  }
+
+  return (await response.json()) as unknown;
+}
