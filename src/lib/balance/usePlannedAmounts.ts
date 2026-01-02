@@ -14,42 +14,42 @@ type PlannedAmounts = {
   plannedSales: number;
 };
 
-const TRADE_REFRESH_EVENTS = ["trade_records_updated", "online_inquiry_updated"] as const;
+const DEALING_REFRESH_EVENTS = ["trade_records_updated", "online_inquiry_updated"] as const;
 
-const getTradeTotal = (trade: TradeRecord): number =>
-  trade.totalAmount ?? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1).total;
+const getDealingTotal = (dealing: TradeRecord): number =>
+  dealing.totalAmount ?? calculateStatementTotals(dealing.items, dealing.taxRate ?? 0.1).total;
 
-const isPaymentCompleted = (trade: TradeRecord, todoKind: string): boolean => {
-  if (trade.paymentDate) return true;
+const isPaymentCompleted = (dealing: TradeRecord, todoKind: string): boolean => {
+  if (dealing.paymentDate) return true;
   return todoKind === "payment_confirmed" || todoKind === "trade_completed";
 };
 
-const calculatePlannedAmounts = (trades: TradeRecord[], currentUserId: string): PlannedAmounts => {
-  return trades.reduce<PlannedAmounts>(
-    (totals, trade) => {
-      const todoKind = resolveCurrentTodoKind(trade);
+const calculatePlannedAmounts = (dealings: TradeRecord[], currentUserId: string): PlannedAmounts => {
+  return dealings.reduce<PlannedAmounts>(
+    (totals, dealing) => {
+      const todoKind = resolveCurrentTodoKind(dealing);
       if (todoKind === "trade_canceled") return totals;
 
-      const totalAmount = getTradeTotal(trade);
+      const totalAmount = getDealingTotal(dealing);
 
-      if (trade.naviType === NaviType.ONLINE_INQUIRY) {
-        if (trade.buyerUserId === currentUserId) {
+      if (dealing.naviType === NaviType.ONLINE_INQUIRY) {
+        if (dealing.buyerUserId === currentUserId) {
           totals.plannedPurchase += totalAmount;
         }
-        if (trade.sellerUserId === currentUserId) {
+        if (dealing.sellerUserId === currentUserId) {
           totals.plannedSales += totalAmount;
         }
         return totals;
       }
 
-      if (isPaymentCompleted(trade, todoKind)) return totals;
+      if (isPaymentCompleted(dealing, todoKind)) return totals;
 
-      if (trade.buyerUserId === currentUserId && todoKind === "application_approved") {
+      if (dealing.buyerUserId === currentUserId && todoKind === "application_approved") {
         totals.plannedPurchase += totalAmount;
       }
 
       if (
-        trade.sellerUserId === currentUserId &&
+        dealing.sellerUserId === currentUserId &&
         (todoKind === "application_sent" || todoKind === "application_approved")
       ) {
         totals.plannedSales += totalAmount;
@@ -74,11 +74,11 @@ export function usePlannedAmounts(currentUserId: string) {
     }
 
     try {
-      const [trades, inquiries] = await Promise.all([
+      const [dealings, inquiries] = await Promise.all([
         loadAllTradesWithApi(),
         loadAcceptedOnlineInquiryTrades(),
       ]);
-      const totals = calculatePlannedAmounts([...trades, ...inquiries], currentUserId);
+      const totals = calculatePlannedAmounts([...dealings, ...inquiries], currentUserId);
       setPlannedAmounts(totals);
     } catch (error) {
       console.error("Failed to load planned balances", error);
@@ -97,10 +97,10 @@ export function usePlannedAmounts(currentUserId: string) {
       void refreshPlannedAmounts();
     };
 
-    TRADE_REFRESH_EVENTS.forEach((eventName) => window.addEventListener(eventName, handleRefresh));
+    DEALING_REFRESH_EVENTS.forEach((eventName) => window.addEventListener(eventName, handleRefresh));
 
     return () => {
-      TRADE_REFRESH_EVENTS.forEach((eventName) => window.removeEventListener(eventName, handleRefresh));
+      DEALING_REFRESH_EVENTS.forEach((eventName) => window.removeEventListener(eventName, handleRefresh));
     };
   }, [refreshPlannedAmounts]);
 

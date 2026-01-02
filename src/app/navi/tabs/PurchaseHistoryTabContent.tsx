@@ -85,7 +85,7 @@ export function PurchaseHistoryTabContent() {
 
   useEffect(() => {
     loadPurchaseHistoryForUser(currentUser.id)
-      .then((trades) => setRows(trades.map(mapTradeToPurchaseHistoryRow)))
+      .then((trades) => setRows(trades.map(mapDealingToPurchaseHistoryRow)))
       .catch((error) => console.error("Failed to load purchase history", error));
   }, [currentUser.id]);
 
@@ -500,47 +500,47 @@ export function PurchaseHistoryTabContent() {
   );
 }
 
-function mapTradeToPurchaseHistoryRow(trade: TradeRecord): PurchaseHistoryRow {
-  const primaryItem = getPrimaryItem(trade);
-  const totalQuantity = trade.quantity ?? trade.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
+function mapDealingToPurchaseHistoryRow(dealing: TradeRecord): PurchaseHistoryRow {
+  const primaryItem = getPrimaryItem(dealing);
+  const totalQuantity = dealing.quantity ?? dealing.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
   const totalAmount =
-    trade.totalAmount ?? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1).total;
-  const status = resolveCurrentTodoKind(trade);
-  const derivedStatus = deriveTradeStatusFromTodos(trade);
+    dealing.totalAmount ?? calculateStatementTotals(dealing.items, dealing.taxRate ?? 0.1).total;
+  const status = resolveCurrentTodoKind(dealing);
+  const derivedStatus = deriveTradeStatusFromTodos(dealing);
   const section = todoUiMap[status]?.section ?? "approval";
 
   return {
-    id: trade.id,
-    naviId: trade.naviId,
+    id: dealing.id,
+    naviId: dealing.naviId,
     status,
     section,
-    contractDate: trade.contractDate ?? trade.createdAt ?? "",
-    seller: trade.sellerName ?? trade.seller.companyName ?? "",
-    maker: trade.makerName ?? primaryItem?.maker ?? "-",
-    itemName: trade.itemName ?? primaryItem?.itemName ?? "商品",
-    category: getCategoryFromTrade(trade),
+    contractDate: dealing.contractDate ?? dealing.createdAt ?? "",
+    seller: dealing.sellerName ?? dealing.seller.companyName ?? "",
+    maker: dealing.makerName ?? primaryItem?.maker ?? "-",
+    itemName: dealing.itemName ?? primaryItem?.itemName ?? "商品",
+    category: getCategoryFromTrade(dealing),
     quantity: totalQuantity,
     amount: totalAmount,
-    shipmentDate: trade.shipmentDate,
-    receiveMethod: trade.receiveMethod ?? trade.shippingMethod ?? "未定",
+    shipmentDate: dealing.shipmentDate,
+    receiveMethod: dealing.receiveMethod ?? dealing.shippingMethod ?? "未定",
     documentStatus: buildDocumentStatusFromTrade(derivedStatus, section),
-    uploadUrl: `/dealings/purchases/${trade.id}/documents`,
-    paymentMethod: trade.paymentMethod ?? "-",
-    paymentCompleted: Boolean(trade.paymentDate) || section === "completed",
-    handler: trade.handlerName ?? "",
-    documentReceivedDate: trade.documentReceivedDate,
+    uploadUrl: `/dealings/purchases/${dealing.id}/documents`,
+    paymentMethod: dealing.paymentMethod ?? "-",
+    paymentCompleted: Boolean(dealing.paymentDate) || section === "completed",
+    handler: dealing.handlerName ?? "",
+    documentReceivedDate: dealing.documentReceivedDate,
   };
 }
 
-function getCategoryFromTrade(trade: TradeRecord): PurchaseHistoryRow["category"] {
-  if (trade.category === "pachinko" || trade.category === "slot" || trade.category === "others") {
-    return trade.category;
+function getCategoryFromTrade(dealing: TradeRecord): PurchaseHistoryRow["category"] {
+  if (dealing.category === "pachinko" || dealing.category === "slot" || dealing.category === "others") {
+    return dealing.category;
   }
   return "others";
 }
 
-function getPrimaryItem(trade: TradeRecord) {
-  return trade.items[0];
+function getPrimaryItem(dealing: TradeRecord) {
+  return dealing.items[0];
 }
 
 function buildDocumentStatusFromTrade(
