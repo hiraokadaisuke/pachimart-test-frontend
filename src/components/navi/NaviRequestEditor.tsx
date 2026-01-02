@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ExhibitType } from "@prisma/client";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
@@ -20,6 +20,7 @@ import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { products } from "@/lib/dummyData";
 import { loadMasterData, type Warehouse } from "@/lib/demo-data/demoMasterData";
 import type { Exhibit } from "@/lib/exhibits/types";
+import { NaviSectionRow, NaviSectionTable } from "@/components/navi/NaviSectionTable";
 import { Button } from "@/components/ui/button";
 
 const mapDraftConditions = (
@@ -1095,9 +1096,9 @@ function StandardNaviRequestEditor({
             )}
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-slate-400 text-sm">
+            <NaviSectionTable>
               <tbody className="text-slate-900">
-                <EditRow label="会社名" required>
+                <NaviSectionRow label="会社名" required>
                   {shouldShowBuyerSelector ? (
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
@@ -1146,25 +1147,25 @@ function StandardNaviRequestEditor({
                       <span className="text-sm text-neutral-900">{buyerCompanyDisplay}</span>
                     </div>
                   )}
-                </EditRow>
+                </NaviSectionRow>
 
-                <EditRow label="担当者">
+                <NaviSectionRow label="担当者">
                   <p className="text-sm text-neutral-900">{buyerContactDisplay}</p>
-                </EditRow>
-                <EditRow label="発送先住所">
+                </NaviSectionRow>
+                <NaviSectionRow label="発送先住所">
                   <p className="text-sm text-neutral-900">{buyerAddressDisplay}</p>
-                </EditRow>
-                <EditRow label="会社名">
+                </NaviSectionRow>
+                <NaviSectionRow label="会社名">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">売手</span>
                     <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
                   </div>
-                </EditRow>
-                <EditRow label="担当者">
+                </NaviSectionRow>
+                <NaviSectionRow label="担当者">
                   <p className="text-sm text-neutral-900">{sellerContactDisplay}</p>
-                </EditRow>
+                </NaviSectionRow>
               </tbody>
-            </table>
+            </NaviSectionTable>
           </div>
           {validationErrors.buyer && !isBuyerSet && (
             <p className="px-4 py-2 text-sm text-red-600">{validationErrors.buyer}</p>
@@ -1190,9 +1191,9 @@ function StandardNaviRequestEditor({
             </div>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-slate-400 text-sm">
+            <NaviSectionTable>
               <tbody className="text-slate-900">
-                <EditRow label="分類" required>
+                <NaviSectionRow label="分類" required>
                   {renderRadioGroup<ManualItemFormState["gameType"]>(
                     "game-type",
                     ["pachinko", "slot"],
@@ -1200,18 +1201,18 @@ function StandardNaviRequestEditor({
                     (next) => handleManualItemChange("gameType", next),
                     (option) => gameTypeLabelMap[option]
                   )}
-                </EditRow>
+                </NaviSectionRow>
 
-                <EditRow label="種別" required>
+                <NaviSectionRow label="種別" required>
                   {renderRadioGroup<ManualItemFormState["bodyType"]>(
                     "body-type",
                     ["本体", "枠のみ", "セルのみ"],
                     manualItemForm.bodyType,
                     (next) => handleManualItemChange("bodyType", next)
                   )}
-                </EditRow>
+                </NaviSectionRow>
 
-                <EditRow label="メーカー" required>
+                <NaviSectionRow label="メーカー" required>
                   <div className="flex flex-col gap-2">
                     {masterError ? <p className="text-xs text-red-600">{masterError}</p> : null}
                     <select
@@ -1228,9 +1229,9 @@ function StandardNaviRequestEditor({
                       ))}
                     </select>
                   </div>
-                </EditRow>
+                </NaviSectionRow>
 
-                <EditRow label="機種名" required>
+                <NaviSectionRow label="機種名" required>
                   <select
                     className="w-full max-w-md rounded border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
                     value={manualItemForm.modelId}
@@ -1247,9 +1248,9 @@ function StandardNaviRequestEditor({
                       </option>
                     ))}
                   </select>
-                </EditRow>
+                </NaviSectionRow>
 
-                <EditRow label="枠色">
+                <NaviSectionRow label="枠色">
                   <input
                     type="text"
                     className="w-full max-w-md rounded border border-slate-300 px-3 py-2 text-sm"
@@ -1257,9 +1258,9 @@ function StandardNaviRequestEditor({
                     onChange={(e) => handleManualItemChange("frameColor", e.target.value)}
                     placeholder="例：赤枠"
                   />
-                </EditRow>
+                </NaviSectionRow>
               </tbody>
-            </table>
+            </NaviSectionTable>
           </div>
           {validationErrors.items && (
             <p className="px-4 py-2 text-sm text-red-600">{validationErrors.items}</p>
@@ -1272,7 +1273,7 @@ function StandardNaviRequestEditor({
               <h2 className="text-base font-semibold text-slate-900">取引条件</h2>
             </div>
             <div className="overflow-x-auto px-2 py-3">
-              <table className="min-w-full border border-slate-400 text-sm">
+              <NaviSectionTable>
                 <thead>
                   <tr className="bg-slate-100 text-left text-xs text-neutral-700">
                     <th className="w-40 px-3 py-1.5">項目</th>
@@ -1280,7 +1281,7 @@ function StandardNaviRequestEditor({
                   </tr>
                 </thead>
                 <tbody className="text-slate-900">
-                  <EditRow label="単価" required>
+                  <NaviSectionRow label="単価" required>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -1292,9 +1293,9 @@ function StandardNaviRequestEditor({
                         <p className="text-sm text-red-600">{validationErrors.unitPrice}</p>
                       )}
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="台数" required>
+                  <NaviSectionRow label="台数" required>
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -1306,9 +1307,9 @@ function StandardNaviRequestEditor({
                         <p className="text-sm text-red-600">{validationErrors.quantity}</p>
                       )}
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="撤去日">
+                  <NaviSectionRow label="撤去日">
                     <div className="flex flex-wrap items-center gap-3">
                       <input
                         type="date"
@@ -1328,9 +1329,9 @@ function StandardNaviRequestEditor({
                         撤去済
                       </label>
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="機械発送日" required>
+                  <NaviSectionRow label="機械発送日" required>
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-3">
                         <input
@@ -1351,9 +1352,9 @@ function StandardNaviRequestEditor({
                       </div>
                       {showMachineShipmentError && <p className="text-xs text-red-600">必須項目です</p>}
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="書類発送日" required>
+                  <NaviSectionRow label="書類発送日" required>
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-3">
                         <input
@@ -1374,9 +1375,9 @@ function StandardNaviRequestEditor({
                       </div>
                       {showDocumentShipmentError && <p className="text-xs text-red-600">必須項目です</p>}
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="支払日" required>
+                  <NaviSectionRow label="支払日" required>
                     <div className="space-y-1">
                       <input
                         type="date"
@@ -1389,9 +1390,9 @@ function StandardNaviRequestEditor({
                       />
                       {showPaymentDueError && <p className="text-xs text-red-600">必須項目です</p>}
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="機械運賃">
+                  <NaviSectionRow label="機械運賃">
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -1403,9 +1404,9 @@ function StandardNaviRequestEditor({
                         <p className="text-sm text-red-600">{validationErrors.shippingFee}</p>
                       )}
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="出庫手数料">
+                  <NaviSectionRow label="出庫手数料">
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -1417,9 +1418,9 @@ function StandardNaviRequestEditor({
                         <p className="text-sm text-red-600">{validationErrors.handlingFee}</p>
                       )}
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="段ボール">
+                  <NaviSectionRow label="段ボール">
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -1428,9 +1429,9 @@ function StandardNaviRequestEditor({
                         onChange={(e) => handleAdditionalFeeChange("cardboardFee", Number(e.target.value) || 0)}
                       />
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="釘シート">
+                  <NaviSectionRow label="釘シート">
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -1439,9 +1440,9 @@ function StandardNaviRequestEditor({
                         onChange={(e) => handleAdditionalFeeChange("nailSheetFee", Number(e.target.value) || 0)}
                       />
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="保険">
+                  <NaviSectionRow label="保険">
                     <div className="flex flex-col items-start gap-1">
                       <input
                         type="number"
@@ -1450,18 +1451,18 @@ function StandardNaviRequestEditor({
                         onChange={(e) => handleAdditionalFeeChange("insuranceFee", Number(e.target.value) || 0)}
                       />
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="特記事項">
+                  <NaviSectionRow label="特記事項">
                     <textarea
                       className="w-full max-w-2xl rounded border border-slate-300 px-3 py-2 text-sm"
                       rows={2}
                       value={editedConditions.notes}
                       onChange={(e) => handleTextConditionChange("notes", e.target.value)}
                     />
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="取引条件">
+                  <NaviSectionRow label="取引条件">
                     <div className="flex flex-col gap-1">
                       <button
                         type="button"
@@ -1495,19 +1496,19 @@ function StandardNaviRequestEditor({
                         onChange={(e) => handleTextConditionChange("terms", e.target.value)}
                       />
                     </div>
-                  </EditRow>
+                  </NaviSectionRow>
 
-                  <EditRow label="備考">
+                  <NaviSectionRow label="備考">
                     <textarea
                       className="h-20 w-full resize-vertical rounded border border-slate-300 px-3 py-2 text-sm"
                       placeholder="備考など自由入力"
                       value={editedConditions.memo ?? ""}
                       onChange={(e) => handleTextConditionChange("memo", e.target.value)}
                     />
-                  </EditRow>
+                  </NaviSectionRow>
 
                 </tbody>
-              </table>
+              </NaviSectionTable>
             </div>
           </section>
 
@@ -1792,15 +1793,15 @@ function OnlineInquiryCreator({
             <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-slate-400 text-sm">
+            <NaviSectionTable>
               <tbody className="text-slate-900">
-                <EditRow label="会社名">
+                <NaviSectionRow label="会社名">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">買手</span>
                     <span className="text-sm text-neutral-900">自社（{currentUser.companyName}）</span>
                   </div>
-                </EditRow>
-                <EditRow label="担当者" required>
+                </NaviSectionRow>
+                <NaviSectionRow label="担当者" required>
                   <div className="space-y-1">
                     <input
                       type="text"
@@ -1814,8 +1815,8 @@ function OnlineInquiryCreator({
                     />
                     {showContactPersonError && <p className="text-xs text-red-600">必須項目です</p>}
                   </div>
-                </EditRow>
-                <EditRow label="発送先住所" required>
+                </NaviSectionRow>
+                <NaviSectionRow label="発送先住所" required>
                   <div className="space-y-2">
                     <div className="flex flex-wrap gap-3 text-sm text-neutral-900">
                       <label className="flex items-center gap-2">
@@ -1880,19 +1881,19 @@ function OnlineInquiryCreator({
                       <p className="text-xs text-red-600">必須項目です</p>
                     )}
                   </div>
-                </EditRow>
+                </NaviSectionRow>
 
-                <EditRow label="会社名">
+                <NaviSectionRow label="会社名">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">売手</span>
                     <span className="text-sm text-neutral-900">{seller.companyName}</span>
                   </div>
-                </EditRow>
-                <EditRow label="担当者">
+                </NaviSectionRow>
+                <NaviSectionRow label="担当者">
                   <p className="text-sm text-neutral-900">{seller.contactName || "-"}</p>
-                </EditRow>
+                </NaviSectionRow>
               </tbody>
-            </table>
+            </NaviSectionTable>
           </div>
         </section>
 
@@ -1901,25 +1902,25 @@ function OnlineInquiryCreator({
             <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-slate-400 text-sm">
+            <NaviSectionTable>
               <tbody className="text-slate-900">
-                <EditRow label="分類">
+                <NaviSectionRow label="分類">
                   <span>{formatGameTypeLabel(linkedExhibit?.kind ?? product?.type ?? null)}</span>
-                </EditRow>
-                <EditRow label="種別">
+                </NaviSectionRow>
+                <NaviSectionRow label="種別">
                   <span>{linkedExhibit?.type ?? product?.type ?? "-"}</span>
-                </EditRow>
-                <EditRow label="メーカー">
+                </NaviSectionRow>
+                <NaviSectionRow label="メーカー">
                   <span>{makerName || "-"}</span>
-                </EditRow>
-                <EditRow label="機種名">
+                </NaviSectionRow>
+                <NaviSectionRow label="機種名">
                   <span>{productName || "-"}</span>
-                </EditRow>
-                <EditRow label="枠色">
+                </NaviSectionRow>
+                <NaviSectionRow label="枠色">
                   <span>-</span>
-                </EditRow>
+                </NaviSectionRow>
               </tbody>
-            </table>
+            </NaviSectionTable>
           </div>
         </section>
 
@@ -1929,7 +1930,7 @@ function OnlineInquiryCreator({
               <h2 className="text-base font-semibold text-slate-900">取引条件</h2>
             </div>
             <div className="overflow-x-auto px-2 py-3">
-              <table className="min-w-full border border-slate-400 text-sm">
+              <NaviSectionTable>
                 <thead>
                   <tr className="bg-slate-100 text-left text-xs text-neutral-700">
                     <th className="w-40 px-3 py-1.5">項目</th>
@@ -2059,7 +2060,7 @@ function OnlineInquiryCreator({
                     </td>
                   </tr>
                 </tbody>
-              </table>
+              </NaviSectionTable>
             </div>
           </section>
 
@@ -2096,30 +2097,6 @@ function OnlineInquiryCreator({
         </button>
       </div>
     </div>
-  );
-}
-
-function EditRow({
-  label,
-  children,
-  required,
-}: {
-  label: string;
-  children: ReactNode;
-  required?: boolean;
-}) {
-  return (
-    <tr className="border-t border-slate-300">
-      <th className="w-40 bg-slate-100 px-3 py-1.5 text-left text-xs font-semibold text-neutral-900 align-top">
-        <div className="flex items-center gap-1.5">
-          <span>{label}</span>
-          {required && (
-            <span className="ml-1 rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-700">必須</span>
-          )}
-        </div>
-      </th>
-      <td className="px-3 py-2 align-top">{children}</td>
-    </tr>
   );
 }
 

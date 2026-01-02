@@ -29,6 +29,7 @@ import {
   type ShippingAddressDto,
 } from "@/lib/shipping-address/api";
 
+import { NaviSectionRow, NaviSectionTable } from "@/components/navi/NaviSectionTable";
 import { StatementDocument } from "./StatementDocument";
 import { ContactSelector } from "./ContactSelector";
 
@@ -531,235 +532,165 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
               <div className="space-y-4">
-                <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
-                  <div className="flex flex-col gap-1 border-b border-slate-200 px-4 py-2">
+                <section className="rounded-lg border border-slate-400 bg-white text-sm shadow-sm">
+                  <div className="flex flex-col gap-1 border-b border-slate-300 bg-slate-50 px-4 py-2">
                     <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
-                      <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
-                      <span className="text-sm text-neutral-900">{dealing.buyer.companyName}</span>
-                      <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
-                      <span className="text-sm text-neutral-900">{dealing.seller.companyName}</span>
-                    </div>
                   </div>
-                  <div className="space-y-3 px-4 py-3 text-sm text-neutral-900">
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div>
-                        <p className="text-[11px] font-semibold text-neutral-600">会社名</p>
-                        <p className="font-semibold text-slate-900">{dealing.buyer.companyName}</p>
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-semibold text-neutral-600">電話番号</p>
-                        <p className="text-neutral-900">{shipping.tel || dealing.buyer.tel || "-"}</p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <p className="text-[11px] font-semibold text-neutral-600">発送先住所</p>
-                      {allowShippingEdit && (
-                        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
-                          <select
-                            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                            value={selectedAddressId}
-                            onChange={(e) => handleAddressSelect(e.target.value)}
-                          >
-                            <option value="">登録済み住所を選択</option>
-                            {shippingAddresses.map((address) => (
-                              <option key={address.id} value={address.id}>
-                                {address.label || address.addressLine || address.companyName || "登録済み住所"}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={handleSaveAddress}
-                            disabled={savingAddress}
-                            className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
-                          >
-                            住所帳に保存
-                          </button>
-                        </div>
-                      )}
-                      {allowShippingEdit ? (
-                        <textarea
-                          className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                          value={shipping.address ?? ""}
-                          onChange={(e) => handleShippingFieldChange("address", e.target.value)}
-                          placeholder="住所を入力"
+                  <div className="overflow-x-auto">
+                    <NaviSectionTable>
+                      <tbody className="text-slate-900">
+                        <NaviSectionRow
+                          label="会社名"
+                          required={allowShippingEdit}
+                          value={
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">買手</span>
+                              <span className="text-sm text-neutral-900">{dealing.buyer.companyName}</span>
+                            </div>
+                          }
                         />
-                      ) : (
-                        <p className="whitespace-pre-line text-neutral-900">
-                          {shipping.address || dealing.buyer.address || "-"}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-semibold text-neutral-600">担当者</p>
-                        {allowShippingEdit ? (
-                          <ContactSelector
-                            contacts={contacts}
-                            value={shipping.personName}
-                            onChange={handleContactChange}
-                            onAdd={(name) => handleAddContact(name)}
-                          />
-                        ) : (
-                          <p className="text-neutral-900">{shipping.personName || dealing.buyer.contactName || "-"}</p>
-                        )}
-                      </div>
-
-                      <div className="space-y-1">
-                        <p className="text-[11px] font-semibold text-neutral-600">郵便番号</p>
-                        {allowShippingEdit ? (
-                          <input
-                            type="text"
-                            className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-                            value={shipping.zip ?? ""}
-                            onChange={(e) => handleShippingFieldChange("zip", e.target.value)}
-                            placeholder="000-0000"
-                          />
-                        ) : (
-                          <p className="text-neutral-900">{shipping.zip || "-"}</p>
-                        )}
-                      </div>
-                    </div>
+                        <NaviSectionRow label="担当者" required={allowShippingEdit}>
+                          {allowShippingEdit ? (
+                            <ContactSelector
+                              contacts={contacts}
+                              value={shipping.personName}
+                              onChange={handleContactChange}
+                              onAdd={(name) => handleAddContact(name)}
+                            />
+                          ) : (
+                            <p className="text-sm text-neutral-900">{shipping.personName || dealing.buyer.contactName || "-"}</p>
+                          )}
+                        </NaviSectionRow>
+                        <NaviSectionRow label="郵便番号">
+                          {allowShippingEdit ? (
+                            <input
+                              type="text"
+                              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                              value={shipping.zip ?? ""}
+                              onChange={(e) => handleShippingFieldChange("zip", e.target.value)}
+                              placeholder="000-0000"
+                            />
+                          ) : (
+                            <p className="text-sm text-neutral-900">{shipping.zip || "-"}</p>
+                          )}
+                        </NaviSectionRow>
+                        <NaviSectionRow label="発送先住所" required={allowShippingEdit}>
+                          <div className="space-y-2">
+                            {allowShippingEdit && (
+                              <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-3">
+                                <select
+                                  className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                                  value={selectedAddressId}
+                                  onChange={(e) => handleAddressSelect(e.target.value)}
+                                >
+                                  <option value="">登録済み住所を選択</option>
+                                  {shippingAddresses.map((address) => (
+                                    <option key={address.id} value={address.id}>
+                                      {address.label || address.addressLine || address.companyName || "登録済み住所"}
+                                    </option>
+                                  ))}
+                                </select>
+                                <button
+                                  type="button"
+                                  onClick={handleSaveAddress}
+                                  disabled={savingAddress}
+                                  className="w-full rounded border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 md:w-auto"
+                                >
+                                  住所帳に保存
+                                </button>
+                              </div>
+                            )}
+                            {allowShippingEdit ? (
+                              <textarea
+                                className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                                value={shipping.address ?? ""}
+                                onChange={(e) => handleShippingFieldChange("address", e.target.value)}
+                                placeholder="住所を入力"
+                              />
+                            ) : (
+                              <p className="whitespace-pre-line text-sm text-neutral-900">
+                                {shipping.address || dealing.buyer.address || "-"}
+                              </p>
+                            )}
+                          </div>
+                        </NaviSectionRow>
+                        <NaviSectionRow label="電話番号" required={allowShippingEdit}>
+                          {allowShippingEdit ? (
+                            <input
+                              type="text"
+                              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                              value={shipping.tel ?? ""}
+                              onChange={(e) => handleShippingFieldChange("tel", e.target.value)}
+                              placeholder="03-1234-5678"
+                            />
+                          ) : (
+                            <p className="text-sm text-neutral-900">{shipping.tel || dealing.buyer.tel || "-"}</p>
+                          )}
+                        </NaviSectionRow>
+                        <NaviSectionRow
+                          label="会社名"
+                          value={
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">売手</span>
+                              <span className="text-sm text-neutral-900">{dealing.seller.companyName}</span>
+                            </div>
+                          }
+                        />
+                        <NaviSectionRow label="担当者" value={dealing.seller.contactName || "-"} />
+                      </tbody>
+                    </NaviSectionTable>
                   </div>
                 </section>
 
-                <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
-                  <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+                <section className="rounded-lg border border-slate-400 bg-white text-sm shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50 px-4 py-2">
                     <h2 className="text-base font-semibold text-slate-900">物件情報</h2>
                     <span className="text-xs font-semibold text-neutral-600">商品</span>
                   </div>
-                  <div className="grid gap-3 px-4 py-3 text-sm text-neutral-900 md:grid-cols-2">
-                    <div>
-                      <p className="text-[11px] font-semibold text-neutral-600">メーカー</p>
-                      <p className="font-semibold text-slate-900">{dealing.makerName ?? primaryItem?.maker ?? "-"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-neutral-600">機種名</p>
-                      <p className="text-neutral-900">{dealing.itemName ?? primaryItem?.itemName ?? "取引商品"}</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-neutral-600">台数</p>
-                      <p className="text-neutral-900">{quantity}台</p>
-                      {diffNotes.quantityNote && (
-                        <p className="text-[11px] text-neutral-600">{diffNotes.quantityNote}</p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-neutral-600">単価</p>
-                      <p className="text-neutral-900">{unitPrice ? formatYen(unitPrice) : "-"}</p>
-                      {diffNotes.unitPriceNote && (
-                        <p className="text-[11px] text-neutral-600">{diffNotes.unitPriceNote}</p>
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-semibold text-neutral-600">保管場所</p>
-                      <p className="text-neutral-900">{dealing.storageLocationName || "-"}</p>
-                      {diffNotes.storageNote && (
-                        <p className="text-[11px] text-neutral-600">{diffNotes.storageNote}</p>
-                      )}
-                    </div>
+                  <div className="overflow-x-auto">
+                    <NaviSectionTable>
+                      <tbody className="text-slate-900">
+                        <NaviSectionRow label="メーカー" value={dealing.makerName ?? primaryItem?.maker ?? "-"} />
+                        <NaviSectionRow label="機種名" value={dealing.itemName ?? primaryItem?.itemName ?? "取引商品"} />
+                        <NaviSectionRow label="台数" value={`${quantity}台`} note={diffNotes.quantityNote} />
+                        <NaviSectionRow label="単価" value={unitPrice ? formatYen(unitPrice) : "-"} note={diffNotes.unitPriceNote} />
+                        <NaviSectionRow label="保管場所" value={dealing.storageLocationName || "-"} note={diffNotes.storageNote} />
+                      </tbody>
+                    </NaviSectionTable>
                   </div>
                 </section>
 
-                <section className="rounded-lg border border-slate-300 bg-white shadow-sm">
-                  <div className="flex items-center justify-between border-b border-slate-200 px-4 py-2">
+                <section className="rounded-lg border border-slate-400 bg-white text-sm shadow-sm">
+                  <div className="flex items-center justify-between border-b border-slate-300 bg-slate-50 px-4 py-2">
                     <h2 className="text-base font-semibold text-slate-900">取引条件</h2>
                     <span className="text-xs font-semibold text-neutral-600">ナビ作成と同じ順序</span>
                   </div>
                   <div className="overflow-x-auto px-2 py-3">
-                    <table className="min-w-full border border-slate-300 text-sm">
-                      <thead>
-                        <tr className="bg-slate-50 text-left text-xs text-neutral-700">
-                          <th className="w-40 px-3 py-1.5">項目</th>
-                          <th className="px-3 py-1.5">内容</th>
-                        </tr>
-                      </thead>
+                    <NaviSectionTable>
                       <tbody className="text-neutral-900">
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">単価</th>
-                          <td className="px-3 py-2">
-                            {unitPrice ? formatYen(unitPrice) : "-"}
-                            {diffNotes.unitPriceNote && (
-                              <p className="text-[11px] text-neutral-600">{diffNotes.unitPriceNote}</p>
-                            )}
-                          </td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">台数</th>
-                          <td className="px-3 py-2">
-                            {quantity}台
-                            {diffNotes.quantityNote && (
-                              <p className="text-[11px] text-neutral-600">{diffNotes.quantityNote}</p>
-                            )}
-                          </td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">撤去日</th>
-                          <td className="px-3 py-2">-</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械発送日</th>
-                          <td className="px-3 py-2">{machineShipmentLabel}</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">書類発送予定日</th>
-                          <td className="px-3 py-2">{documentShipmentLabel}</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">支払日</th>
-                          <td className="px-3 py-2">{formatDateLabel(dealing.paymentDate)}</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械運賃</th>
-                          <td className="px-3 py-2">
-                            {shippingFee ? formatYen(shippingFee.amount) : "-"}
-                            {diffNotes.shippingCountNote && (
-                              <p className="text-[11px] text-neutral-600">{diffNotes.shippingCountNote}</p>
-                            )}
-                          </td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">出庫手数料</th>
-                          <td className="px-3 py-2">
-                            {handlingFee ? formatYen(handlingFee.amount) : "-"}
-                            {diffNotes.handlingCountNote && (
-                              <p className="text-[11px] text-neutral-600">{diffNotes.handlingCountNote}</p>
-                            )}
-                          </td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">段ボール</th>
-                          <td className="px-3 py-2">{cardboardFee ? formatYen(cardboardFee.amount) : "-"}</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">釘シート</th>
-                          <td className="px-3 py-2">{nailSheetFee ? formatYen(nailSheetFee.amount) : "-"}</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">保険</th>
-                          <td className="px-3 py-2">{insuranceFee ? formatYen(insuranceFee.amount) : "-"}</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">特記事項</th>
-                          <td className="px-3 py-2">{notesText}</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">取引条件（テキスト）</th>
-                          <td className="px-3 py-2 whitespace-pre-line">{termsText}</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">備考</th>
-                          <td className="px-3 py-2 whitespace-pre-line">{memoText}</td>
-                        </tr>
-                        <tr className="border-t border-slate-300">
-                          <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">担当者</th>
-                          <td className="px-3 py-2">{shipping.personName || dealing.handlerName || "-"}</td>
-                        </tr>
+                        <NaviSectionRow label="単価" value={unitPrice ? formatYen(unitPrice) : "-"} note={diffNotes.unitPriceNote} />
+                        <NaviSectionRow label="台数" value={`${quantity}台`} note={diffNotes.quantityNote} />
+                        <NaviSectionRow label="撤去日" value="-" />
+                        <NaviSectionRow label="機械発送日" value={machineShipmentLabel} />
+                        <NaviSectionRow label="書類発送予定日" value={documentShipmentLabel} />
+                        <NaviSectionRow label="支払日" value={formatDateLabel(dealing.paymentDate)} />
+                        <NaviSectionRow label="機械運賃" value={shippingFee ? formatYen(shippingFee.amount) : "-"} note={diffNotes.shippingCountNote} />
+                        <NaviSectionRow label="出庫手数料" value={handlingFee ? formatYen(handlingFee.amount) : "-"} note={diffNotes.handlingCountNote} />
+                        <NaviSectionRow label="段ボール" value={cardboardFee ? formatYen(cardboardFee.amount) : "-"} />
+                        <NaviSectionRow label="釘シート" value={nailSheetFee ? formatYen(nailSheetFee.amount) : "-"} />
+                        <NaviSectionRow label="保険" value={insuranceFee ? formatYen(insuranceFee.amount) : "-"} />
+                        <NaviSectionRow label="特記事項" value={notesText} />
+                        <NaviSectionRow
+                          label="取引条件（テキスト）"
+                          value={<span className="whitespace-pre-line text-sm text-neutral-900">{termsText}</span>}
+                        />
+                        <NaviSectionRow
+                          label="備考"
+                          value={<span className="whitespace-pre-line text-sm text-neutral-900">{memoText}</span>}
+                        />
+                        <NaviSectionRow label="担当者" value={shipping.personName || dealing.handlerName || "-"} />
                       </tbody>
-                    </table>
+                    </NaviSectionTable>
                   </div>
                 </section>
               </div>

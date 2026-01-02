@@ -6,6 +6,7 @@ import { useParams } from "next/navigation";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { type TradeStatusKey } from "@/components/transactions/status";
 import { TradeDetailView } from "@/components/transactions/TradeDetailView";
+import { NaviSectionRow, NaviSectionTable } from "@/components/navi/NaviSectionTable";
 
 type TradeDetailResponse = {
   id: number;
@@ -202,17 +203,32 @@ export default function TransactionDetailPage() {
         title: "取引先情報",
         description: "ナビ作成と同じ順序",
         content: (
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
-              <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
-              <span className="text-sm text-neutral-900">{view.buyerName}</span>
-              <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
-              <span className="text-sm text-neutral-900">{view.sellerName}</span>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2">
-              <InfoItem label="取引ID" value={view.tradeId} emphasis />
-              <InfoItem label="担当者" value={buildLabel(view.handler)} />
-            </div>
+          <div className="overflow-x-auto">
+            <NaviSectionTable>
+              <tbody className="text-slate-900">
+                <NaviSectionRow
+                  label="会社名"
+                  value={
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">買手</span>
+                      <span className="text-sm text-neutral-900">{view.buyerName}</span>
+                    </div>
+                  }
+                />
+                <NaviSectionRow label="担当者" value="-" />
+                <NaviSectionRow label="発送先住所" value="-" />
+                <NaviSectionRow
+                  label="会社名"
+                  value={
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="rounded bg-slate-200 px-2 py-0.5 text-xs font-semibold text-slate-800">売手</span>
+                      <span className="text-sm text-neutral-900">{view.sellerName}</span>
+                    </div>
+                  }
+                />
+                <NaviSectionRow label="担当者" value={buildLabel(view.handler)} />
+              </tbody>
+            </NaviSectionTable>
           </div>
         ),
       },
@@ -220,11 +236,15 @@ export default function TransactionDetailPage() {
         title: "物件情報",
         description: "取引対象",
         content: (
-          <div className="grid gap-3 md:grid-cols-2">
-            <InfoItem label="メーカー" value={view.makerName} emphasis />
-            <InfoItem label="機種名" value={view.productName} />
-            <InfoItem label="台数" value={`${view.quantity}台`} />
-            <InfoItem label="単価" value={formatCurrency(view.unitPrice)} />
+          <div className="overflow-x-auto">
+            <NaviSectionTable>
+              <tbody className="text-slate-900">
+                <NaviSectionRow label="メーカー" value={view.makerName} />
+                <NaviSectionRow label="機種名" value={view.productName} />
+                <NaviSectionRow label="台数" value={`${view.quantity}台`} />
+                <NaviSectionRow label="単価" value={formatCurrency(view.unitPrice)} />
+              </tbody>
+            </NaviSectionTable>
           </div>
         ),
       },
@@ -233,31 +253,25 @@ export default function TransactionDetailPage() {
         description: "ナビ作成の順序",
         content: (
           <div className="overflow-x-auto">
-            <table className="min-w-full border border-slate-300 text-sm">
-              <thead>
-                <tr className="bg-slate-50 text-left text-xs text-neutral-700">
-                  <th className="w-40 px-3 py-1.5">項目</th>
-                  <th className="px-3 py-1.5">内容</th>
-                </tr>
-              </thead>
+            <NaviSectionTable>
               <tbody className="text-neutral-900">
-                <ConditionRow label="単価" value={formatCurrency(view.unitPrice)} />
-                <ConditionRow label="台数" value={`${view.quantity}台`} />
-                <ConditionRow label="撤去日" value={buildLabel(view.removalDate)} />
-                <ConditionRow label="機械発送日" value={buildLabel(view.machineShipmentDate)} />
-                <ConditionRow label="書類発送予定日" value={buildLabel(view.documentShipmentDate)} />
-                <ConditionRow label="支払日" value={buildLabel(view.paymentDue)} />
-                <ConditionRow label="機械運賃" value={formatFee(view.shippingFee)} />
-                <ConditionRow label="出庫手数料" value={formatFee(view.handlingFee)} />
-                <ConditionRow label="段ボール" value={formatFee(view.cardboardFee)} />
-                <ConditionRow label="釘シート" value={formatFee(view.nailSheetFee)} />
-                <ConditionRow label="保険" value={formatFee(view.insuranceFee)} />
-                <ConditionRow label="特記事項" value={buildLabel(view.notes)} />
-                <ConditionRow label="取引条件（テキスト）" value={buildLabel(view.terms)} />
-                <ConditionRow label="備考" value={buildLabel(view.memo)} />
-                <ConditionRow label="担当者" value={buildLabel(view.handler)} />
+                <NaviSectionRow label="単価" value={formatCurrency(view.unitPrice)} />
+                <NaviSectionRow label="台数" value={`${view.quantity}台`} />
+                <NaviSectionRow label="撤去日" value={buildLabel(view.removalDate)} />
+                <NaviSectionRow label="機械発送日" value={buildLabel(view.machineShipmentDate)} />
+                <NaviSectionRow label="書類発送予定日" value={buildLabel(view.documentShipmentDate)} />
+                <NaviSectionRow label="支払日" value={buildLabel(view.paymentDue)} />
+                <NaviSectionRow label="機械運賃" value={formatFee(view.shippingFee)} />
+                <NaviSectionRow label="出庫手数料" value={formatFee(view.handlingFee)} />
+                <NaviSectionRow label="段ボール" value={formatFee(view.cardboardFee)} />
+                <NaviSectionRow label="釘シート" value={formatFee(view.nailSheetFee)} />
+                <NaviSectionRow label="保険" value={formatFee(view.insuranceFee)} />
+                <NaviSectionRow label="特記事項" value={buildLabel(view.notes)} />
+                <NaviSectionRow label="取引条件（テキスト）" value={buildLabel(view.terms)} />
+                <NaviSectionRow label="備考" value={buildLabel(view.memo)} />
+                <NaviSectionRow label="担当者" value={buildLabel(view.handler)} />
               </tbody>
-            </table>
+            </NaviSectionTable>
           </div>
         ),
       },
@@ -309,22 +323,4 @@ export default function TransactionDetailPage() {
 
 function formatFee(value: number) {
   return value ? formatCurrency(value) : "-";
-}
-
-function ConditionRow({ label, value }: { label: string; value: string }) {
-  return (
-    <tr className="border-t border-slate-300">
-      <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">{label}</th>
-      <td className="px-3 py-2">{value}</td>
-    </tr>
-  );
-}
-
-function InfoItem({ label, value, emphasis }: { label: string; value: string; emphasis?: boolean }) {
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[11px] font-semibold text-neutral-500">{label}</span>
-      <span className={`text-sm ${emphasis ? "font-semibold text-slate-900" : "text-neutral-900"}`}>{value}</span>
-    </div>
-  );
 }
