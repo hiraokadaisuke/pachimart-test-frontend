@@ -5,7 +5,7 @@ import {
   resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
 } from "@/lib/listings/storageLocation";
-import type { Listing } from "@/lib/listings/types";
+import type { Exhibit } from "@/lib/listings/types";
 import { prisma } from "@/lib/server/prisma";
 
 type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
@@ -35,7 +35,7 @@ const toSnapshotFromStorageLocation = (location?: {
       }
     : null;
 
-const toDto = (listing: any): Listing => ({
+const toDto = (listing: any): Exhibit => ({
   id: String(listing.id),
   sellerUserId: String(listing.sellerUserId),
   status: listing.status as ListingStatus,
@@ -66,7 +66,7 @@ const toDto = (listing: any): Listing => ({
   updatedAt: new Date(listing.updatedAt).toISOString(),
 });
 
-export const getPublicListingById = async (listingId: string): Promise<Listing | null> => {
+export const getPublicListingById = async (listingId: string): Promise<Exhibit | null> => {
   const listing = await prisma.listing.findUnique({
     where: {
       id: listingId,
