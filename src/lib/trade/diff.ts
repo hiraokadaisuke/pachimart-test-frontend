@@ -1,4 +1,4 @@
-import { formatYen } from "@/lib/trade/calcTotals";
+import { formatYen } from "@/lib/dealings/calcTotals";
 import { formatListingStorageLocation, type ListingSnapshot } from "./listingSnapshot";
 import { type TradeRecord } from "./types";
 

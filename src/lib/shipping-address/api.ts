@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { type ShippingInfo } from "@/lib/trade/types";
+import { type ShippingInfo } from "@/lib/dealings/types";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 
 const shippingAddressSchema = z.object({

@@ -4,8 +4,8 @@ import {
   formatStorageLocationShort,
   resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
-} from "@/lib/listings/storageLocation";
-import type { Exhibit } from "@/lib/listings/types";
+} from "@/lib/exhibits/storageLocation";
+import type { Exhibit } from "@/lib/exhibits/types";
 import { prisma } from "@/lib/server/prisma";
 
 type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };

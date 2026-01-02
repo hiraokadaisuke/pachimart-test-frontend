@@ -1,13 +1,13 @@
 import { NaviType } from "@prisma/client";
 import { z } from "zod";
 
-import { buildTodosFromStatus } from "@/lib/trade/todo";
+import { buildTodosFromStatus } from "@/lib/dealings/todo";
 import {
   type BuyerContact,
   type ShippingInfo,
   type StatementItem,
   type TradeRecord,
-} from "@/lib/trade/types";
+} from "@/lib/dealings/types";
 import { resolveListingSnapshot, type ListingSnapshot } from "./listingSnapshot";
 
 export const tradeDtoSchema = z.object({
