@@ -2,13 +2,13 @@ import { notFound } from "next/navigation";
 import { cookies } from "next/headers";
 
 import { DEV_USERS } from "@/lib/dev-user/users";
-import { getPublicListingById } from "@/lib/listings/getPublicListingById";
+import { getPublicListingById } from "@/lib/exhibits/getPublicListingById";
 import { prisma } from "@/lib/server/prisma";
 
 import MainContainer from "@/components/layout/MainContainer";
 import { SectionHeader } from "@/components/ui/SectionHeader";
-import type { Listing } from "@/lib/listings/types";
-import { formatStorageLocationFull } from "@/lib/listings/storageLocation";
+import type { Listing } from "@/lib/exhibits/types";
+import { formatStorageLocationFull } from "@/lib/exhibits/storageLocation";
 import { PurchaseProcedureCard } from "@/components/products/PurchaseProcedureCard";
 
 const formatPrice = (listing: Listing) => {
