@@ -93,7 +93,7 @@ model Navi {
   trade     Dealing?
   messages  Message[]
 
-  @@map("TradeNavi")
+  @@map("Navi")
 }
 
 model Dealing {
@@ -110,7 +110,7 @@ model Dealing {
   buyerUser  User  @relation("TradeBuyer", fields: [buyerUserId], references: [id])
   navi       Navi? @relation(fields: [naviId], references: [id])
 
-  @@map("Trade")
+  @@map("Dealing")
 }
 
 model Message {
@@ -176,7 +176,7 @@ model Exhibit {
   @@index([updatedAt])
   @@index([storageLocationId])
 
-  @@map("Listing")
+  @@map("Exhibit")
 }
 
 model Maker {
