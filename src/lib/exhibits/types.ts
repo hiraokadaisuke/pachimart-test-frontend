@@ -1,1 +1,29 @@
-export * from "../listings/types";
+export type Listing = {
+  id: string;
+  sellerUserId: string;
+  status: string;
+  isVisible: boolean;
+  type: string;
+  kind: string;
+  maker: string | null;
+  machineName: string | null;
+  quantity: number;
+  unitPriceExclTax: number | null;
+  isNegotiable: boolean;
+  removalStatus: string;
+  removalDate: string | null;
+  hasNailSheet: boolean;
+  hasManual: boolean;
+  pickupAvailable: boolean;
+  storageLocation: string | null;
+  storageLocationId: string | null;
+  storageLocationSnapshot: unknown | null;
+  shippingFeeCount: number;
+  handlingFeeCount: number;
+  allowPartial: boolean;
+  note: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Exhibit = Listing;
