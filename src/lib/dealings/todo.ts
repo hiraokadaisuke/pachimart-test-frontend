@@ -56,25 +56,25 @@ export function buildTodosFromStatus(status: TradeStatus): TodoItem[] {
   return todos;
 }
 
-export function ensureTradeTodos(trade: TradeRecord): TodoItem[] {
-  if (trade.todos?.length) return trade.todos;
-  return buildTodosFromStatus(trade.status);
+export function ensureTradeTodos(dealing: TradeRecord): TodoItem[] {
+  if (dealing.todos?.length) return dealing.todos;
+  return buildTodosFromStatus(dealing.status);
 }
 
 export function mapStatusToTodoKind(status: TradeStatus): TodoKind {
   return STATUS_TO_TODO_KIND[status];
 }
 
-export function resolveCurrentTodoKind(trade: Pick<TradeRecord, "status" | "todos">): TodoKind {
-  const todos = trade.todos?.length ? trade.todos : buildTodosFromStatus(trade.status);
+export function resolveCurrentTodoKind(dealing: Pick<TradeRecord, "status" | "todos">): TodoKind {
+  const todos = dealing.todos?.length ? dealing.todos : buildTodosFromStatus(dealing.status);
   const active = getOpenTodo(todos);
   if (active) return active.kind;
   const derivedStatus = deriveTradeStatusFromTodos({ todos });
   return mapStatusToTodoKind(derivedStatus);
 }
 
-export function getTodoPresentation(trade: TradeRecord, viewerRole: "buyer" | "seller") {
-  const todos = ensureTradeTodos(trade);
+export function getTodoPresentation(dealing: TradeRecord, viewerRole: "buyer" | "seller") {
+  const todos = ensureTradeTodos(dealing);
   const activeTodo = getOpenTodo(todos);
   const derivedStatus = deriveTradeStatusFromTodos({ todos });
   const todoKind = activeTodo?.kind ?? mapStatusToTodoKind(derivedStatus);
@@ -93,50 +93,50 @@ export function getTodoPresentation(trade: TradeRecord, viewerRole: "buyer" | "s
 }
 
 export function advanceTradeTodo(
-  trade: TradeRecord,
+  dealing: TradeRecord,
   completedKind: TodoKind,
   actorUserId: string
 ): TradeRecord | null {
-  const todos = ensureTradeTodos(trade);
+  const todos = ensureTradeTodos(dealing);
   const openTodo = getOpenTodo(todos);
   if (!openTodo || openTodo.kind !== completedKind) return null;
 
-  const actorRole = getActorRole(trade, actorUserId);
+  const actorRole = getActorRole(dealing, actorUserId);
   if (actorRole !== openTodo.assignee) return null;
 
   const now = new Date().toISOString();
-  let updatedTrade: TradeRecord = { ...trade };
+  let updatedDealing: TradeRecord = { ...dealing };
 
   if (completedKind === "application_sent") {
-    updatedTrade.contractDate = updatedTrade.contractDate ?? now;
+    updatedDealing.contractDate = updatedDealing.contractDate ?? now;
   }
 
   if (completedKind === "application_approved") {
-    const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
-    updatedTrade.paymentDate = now;
-    updatedTrade.paymentAmount = totals.total;
-    updatedTrade.paymentMethod = updatedTrade.paymentMethod ?? "振込（テスト）";
+    const totals = calculateStatementTotals(dealing.items, dealing.taxRate ?? 0.1);
+    updatedDealing.paymentDate = now;
+    updatedDealing.paymentAmount = totals.total;
+    updatedDealing.paymentMethod = updatedDealing.paymentMethod ?? "振込（テスト）";
   }
 
   if (completedKind === "payment_confirmed") {
-    updatedTrade.completedAt = now;
+    updatedDealing.completedAt = now;
   }
 
   const nextTodos = completeTodo(todos, completedKind);
   const status = deriveTradeStatusFromTodos({ todos: nextTodos }, actorUserId);
 
-  updatedTrade = {
-    ...updatedTrade,
+  updatedDealing = {
+    ...updatedDealing,
     todos: nextTodos,
     status,
     updatedAt: now,
   };
 
-  return updatedTrade;
+  return updatedDealing;
 }
 
-export function cancelTradeTodos(trade: TradeRecord): TodoItem[] {
-  const existing = ensureTradeTodos(trade);
+export function cancelTradeTodos(dealing: TradeRecord): TodoItem[] {
+  const existing = ensureTradeTodos(dealing);
   const closed: TodoItem[] = existing.map((todo): TodoItem =>
     todo.status === "open" ? ({ ...todo, status: "done" } as TodoItem) : todo
   );

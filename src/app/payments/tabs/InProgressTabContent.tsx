@@ -30,7 +30,7 @@ const SECTION_LABELS = {
   canceled: todoUiMap["trade_canceled"],
 } as const;
 
-type TradeRow = {
+type DealingRow = {
   id: string;
   naviId?: number;
   status: TradeStatusKey;
@@ -67,24 +67,24 @@ function formatDateTime(iso?: string) {
   )}`;
 }
 
-function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
-  const totals = calculateStatementTotals(trade.items, trade.taxRate ?? 0.1);
-  const primaryItem = trade.items[0];
-  const totalQty = trade.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
-  const sellerUserId = trade.sellerUserId ?? trade.seller.userId ?? "seller";
-  const buyerUserId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
-  const updatedAtLabel = formatDateTime(trade.updatedAt ?? trade.createdAt ?? new Date().toISOString());
-  const scheduledShipDate = trade.contractDate ? trade.contractDate.slice(0, 10) : "-";
+function buildDealingRow(dealing: TradeRecord, viewerId: string): DealingRow {
+  const totals = calculateStatementTotals(dealing.items, dealing.taxRate ?? 0.1);
+  const primaryItem = dealing.items[0];
+  const totalQty = dealing.items.reduce((sum, item) => sum + (item.qty ?? 1), 0);
+  const sellerUserId = dealing.sellerUserId ?? dealing.seller.userId ?? "seller";
+  const buyerUserId = dealing.buyerUserId ?? dealing.buyer.userId ?? "buyer";
+  const updatedAtLabel = formatDateTime(dealing.updatedAt ?? dealing.createdAt ?? new Date().toISOString());
+  const scheduledShipDate = dealing.contractDate ? dealing.contractDate.slice(0, 10) : "-";
   const isSeller = sellerUserId === viewerId;
   const kind = isSeller ? ("sell" as const) : ("buy" as const);
-  const todo = getTodoPresentation(trade, kind === "buy" ? "buyer" : "seller");
+  const todo = getTodoPresentation(dealing, kind === "buy" ? "buyer" : "seller");
 
   return {
-    id: trade.id,
-    naviId: trade.naviId,
+    id: dealing.id,
+    naviId: dealing.naviId,
     status: todo.todoKind,
     updatedAt: updatedAtLabel,
-    partnerName: isSeller ? trade.buyer.companyName : trade.seller.companyName,
+    partnerName: isSeller ? dealing.buyer.companyName : dealing.seller.companyName,
     makerName: primaryItem?.maker ?? "-",
     itemName: primaryItem?.itemName ?? "商品",
     quantity: totalQty,
@@ -92,8 +92,8 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
     scheduledShipDate,
     sellerUserId,
     buyerUserId,
-    sellerName: trade.seller.companyName,
-    buyerName: trade.buyer.companyName,
+    sellerName: dealing.seller.companyName,
+    buyerName: dealing.buyer.companyName,
     kind,
     section: todo.section,
     description: todo.description,
@@ -104,7 +104,7 @@ function buildTradeRow(trade: TradeRecord, viewerId: string): TradeRow {
 
 export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
-  const [trades, setTrades] = useState<TradeRecord[]>([]);
+  const [dealings, setDealings] = useState<TradeRecord[]>([]);
   const router = useRouter();
   const { getBalance } = useBalance();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("inProgress");
@@ -114,22 +114,22 @@ export function InProgressTabContent() {
   const [messages, setMessages] = useState<TradeMessage[]>([]);
 
   const filterTrades = useCallback(
-    (rows: TradeRow[]) => {
+    (rows: DealingRow[]) => {
       const keywordLower = keyword.toLowerCase();
 
       return rows
-        .filter((trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id)
-        .filter((trade) => {
-          if (statusFilter === "inProgress") return trade.isOpen;
+        .filter((dealing) => dealing.sellerUserId === currentUser.id || dealing.buyerUserId === currentUser.id)
+        .filter((dealing) => {
+          if (statusFilter === "inProgress") return dealing.isOpen;
           if (statusFilter === "completed")
-            return !trade.isOpen || trade.section === "completed" || trade.section === "canceled";
+            return !dealing.isOpen || dealing.section === "completed" || dealing.section === "canceled";
           return true;
         })
-        .filter((trade) => {
+        .filter((dealing) => {
           if (!keywordLower) return true;
           return (
-            trade.itemName.toLowerCase().includes(keywordLower) ||
-            trade.partnerName.toLowerCase().includes(keywordLower)
+            dealing.itemName.toLowerCase().includes(keywordLower) ||
+            dealing.partnerName.toLowerCase().includes(keywordLower)
           );
         });
     },
@@ -139,34 +139,34 @@ export function InProgressTabContent() {
   const refreshTrades = useCallback(async () => {
     try {
       const [navis, inquiries] = await Promise.all([loadAllTradesWithApi(), loadAcceptedOnlineInquiryTrades()]);
-      const combinedTrades = [...navis, ...inquiries];
+      const combinedDealings = [...navis, ...inquiries];
 
       console.table(
-        combinedTrades.map((trade) => ({
-          id: trade.id,
-          status: trade.status,
-          source: trade.naviType ?? "UNKNOWN",
-          buyerId: trade.buyerUserId,
-          sellerId: trade.sellerUserId,
+        combinedDealings.map((dealing) => ({
+          id: dealing.id,
+          status: dealing.status,
+          source: dealing.naviType ?? "UNKNOWN",
+          buyerId: dealing.buyerUserId,
+          sellerId: dealing.sellerUserId,
         }))
       );
 
-      const data = combinedTrades.filter((trade) => trade.status !== "APPROVAL_REQUIRED");
-      const ownedTrades = data.filter(
-        (trade) => trade.sellerUserId === currentUser.id || trade.buyerUserId === currentUser.id
+      const data = combinedDealings.filter((dealing) => dealing.status !== "APPROVAL_REQUIRED");
+      const ownedDealings = data.filter(
+        (dealing) => dealing.sellerUserId === currentUser.id || dealing.buyerUserId === currentUser.id
       );
-      setTrades(ownedTrades);
+      setDealings(ownedDealings);
     } catch (error) {
       console.error("Failed to load trades", error);
-      setTrades([]);
+      setDealings([]);
     }
   }, [currentUser.id]);
 
   const handleCompleteTodo = useCallback(
-    (row: TradeRow) => {
-      const targetTrade = trades.find((trade) => trade.id === row.id);
+    (row: DealingRow) => {
+      const targetDealing = dealings.find((dealing) => dealing.id === row.id);
 
-      if (!targetTrade) {
+      if (!targetDealing) {
         console.error("Trade not found for todo completion", { tradeId: row.id, todoKind: row.status });
         return;
       }
@@ -185,30 +185,30 @@ export function InProgressTabContent() {
           return;
         }
 
-        const updated = markTradePaid(row.id, currentUser.id, targetTrade);
+        const updated = markTradePaid(row.id, currentUser.id, targetDealing);
         if (!updated) {
           console.error("Failed to mark trade as paid", { tradeId: row.id });
           return;
         }
 
-        setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
+        setDealings((prev) => prev.map((dealing) => (dealing.id === updated.id ? updated : dealing)));
         return;
       }
 
       // 完了
       if (row.status === "payment_confirmed") {
-        const updated = markTradeCompleted(row.id, currentUser.id, targetTrade);
+        const updated = markTradeCompleted(row.id, currentUser.id, targetDealing);
         if (!updated) {
           console.error("Failed to mark trade as completed", { tradeId: row.id });
           return;
         }
 
-        setTrades((prev) => prev.map((trade) => (trade.id === updated.id ? updated : trade)));
+        setDealings((prev) => prev.map((dealing) => (dealing.id === updated.id ? updated : dealing)));
         return;
       }
 
       // その他は既存の todo 進行ロジックへ（fallback）
-      const advanced = advanceTradeTodo(targetTrade, row.status, currentUser.id);
+      const advanced = advanceTradeTodo(targetDealing, row.status, currentUser.id);
       if (!advanced) {
         console.warn("Todo completion is not supported for fetched trades", {
           tradeId: row.id,
@@ -218,53 +218,56 @@ export function InProgressTabContent() {
       }
 
       saveTradeRecord(advanced);
-      setTrades((prev) => prev.map((trade) => (trade.id === advanced.id ? advanced : trade)));
+      setDealings((prev) => prev.map((dealing) => (dealing.id === advanced.id ? advanced : dealing)));
     },
-    [currentUser.id, getBalance, trades]
+    [currentUser.id, getBalance, dealings]
   );
 
   useEffect(() => {
     refreshTrades();
   }, [refreshTrades]);
 
-  const tradeRows = useMemo(() => trades.map((trade) => buildTradeRow(trade, currentUser.id)), [currentUser.id, trades]);
-
-  const acceptedTrades = useMemo(
-    () => tradeRows.filter((trade) => trade.status !== "application_sent"),
-    [tradeRows]
+  const dealingRows = useMemo(
+    () => dealings.map((dealing) => buildDealingRow(dealing, currentUser.id)),
+    [currentUser.id, dealings]
   );
 
-  const filteredTrades = useMemo(() => filterTrades(acceptedTrades), [acceptedTrades, filterTrades]);
+  const acceptedDealings = useMemo(
+    () => dealingRows.filter((dealing) => dealing.status !== "application_sent"),
+    [dealingRows]
+  );
+
+  const filteredDealings = useMemo(() => filterTrades(acceptedDealings), [acceptedDealings, filterTrades]);
 
   useEffect(() => {
-    const paymentRows = filteredTrades.filter((trade) => trade.status === "application_approved");
-    console.table(paymentRows.map((trade) => ({ id: trade.id, status: trade.status })));
-  }, [filteredTrades]);
+    const paymentRows = filteredDealings.filter((dealing) => dealing.status === "application_approved");
+    console.table(paymentRows.map((dealing) => ({ id: dealing.id, status: dealing.status })));
+  }, [filteredDealings]);
 
-  const buyPayment = filteredTrades.filter(
-    (trade) => trade.kind === "buy" && trade.status === "application_approved"
+  const buyPayment = filteredDealings.filter(
+    (dealing) => dealing.kind === "buy" && dealing.status === "application_approved"
   );
-  const buyConfirmation = filteredTrades.filter(
-    (trade) => trade.kind === "buy" && trade.status === "payment_confirmed"
+  const buyConfirmation = filteredDealings.filter(
+    (dealing) => dealing.kind === "buy" && dealing.status === "payment_confirmed"
   );
-  const sellPayment = filteredTrades.filter(
-    (trade) => trade.kind === "sell" && trade.status === "application_approved"
+  const sellPayment = filteredDealings.filter(
+    (dealing) => dealing.kind === "sell" && dealing.status === "application_approved"
   );
-  const sellConfirmation = filteredTrades.filter(
-    (trade) => trade.kind === "sell" && trade.status === "payment_confirmed"
+  const sellConfirmation = filteredDealings.filter(
+    (dealing) => dealing.kind === "sell" && dealing.status === "payment_confirmed"
   );
 
-  const getStatementDestination = (row: TradeRow) =>
+  const getStatementDestination = (row: DealingRow) =>
     getStatementPath(row.id, row.status, row.kind === "buy" ? "buyer" : "seller", {
       naviId: row.naviId,
     });
 
-  const tradeColumnBase: NaviTableColumn[] = [
+  const dealingColumnBase: NaviTableColumn[] = [
     {
       key: "status",
       label: "状況",
       width: "110px",
-      render: (row: TradeRow) => <StatusBadge statusKey={row.status} context="inProgress" />,
+      render: (row: DealingRow) => <StatusBadge statusKey={row.status} context="inProgress" />,
     },
     {
       key: "updatedAt",
@@ -290,7 +293,7 @@ export function InProgressTabContent() {
       key: "totalAmount",
       label: "合計金額（税込）",
       width: "140px",
-      render: (row: TradeRow) => formatCurrency(row.totalAmount),
+      render: (row: DealingRow) => formatCurrency(row.totalAmount),
     },
     {
       key: "scheduledShipDate",
@@ -301,7 +304,7 @@ export function InProgressTabContent() {
       key: "document",
       label: "明細書",
       width: "110px",
-      render: (row: TradeRow) => {
+      render: (row: DealingRow) => {
         const statementPath = getStatementDestination(row);
         return (
           <button
@@ -323,7 +326,7 @@ export function InProgressTabContent() {
     key: "message",
     label: "メッセージ",
     width: "110px",
-    render: (row: TradeRow) => (
+    render: (row: DealingRow) => (
       <button
         type="button"
         className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
@@ -341,7 +344,7 @@ export function InProgressTabContent() {
     key: "action",
     label: "操作",
     width: "120px",
-    render: (row: TradeRow) =>
+    render: (row: DealingRow) =>
       row.primaryActionLabel && row.isOpen ? (
         <button
           type="button"
@@ -358,9 +361,9 @@ export function InProgressTabContent() {
       ),
   };
 
-  const tradeColumnsWithAction: NaviTableColumn[] = [...tradeColumnBase, actionColumn, messageColumn];
+  const dealingColumnsWithAction: NaviTableColumn[] = [...dealingColumnBase, actionColumn, messageColumn];
 
-  const tradeColumnsWithoutAction: NaviTableColumn[] = [...tradeColumnBase, messageColumn];
+  const dealingColumnsWithoutAction: NaviTableColumn[] = [...dealingColumnBase, messageColumn];
 
   useEffect(() => {
     if (messageNaviId === null) {
@@ -382,7 +385,7 @@ export function InProgressTabContent() {
       });
   }, [messageNaviId, messageTarget]);
 
-  const handleOpenMessage = (row: TradeRow) => {
+  const handleOpenMessage = (row: DealingRow) => {
     setMessageTarget(row.id);
 
     if (typeof row.naviId === "number" && Number.isInteger(row.naviId)) {
@@ -420,10 +423,10 @@ export function InProgressTabContent() {
           </SectionHeader>
 
           <NaviTable
-            columns={tradeColumnsWithAction}
+            columns={dealingColumnsWithAction}
             rows={buyPayment}
             emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
+            onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
           />
         </div>
 
@@ -433,10 +436,10 @@ export function InProgressTabContent() {
           </SectionHeader>
 
           <NaviTable
-            columns={tradeColumnsWithAction}
+            columns={dealingColumnsWithAction}
             rows={buyConfirmation}
             emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
+            onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
           />
         </div>
       </section>
@@ -450,10 +453,10 @@ export function InProgressTabContent() {
           </SectionHeader>
 
           <NaviTable
-            columns={tradeColumnsWithoutAction}
+            columns={dealingColumnsWithoutAction}
             rows={sellPayment}
             emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
+            onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
           />
         </div>
 
@@ -463,10 +466,10 @@ export function InProgressTabContent() {
           </SectionHeader>
 
           <NaviTable
-            columns={tradeColumnsWithoutAction}
+            columns={dealingColumnsWithoutAction}
             rows={sellConfirmation}
             emptyMessage="現在進行中の取引はありません。"
-            onRowClick={(row) => row.id && router.push(getStatementDestination(row as TradeRow))}
+            onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
           />
         </div>
       </section>

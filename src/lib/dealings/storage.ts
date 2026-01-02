@@ -194,7 +194,7 @@ const generateId = () =>
     ? crypto.randomUUID()
     : `contact-${Date.now()}`;
 
-function readTradesFromStorage(): TradeRecord[] {
+function readDealingsFromStorage(): TradeRecord[] {
   if (typeof window === "undefined") {
     return seedTrades;
   }
@@ -211,16 +211,16 @@ function readTradesFromStorage(): TradeRecord[] {
   }
 }
 
-function normalizeTrade(trade: TradeRecord): TradeRecord {
-  const sellerUserId = trade.sellerUserId ?? trade.seller.userId ?? "seller";
-  const buyerUserId = trade.buyerUserId ?? trade.buyer.userId ?? "buyer";
-  const sellerName = trade.sellerName ?? trade.seller.companyName ?? "売主";
-  const buyerName = trade.buyerName ?? trade.buyer.companyName ?? "買主";
-  const todos = ensureTradeTodos(trade);
+function normalizeDealing(dealing: TradeRecord): TradeRecord {
+  const sellerUserId = dealing.sellerUserId ?? dealing.seller.userId ?? "seller";
+  const buyerUserId = dealing.buyerUserId ?? dealing.buyer.userId ?? "buyer";
+  const sellerName = dealing.sellerName ?? dealing.seller.companyName ?? "売主";
+  const buyerName = dealing.buyerName ?? dealing.buyer.companyName ?? "買主";
+  const todos = ensureTradeTodos(dealing);
   const status = deriveTradeStatusFromTodos({ todos });
 
   return {
-    ...trade,
+    ...dealing,
     sellerUserId,
     buyerUserId,
     sellerName,
@@ -230,14 +230,14 @@ function normalizeTrade(trade: TradeRecord): TradeRecord {
   };
 }
 
-function writeTradesToStorage(trades: TradeRecord[]) {
+function writeDealingsToStorage(dealings: TradeRecord[]) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(TRADE_STORAGE_KEY, JSON.stringify(trades));
+  window.localStorage.setItem(TRADE_STORAGE_KEY, JSON.stringify(dealings));
   window.dispatchEvent(new Event(TRADE_UPDATED_EVENT));
 }
 
-function mergeSeedTrades(stored: TradeRecord[]): TradeRecord[] {
-  const ids = new Set(stored.map((trade) => trade.id));
+function mergeSeedDealings(stored: TradeRecord[]): TradeRecord[] {
+  const ids = new Set(stored.map((dealing) => dealing.id));
   const merged = [...stored];
   seedTrades.forEach((seed) => {
     if (!ids.has(seed.id)) merged.push(seed);
@@ -249,12 +249,12 @@ function getContactStorageKey(scopeId: string) {
   return `${CONTACT_STORAGE_PREFIX}${scopeId}`;
 }
 
-function getContactScopeId(trade?: TradeRecord | null) {
-  if (!trade) return "";
-  return trade.buyer.userId ?? trade.id;
+function getContactScopeId(dealing?: TradeRecord | null) {
+  if (!dealing) return "";
+  return dealing.buyer.userId ?? dealing.id;
 }
 
-function loadCreditedTradeIds(): Set<string> {
+function loadCreditedDealingIds(): Set<string> {
   if (typeof window === "undefined") return new Set();
   const raw = window.localStorage.getItem(CREDITED_TRADE_IDS_KEY);
   if (!raw) return new Set();
@@ -267,50 +267,50 @@ function loadCreditedTradeIds(): Set<string> {
   }
 }
 
-function saveCreditedTradeIds(ids: Set<string>) {
+function saveCreditedDealingIds(ids: Set<string>) {
   if (typeof window === "undefined") return;
   window.localStorage.setItem(CREDITED_TRADE_IDS_KEY, JSON.stringify([...ids]));
 }
 
 export function loadAllTrades(): TradeRecord[] {
-  const stored = readTradesFromStorage();
-  const trades = mergeSeedTrades(stored).map(normalizeTrade);
+  const stored = readDealingsFromStorage();
+  const trades = mergeSeedDealings(stored).map(normalizeDealing);
 
   if (typeof window !== "undefined" && stored.length === 0) {
-    writeTradesToStorage(trades);
+    writeDealingsToStorage(trades);
   }
 
   return trades;
 }
 
-export function loadTrade(tradeId: string): TradeRecord | null {
+export function loadTrade(dealingId: string): TradeRecord | null {
   const trades = loadAllTrades();
-  return trades.find((trade) => trade.id === tradeId) ?? null;
+  return trades.find((dealing) => dealing.id === dealingId) ?? null;
 }
 
 export function completeTodoForTrade(
-  tradeId: string,
+  dealingId: string,
   completedKind: TodoKind,
   actorUserId: string
 ): TradeRecord | null {
-  const trade = loadTrade(tradeId);
-  if (!trade) return null;
+  const dealing = loadTrade(dealingId);
+  if (!dealing) return null;
 
-  const advanced = advanceTradeTodo(trade, completedKind, actorUserId);
+  const advanced = advanceTradeTodo(dealing, completedKind, actorUserId);
   if (!advanced) return null;
 
-  return upsertTradeInternal(advanced);
+  return upsertDealingInternal(advanced);
 }
 
-function calculateTradeTotal(trade: TradeRecord): number {
-  return calculateStatementTotals(trade.items, trade.taxRate ?? 0.1).total;
+function calculateDealingTotal(dealing: TradeRecord): number {
+  return calculateStatementTotals(dealing.items, dealing.taxRate ?? 0.1).total;
 }
 
-function upsertTradeInternal(nextTrade: TradeRecord): TradeRecord {
-  const trades = mergeSeedTrades(readTradesFromStorage()).map(normalizeTrade);
-  const idx = trades.findIndex((trade) => trade.id === nextTrade.id);
+function upsertDealingInternal(nextDealing: TradeRecord): TradeRecord {
+  const trades = mergeSeedDealings(readDealingsFromStorage()).map(normalizeDealing);
+  const idx = trades.findIndex((dealing) => dealing.id === nextDealing.id);
   const now = new Date().toISOString();
-  const payload = normalizeTrade({ ...nextTrade, updatedAt: now });
+  const payload = normalizeDealing({ ...nextDealing, updatedAt: now });
 
   if (idx >= 0) {
     trades[idx] = payload;
@@ -318,12 +318,12 @@ function upsertTradeInternal(nextTrade: TradeRecord): TradeRecord {
     trades.push(payload);
   }
 
-  writeTradesToStorage(trades);
+  writeDealingsToStorage(trades);
   return payload;
 }
 
-export function saveTradeRecord(trade: TradeRecord): TradeRecord {
-  return upsertTradeInternal(trade);
+export function saveTradeRecord(dealing: TradeRecord): TradeRecord {
+  return upsertDealingInternal(dealing);
 }
 
 export function getAllTrades(trades?: TradeRecord[]): TradeRecord[] {
@@ -332,59 +332,59 @@ export function getAllTrades(trades?: TradeRecord[]): TradeRecord[] {
 
 export function getTradesForUser(userId: string, trades?: TradeRecord[]): TradeRecord[] {
   return getAllTrades(trades).filter(
-    (trade) => trade.sellerUserId === userId || trade.buyerUserId === userId
+    (dealing) => dealing.sellerUserId === userId || dealing.buyerUserId === userId
   );
 }
 
 export function getHistoryTradesForUser(userId: string, trades?: TradeRecord[]): TradeRecord[] {
-  return getTradesForUser(userId, trades).filter((trade) =>
+  return getTradesForUser(userId, trades).filter((dealing) =>
     ["APPROVAL_REQUIRED", "PAYMENT_REQUIRED", "CONFIRM_REQUIRED", "COMPLETED", "CANCELED"].includes(
-      trade.status
+      dealing.status
     )
   );
 }
 
 export function getPurchaseHistoryForUser(userId: string, trades?: TradeRecord[]): TradeRecord[] {
-  return getHistoryTradesForUser(userId, trades).filter((trade) => trade.buyerUserId === userId);
+  return getHistoryTradesForUser(userId, trades).filter((dealing) => dealing.buyerUserId === userId);
 }
 
 export function getSalesHistoryForUser(userId: string, trades?: TradeRecord[]): TradeRecord[] {
-  return getHistoryTradesForUser(userId, trades).filter((trade) => trade.sellerUserId === userId);
+  return getHistoryTradesForUser(userId, trades).filter((dealing) => dealing.sellerUserId === userId);
 }
 
-export function updateTradeStatus(tradeId: string, status: TradeStatus): TradeRecord | null {
-  const trade = loadTrade(tradeId);
-  if (!trade) return null;
-  return upsertTradeInternal({ ...trade, status, todos: buildTodosFromStatus(status) });
+export function updateTradeStatus(dealingId: string, status: TradeStatus): TradeRecord | null {
+  const dealing = loadTrade(dealingId);
+  if (!dealing) return null;
+  return upsertDealingInternal({ ...dealing, status, todos: buildTodosFromStatus(status) });
 }
 
-export function approveTrade(tradeId: string, actorUserId: string): TradeRecord | null {
-  const trade = loadTrade(tradeId);
-  if (!trade) return null;
-  if (!canApprove(trade, actorUserId)) return null;
+export function approveTrade(dealingId: string, actorUserId: string): TradeRecord | null {
+  const dealing = loadTrade(dealingId);
+  if (!dealing) return null;
+  if (!canApprove(dealing, actorUserId)) return null;
 
-  const advanced = advanceTradeTodo(trade, "application_sent", actorUserId);
+  const advanced = advanceTradeTodo(dealing, "application_sent", actorUserId);
   if (!advanced) return null;
 
-  return upsertTradeInternal(advanced);
+  return upsertDealingInternal(advanced);
 }
 
 export function updateTradeShipping(
-  tradeId: string,
+  dealingId: string,
   shipping: ShippingInfo,
   contacts?: BuyerContact[]
 ): TradeRecord | null {
-  const trade = loadTrade(tradeId);
-  if (!trade) return null;
+  const dealing = loadTrade(dealingId);
+  if (!dealing) return null;
 
   const updated = {
-    ...trade,
+    ...dealing,
     shipping,
     buyerShippingAddress: shipping,
-    buyerContactName: shipping.personName ?? trade.buyerContactName,
-    buyerContacts: contacts ?? trade.buyerContacts,
+    buyerContactName: shipping.personName ?? dealing.buyerContactName,
+    buyerContacts: contacts ?? dealing.buyerContacts,
   };
-  return upsertTradeInternal(updated);
+  return upsertDealingInternal(updated);
 }
 
 export function loadBuyerContacts(scopeId: string, fallback: BuyerContact[] = []): BuyerContact[] {
@@ -406,65 +406,68 @@ export function saveBuyerContacts(scopeId: string, contacts: BuyerContact[]) {
   window.localStorage.setItem(getContactStorageKey(scopeId), JSON.stringify(contacts));
 }
 
-export function addBuyerContact(tradeId: string, name: string): { trade: TradeRecord | null; contact: BuyerContact | null } {
-  const trade = loadTrade(tradeId);
-  if (!trade) return { trade: null, contact: null };
+export function addBuyerContact(
+  dealingId: string,
+  name: string
+): { trade: TradeRecord | null; contact: BuyerContact | null } {
+  const dealing = loadTrade(dealingId);
+  if (!dealing) return { trade: null, contact: null };
 
-  const scopeId = getContactScopeId(trade) || tradeId;
+  const scopeId = getContactScopeId(dealing) || dealingId;
   const contact: BuyerContact = {
     contactId: generateId(),
     name,
   };
-  const nextContacts = [...(loadBuyerContacts(scopeId, trade.buyerContacts ?? []) ?? []), contact];
+  const nextContacts = [...(loadBuyerContacts(scopeId, dealing.buyerContacts ?? []) ?? []), contact];
   saveBuyerContacts(scopeId, nextContacts);
 
-  const updatedTrade = upsertTradeInternal({
-    ...trade,
+  const updatedTrade = upsertDealingInternal({
+    ...dealing,
     buyerContacts: nextContacts,
   });
 
   return { trade: updatedTrade, contact };
 }
 
-export function saveContactsToTrade(tradeId: string, contacts: BuyerContact[]): TradeRecord | null {
-  const trade = loadTrade(tradeId);
-  if (!trade) return null;
+export function saveContactsToTrade(dealingId: string, contacts: BuyerContact[]): TradeRecord | null {
+  const dealing = loadTrade(dealingId);
+  if (!dealing) return null;
 
-  const scopeId = getContactScopeId(trade) || tradeId;
+  const scopeId = getContactScopeId(dealing) || dealingId;
   saveBuyerContacts(scopeId, contacts);
 
-  return upsertTradeInternal({
-    ...trade,
+  return upsertDealingInternal({
+    ...dealing,
     buyerContacts: contacts,
   });
 }
 
 export function markTradePaid(
-  tradeId: string,
+  dealingId: string,
   actorUserId: string,
   fallbackTrade?: TradeRecord | null
 ): TradeRecord | null {
-  const trade = loadTrade(tradeId) ?? fallbackTrade;
-  if (!trade) return null;
-  if (!canMarkPaid(trade, actorUserId)) return null;
+  const dealing = loadTrade(dealingId) ?? fallbackTrade;
+  if (!dealing) return null;
+  if (!canMarkPaid(dealing, actorUserId)) return null;
 
-  const advanced = advanceTradeTodo(trade, "application_approved", actorUserId);
+  const advanced = advanceTradeTodo(dealing, "application_approved", actorUserId);
   if (!advanced) return null;
 
   const buyerId = advanced.buyerUserId ?? advanced.buyer.userId;
   if (!buyerId) return null;
 
-  const amount = calculateTradeTotal(advanced);
+  const amount = calculateDealingTotal(advanced);
   if (!Number.isFinite(amount) || amount <= 0) return null;
   const buyerBalanceAfter = deductBalanceDirect(buyerId, amount);
   if (buyerBalanceAfter === null) return null;
 
-  const updated = upsertTradeInternal(advanced);
+  const updated = upsertDealingInternal(advanced);
 
   addLedgerEntry(buyerId, {
     category: "PURCHASE",
     amountYen: amount,
-    tradeId,
+    tradeId: dealingId,
     counterpartyName: advanced.sellerName ?? advanced.seller.companyName,
     makerName: advanced.items[0]?.maker,
     itemName: advanced.items[0]?.itemName,
@@ -475,23 +478,23 @@ export function markTradePaid(
 }
 
 export function markTradeCompleted(
-  tradeId: string,
+  dealingId: string,
   actorUserId: string,
   fallbackTrade?: TradeRecord | null
 ): TradeRecord | null {
-  const trade = loadTrade(tradeId) ?? fallbackTrade;
-  if (!trade) return null;
-  if (!canMarkCompleted(trade, actorUserId)) return null;
+  const dealing = loadTrade(dealingId) ?? fallbackTrade;
+  if (!dealing) return null;
+  if (!canMarkCompleted(dealing, actorUserId)) return null;
 
-  const advanced = advanceTradeTodo(trade, "payment_confirmed", actorUserId);
+  const advanced = advanceTradeTodo(dealing, "payment_confirmed", actorUserId);
   if (!advanced) return null;
 
-  const updated = upsertTradeInternal(advanced);
+  const updated = upsertDealingInternal(advanced);
 
   if (typeof window === "undefined") return updated;
 
-  const creditedTradeIds = loadCreditedTradeIds();
-  if (creditedTradeIds.has(tradeId)) return updated;
+  const creditedTradeIds = loadCreditedDealingIds();
+  if (creditedTradeIds.has(dealingId)) return updated;
 
   const amount =
     advanced.paymentAmount ??
@@ -501,13 +504,13 @@ export function markTradeCompleted(
   if (Number.isFinite(amount) && amount > 0) {
     const sellerBalanceAfter = creditBalance(advanced.sellerUserId, amount);
     if (sellerBalanceAfter !== null) {
-      creditedTradeIds.add(tradeId);
-      saveCreditedTradeIds(creditedTradeIds);
+      creditedTradeIds.add(dealingId);
+      saveCreditedDealingIds(creditedTradeIds);
 
       addLedgerEntry(advanced.sellerUserId, {
         category: "SALE",
         amountYen: amount,
-        tradeId,
+        tradeId: dealingId,
         counterpartyName: advanced.buyerName ?? advanced.buyer.companyName,
         makerName: advanced.items[0]?.maker,
         itemName: advanced.items[0]?.itemName,
@@ -519,22 +522,22 @@ export function markTradeCompleted(
   return updated;
 }
 
-export function cancelTrade(tradeId: string, actorUserId: string): TradeRecord | null {
-  const trade = loadTrade(tradeId);
-  if (!trade) return null;
-  if (!canCancel(trade, actorUserId)) return null;
+export function cancelTrade(dealingId: string, actorUserId: string): TradeRecord | null {
+  const dealing = loadTrade(dealingId);
+  if (!dealing) return null;
+  if (!canCancel(dealing, actorUserId)) return null;
 
   const now = new Date().toISOString();
-  const canceledBy = getActorRole(trade, actorUserId);
-  const currentStatus = deriveTradeStatusFromTodos(trade);
+  const canceledBy = getActorRole(dealing, actorUserId);
+  const currentStatus = deriveTradeStatusFromTodos(dealing);
   if (currentStatus === "CANCELED" || currentStatus === "COMPLETED" || canceledBy === "none") {
-    return trade;
+    return dealing;
   }
-  const canceledTodos = cancelTradeTodos(trade);
+  const canceledTodos = cancelTradeTodos(dealing);
   const derivedStatus = deriveTradeStatusFromTodos({ todos: canceledTodos });
 
-  return upsertTradeInternal({
-    ...trade,
+  return upsertDealingInternal({
+    ...dealing,
     status: derivedStatus,
     todos: canceledTodos,
     canceledBy,
@@ -630,7 +633,7 @@ export function createTradeFromDraft(
   const quantity = primaryItem?.quantity ?? draft.conditions.quantity ?? 1;
   const initialTodos = buildTodosFromStatus("APPROVAL_REQUIRED");
   const initialStatus = deriveTradeStatusFromTodos({ todos: initialTodos });
-  const totalAmount = calculateTradeTotal({
+  const totalAmount = calculateDealingTotal({
     id: draft.id,
     status: initialStatus,
     todos: initialTodos,
@@ -696,8 +699,8 @@ export function createTradeFromDraft(
   };
 }
 
-export function ensureContactsLoaded(trade: TradeRecord | null): BuyerContact[] {
-  if (!trade) return [];
-  const scopeId = getContactScopeId(trade) || trade.id;
-  return loadBuyerContacts(scopeId, trade.buyerContacts ?? []);
+export function ensureContactsLoaded(dealing: TradeRecord | null): BuyerContact[] {
+  if (!dealing) return [];
+  const scopeId = getContactScopeId(dealing) || dealing.id;
+  return loadBuyerContacts(scopeId, dealing.buyerContacts ?? []);
 }

@@ -291,7 +291,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   const trades: InMemoryTrade[] = [];
   const messages: InMemoryMessage[] = [];
   const onlineInquiries: InMemoryOnlineInquiry[] = [];
-  const listings: InMemoryListing[] = [];
+  const exhibits: InMemoryListing[] = [];
   const storageLocations: InMemoryStorageLocation[] = [];
   const buyerShippingAddresses: InMemoryBuyerShippingAddress[] = [];
   const makers: InMemoryMaker[] = [
@@ -335,7 +335,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   let tradeSeq = 1;
   let messageSeq = 1;
   let onlineInquirySeq = 1;
-  let listingSeq = 1;
+  let exhibitSeq = 1;
   let storageLocationSeq = 1;
   let buyerShippingAddressSeq = 1;
 
@@ -589,17 +589,17 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         where?: { sellerUserId?: string; status?: ListingStatus | { in: ListingStatus[] }; isVisible?: boolean };
         orderBy?: { updatedAt?: "asc" | "desc" };
       } = {}) => {
-        const filtered = listings.filter((listing) => {
-          const matchesSeller = where?.sellerUserId ? listing.sellerUserId === where.sellerUserId : true;
+        const filtered = exhibits.filter((exhibit) => {
+          const matchesSeller = where?.sellerUserId ? exhibit.sellerUserId === where.sellerUserId : true;
           const matchesStatus = (() => {
             if (!where?.status) return true;
             if (typeof where.status === "object" && "in" in where.status) {
-              return where.status.in?.includes(listing.status) ?? false;
+              return where.status.in?.includes(exhibit.status) ?? false;
             }
-            return listing.status === where.status;
+            return exhibit.status === where.status;
           })();
           const matchesVisibility =
-            where?.isVisible === undefined ? true : listing.isVisible === where.isVisible;
+            where?.isVisible === undefined ? true : exhibit.isVisible === where.isVisible;
           return matchesSeller && matchesStatus && matchesVisibility;
         });
 
@@ -608,7 +608,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           return (a.updatedAt.getTime() - b.updatedAt.getTime()) * order;
         });
 
-        return sorted.map((listing) => ({ ...listing }));
+        return sorted.map((exhibit) => ({ ...exhibit }));
       },
       findUnique: async ({
         where,
@@ -620,7 +620,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         const id = where.id ?? null;
         if (!id) return null;
 
-        const found = listings.find((listing) => listing.id === id) ?? null;
+        const found = exhibits.find((exhibit) => exhibit.id === id) ?? null;
         if (!found) return null;
 
         const storageLocationRecord = include?.storageLocationRecord
@@ -632,7 +632,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       create: async ({ data }: { data: Partial<InMemoryListing> }) => {
         const nowDate = now();
         const record: InMemoryListing = {
-          id: data.id ?? `listing_${listingSeq++}`,
+          id: data.id ?? `listing_${exhibitSeq++}`,
           sellerUserId: String(data.sellerUserId ?? ""),
           status: (data.status as ListingStatus | undefined) ?? ListingStatus.DRAFT,
           isVisible: (data.isVisible as boolean | undefined) ?? true,
@@ -664,7 +664,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           updatedAt: nowDate,
         };
 
-        listings.push(record);
+        exhibits.push(record);
         return { ...record };
       },
       update: async ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryListing> }) => {
@@ -673,57 +673,57 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           throw new Error("Listing id is required");
         }
 
-        const idx = listings.findIndex((listing) => listing.id === id);
+        const idx = exhibits.findIndex((exhibit) => exhibit.id === id);
         if (idx < 0) {
           throw new Error("Listing not found");
         }
 
         const updated: InMemoryListing = {
-          ...listings[idx],
+          ...exhibits[idx],
           ...data,
-          status: (data.status as ListingStatus | undefined) ?? listings[idx].status,
-          isVisible: (data.isVisible as boolean | undefined) ?? listings[idx].isVisible,
-          type: (data.type as ListingType | undefined) ?? listings[idx].type,
-          kind: (data.kind as string | undefined) ?? listings[idx].kind,
-          maker: (data.maker as string | null | undefined) ?? listings[idx].maker,
-          machineName: (data.machineName as string | null | undefined) ?? listings[idx].machineName,
-          quantity: Number.isFinite(Number(data.quantity)) ? Number(data.quantity) : listings[idx].quantity,
+          status: (data.status as ListingStatus | undefined) ?? exhibits[idx].status,
+          isVisible: (data.isVisible as boolean | undefined) ?? exhibits[idx].isVisible,
+          type: (data.type as ListingType | undefined) ?? exhibits[idx].type,
+          kind: (data.kind as string | undefined) ?? exhibits[idx].kind,
+          maker: (data.maker as string | null | undefined) ?? exhibits[idx].maker,
+          machineName: (data.machineName as string | null | undefined) ?? exhibits[idx].machineName,
+          quantity: Number.isFinite(Number(data.quantity)) ? Number(data.quantity) : exhibits[idx].quantity,
           unitPriceExclTax:
             data.unitPriceExclTax === undefined
-              ? listings[idx].unitPriceExclTax
+              ? exhibits[idx].unitPriceExclTax
               : data.unitPriceExclTax === null
                 ? null
                 : Number(data.unitPriceExclTax),
-          isNegotiable: (data.isNegotiable as boolean | undefined) ?? listings[idx].isNegotiable,
-          removalStatus: (data.removalStatus as RemovalStatus | undefined) ?? listings[idx].removalStatus,
+          isNegotiable: (data.isNegotiable as boolean | undefined) ?? exhibits[idx].isNegotiable,
+          removalStatus: (data.removalStatus as RemovalStatus | undefined) ?? exhibits[idx].removalStatus,
           removalDate:
             data.removalDate === undefined
-              ? listings[idx].removalDate
+              ? exhibits[idx].removalDate
               : data.removalDate === null
                 ? null
                 : new Date(data.removalDate as Date),
-          hasNailSheet: (data.hasNailSheet as boolean | undefined) ?? listings[idx].hasNailSheet,
-          hasManual: (data.hasManual as boolean | undefined) ?? listings[idx].hasManual,
-          pickupAvailable: (data.pickupAvailable as boolean | undefined) ?? listings[idx].pickupAvailable,
-          storageLocation: (data.storageLocation as string | undefined) ?? listings[idx].storageLocation,
+          hasNailSheet: (data.hasNailSheet as boolean | undefined) ?? exhibits[idx].hasNailSheet,
+          hasManual: (data.hasManual as boolean | undefined) ?? exhibits[idx].hasManual,
+          pickupAvailable: (data.pickupAvailable as boolean | undefined) ?? exhibits[idx].pickupAvailable,
+          storageLocation: (data.storageLocation as string | undefined) ?? exhibits[idx].storageLocation,
           storageLocationId: String(
-            data.storageLocationId === undefined ? listings[idx].storageLocationId : data.storageLocationId
+            data.storageLocationId === undefined ? exhibits[idx].storageLocationId : data.storageLocationId
           ),
           storageLocationSnapshot:
             (data.storageLocationSnapshot as Prisma.JsonValue | null | undefined) ??
-            listings[idx].storageLocationSnapshot,
+            exhibits[idx].storageLocationSnapshot,
           shippingFeeCount: Number.isFinite(Number(data.shippingFeeCount))
             ? Number(data.shippingFeeCount)
-            : listings[idx].shippingFeeCount,
+            : exhibits[idx].shippingFeeCount,
           handlingFeeCount: Number.isFinite(Number(data.handlingFeeCount))
             ? Number(data.handlingFeeCount)
-            : listings[idx].handlingFeeCount,
-          allowPartial: (data.allowPartial as boolean | undefined) ?? listings[idx].allowPartial,
-          note: (data.note as string | null | undefined) ?? listings[idx].note,
+            : exhibits[idx].handlingFeeCount,
+          allowPartial: (data.allowPartial as boolean | undefined) ?? exhibits[idx].allowPartial,
+          note: (data.note as string | null | undefined) ?? exhibits[idx].note,
           updatedAt: now(),
         };
 
-        listings[idx] = updated;
+        exhibits[idx] = updated;
         return { ...updated };
       },
     },
