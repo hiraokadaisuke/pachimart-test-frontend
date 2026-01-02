@@ -4,9 +4,9 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { NaviStatus, NaviType } from "@prisma/client";
 
-import { TradeRecord } from "@/lib/trade/types";
-import { calculateStatementTotals } from "@/lib/trade/calcTotals";
-import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
+import { TradeRecord } from "@/lib/dealings/types";
+import { calculateStatementTotals } from "@/lib/dealings/calcTotals";
+import { loadAllTradesWithApi } from "@/lib/dealings/dataSources";
 import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
@@ -16,11 +16,11 @@ import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { fetchMessagesByNaviId } from "@/lib/messages/api";
 import type { TradeMessage } from "@/lib/messages/transform";
-import { getInProgressDescription } from "@/lib/trade/copy";
-import { getStatementPath } from "@/lib/trade/navigation";
-import { getTodoPresentation } from "@/lib/trade/todo";
+import { getInProgressDescription } from "@/lib/dealings/copy";
+import { getStatementPath } from "@/lib/dealings/navigation";
+import { getTodoPresentation } from "@/lib/dealings/todo";
 import { todoUiMap, type TodoUiDef } from "@/lib/todo/todoUiMap";
-import { fetchNavis, mapNaviToTradeRecord } from "@/lib/trade/api";
+import { fetchNavis, mapNaviToTradeRecord } from "@/lib/dealings/api";
 import {
   fetchOnlineInquiries,
   respondOnlineInquiry,

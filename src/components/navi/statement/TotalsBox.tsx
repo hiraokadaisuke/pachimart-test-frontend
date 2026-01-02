@@ -1,6 +1,6 @@
 "use client";
 
-import { StatementTotals, formatYen } from "@/lib/trade/calcTotals";
+import { StatementTotals, formatYen } from "@/lib/dealings/calcTotals";
 
 type TotalsBoxProps = {
   totals: StatementTotals;

@@ -11,16 +11,16 @@ import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { fetchMessagesByNaviId } from "@/lib/messages/api";
 import type { TradeMessage } from "@/lib/messages/transform";
-import { calculateStatementTotals } from "@/lib/trade/calcTotals";
-import { getInProgressDescription } from "@/lib/trade/copy";
-import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
-import { loadAcceptedOnlineInquiryTrades } from "@/lib/trade/onlineInquiryTrades";
-import { getStatementPath } from "@/lib/trade/navigation";
-import { TradeRecord } from "@/lib/trade/types";
-import { advanceTradeTodo, getTodoPresentation } from "@/lib/trade/todo";
+import { calculateStatementTotals } from "@/lib/dealings/calcTotals";
+import { getInProgressDescription } from "@/lib/dealings/copy";
+import { loadAllTradesWithApi } from "@/lib/dealings/dataSources";
+import { loadAcceptedOnlineInquiryTrades } from "@/lib/dealings/onlineInquiryTrades";
+import { getStatementPath } from "@/lib/dealings/navigation";
+import { TradeRecord } from "@/lib/dealings/types";
+import { advanceTradeTodo, getTodoPresentation } from "@/lib/dealings/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
 import { useBalance } from "@/lib/balance/BalanceContext";
-import { markTradeCompleted, markTradePaid, saveTradeRecord } from "@/lib/trade/storage";
+import { markTradeCompleted, markTradePaid, saveTradeRecord } from "@/lib/dealings/storage";
 
 const SECTION_LABELS = {
   approval: todoUiMap["application_sent"],

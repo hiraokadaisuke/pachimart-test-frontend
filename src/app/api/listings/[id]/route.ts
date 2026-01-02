@@ -8,7 +8,7 @@ import {
   formatStorageLocationShort,
   resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
-} from "@/lib/listings/storageLocation";
+} from "@/lib/exhibits/storageLocation";
 
 const exhibitClient = prisma.listing;
 

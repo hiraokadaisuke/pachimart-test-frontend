@@ -11,12 +11,12 @@ import { TradeMessageModal } from "@/components/transactions/TradeMessageModal";
 import { fetchMessagesByNaviId } from "@/lib/messages/api";
 import type { TradeMessage } from "@/lib/messages/transform";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { calculateStatementTotals } from "@/lib/trade/calcTotals";
-import { loadSalesHistoryForUser } from "@/lib/trade/dataSources";
-import { deriveTradeStatusFromTodos } from "@/lib/trade/deriveStatus";
-import { getStatementPath } from "@/lib/trade/navigation";
-import type { TradeRecord } from "@/lib/trade/types";
-import { resolveCurrentTodoKind } from "@/lib/trade/todo";
+import { calculateStatementTotals } from "@/lib/dealings/calcTotals";
+import { loadSalesHistoryForUser } from "@/lib/dealings/dataSources";
+import { deriveTradeStatusFromTodos } from "@/lib/dealings/deriveStatus";
+import { getStatementPath } from "@/lib/dealings/navigation";
+import type { TradeRecord } from "@/lib/dealings/types";
+import { resolveCurrentTodoKind } from "@/lib/dealings/todo";
 import { TodoUiDef, todoUiMap } from "@/lib/todo/todoUiMap";
 
 // TODO: API連携（フィルター条件でサーバーから取得）

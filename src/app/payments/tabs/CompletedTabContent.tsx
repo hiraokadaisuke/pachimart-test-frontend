@@ -6,10 +6,10 @@ import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviT
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { type TradeStatusKey } from "@/components/transactions/status";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { loadAllTradesWithApi } from "@/lib/trade/dataSources";
-import { calculateStatementTotals } from "@/lib/trade/calcTotals";
-import { TradeRecord } from "@/lib/trade/types";
-import { resolveCurrentTodoKind } from "@/lib/trade/todo";
+import { loadAllTradesWithApi } from "@/lib/dealings/dataSources";
+import { calculateStatementTotals } from "@/lib/dealings/calcTotals";
+import { TradeRecord } from "@/lib/dealings/types";
+import { resolveCurrentTodoKind } from "@/lib/dealings/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
 
 const currencyFormatter = new Intl.NumberFormat("ja-JP", {
