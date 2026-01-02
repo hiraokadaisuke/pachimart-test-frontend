@@ -45,12 +45,12 @@ const parseNaviId = (value: string) => {
   return parsed;
 };
 
-const toRecord = (trade: unknown): NaviRecord => {
-  if (!trade || typeof trade !== "object") {
-    throw new Error("Trade result was not an object");
+const toRecord = (dealing: unknown): NaviRecord => {
+  if (!dealing || typeof dealing !== "object") {
+    throw new Error("Dealing result was not an object");
   }
 
-  const candidate = trade as Record<string, unknown>;
+  const candidate = dealing as Record<string, unknown>;
   const toDate = (value: unknown, fallback?: Date): Date => {
     if (value instanceof Date) return value;
     if (typeof value === "string" || typeof value === "number") {
@@ -77,11 +77,11 @@ const toRecord = (trade: unknown): NaviRecord => {
   };
 };
 
-const resolveBuyerUserId = (trade: NaviRecord): string | null => {
-  if (trade.buyerUserId) return trade.buyerUserId;
+const resolveBuyerUserId = (dealing: NaviRecord): string | null => {
+  if (dealing.buyerUserId) return dealing.buyerUserId;
 
-  if (trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)) {
-    const buyerId = (trade.payload as Record<string, unknown>).buyerId;
+  if (dealing.payload && typeof dealing.payload === "object" && !Array.isArray(dealing.payload)) {
+    const buyerId = (dealing.payload as Record<string, unknown>).buyerId;
     if (typeof buyerId === "string" && buyerId.trim().length > 0) {
       return buyerId;
     }
@@ -130,15 +130,15 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         return { updated: null };
       }
 
-      const trade = toRecord(existing);
-      const buyerUserId = resolveBuyerUserId(trade);
+      const dealing = toRecord(existing);
+      const buyerUserId = resolveBuyerUserId(dealing);
 
       if (!buyerUserId || buyerUserId !== actorUserId) {
         return { updated: null, status: 403 as const };
       }
 
-      const payload = trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)
-        ? { ...(trade.payload as Record<string, unknown>) }
+      const payload = dealing.payload && typeof dealing.payload === "object" && !Array.isArray(dealing.payload)
+        ? { ...(dealing.payload as Record<string, unknown>) }
         : {};
 
       const shipping = parsed.data.shipping;

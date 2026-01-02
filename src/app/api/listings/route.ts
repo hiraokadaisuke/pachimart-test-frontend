@@ -11,7 +11,7 @@ import {
   type StorageLocationSnapshot,
 } from "@/lib/listings/storageLocation";
 
-type ListingRecord = {
+type ExhibitRecord = {
   id: string;
   sellerUserId: string;
   status: ListingStatus;
@@ -39,7 +39,7 @@ type ListingRecord = {
   updatedAt: Date;
 };
 
-type ListingDto = {
+type ExhibitDto = {
   id: string;
   sellerUserId: string;
   status: ListingStatus;
@@ -67,7 +67,7 @@ type ListingDto = {
   updatedAt: string;
 };
 
-const listingClient = prisma.listing;
+const exhibitClient = prisma.listing;
 
 const createListingSchema = z
   .object({
@@ -115,12 +115,12 @@ const createListingSchema = z
     }
   );
 
-const toRecord = (listing: unknown): ListingRecord => {
-  if (!listing || typeof listing !== "object") {
+const toRecord = (exhibit: unknown): ExhibitRecord => {
+  if (!exhibit || typeof exhibit !== "object") {
     throw new Error("Listing result was not an object");
   }
 
-  const candidate = listing as Record<string, unknown>;
+  const candidate = exhibit as Record<string, unknown>;
   const toDate = (value: unknown, fallback?: Date): Date => {
     if (value instanceof Date) return value;
     if (typeof value === "string" || typeof value === "number") {
@@ -166,38 +166,38 @@ const toRecord = (listing: unknown): ListingRecord => {
   };
 };
 
-const toDto = (listing: ListingRecord): ListingDto => ({
-  id: listing.id,
-  sellerUserId: listing.sellerUserId,
-  status: listing.status,
-  isVisible: listing.isVisible,
-  type: listing.type,
-  kind: listing.kind,
-  maker: listing.maker,
-  machineName: listing.machineName,
-  quantity: listing.quantity,
-  unitPriceExclTax: listing.unitPriceExclTax,
-  isNegotiable: listing.isNegotiable,
-  removalStatus: listing.removalStatus,
-  removalDate: listing.removalDate ? listing.removalDate.toISOString() : null,
-  hasNailSheet: listing.hasNailSheet,
-  hasManual: listing.hasManual,
-  pickupAvailable: listing.pickupAvailable,
-  storageLocation: listing.storageLocation,
-  storageLocationId: listing.storageLocationId,
-  storageLocationSnapshot: listing.storageLocationSnapshot,
-  shippingFeeCount: listing.shippingFeeCount,
-  handlingFeeCount: listing.handlingFeeCount,
-  allowPartial: listing.allowPartial,
-  note: listing.note,
-  createdAt: listing.createdAt.toISOString(),
-  updatedAt: listing.updatedAt.toISOString(),
+const toDto = (exhibit: ExhibitRecord): ExhibitDto => ({
+  id: exhibit.id,
+  sellerUserId: exhibit.sellerUserId,
+  status: exhibit.status,
+  isVisible: exhibit.isVisible,
+  type: exhibit.type,
+  kind: exhibit.kind,
+  maker: exhibit.maker,
+  machineName: exhibit.machineName,
+  quantity: exhibit.quantity,
+  unitPriceExclTax: exhibit.unitPriceExclTax,
+  isNegotiable: exhibit.isNegotiable,
+  removalStatus: exhibit.removalStatus,
+  removalDate: exhibit.removalDate ? exhibit.removalDate.toISOString() : null,
+  hasNailSheet: exhibit.hasNailSheet,
+  hasManual: exhibit.hasManual,
+  pickupAvailable: exhibit.pickupAvailable,
+  storageLocation: exhibit.storageLocation,
+  storageLocationId: exhibit.storageLocationId,
+  storageLocationSnapshot: exhibit.storageLocationSnapshot,
+  shippingFeeCount: exhibit.shippingFeeCount,
+  handlingFeeCount: exhibit.handlingFeeCount,
+  allowPartial: exhibit.allowPartial,
+  note: exhibit.note,
+  createdAt: exhibit.createdAt.toISOString(),
+  updatedAt: exhibit.updatedAt.toISOString(),
 });
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-const parseListingStatus = (value: string | null): ListingStatus | undefined => {
+const parseExhibitStatus = (value: string | null): ListingStatus | undefined => {
   if (!value) return undefined;
   return Object.values(ListingStatus).includes(value as ListingStatus)
     ? (value as ListingStatus)
@@ -238,7 +238,7 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const sellerUserIdParam = url.searchParams.get("sellerUserId") ?? undefined;
     const statusParam = url.searchParams.get("status");
-    const status = parseListingStatus(statusParam);
+    const status = parseExhibitStatus(statusParam);
     const currentUserId = getCurrentUserId(request);
 
     if (statusParam && !status) {
@@ -248,12 +248,12 @@ export async function GET(request: Request) {
       );
     }
 
-    type ListingVisibilityWhere = {
+    type ExhibitVisibilityWhere = {
       sellerUserId?: string;
       status?: ListingStatus | { in: ListingStatus[] };
     };
 
-    const accessibleScopes: ListingVisibilityWhere[] = [
+    const accessibleScopes: ExhibitVisibilityWhere[] = [
       { status: { in: publicListingStatuses } },
     ];
 
@@ -261,7 +261,7 @@ export async function GET(request: Request) {
       accessibleScopes.push({ sellerUserId: currentUserId });
     }
 
-    const andConditions: ListingVisibilityWhere[] = [];
+    const andConditions: ExhibitVisibilityWhere[] = [];
 
     if (sellerUserIdParam) {
       if (!currentUserId) {
@@ -287,14 +287,14 @@ export async function GET(request: Request) {
       status?: ListingStatus | { in: ListingStatus[] };
     };
 
-    const listings = await listingClient.findMany({
+    const exhibits = await exhibitClient.findMany({
       where,
       orderBy: { updatedAt: "desc" },
     });
 
-    const records = listings.map(toRecord);
+    const records = exhibits.map(toRecord);
     const storageLocationIds = records
-      .map((listing) => listing.storageLocationId)
+      .map((exhibit) => exhibit.storageLocationId)
       .filter((id): id is string => Boolean(id));
 
     const storageLocations = await prisma.storageLocation.findMany({
@@ -305,15 +305,15 @@ export async function GET(request: Request) {
       storageLocations.map((location) => [location.id, location])
     );
 
-    const enriched = records.map((listing) => {
+    const enriched = records.map((exhibit) => {
       const snapshot =
-        resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
-        toSnapshotFromStorageLocation(storageLocationMap.get(listing.storageLocationId));
+        resolveStorageLocationSnapshot(exhibit.storageLocationSnapshot) ??
+        toSnapshotFromStorageLocation(storageLocationMap.get(exhibit.storageLocationId));
 
       return {
-        ...listing,
+        ...exhibit,
         storageLocationSnapshot: snapshot,
-        storageLocation: formatStorageLocationShort(snapshot, listing.storageLocation),
+        storageLocation: formatStorageLocationShort(snapshot, exhibit.storageLocation),
       };
     });
 
@@ -387,7 +387,7 @@ export async function POST(request: Request) {
       data.storageLocation ?? storageLocation.addressLine ?? ""
     );
 
-    const created = await listingClient.create({
+    const created = await exhibitClient.create({
       data: {
         sellerUserId,
         status: data.status ?? ListingStatus.DRAFT,

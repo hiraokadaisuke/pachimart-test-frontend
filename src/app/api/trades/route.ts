@@ -7,7 +7,7 @@ import { getCurrentUserId } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/trade/listingSnapshot";
 
 const naviClient = prisma.navi;
-const listingClient = prisma.listing;
+const exhibitClient = prisma.listing;
 
 type NaviDto = {
   id: number;
@@ -46,7 +46,7 @@ const jsonValueSchema: z.ZodType<Prisma.JsonValue> = z.lazy(() =>
   ])
 );
 
-const createTradeSchema = z.object({
+const createDealingSchema = z.object({
   ownerUserId: z.string().min(1, "ownerUserId is required"),
   buyerUserId: z.string().min(1).optional(),
   status: z.nativeEnum(NaviStatus).optional(),
@@ -55,25 +55,25 @@ const createTradeSchema = z.object({
   listingId: z.string().min(1).optional(),
 });
 
-const toDto = (trade: NaviRecord): NaviDto => ({
-  id: trade.id,
-  status: trade.status,
-  naviType: trade.naviType,
-  ownerUserId: trade.ownerUserId,
-  buyerUserId: trade.buyerUserId,
-  listingId: trade.listingId,
-  listingSnapshot: (trade.listingSnapshot as Prisma.JsonValue | null) ?? null,
-  payload: (trade.payload as Prisma.JsonValue | null) ?? null,
-  createdAt: trade.createdAt.toISOString(),
-  updatedAt: trade.updatedAt.toISOString(),
+const toDto = (dealing: NaviRecord): NaviDto => ({
+  id: dealing.id,
+  status: dealing.status,
+  naviType: dealing.naviType,
+  ownerUserId: dealing.ownerUserId,
+  buyerUserId: dealing.buyerUserId,
+  listingId: dealing.listingId,
+  listingSnapshot: (dealing.listingSnapshot as Prisma.JsonValue | null) ?? null,
+  payload: (dealing.payload as Prisma.JsonValue | null) ?? null,
+  createdAt: dealing.createdAt.toISOString(),
+  updatedAt: dealing.updatedAt.toISOString(),
 });
 
-const toRecord = (trade: unknown): NaviRecord => {
-  if (!trade || typeof trade !== "object") {
-    throw new Error("Trade result was not an object");
+const toRecord = (dealing: unknown): NaviRecord => {
+  if (!dealing || typeof dealing !== "object") {
+    throw new Error("Dealing result was not an object");
   }
 
-  const candidate = trade as Record<string, unknown>;
+  const candidate = dealing as Record<string, unknown>;
   const toDate = (value: unknown, fallback?: Date): Date => {
     if (value instanceof Date) return value;
     if (typeof value === "string" || typeof value === "number") {
@@ -111,7 +111,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const trades = await naviClient.findMany({
+    const dealings = await naviClient.findMany({
       where: {
         OR: [{ ownerUserId: currentUserId }, { buyerUserId: currentUserId }],
       },
@@ -119,7 +119,7 @@ export async function GET(request: Request) {
       orderBy: { createdAt: "desc" } as any,
     });
 
-    return NextResponse.json(trades.map(toRecord).map(toDto));
+    return NextResponse.json(dealings.map(toRecord).map(toDto));
   } catch (error) {
     console.error("Failed to fetch trades", error);
     return NextResponse.json(
@@ -147,7 +147,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const parsed = createTradeSchema.safeParse(body);
+  const parsed = createDealingSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -162,21 +162,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  let listingSnapshot: Prisma.JsonValue | null = null;
+  let exhibitSnapshot: Prisma.JsonValue | null = null;
 
   if (listingId) {
-    const listing = await listingClient.findUnique({
+    const exhibit = await exhibitClient.findUnique({
       where: { id: listingId, sellerUserId: currentUserId } as any,
     });
 
-    if (!listing) {
+    if (!exhibit) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    listingSnapshot = buildListingSnapshot(listing as Record<string, unknown>);
+    exhibitSnapshot = buildListingSnapshot(exhibit as Record<string, unknown>);
   }
 
-  const listingSnapshotInput = listingSnapshot ?? undefined;
+  const listingSnapshotInput = exhibitSnapshot ?? undefined;
 
   try {
     const created = await naviClient.create({

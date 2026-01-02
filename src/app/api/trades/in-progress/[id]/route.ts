@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
 
-type TradeRecord = {
+type DealingRecord = {
   id: number;
   status: string;
   sellerUserId: string;
@@ -25,7 +25,7 @@ type TradeRecord = {
   buyerUser: { id: string; companyName: string } | null;
 };
 
-type TradeDetailDto = {
+type DealingDetailDto = {
   id: number;
   status: string;
   sellerUserId: string;
@@ -58,36 +58,36 @@ const parseId = (id: string) => {
   return parsed;
 };
 
-const toDto = (trade: TradeRecord): TradeDetailDto => ({
-  id: trade.id,
-  status: trade.status,
-  sellerUserId: trade.sellerUserId,
-  buyerUserId: trade.buyerUserId,
-  payload: (trade.payload as Prisma.JsonValue | null) ?? null,
-  naviId: trade.naviId,
-  createdAt: trade.createdAt.toISOString(),
-  updatedAt: trade.updatedAt.toISOString(),
-  navi: trade.navi
+const toDto = (dealing: DealingRecord): DealingDetailDto => ({
+  id: dealing.id,
+  status: dealing.status,
+  sellerUserId: dealing.sellerUserId,
+  buyerUserId: dealing.buyerUserId,
+  payload: (dealing.payload as Prisma.JsonValue | null) ?? null,
+  naviId: dealing.naviId,
+  createdAt: dealing.createdAt.toISOString(),
+  updatedAt: dealing.updatedAt.toISOString(),
+  navi: dealing.navi
     ? {
-        id: trade.navi.id,
-        ownerUserId: trade.navi.ownerUserId,
-        buyerUserId: trade.navi.buyerUserId,
-        payload: (trade.navi.payload as Prisma.JsonValue | null) ?? null,
-        listingSnapshot: (trade.navi.listingSnapshot as Prisma.JsonValue | null) ?? null,
-        createdAt: trade.navi.createdAt.toISOString(),
-        updatedAt: trade.navi.updatedAt.toISOString(),
+        id: dealing.navi.id,
+        ownerUserId: dealing.navi.ownerUserId,
+        buyerUserId: dealing.navi.buyerUserId,
+        payload: (dealing.navi.payload as Prisma.JsonValue | null) ?? null,
+        listingSnapshot: (dealing.navi.listingSnapshot as Prisma.JsonValue | null) ?? null,
+        createdAt: dealing.navi.createdAt.toISOString(),
+        updatedAt: dealing.navi.updatedAt.toISOString(),
       }
     : undefined,
-  sellerUser: trade.sellerUser,
-  buyerUser: trade.buyerUser,
+  sellerUser: dealing.sellerUser,
+  buyerUser: dealing.buyerUser,
 });
 
-const toRecord = (trade: unknown): TradeRecord => {
-  if (!trade || typeof trade !== "object") {
-    throw new Error("Trade result was not an object");
+const toRecord = (dealing: unknown): DealingRecord => {
+  if (!dealing || typeof dealing !== "object") {
+    throw new Error("Dealing result was not an object");
   }
 
-  const candidate = trade as Record<string, unknown>;
+  const candidate = dealing as Record<string, unknown>;
 
   const toDate = (value: unknown, fallback?: Date): Date => {
     if (value instanceof Date) return value;
@@ -145,16 +145,16 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   }
 
   try {
-    const trade = await prisma.trade.findUnique({
+    const dealing = await prisma.trade.findUnique({
       where: { id } as any,
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
-    if (!trade) {
+    if (!dealing) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
 
-    return NextResponse.json(toDto(toRecord(trade)));
+    return NextResponse.json(toDto(toRecord(dealing)));
   } catch (error) {
     console.error("Failed to fetch in-progress trade", error);
     return NextResponse.json(
