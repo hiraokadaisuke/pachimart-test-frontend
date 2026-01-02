@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { getPublicListingById } from "@/lib/listings/getPublicListingById";
+import { getPublicListingById } from "@/lib/exhibits/getPublicListingById";
 
 export async function GET(_request: Request, { params }: { params: { id?: string } }) {
   try {

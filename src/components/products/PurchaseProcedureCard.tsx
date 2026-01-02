@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 
 import { loadMasterData, type Warehouse } from "@/lib/demo-data/demoMasterData";
-import { resolveStorageLocationSnapshot } from "@/lib/listings/storageLocation";
-import type { Listing } from "@/lib/listings/types";
+import { resolveStorageLocationSnapshot } from "@/lib/exhibits/storageLocation";
+import type { Listing } from "@/lib/exhibits/types";
 import { formatCurrency } from "@/lib/useDummyNavi";
 
 type InquiryStatus = {

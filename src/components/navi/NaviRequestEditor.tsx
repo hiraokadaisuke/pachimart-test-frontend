@@ -19,7 +19,7 @@ import { buildApiUrl } from "@/lib/http/apiBaseUrl";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { products } from "@/lib/dummyData";
 import { loadMasterData, type Warehouse } from "@/lib/demo-data/demoMasterData";
-import type { Listing } from "@/lib/listings/types";
+import type { Listing } from "@/lib/exhibits/types";
 import { Button } from "@/components/ui/button";
 
 const mapDraftConditions = (
