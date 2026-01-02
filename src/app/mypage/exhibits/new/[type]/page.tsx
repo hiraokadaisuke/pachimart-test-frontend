@@ -4,9 +4,9 @@ import { ExhibitSubTabs } from "@/components/exhibits/ExhibitSubTabs";
 import MyPageLayout from "@/components/layout/MyPageLayout";
 import { SellForm } from "@/components/exhibits/SellForm";
 
-type ListingType = "PACHINKO" | "SLOT";
+type ExhibitType = "PACHINKO" | "SLOT";
 
-const typeMap: Record<string, ListingType> = {
+const typeMap: Record<string, ExhibitType> = {
   pachinko: "PACHINKO",
   slot: "SLOT",
 };
@@ -20,7 +20,7 @@ export default function NewExhibitFormPage({ params }: { params: { type?: string
 
   return (
     <MyPageLayout subTabs={<ExhibitSubTabs activeTab="new" />} compact>
-      <SellForm listingType={routeType} />
+      <SellForm exhibitType={routeType} />
     </MyPageLayout>
   );
 }

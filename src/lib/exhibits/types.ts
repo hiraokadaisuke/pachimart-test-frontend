@@ -1,4 +1,4 @@
-export type Listing = {
+export type Exhibit = {
   id: string;
   sellerUserId: string;
   status: string;
@@ -25,5 +25,3 @@ export type Listing = {
   createdAt: string;
   updatedAt: string;
 };
-
-export type Exhibit = Listing;
