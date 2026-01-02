@@ -10,7 +10,7 @@ import {
   type StorageLocationSnapshot,
 } from "@/lib/listings/storageLocation";
 
-const listingClient = prisma.listing;
+const exhibitClient = prisma.listing;
 
 const updateListingSchema = z.object({
   status: z.nativeEnum(ListingStatus).optional(),
@@ -45,37 +45,37 @@ const toSnapshotFromStorageLocation = (location?: {
       }
     : null;
 
-const toDto = (listing: any) => ({
-  id: String(listing.id),
-  sellerUserId: String(listing.sellerUserId),
-  status: listing.status as ListingStatus,
-  isVisible: Boolean(listing.isVisible),
-  type: String(listing.type),
-  kind: String(listing.kind),
-  maker: listing.maker as string | null,
-  machineName: listing.machineName as string | null,
-  quantity: Number(listing.quantity),
+const toDto = (exhibit: any) => ({
+  id: String(exhibit.id),
+  sellerUserId: String(exhibit.sellerUserId),
+  status: exhibit.status as ListingStatus,
+  isVisible: Boolean(exhibit.isVisible),
+  type: String(exhibit.type),
+  kind: String(exhibit.kind),
+  maker: exhibit.maker as string | null,
+  machineName: exhibit.machineName as string | null,
+  quantity: Number(exhibit.quantity),
   unitPriceExclTax:
-    listing.unitPriceExclTax === null || listing.unitPriceExclTax === undefined
+    exhibit.unitPriceExclTax === null || exhibit.unitPriceExclTax === undefined
       ? null
-      : Number(listing.unitPriceExclTax),
-  isNegotiable: Boolean(listing.isNegotiable),
-  removalStatus: listing.removalStatus as RemovalStatus,
-  removalDate: listing.removalDate ? new Date(listing.removalDate as string).toISOString() : null,
-  hasNailSheet: Boolean(listing.hasNailSheet),
-  hasManual: Boolean(listing.hasManual),
-  pickupAvailable: Boolean(listing.pickupAvailable),
+      : Number(exhibit.unitPriceExclTax),
+  isNegotiable: Boolean(exhibit.isNegotiable),
+  removalStatus: exhibit.removalStatus as RemovalStatus,
+  removalDate: exhibit.removalDate ? new Date(exhibit.removalDate as string).toISOString() : null,
+  hasNailSheet: Boolean(exhibit.hasNailSheet),
+  hasManual: Boolean(exhibit.hasManual),
+  pickupAvailable: Boolean(exhibit.pickupAvailable),
   storageLocation:
-    typeof listing.storageLocation === "string" ? listing.storageLocation : null,
+    typeof exhibit.storageLocation === "string" ? exhibit.storageLocation : null,
   storageLocationId:
-    typeof listing.storageLocationId === "string" ? listing.storageLocationId : null,
-  storageLocationSnapshot: (listing.storageLocationSnapshot as unknown | null) ?? null,
-  shippingFeeCount: Number(listing.shippingFeeCount),
-  handlingFeeCount: Number(listing.handlingFeeCount),
-  allowPartial: Boolean(listing.allowPartial),
-  note: (listing.note as string | null) ?? null,
-  createdAt: new Date(listing.createdAt).toISOString(),
-  updatedAt: new Date(listing.updatedAt).toISOString(),
+    typeof exhibit.storageLocationId === "string" ? exhibit.storageLocationId : null,
+  storageLocationSnapshot: (exhibit.storageLocationSnapshot as unknown | null) ?? null,
+  shippingFeeCount: Number(exhibit.shippingFeeCount),
+  handlingFeeCount: Number(exhibit.handlingFeeCount),
+  allowPartial: Boolean(exhibit.allowPartial),
+  note: (exhibit.note as string | null) ?? null,
+  createdAt: new Date(exhibit.createdAt).toISOString(),
+  updatedAt: new Date(exhibit.updatedAt).toISOString(),
 });
 
 export async function GET(request: Request, { params }: { params: { id?: string } }) {
@@ -85,27 +85,27 @@ export async function GET(request: Request, { params }: { params: { id?: string 
       return NextResponse.json({ error: "Listing id is required" }, { status: 400 });
     }
 
-    const listing = await listingClient.findUnique({
+    const exhibit = await exhibitClient.findUnique({
       where: { id },
       include: { storageLocationRecord: true },
     });
 
-    if (!listing) {
+    if (!exhibit) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
     const storageLocationSnapshot =
-      resolveStorageLocationSnapshot(listing.storageLocationSnapshot) ??
-      toSnapshotFromStorageLocation(listing.storageLocationRecord);
+      resolveStorageLocationSnapshot(exhibit.storageLocationSnapshot) ??
+      toSnapshotFromStorageLocation(exhibit.storageLocationRecord);
 
     const storageLocation = formatStorageLocationShort(
       storageLocationSnapshot,
-      typeof listing.storageLocation === "string" ? listing.storageLocation : undefined
+      typeof exhibit.storageLocation === "string" ? exhibit.storageLocation : undefined
     );
 
     return NextResponse.json(
       toDto({
-        ...listing,
+        ...exhibit,
         storageLocationSnapshot,
         storageLocation,
       })
@@ -146,16 +146,16 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
   }
 
   try {
-    const listing = await listingClient.findUnique({ where: { id } });
-    if (!listing) {
+    const exhibit = await exhibitClient.findUnique({ where: { id } });
+    if (!exhibit) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    if (String(listing.sellerUserId) !== sellerUserId) {
+    if (String(exhibit.sellerUserId) !== sellerUserId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const updated = await listingClient.update({
+    const updated = await exhibitClient.update({
       where: { id },
       data: {
         status: parsed.data.status,

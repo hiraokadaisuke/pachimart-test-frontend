@@ -59,7 +59,7 @@ export async function GET(request: Request) {
       ...new Set(inquiries.flatMap((inquiry) => [inquiry.buyerUserId, inquiry.sellerUserId])),
     ];
 
-    const [listings, users] = await Promise.all([
+    const [exhibits, users] = await Promise.all([
       listingIds.length > 0
         ? prisma.listing.findMany({
             where: { id: { in: listingIds } },
@@ -77,11 +77,11 @@ export async function GET(request: Request) {
         : Promise.resolve([]),
     ]);
 
-    const listingMap = new Map(listings.map((listing) => [listing.id, listing]));
+    const exhibitMap = new Map(exhibits.map((exhibit) => [exhibit.id, exhibit]));
     const userMap = new Map(users.map((user) => [user.id, user.companyName]));
 
     const payload = inquiries.map((inquiry) => {
-      const listing = listingMap.get(inquiry.listingId);
+      const exhibit = exhibitMap.get(inquiry.listingId);
       const buyerCompanyName = userMap.get(inquiry.buyerUserId) ?? null;
       const sellerCompanyName = userMap.get(inquiry.sellerUserId) ?? null;
       const partnerName =
@@ -97,10 +97,10 @@ export async function GET(request: Request) {
         status: inquiry.status,
         createdAt: inquiry.createdAt,
         updatedAt: inquiry.updatedAt,
-        makerName: listing?.maker ?? null,
-        machineName: listing?.machineName ?? null,
+        makerName: exhibit?.maker ?? null,
+        machineName: exhibit?.machineName ?? null,
         quantity: inquiry.quantity,
-        totalAmount: calculateTotalAmount(listing?.unitPriceExclTax ?? null, inquiry.quantity),
+        totalAmount: calculateTotalAmount(exhibit?.unitPriceExclTax ?? null, inquiry.quantity),
         partnerName,
         buyerCompanyName,
         sellerCompanyName,
@@ -160,20 +160,20 @@ export async function POST(request: Request) {
   }
 
   try {
-    const listing = await prisma.listing.findUnique({ where: { id: listingId } });
+    const exhibit = await prisma.listing.findUnique({ where: { id: listingId } });
 
-    if (!listing) {
+    if (!exhibit) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    if (listing.sellerUserId === buyerUserId) {
+    if (exhibit.sellerUserId === buyerUserId) {
       return NextResponse.json(
         { error: "出品者は自分の出品に問い合わせできません" },
         { status: 403 }
       );
     }
 
-    if (listing.status === ListingStatus.SOLD) {
+    if (exhibit.status === ListingStatus.SOLD) {
       return NextResponse.json(
         { error: "成約済みのためオンライン問い合わせは利用できません" },
         { status: 400 }
@@ -185,9 +185,9 @@ export async function POST(request: Request) {
     const createInquiry = async (tx: Prisma.TransactionClient | InMemoryPrismaClient) =>
       tx.onlineInquiry.create({
         data: {
-          listingId: listing.id,
+          listingId: exhibit.id,
           buyerUserId,
-          sellerUserId: listing.sellerUserId,
+          sellerUserId: exhibit.sellerUserId,
           body: normalizedBody,
           quantity,
           shippingAddress: shippingAddress ?? null,

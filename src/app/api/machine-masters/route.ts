@@ -1,11 +1,11 @@
-import { ListingType } from "@prisma/client";
+import { ListingType as ExhibitType } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
 
 const querySchema = z.object({
-  type: z.nativeEnum(ListingType).optional(),
+  type: z.nativeEnum(ExhibitType).optional(),
 });
 
 export async function GET(request: Request) {

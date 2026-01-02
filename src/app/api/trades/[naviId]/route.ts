@@ -13,7 +13,7 @@ import { getCurrentUserId } from "@/lib/server/currentUser";
 
 const naviClient = prisma.navi;
 
-const updateTradeSchema = z.object({
+const updateDealingSchema = z.object({
   status: z.nativeEnum(NaviStatus, {
     errorMap: () => ({ message: "status must be a valid NaviStatus" }),
   }),
@@ -33,26 +33,26 @@ type NaviRecord = {
   trade?: { id: unknown } | null;
 };
 
-const toDto = (trade: NaviRecord, tradeId?: number) => ({
-  id: trade.id,
-  status: trade.status,
-  naviType: trade.naviType,
-  ownerUserId: trade.ownerUserId,
-  buyerUserId: trade.buyerUserId,
-  listingId: trade.listingId,
-  listingSnapshot: (trade.listingSnapshot as Prisma.JsonValue | null) ?? null,
-  payload: (trade.payload as Prisma.JsonValue | null) ?? null,
-  createdAt: trade.createdAt.toISOString(),
-  updatedAt: trade.updatedAt.toISOString(),
+const toDto = (dealing: NaviRecord, tradeId?: number) => ({
+  id: dealing.id,
+  status: dealing.status,
+  naviType: dealing.naviType,
+  ownerUserId: dealing.ownerUserId,
+  buyerUserId: dealing.buyerUserId,
+  listingId: dealing.listingId,
+  listingSnapshot: (dealing.listingSnapshot as Prisma.JsonValue | null) ?? null,
+  payload: (dealing.payload as Prisma.JsonValue | null) ?? null,
+  createdAt: dealing.createdAt.toISOString(),
+  updatedAt: dealing.updatedAt.toISOString(),
   tradeId,
 });
 
-const toRecord = (trade: unknown): NaviRecord => {
-  if (!trade || typeof trade !== "object") {
-    throw new Error("Trade result was not an object");
+const toRecord = (dealing: unknown): NaviRecord => {
+  if (!dealing || typeof dealing !== "object") {
+    throw new Error("Dealing result was not an object");
   }
 
-  const candidate = trade as Record<string, unknown>;
+  const candidate = dealing as Record<string, unknown>;
   const toDate = (value: unknown, fallback?: Date): Date => {
     if (value instanceof Date) return value;
     if (typeof value === "string" || typeof value === "number") {
@@ -106,7 +106,7 @@ class ShippingInfoMissingError extends Error {
   }
 }
 
-class TradeNotFoundError extends Error {}
+class DealingNotFoundError extends Error {}
 
 const extractShippingInfo = (payload: Prisma.JsonValue | null) => {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) return null;
@@ -164,20 +164,20 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
 
   try {
     // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
-    const trade = await naviClient.findUnique({ where: { id } as any });
+    const dealing = await naviClient.findUnique({ where: { id } as any });
 
-    if (!trade) {
+    if (!dealing) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
 
-    const tradeRecord = toRecord(trade);
-    const buyerUserId = resolveBuyerUserId(tradeRecord);
+    const dealingRecord = toRecord(dealing);
+    const buyerUserId = resolveBuyerUserId(dealingRecord);
 
-    if (tradeRecord.ownerUserId !== currentUserId && buyerUserId !== currentUserId) {
+    if (dealingRecord.ownerUserId !== currentUserId && buyerUserId !== currentUserId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    return NextResponse.json(toDto(toRecord(trade)));
+    return NextResponse.json(toDto(toRecord(dealing)));
   } catch (error) {
     console.error("Failed to fetch trade", error);
     return NextResponse.json(
@@ -211,7 +211,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
     );
   }
 
-  const parsed = updateTradeSchema.safeParse(body);
+  const parsed = updateDealingSchema.safeParse(body);
 
   if (!parsed.success) {
     return NextResponse.json(
@@ -268,7 +268,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
     const { updated, trade } = await (prisma as any).$transaction(async (tx: any) => {
       const current = await tx.navi.findUnique({ where: { id } as any, include: { trade: true } });
 
-      if (!current) throw new TradeNotFoundError();
+      if (!current) throw new DealingNotFoundError();
 
       const payload =
         current.payload && typeof current.payload === "object" && !Array.isArray(current.payload)
@@ -347,7 +347,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
 
-    if (error instanceof TradeNotFoundError) {
+    if (error instanceof DealingNotFoundError) {
       return NextResponse.json({ error: "Trade not found" }, { status: 404 });
     }
 
