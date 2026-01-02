@@ -16,7 +16,7 @@ import {
   saveTradeShippingInfo,
   updateTradeStatus,
 } from "@/lib/dealings/api";
-import { BuyerContact, ShippingInfo, TradeRecord } from "@/lib/dealings/types";
+import { BuyerContact, Dealing, ShippingInfo } from "@/lib/dealings/types";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { getTodoPresentation } from "@/lib/dealings/todo";
 import { deriveTradeStatusFromTodos } from "@/lib/dealings/deriveStatus";
@@ -51,7 +51,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const router = useRouter();
   const searchParams = useSearchParams();
   const currentUser = useCurrentDevUser();
-  const [trade, setTrade] = useState<TradeRecord | null>(null);
+  const [dealing, setDealing] = useState<Dealing | null>(null);
   const [shipping, setShipping] = useState<ShippingInfo>({});
   const [contacts, setContacts] = useState<BuyerContact[]>([]);
   const [shippingAddresses, setShippingAddresses] = useState<ShippingAddressDto[]>([]);
@@ -61,13 +61,13 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const [error, setError] = useState<string | null>(null);
 
   const queryNaviId = searchParams?.get("naviId");
-  const resolvedNaviId = queryNaviId ?? (typeof trade?.naviId === "number" ? String(trade.naviId) : null);
+  const resolvedNaviId = queryNaviId ?? (typeof dealing?.naviId === "number" ? String(dealing.naviId) : null);
   const statementId = resolvedNaviId ?? tradeId;
 
   useEffect(() => {
     let canceled = false;
 
-    const loadTrade = async () => {
+    const loadDealing = async () => {
       try {
         const remote = await fetchTradeRecordById(tradeId);
 
@@ -76,20 +76,20 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
         if (remote) {
           if (remote.sellerUserId !== currentUser.id && remote.buyerUserId !== currentUser.id) {
             console.error("Trade not found or access denied", tradeId);
-            setTrade(null);
+            setDealing(null);
             setShipping({});
             setContacts([]);
             return;
           }
 
-          setTrade(remote);
+          setDealing(remote);
           setShipping(remote?.buyerShippingAddress ?? remote?.shipping ?? {});
           setContacts(ensureContactsLoaded(remote));
           return;
         }
 
         if (!resolvedNaviId) {
-          setTrade(null);
+          setDealing(null);
           setShipping({});
           setContacts([]);
           return;
@@ -103,43 +103,43 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
         if (!mapped || (mapped.sellerUserId !== currentUser.id && mapped.buyerUserId !== currentUser.id)) {
           console.error("Trade navi not found or access denied", resolvedNaviId);
-          setTrade(null);
+          setDealing(null);
           setShipping({});
           setContacts([]);
           return;
         }
 
-        setTrade(mapped);
+        setDealing(mapped);
         setShipping(mapped?.buyerShippingAddress ?? mapped?.shipping ?? {});
         setContacts(ensureContactsLoaded(mapped));
       } catch (loadError) {
         if (canceled) return;
         console.error("Failed to load trade", loadError);
-        setTrade(null);
+        setDealing(null);
         setShipping({});
         setContacts([]);
       }
     };
 
-    loadTrade();
+    loadDealing();
 
     return () => {
       canceled = true;
     };
   }, [currentUser.id, resolvedNaviId, tradeId]);
 
-  const actorRole = trade ? getActorRole(trade, currentUser.id) : "none";
+  const actorRole = dealing ? getActorRole(dealing, currentUser.id) : "none";
   const isBuyer = actorRole === "buyer";
-  const isEditable = trade ? canApprove(trade, currentUser.id) : false;
-  const todoView = trade
-    ? getTodoPresentation(trade, actorRole === "seller" ? "seller" : "buyer")
+  const isEditable = dealing ? canApprove(dealing, currentUser.id) : false;
+  const todoView = dealing
+    ? getTodoPresentation(dealing, actorRole === "seller" ? "seller" : "buyer")
     : null;
   const statusKey: TradeStatusKey | null = todoView?.todoKind ?? null;
 
   useEffect(() => {
     let canceled = false;
 
-    if (!trade || !isBuyer) {
+    if (!dealing || !isBuyer) {
       setShippingAddresses([]);
       setSelectedAddressId("");
       return;
@@ -158,11 +158,11 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     return () => {
       canceled = true;
     };
-  }, [currentUser.id, isBuyer, trade]);
+  }, [currentUser.id, isBuyer, dealing]);
 
   const totals = useMemo(
-    () => (trade ? calculateStatementTotals(trade.items, trade.taxRate ?? 0.1) : null),
-    [trade]
+    () => (dealing ? calculateStatementTotals(dealing.items, dealing.taxRate ?? 0.1) : null),
+    [dealing]
   );
 
   const missingFields = useMemo(
@@ -171,7 +171,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   );
 
   const approveDisabled = !isEditable || missingFields.length > 0 || todoView?.section !== "approval";
-  const cancelDisabled = !trade || !canCancel(trade, currentUser.id);
+  const cancelDisabled = !dealing || !canCancel(dealing, currentUser.id);
 
   const handlePrint = () => {
     window.print();
@@ -190,7 +190,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     if (result.trade && result.contact) {
       setContacts((prev) => [...prev, result.contact!]);
       setShipping((prev) => ({ ...prev, personName: result.contact!.name }));
-      setTrade(result.trade);
+      setDealing(result.trade);
       setMessage("担当者を追加しました。");
       setError(null);
     }
@@ -205,7 +205,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     setShipping((prev) => ({
       ...prev,
       ...mapped,
-      companyName: mapped.companyName ?? prev.companyName ?? trade?.buyer.companyName,
+      companyName: mapped.companyName ?? prev.companyName ?? dealing?.buyer.companyName,
     }));
     setMessage("登録済み住所を読み込みました。");
     setError(null);
@@ -222,8 +222,8 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     try {
       const payload: ShippingInfo & { label?: string | null } = {
         ...shipping,
-        companyName: shipping.companyName ?? trade?.buyer.companyName ?? undefined,
-        label: shipping.address ?? shipping.companyName ?? trade?.buyer.companyName ?? undefined,
+        companyName: shipping.companyName ?? dealing?.buyer.companyName ?? undefined,
+        label: shipping.address ?? shipping.companyName ?? dealing?.buyer.companyName ?? undefined,
       };
       const created = await createShippingAddress(currentUser.id, payload);
       setShippingAddresses((prev) => [created, ...prev.filter((address) => address.id !== created.id)]);
@@ -241,7 +241,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
   const handleContactChange = (value: string) => {
     setShipping((prev) => ({ ...prev, personName: value }));
-    const scopedContacts = ensureContactsLoaded(trade);
+    const scopedContacts = ensureContactsLoaded(dealing);
     if (scopedContacts.length) {
       const normalized = value
         ? scopedContacts.some((contact) => contact.name === value)
@@ -253,17 +253,17 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     }
   };
 
-  const refreshTrade = async () => {
+  const refreshDealing = async () => {
     try {
       const latest = await fetchTradeRecordById(statementId);
       if (!latest) {
-        setTrade(null);
+        setDealing(null);
         setShipping({});
         setContacts([]);
         return null;
       }
 
-      setTrade(latest);
+      setDealing(latest);
       setShipping(latest.buyerShippingAddress ?? latest.shipping ?? {});
       setContacts(ensureContactsLoaded(latest));
       return latest;
@@ -274,7 +274,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   };
 
   const handleApprove = async () => {
-    if (!trade) return;
+    if (!dealing) return;
     if (!isBuyer) {
       console.error("Only buyers can approve trades");
       return;
@@ -301,7 +301,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
     try {
       await updateTradeStatus(statementId, "APPROVED");
-      const latest = await refreshTrade();
+      const latest = await refreshDealing();
       if (latest) {
         setMessage("承認しました。ステータスを更新しました。");
         setError(null);
@@ -313,7 +313,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   };
 
   const handleCancel = async () => {
-    if (!trade) return;
+    if (!dealing) return;
     if (!isBuyer) {
       console.error("Only buyers can reject trades");
       return;
@@ -321,7 +321,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
     try {
       await updateTradeStatus(statementId, "REJECTED");
-      const latest = await refreshTrade();
+      const latest = await refreshDealing();
       if (latest) {
         setMessage("依頼をキャンセルしました。");
         setError(null);
@@ -341,7 +341,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     }
   };
 
-  if (!trade) {
+  if (!dealing) {
     return (
       <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
         明細書データが見つかりませんでした。
@@ -350,24 +350,24 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   }
 
   const headerDescription = (description ?? todoView?.description) || undefined;
-  const derivedStatus = deriveTradeStatusFromTodos(trade);
+  const derivedStatus = deriveTradeStatusFromTodos(dealing);
 
   const cancelBanner =
     derivedStatus === "CANCELED"
-      ? `キャンセル済（${trade.canceledBy === "seller" ? "売手" : trade.canceledBy === "buyer" ? "買手" : "不明"}）`
+      ? `キャンセル済（${dealing.canceledBy === "seller" ? "売手" : dealing.canceledBy === "buyer" ? "買手" : "不明"}）`
       : null;
 
   const isApprovalReadOnlyForSeller = todoView?.section === "approval" && actorRole === "seller";
   const allowShippingEdit = isEditable && todoView?.section === "approval" && actorRole === "buyer";
 
-  const primaryItem = trade.items[0];
+  const primaryItem = dealing.items[0];
   const quantity =
-    (trade.quantity ?? trade.items.reduce((sum, item) => sum + (item.qty ?? 0), 0)) || primaryItem?.qty || 1;
+    (dealing.quantity ?? dealing.items.reduce((sum, item) => sum + (item.qty ?? 0), 0)) || primaryItem?.qty || 1;
   const unitPrice =
     primaryItem?.unitPrice ?? (primaryItem?.amount && quantity ? Math.round(primaryItem.amount / quantity) : undefined);
 
   const findAmountByCategory = (category: string, fallbackLabel?: string) => {
-    const item = trade.items.find((candidate) => candidate.category === category || candidate.itemName === fallbackLabel);
+    const item = dealing.items.find((candidate) => candidate.category === category || candidate.itemName === fallbackLabel);
     if (!item) return null;
     const qty = item.qty ?? 1;
     const amount = item.amount ?? (item.unitPrice ?? 0) * qty;
@@ -375,7 +375,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   };
 
   const findAmountByLabel = (label: string) => {
-    const item = trade.items.find((candidate) => candidate.itemName === label);
+    const item = dealing.items.find((candidate) => candidate.itemName === label);
     if (!item) return null;
     const qty = item.qty ?? 1;
     const amount = item.amount ?? (item.unitPrice ?? 0) * qty;
@@ -394,27 +394,30 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const nailSheetFee = findAmountByLabel("釘シート");
   const insuranceFee = findAmountByCategory("保険", "保険");
 
-  const productSubtotal = trade.items
+  const productSubtotal = dealing.items
     .filter((item) => !item.category || item.category === "本体")
     .reduce((sum, item) => sum + amountOf(item), 0);
 
   const formatDateLabel = (value?: string) => value || "-";
 
   const memoText = primaryItem?.note ?? "-";
-  const notesText = trade.remarks ?? "-";
-  const termsText = trade.termsText ?? "-";
-  const diffNotes = buildTradeDiffNotes(trade, trade?.listingSnapshot ?? null);
+  const notesText = dealing.remarks ?? "-";
+  const termsText = dealing.termsText ?? "-";
+  const diffNotes = buildTradeDiffNotes(dealing, dealing?.listingSnapshot ?? null);
 
   const machineShipmentLabel =
-    trade.shipmentDate || trade.shippingMethod
-      ? [formatDateLabel(trade.shipmentDate), trade.shippingMethod ?? trade.receiveMethod]
+    dealing.shipmentDate || dealing.shippingMethod
+      ? [formatDateLabel(dealing.shipmentDate), dealing.shippingMethod ?? dealing.receiveMethod]
           .filter(Boolean)
           .join(" / ")
       : "-";
 
   const documentShipmentLabel =
-    trade.documentSentDate || trade.documentReceivedDate
-      ? [formatDateLabel(trade.documentSentDate), trade.documentReceivedDate && `到着予定 ${trade.documentReceivedDate}`]
+    dealing.documentSentDate || dealing.documentReceivedDate
+      ? [
+          formatDateLabel(dealing.documentSentDate),
+          dealing.documentReceivedDate && `到着予定 ${dealing.documentReceivedDate}`,
+        ]
           .filter(Boolean)
           .join(" / ")
       : "-";
@@ -505,15 +508,15 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
                 <p className="text-[11px] font-semibold text-neutral-500">売主</p>
-                <p className="text-sm font-semibold text-slate-900">{trade.seller.companyName}</p>
+                <p className="text-sm font-semibold text-slate-900">{dealing.seller.companyName}</p>
               </div>
               <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
                 <p className="text-[11px] font-semibold text-neutral-500">買主</p>
-                <p className="text-sm font-semibold text-slate-900">{trade.buyer.companyName}</p>
+                <p className="text-sm font-semibold text-slate-900">{dealing.buyer.companyName}</p>
               </div>
               <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
                 <p className="text-[11px] font-semibold text-neutral-500">更新日</p>
-                <p className="text-sm font-semibold text-slate-900">{formatDateLabel(trade.updatedAt)}</p>
+                <p className="text-sm font-semibold text-slate-900">{formatDateLabel(dealing.updatedAt)}</p>
               </div>
               <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
                 <p className="text-[11px] font-semibold text-neutral-500">合計（税込）</p>
@@ -528,20 +531,20 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                     <h2 className="text-base font-semibold text-slate-900">取引先情報</h2>
                     <div className="flex flex-wrap items-center gap-2 text-[11px] text-neutral-700">
                       <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">買手</span>
-                      <span className="text-sm text-neutral-900">{trade.buyer.companyName}</span>
+                      <span className="text-sm text-neutral-900">{dealing.buyer.companyName}</span>
                       <span className="rounded bg-slate-100 px-2 py-0.5 font-semibold text-slate-800">売手</span>
-                      <span className="text-sm text-neutral-900">{trade.seller.companyName}</span>
+                      <span className="text-sm text-neutral-900">{dealing.seller.companyName}</span>
                     </div>
                   </div>
                   <div className="space-y-3 px-4 py-3 text-sm text-neutral-900">
                     <div className="grid gap-3 md:grid-cols-2">
                       <div>
                         <p className="text-[11px] font-semibold text-neutral-600">会社名</p>
-                        <p className="font-semibold text-slate-900">{trade.buyer.companyName}</p>
+                        <p className="font-semibold text-slate-900">{dealing.buyer.companyName}</p>
                       </div>
                       <div>
                         <p className="text-[11px] font-semibold text-neutral-600">電話番号</p>
-                        <p className="text-neutral-900">{shipping.tel || trade.buyer.tel || "-"}</p>
+                        <p className="text-neutral-900">{shipping.tel || dealing.buyer.tel || "-"}</p>
                       </div>
                     </div>
 
@@ -579,7 +582,9 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                           placeholder="住所を入力"
                         />
                       ) : (
-                        <p className="whitespace-pre-line text-neutral-900">{shipping.address || trade.buyer.address || "-"}</p>
+                        <p className="whitespace-pre-line text-neutral-900">
+                          {shipping.address || dealing.buyer.address || "-"}
+                        </p>
                       )}
                     </div>
 
@@ -594,7 +599,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                             onAdd={(name) => handleAddContact(name)}
                           />
                         ) : (
-                          <p className="text-neutral-900">{shipping.personName || trade.buyer.contactName || "-"}</p>
+                          <p className="text-neutral-900">{shipping.personName || dealing.buyer.contactName || "-"}</p>
                         )}
                       </div>
 
@@ -624,11 +629,11 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                   <div className="grid gap-3 px-4 py-3 text-sm text-neutral-900 md:grid-cols-2">
                     <div>
                       <p className="text-[11px] font-semibold text-neutral-600">メーカー</p>
-                      <p className="font-semibold text-slate-900">{trade.makerName ?? primaryItem?.maker ?? "-"}</p>
+                      <p className="font-semibold text-slate-900">{dealing.makerName ?? primaryItem?.maker ?? "-"}</p>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-neutral-600">機種名</p>
-                      <p className="text-neutral-900">{trade.itemName ?? primaryItem?.itemName ?? "取引商品"}</p>
+                      <p className="text-neutral-900">{dealing.itemName ?? primaryItem?.itemName ?? "取引商品"}</p>
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-neutral-600">台数</p>
@@ -646,7 +651,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                     </div>
                     <div>
                       <p className="text-[11px] font-semibold text-neutral-600">保管場所</p>
-                      <p className="text-neutral-900">{trade.storageLocationName || "-"}</p>
+                      <p className="text-neutral-900">{dealing.storageLocationName || "-"}</p>
                       {diffNotes.storageNote && (
                         <p className="text-[11px] text-neutral-600">{diffNotes.storageNote}</p>
                       )}
@@ -700,7 +705,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                         </tr>
                         <tr className="border-t border-slate-300">
                           <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">支払日</th>
-                          <td className="px-3 py-2">{formatDateLabel(trade.paymentDate)}</td>
+                          <td className="px-3 py-2">{formatDateLabel(dealing.paymentDate)}</td>
                         </tr>
                         <tr className="border-t border-slate-300">
                           <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">機械運賃</th>
@@ -746,7 +751,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                         </tr>
                         <tr className="border-t border-slate-300">
                           <th className="bg-slate-50 px-3 py-2 text-left text-xs font-semibold text-neutral-900">担当者</th>
-                          <td className="px-3 py-2">{shipping.personName || trade.handlerName || "-"}</td>
+                          <td className="px-3 py-2">{shipping.personName || dealing.handlerName || "-"}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -832,7 +837,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
       <div className="print-only">
         <StatementDocument
-          trade={trade}
+          dealing={dealing}
           editable={allowShippingEdit}
           shipping={shipping}
           onShippingChange={handleShippingChange}
