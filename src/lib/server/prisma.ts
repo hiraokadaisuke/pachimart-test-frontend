@@ -1,12 +1,12 @@
 import {
-  ListingStatus,
-  ListingType,
+  ExhibitStatus,
+  ExhibitType,
   Prisma,
   PrismaClient,
   RemovalStatus,
   NaviStatus,
   NaviType,
-  TradeStatus,
+  DealingStatus,
   OnlineInquiryStatus,
 } from "@prisma/client";
 
@@ -29,7 +29,7 @@ type InMemoryTrade = {
   id: number;
   sellerUserId: string;
   buyerUserId: string;
-  status: TradeStatus;
+  status: DealingStatus;
   payload: Prisma.JsonValue | null;
   naviId: number | null;
   createdAt: Date;
@@ -64,9 +64,9 @@ type InMemoryOnlineInquiry = {
 type InMemoryListing = {
   id: string;
   sellerUserId: string;
-  status: ListingStatus;
+  status: ExhibitStatus;
   isVisible: boolean;
-  type: ListingType;
+  type: ExhibitType;
   kind: string;
   maker: string | null;
   machineName: string | null;
@@ -130,7 +130,7 @@ type InMemoryMaker = {
 type InMemoryMachineModel = {
   id: string;
   makerId: string;
-  type: ListingType;
+  type: ExhibitType;
   name: string;
 };
 
@@ -159,8 +159,8 @@ type InMemoryPrisma = {
       data: Partial<InMemoryOnlineInquiry>;
     }) => Promise<InMemoryOnlineInquiry>;
   };
-  trade: {
-    findMany: ({ where }?: { where?: { status?: TradeStatus } }) => Promise<(InMemoryTrade & {
+  dealing: {
+    findMany: ({ where }?: { where?: { status?: DealingStatus } }) => Promise<(InMemoryTrade & {
       navi: InMemoryNavi | null;
       sellerUser: { id: string; companyName: string } | null;
       buyerUser: { id: string; companyName: string } | null;
@@ -209,9 +209,9 @@ type InMemoryPrisma = {
       Promise<InMemoryMessage[]>;
     create: ({ data }: { data: Partial<InMemoryMessage> }) => Promise<InMemoryMessage>;
   };
-  listing: {
+  exhibit: {
     findMany: (args?: {
-      where?: { sellerUserId?: string; status?: ListingStatus | { in: ListingStatus[] }; isVisible?: boolean };
+      where?: { sellerUserId?: string; status?: ExhibitStatus | { in: ExhibitStatus[] }; isVisible?: boolean };
       orderBy?: { updatedAt?: "asc" | "desc" };
     }) => Promise<InMemoryListing[]>;
     findUnique: ({
@@ -260,12 +260,12 @@ type InMemoryPrisma = {
   };
   maker: {
     findMany: (args?: {
-      where?: { machineModels?: { some?: { type?: ListingType } } };
+      where?: { machineModels?: { some?: { type?: ExhibitType } } };
       orderBy?: { name?: "asc" | "desc" };
     }) => Promise<InMemoryMaker[]>;
   };
   machineModel: {
-    findMany: (args?: { where?: { type?: ListingType }; orderBy?: { name?: "asc" | "desc" } }) =>
+    findMany: (args?: { where?: { type?: ExhibitType }; orderBy?: { name?: "asc" | "desc" } }) =>
       Promise<InMemoryMachineModel[]>;
   };
   $transaction: <T>(callback: (client: InMemoryPrisma) => Promise<T> | T) => Promise<T>;
@@ -305,31 +305,31 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
     { id: "maker_universal", name: "ユニバーサル" },
   ];
   const machineModels: InMemoryMachineModel[] = [
-    { id: "model_sanyo_p_1", makerId: "maker_sanyo", type: ListingType.PACHINKO, name: "P海物語5" },
-    { id: "model_sanyo_s_1", makerId: "maker_sanyo", type: ListingType.SLOT, name: "Sスーパー海物語" },
-    { id: "model_heiwa_p_1", makerId: "maker_heiwa", type: ListingType.PACHINKO, name: "Pルパン三世2000カラット" },
-    { id: "model_heiwa_s_1", makerId: "maker_heiwa", type: ListingType.SLOT, name: "Sルパン三世Lupin the Last" },
-    { id: "model_sankyo_p_1", makerId: "maker_sankyo", type: ListingType.PACHINKO, name: "Pフィーバーからくりサーカス" },
-    { id: "model_sankyo_s_1", makerId: "maker_sankyo", type: ListingType.SLOT, name: "Sからくりサーカス" },
-    { id: "model_sammy_p_1", makerId: "maker_sammy", type: ListingType.PACHINKO, name: "P北斗の拳9" },
-    { id: "model_sammy_s_1", makerId: "maker_sammy", type: ListingType.SLOT, name: "S北斗の拳" },
+    { id: "model_sanyo_p_1", makerId: "maker_sanyo", type: ExhibitType.PACHINKO, name: "P海物語5" },
+    { id: "model_sanyo_s_1", makerId: "maker_sanyo", type: ExhibitType.SLOT, name: "Sスーパー海物語" },
+    { id: "model_heiwa_p_1", makerId: "maker_heiwa", type: ExhibitType.PACHINKO, name: "Pルパン三世2000カラット" },
+    { id: "model_heiwa_s_1", makerId: "maker_heiwa", type: ExhibitType.SLOT, name: "Sルパン三世Lupin the Last" },
+    { id: "model_sankyo_p_1", makerId: "maker_sankyo", type: ExhibitType.PACHINKO, name: "Pフィーバーからくりサーカス" },
+    { id: "model_sankyo_s_1", makerId: "maker_sankyo", type: ExhibitType.SLOT, name: "Sからくりサーカス" },
+    { id: "model_sammy_p_1", makerId: "maker_sammy", type: ExhibitType.PACHINKO, name: "P北斗の拳9" },
+    { id: "model_sammy_s_1", makerId: "maker_sammy", type: ExhibitType.SLOT, name: "S北斗の拳" },
     {
       id: "model_olympia_p_premium",
       makerId: "maker_olympia",
-      type: ListingType.PACHINKO,
+      type: ExhibitType.PACHINKO,
       name: "Pプレミアムうまい棒",
     },
     {
       id: "model_olympia_s_lupin",
       makerId: "maker_olympia",
-      type: ListingType.SLOT,
+      type: ExhibitType.SLOT,
       name: "Sルパン三世ルパン The First",
     },
-    { id: "model_kyoraku_p_nogizaka", makerId: "maker_kyoraku", type: ListingType.PACHINKO, name: "P乃木坂46" },
-    { id: "model_kyoraku_s_nogizaka", makerId: "maker_kyoraku", type: ListingType.SLOT, name: "S乃木坂46" },
-    { id: "model_kitadenshi_s_aim", makerId: "maker_kitadenshi", type: ListingType.SLOT, name: "SアイムジャグラーEX" },
-    { id: "model_universal_s_basilisk", makerId: "maker_universal", type: ListingType.SLOT, name: "Sバジリスク絆2" },
-    { id: "model_universal_p_madomagi", makerId: "maker_universal", type: ListingType.PACHINKO, name: "P魔法少女まどか☆マギカ" },
+    { id: "model_kyoraku_p_nogizaka", makerId: "maker_kyoraku", type: ExhibitType.PACHINKO, name: "P乃木坂46" },
+    { id: "model_kyoraku_s_nogizaka", makerId: "maker_kyoraku", type: ExhibitType.SLOT, name: "S乃木坂46" },
+    { id: "model_kitadenshi_s_aim", makerId: "maker_kitadenshi", type: ExhibitType.SLOT, name: "SアイムジャグラーEX" },
+    { id: "model_universal_s_basilisk", makerId: "maker_universal", type: ExhibitType.SLOT, name: "Sバジリスク絆2" },
+    { id: "model_universal_p_madomagi", makerId: "maker_universal", type: ExhibitType.PACHINKO, name: "P魔法少女まどか☆マギカ" },
   ];
   let naviSeq = 1;
   let tradeSeq = 1;
@@ -372,7 +372,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       id: tradeSeq++,
       sellerUserId: String(create.sellerUserId ?? ""),
       buyerUserId: String(create.buyerUserId ?? ""),
-      status: (create.status as TradeStatus) ?? TradeStatus.IN_PROGRESS,
+      status: (create.status as DealingStatus) ?? DealingStatus.IN_PROGRESS,
       payload: (create.payload as Prisma.JsonValue | null) ?? null,
       naviId: (create.naviId as number | null) ?? null,
       createdAt: now(),
@@ -509,8 +509,8 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         return { ...updated };
       },
     },
-    trade: {
-      findMany: async ({ where }: { where?: { status?: TradeStatus } } = {}) => {
+    dealing: {
+      findMany: async ({ where }: { where?: { status?: DealingStatus } } = {}) => {
         const filtered = trades.filter((trade) => (where?.status ? trade.status === where.status : true));
         return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map(attachRelations);
       },
@@ -581,12 +581,12 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         return record;
       },
     },
-    listing: {
+    exhibit: {
       findMany: async ({
         where,
         orderBy,
       }: {
-        where?: { sellerUserId?: string; status?: ListingStatus | { in: ListingStatus[] }; isVisible?: boolean };
+        where?: { sellerUserId?: string; status?: ExhibitStatus | { in: ExhibitStatus[] }; isVisible?: boolean };
         orderBy?: { updatedAt?: "asc" | "desc" };
       } = {}) => {
         const filtered = exhibits.filter((exhibit) => {
@@ -634,9 +634,9 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         const record: InMemoryListing = {
           id: data.id ?? `listing_${exhibitSeq++}`,
           sellerUserId: String(data.sellerUserId ?? ""),
-          status: (data.status as ListingStatus | undefined) ?? ListingStatus.DRAFT,
+          status: (data.status as ExhibitStatus | undefined) ?? ExhibitStatus.DRAFT,
           isVisible: (data.isVisible as boolean | undefined) ?? true,
-          type: (data.type as ListingType | undefined) ?? ListingType.PACHINKO,
+          type: (data.type as ExhibitType | undefined) ?? ExhibitType.PACHINKO,
           kind: String(data.kind ?? ""),
           maker: (data.maker as string | null | undefined) ?? null,
           machineName: (data.machineName as string | null | undefined) ?? null,
@@ -681,9 +681,9 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         const updated: InMemoryListing = {
           ...exhibits[idx],
           ...data,
-          status: (data.status as ListingStatus | undefined) ?? exhibits[idx].status,
+          status: (data.status as ExhibitStatus | undefined) ?? exhibits[idx].status,
           isVisible: (data.isVisible as boolean | undefined) ?? exhibits[idx].isVisible,
-          type: (data.type as ListingType | undefined) ?? exhibits[idx].type,
+          type: (data.type as ExhibitType | undefined) ?? exhibits[idx].type,
           kind: (data.kind as string | undefined) ?? exhibits[idx].kind,
           maker: (data.maker as string | null | undefined) ?? exhibits[idx].maker,
           machineName: (data.machineName as string | null | undefined) ?? exhibits[idx].machineName,

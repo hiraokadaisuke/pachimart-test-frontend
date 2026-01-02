@@ -145,7 +145,7 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   }
 
   try {
-    const dealing = await prisma.trade.findUnique({
+    const dealing = await prisma.dealing.findUnique({
       where: { id } as any,
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });

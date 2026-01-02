@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { ListingType } from "@prisma/client";
+import { ExhibitType } from "@prisma/client";
 import { calculateQuote } from "@/lib/quotes/calculateQuote";
 import { deleteNaviDraft, createEmptyNaviDraft, loadNaviDraft } from "@/lib/navi/storage";
 import { type TradeConditions, type NaviDraft, type ManualNaviItem } from "@/lib/navi/types";
@@ -149,8 +149,8 @@ const emptyManualItemForm: ManualItemFormState = {
   frameColor: "",
 };
 
-const mapGameTypeToExhibitType = (gameType: ManualItemFormState["gameType"]): ListingType =>
-  gameType === "slot" ? ListingType.SLOT : ListingType.PACHINKO;
+const mapGameTypeToExhibitType = (gameType: ManualItemFormState["gameType"]): ExhibitType =>
+  gameType === "slot" ? ExhibitType.SLOT : ExhibitType.PACHINKO;
 
 const mapExhibitTypeToGameType = (
   type?: string | null
@@ -182,7 +182,7 @@ type MakerOption = {
 type MachineModelOption = {
   id: string;
   makerId: string;
-  type: ListingType;
+  type: ExhibitType;
   name: string;
 };
 

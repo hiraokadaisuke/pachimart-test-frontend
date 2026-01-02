@@ -1,13 +1,13 @@
 import {
-  ListingStatus,
-  ListingType,
+  ExhibitStatus,
+  ExhibitType,
   MessageSenderRole,
   Prisma,
   PrismaClient,
   RemovalStatus,
   NaviStatus,
   NaviType,
-  TradeStatus,
+  DealingStatus,
 } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -39,9 +39,9 @@ type StorageLocationSeed = {
 type ListingSeed = {
   id: string;
   sellerUserId: string;
-  status: ListingStatus;
+  status: ExhibitStatus;
   isVisible: boolean;
-  type: ListingType;
+  type: ExhibitType;
   kind: string;
   maker: string;
   machineName: string;
@@ -83,7 +83,7 @@ type MakerSeed = {
 
 type MachineModelSeed = {
   makerName: string;
-  type: ListingType;
+  type: ExhibitType;
   name: string;
 };
 
@@ -323,75 +323,75 @@ const MAKERS: MakerSeed[] = [
 ];
 
 const MACHINE_MODELS: MachineModelSeed[] = [
-  { makerName: "三洋", type: ListingType.PACHINKO, name: "P海物語5" },
-  { makerName: "三洋", type: ListingType.PACHINKO, name: "P大海物語4スペシャル" },
-  { makerName: "三洋", type: ListingType.PACHINKO, name: "Pギンギラパラダイス" },
-  { makerName: "三洋", type: ListingType.SLOT, name: "Sスーパー海物語" },
-  { makerName: "三洋", type: ListingType.SLOT, name: "S海物語リミックス" },
-  { makerName: "三洋", type: ListingType.SLOT, name: "S海物語Z" },
-  { makerName: "平和", type: ListingType.PACHINKO, name: "Pルパン三世2000カラット" },
-  { makerName: "平和", type: ListingType.PACHINKO, name: "P麻雀物語4" },
-  { makerName: "平和", type: ListingType.PACHINKO, name: "Pバンドリ!" },
-  { makerName: "平和", type: ListingType.SLOT, name: "Sルパン三世Lupin the Last" },
-  { makerName: "平和", type: ListingType.SLOT, name: "S麻雀物語5" },
-  { makerName: "平和", type: ListingType.SLOT, name: "S戦国乙女4" },
-  { makerName: "三共", type: ListingType.PACHINKO, name: "Pフィーバーからくりサーカス" },
-  { makerName: "三共", type: ListingType.PACHINKO, name: "Pフィーバー革命機ヴァルヴレイヴ" },
-  { makerName: "三共", type: ListingType.PACHINKO, name: "Pフィーバーアクエリオン7" },
-  { makerName: "三共", type: ListingType.SLOT, name: "Sからくりサーカス" },
-  { makerName: "三共", type: ListingType.SLOT, name: "S革命機ヴァルヴレイヴ" },
-  { makerName: "三共", type: ListingType.SLOT, name: "Sアクエリオン" },
-  { makerName: "サミー", type: ListingType.PACHINKO, name: "P北斗の拳9" },
-  { makerName: "サミー", type: ListingType.PACHINKO, name: "P蒼天の拳天刻" },
-  { makerName: "サミー", type: ListingType.PACHINKO, name: "P真・北斗無双" },
-  { makerName: "サミー", type: ListingType.SLOT, name: "S北斗の拳" },
-  { makerName: "サミー", type: ListingType.SLOT, name: "S甲鉄城のカバネリ" },
-  { makerName: "サミー", type: ListingType.SLOT, name: "Sエウレカセブン4" },
-  { makerName: "ユニバーサル", type: ListingType.PACHINKO, name: "Pバジリスク桜花忍法帖" },
-  { makerName: "ユニバーサル", type: ListingType.PACHINKO, name: "Pアナザーゴッドハーデス" },
-  { makerName: "ユニバーサル", type: ListingType.PACHINKO, name: "P魔法少女まどか☆マギカ" },
-  { makerName: "ユニバーサル", type: ListingType.SLOT, name: "Sバジリスク絆2" },
-  { makerName: "ユニバーサル", type: ListingType.SLOT, name: "Sアナザーゴッドハーデス解き放たれし槍撃" },
-  { makerName: "ユニバーサル", type: ListingType.SLOT, name: "Sまどか☆マギカ叛逆" },
-  { makerName: "オリンピア", type: ListingType.PACHINKO, name: "P南国育ち30" },
-  { makerName: "オリンピア", type: ListingType.PACHINKO, name: "Pルパン三世消されたルパン" },
-  { makerName: "オリンピア", type: ListingType.PACHINKO, name: "Pプレミアムうまい棒" },
-  { makerName: "オリンピア", type: ListingType.SLOT, name: "S南国育ち" },
-  { makerName: "オリンピア", type: ListingType.SLOT, name: "Sルパン三世ルパン The First" },
-  { makerName: "オリンピア", type: ListingType.SLOT, name: "S主役は銭形4" },
-  { makerName: "大一", type: ListingType.PACHINKO, name: "Pひぐらしのなく頃に廻" },
-  { makerName: "大一", type: ListingType.PACHINKO, name: "P真・怪獣王ゴジラ2" },
-  { makerName: "大一", type: ListingType.PACHINKO, name: "P犬夜叉2" },
-  { makerName: "大一", type: ListingType.SLOT, name: "Sひぐらしのなく頃に祭2" },
-  { makerName: "大一", type: ListingType.SLOT, name: "Sダイナマイトキング" },
-  { makerName: "大一", type: ListingType.SLOT, name: "S犬夜叉" },
-  { makerName: "藤商事", type: ListingType.PACHINKO, name: "Pとある魔術の禁書目録" },
-  { makerName: "藤商事", type: ListingType.PACHINKO, name: "P地獄少女 きくりのお祭り" },
-  { makerName: "藤商事", type: ListingType.PACHINKO, name: "P緋弾のアリア緋緋神降臨" },
-  { makerName: "藤商事", type: ListingType.SLOT, name: "Sとある科学の超電磁砲" },
-  { makerName: "藤商事", type: ListingType.SLOT, name: "S地獄少女" },
-  { makerName: "藤商事", type: ListingType.SLOT, name: "S緋弾のアリア" },
-  { makerName: "京楽", type: ListingType.PACHINKO, name: "P乃木坂46" },
-  { makerName: "京楽", type: ListingType.PACHINKO, name: "Pにゃんこ大戦争" },
-  { makerName: "京楽", type: ListingType.PACHINKO, name: "P仮面ライダーBLACK" },
-  { makerName: "京楽", type: ListingType.SLOT, name: "S乃木坂46" },
-  { makerName: "京楽", type: ListingType.SLOT, name: "Sにゃんこ大戦争" },
-  { makerName: "京楽", type: ListingType.SLOT, name: "S仮面ライダー" },
-  { makerName: "北電子", type: ListingType.PACHINKO, name: "Pファンキージャグラー" },
-  { makerName: "北電子", type: ListingType.PACHINKO, name: "Pゴーゴージャグラー" },
-  { makerName: "北電子", type: ListingType.PACHINKO, name: "Pマイジャグラー" },
-  { makerName: "北電子", type: ListingType.SLOT, name: "SアイムジャグラーEX" },
-  { makerName: "北電子", type: ListingType.SLOT, name: "Sゴーゴージャグラー3" },
-  { makerName: "北電子", type: ListingType.SLOT, name: "Sファンキージャグラー2" },
+  { makerName: "三洋", type: ExhibitType.PACHINKO, name: "P海物語5" },
+  { makerName: "三洋", type: ExhibitType.PACHINKO, name: "P大海物語4スペシャル" },
+  { makerName: "三洋", type: ExhibitType.PACHINKO, name: "Pギンギラパラダイス" },
+  { makerName: "三洋", type: ExhibitType.SLOT, name: "Sスーパー海物語" },
+  { makerName: "三洋", type: ExhibitType.SLOT, name: "S海物語リミックス" },
+  { makerName: "三洋", type: ExhibitType.SLOT, name: "S海物語Z" },
+  { makerName: "平和", type: ExhibitType.PACHINKO, name: "Pルパン三世2000カラット" },
+  { makerName: "平和", type: ExhibitType.PACHINKO, name: "P麻雀物語4" },
+  { makerName: "平和", type: ExhibitType.PACHINKO, name: "Pバンドリ!" },
+  { makerName: "平和", type: ExhibitType.SLOT, name: "Sルパン三世Lupin the Last" },
+  { makerName: "平和", type: ExhibitType.SLOT, name: "S麻雀物語5" },
+  { makerName: "平和", type: ExhibitType.SLOT, name: "S戦国乙女4" },
+  { makerName: "三共", type: ExhibitType.PACHINKO, name: "Pフィーバーからくりサーカス" },
+  { makerName: "三共", type: ExhibitType.PACHINKO, name: "Pフィーバー革命機ヴァルヴレイヴ" },
+  { makerName: "三共", type: ExhibitType.PACHINKO, name: "Pフィーバーアクエリオン7" },
+  { makerName: "三共", type: ExhibitType.SLOT, name: "Sからくりサーカス" },
+  { makerName: "三共", type: ExhibitType.SLOT, name: "S革命機ヴァルヴレイヴ" },
+  { makerName: "三共", type: ExhibitType.SLOT, name: "Sアクエリオン" },
+  { makerName: "サミー", type: ExhibitType.PACHINKO, name: "P北斗の拳9" },
+  { makerName: "サミー", type: ExhibitType.PACHINKO, name: "P蒼天の拳天刻" },
+  { makerName: "サミー", type: ExhibitType.PACHINKO, name: "P真・北斗無双" },
+  { makerName: "サミー", type: ExhibitType.SLOT, name: "S北斗の拳" },
+  { makerName: "サミー", type: ExhibitType.SLOT, name: "S甲鉄城のカバネリ" },
+  { makerName: "サミー", type: ExhibitType.SLOT, name: "Sエウレカセブン4" },
+  { makerName: "ユニバーサル", type: ExhibitType.PACHINKO, name: "Pバジリスク桜花忍法帖" },
+  { makerName: "ユニバーサル", type: ExhibitType.PACHINKO, name: "Pアナザーゴッドハーデス" },
+  { makerName: "ユニバーサル", type: ExhibitType.PACHINKO, name: "P魔法少女まどか☆マギカ" },
+  { makerName: "ユニバーサル", type: ExhibitType.SLOT, name: "Sバジリスク絆2" },
+  { makerName: "ユニバーサル", type: ExhibitType.SLOT, name: "Sアナザーゴッドハーデス解き放たれし槍撃" },
+  { makerName: "ユニバーサル", type: ExhibitType.SLOT, name: "Sまどか☆マギカ叛逆" },
+  { makerName: "オリンピア", type: ExhibitType.PACHINKO, name: "P南国育ち30" },
+  { makerName: "オリンピア", type: ExhibitType.PACHINKO, name: "Pルパン三世消されたルパン" },
+  { makerName: "オリンピア", type: ExhibitType.PACHINKO, name: "Pプレミアムうまい棒" },
+  { makerName: "オリンピア", type: ExhibitType.SLOT, name: "S南国育ち" },
+  { makerName: "オリンピア", type: ExhibitType.SLOT, name: "Sルパン三世ルパン The First" },
+  { makerName: "オリンピア", type: ExhibitType.SLOT, name: "S主役は銭形4" },
+  { makerName: "大一", type: ExhibitType.PACHINKO, name: "Pひぐらしのなく頃に廻" },
+  { makerName: "大一", type: ExhibitType.PACHINKO, name: "P真・怪獣王ゴジラ2" },
+  { makerName: "大一", type: ExhibitType.PACHINKO, name: "P犬夜叉2" },
+  { makerName: "大一", type: ExhibitType.SLOT, name: "Sひぐらしのなく頃に祭2" },
+  { makerName: "大一", type: ExhibitType.SLOT, name: "Sダイナマイトキング" },
+  { makerName: "大一", type: ExhibitType.SLOT, name: "S犬夜叉" },
+  { makerName: "藤商事", type: ExhibitType.PACHINKO, name: "Pとある魔術の禁書目録" },
+  { makerName: "藤商事", type: ExhibitType.PACHINKO, name: "P地獄少女 きくりのお祭り" },
+  { makerName: "藤商事", type: ExhibitType.PACHINKO, name: "P緋弾のアリア緋緋神降臨" },
+  { makerName: "藤商事", type: ExhibitType.SLOT, name: "Sとある科学の超電磁砲" },
+  { makerName: "藤商事", type: ExhibitType.SLOT, name: "S地獄少女" },
+  { makerName: "藤商事", type: ExhibitType.SLOT, name: "S緋弾のアリア" },
+  { makerName: "京楽", type: ExhibitType.PACHINKO, name: "P乃木坂46" },
+  { makerName: "京楽", type: ExhibitType.PACHINKO, name: "Pにゃんこ大戦争" },
+  { makerName: "京楽", type: ExhibitType.PACHINKO, name: "P仮面ライダーBLACK" },
+  { makerName: "京楽", type: ExhibitType.SLOT, name: "S乃木坂46" },
+  { makerName: "京楽", type: ExhibitType.SLOT, name: "Sにゃんこ大戦争" },
+  { makerName: "京楽", type: ExhibitType.SLOT, name: "S仮面ライダー" },
+  { makerName: "北電子", type: ExhibitType.PACHINKO, name: "Pファンキージャグラー" },
+  { makerName: "北電子", type: ExhibitType.PACHINKO, name: "Pゴーゴージャグラー" },
+  { makerName: "北電子", type: ExhibitType.PACHINKO, name: "Pマイジャグラー" },
+  { makerName: "北電子", type: ExhibitType.SLOT, name: "SアイムジャグラーEX" },
+  { makerName: "北電子", type: ExhibitType.SLOT, name: "Sゴーゴージャグラー3" },
+  { makerName: "北電子", type: ExhibitType.SLOT, name: "Sファンキージャグラー2" },
 ];
 
 const LISTINGS: ListingSeed[] = [
   {
     id: "listing_dev_phone_ready",
     sellerUserId: "dev_user_1",
-    status: ListingStatus.PUBLISHED,
+    status: ExhibitStatus.PUBLISHED,
     isVisible: true,
-    type: ListingType.PACHINKO,
+    type: ExhibitType.PACHINKO,
     kind: "P",
     maker: "メーカーA",
     machineName: "モデルA-1",
@@ -415,9 +415,9 @@ const LISTINGS: ListingSeed[] = [
   {
     id: "listing_dev_bundle",
     sellerUserId: "dev_user_1",
-    status: ListingStatus.PUBLISHED,
+    status: ExhibitStatus.PUBLISHED,
     isVisible: true,
-    type: ListingType.SLOT,
+    type: ExhibitType.SLOT,
     kind: "S",
     maker: "メーカーB",
     machineName: "モデルB-2",
@@ -441,9 +441,9 @@ const LISTINGS: ListingSeed[] = [
   {
     id: "listing_dev_negotiable",
     sellerUserId: "dev_user_1",
-    status: ListingStatus.PUBLISHED,
+    status: ExhibitStatus.PUBLISHED,
     isVisible: true,
-    type: ListingType.SLOT,
+    type: ExhibitType.SLOT,
     kind: "S",
     maker: "メーカーC",
     machineName: "モデルC-応相談",
@@ -467,9 +467,9 @@ const LISTINGS: ListingSeed[] = [
   {
     id: "listing_dev_comparison_buyer",
     sellerUserId: "dev_user_2",
-    status: ListingStatus.PUBLISHED,
+    status: ExhibitStatus.PUBLISHED,
     isVisible: true,
-    type: ListingType.PACHINKO,
+    type: ExhibitType.PACHINKO,
     kind: "P",
     maker: "メーカーD",
     machineName: "モデルD-比較用",
@@ -493,9 +493,9 @@ const LISTINGS: ListingSeed[] = [
   {
     id: "listing_dev_sold_showcase",
     sellerUserId: "dev_user_4",
-    status: ListingStatus.SOLD,
+    status: ExhibitStatus.SOLD,
     isVisible: true,
-    type: ListingType.PACHINKO,
+    type: ExhibitType.PACHINKO,
     kind: "P",
     maker: "メーカーE",
     machineName: "モデルE-成約済み",
@@ -640,7 +640,7 @@ const buildTradePayload = (
     quantity: number;
     shippingFee: number;
     handlingFee: number;
-    status: TradeStatus;
+    status: DealingStatus;
   }>
 ) => {
   const shipmentDate = "2024-12-05";
@@ -683,11 +683,11 @@ const buildTradePayload = (
 async function clearExistingData() {
   console.log("Clearing existing dev data...");
   await prisma.message.deleteMany({ where: { senderUserId: { in: DEV_USER_IDS } } });
-  await prisma.trade.deleteMany({
+  await prisma.dealing.deleteMany({
     where: { OR: [{ sellerUserId: { in: DEV_USER_IDS } }, { buyerUserId: { in: DEV_USER_IDS } }] },
   });
   await prisma.navi.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
-  await prisma.listing.deleteMany({ where: { sellerUserId: { in: DEV_USER_IDS } } });
+  await prisma.exhibit.deleteMany({ where: { sellerUserId: { in: DEV_USER_IDS } } });
   await prisma.storageLocation.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   try {
     await prisma.buyerShippingAddress.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
@@ -767,7 +767,7 @@ async function seedMakersAndModels() {
 async function seedListings() {
   const createdListings = [] as ListingSeed[];
   for (const listing of LISTINGS) {
-    const created = await prisma.listing.create({
+    const created = await prisma.exhibit.create({
       data: {
         ...listing,
         createdAt: listing.createdAt ?? now,
@@ -925,7 +925,7 @@ async function seedNavis(listings: ListingSeed[]) {
     });
   }
 
-  const soldBundleListing = { ...bundleListing, status: ListingStatus.SOLD };
+  const soldBundleListing = { ...bundleListing, status: ExhibitStatus.SOLD };
 
   const approvedPayload = buildPhoneAgreementPayload(soldBundleListing, "dev_user_1", "dev_user_3", {
     quantity: 2,
@@ -947,19 +947,19 @@ async function seedNavis(listings: ListingSeed[]) {
     },
   });
 
-  const trade = await prisma.trade.create({
+  const trade = await prisma.dealing.create({
     data: {
       sellerUserId: "dev_user_1",
       buyerUserId: "dev_user_3",
-      status: TradeStatus.IN_PROGRESS,
+      status: DealingStatus.IN_PROGRESS,
       payload: buildTradePayload(soldBundleListing, "dev_user_1", "dev_user_3"),
       naviId: approvedNavi.id,
     },
   });
 
-  await prisma.listing.update({
+  await prisma.exhibit.update({
     where: { id: bundleListing.id },
-    data: { status: ListingStatus.SOLD, isVisible: true },
+    data: { status: ExhibitStatus.SOLD, isVisible: true },
   });
 
   return { navis: [phoneNavi, onlineInquiryNavi, approvedNavi], trades: [trade] };

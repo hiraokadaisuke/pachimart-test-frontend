@@ -1,4 +1,4 @@
-import { ListingStatus, RemovalStatus } from "@prisma/client";
+import { ExhibitStatus, RemovalStatus } from "@prisma/client";
 
 import {
   formatStorageLocationShort,
@@ -38,7 +38,7 @@ const toSnapshotFromStorageLocation = (location?: {
 const toDto = (listing: any): Exhibit => ({
   id: String(listing.id),
   sellerUserId: String(listing.sellerUserId),
-  status: listing.status as ListingStatus,
+  status: listing.status as ExhibitStatus,
   isVisible: Boolean(listing.isVisible),
   type: String(listing.type),
   kind: String(listing.kind),
@@ -67,7 +67,7 @@ const toDto = (listing: any): Exhibit => ({
 });
 
 export const getPublicListingById = async (listingId: string): Promise<Exhibit | null> => {
-  const listing = await prisma.listing.findUnique({
+  const listing = await prisma.exhibit.findUnique({
     where: {
       id: listingId,
     },
@@ -77,7 +77,7 @@ export const getPublicListingById = async (listingId: string): Promise<Exhibit |
     return null;
   }
 
-  if (listing.status !== ListingStatus.PUBLISHED || !listing.isVisible) {
+  if (listing.status !== ExhibitStatus.PUBLISHED || !listing.isVisible) {
     return null;
   }
 

@@ -1,9 +1,9 @@
 import {
-  ListingStatus,
+  ExhibitStatus,
   Prisma,
   NaviStatus,
   NaviType,
-  TradeStatus,
+  DealingStatus,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -299,12 +299,12 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       let createdTrade: { id: unknown } | null = null;
 
       if (isApproving && !existingTradeId) {
-        createdTrade = await tx.trade.upsert({
+        createdTrade = await tx.dealing.upsert({
           where: { naviId: updatedNavi.id } as any,
           create: {
             sellerUserId: updatedNavi.ownerUserId,
             buyerUserId: resolvedBuyerId!,
-            status: TradeStatus.IN_PROGRESS,
+            status: DealingStatus.IN_PROGRESS,
             payload: nextPayload ?? Prisma.JsonNull,
             naviId: updatedNavi.id,
           },
@@ -313,10 +313,10 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         });
 
         if (updatedNavi.listingId) {
-          await tx.listing
+          await tx.exhibit
             .update({
               where: { id: updatedNavi.listingId } as any,
-              data: { status: ListingStatus.SOLD },
+              data: { status: ExhibitStatus.SOLD },
             })
             .catch((error: unknown) => {
               console.warn(

@@ -124,7 +124,7 @@ async function migrateMachineStorageLocations() {
       });
     }
 
-    await prisma.listing.updateMany({
+    await prisma.exhibit.updateMany({
       where: { storageLocationId: location.id },
       data: { storageLocationId: targetId },
     });

@@ -1,4 +1,4 @@
-import { ListingStatus, ListingType, Prisma, RemovalStatus } from "@prisma/client";
+import { ExhibitStatus, ExhibitType, Prisma, RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -14,9 +14,9 @@ import {
 type ExhibitRecord = {
   id: string;
   sellerUserId: string;
-  status: ListingStatus;
+  status: ExhibitStatus;
   isVisible: boolean;
-  type: ListingType;
+  type: ExhibitType;
   kind: string;
   maker: string | null;
   machineName: string | null;
@@ -42,9 +42,9 @@ type ExhibitRecord = {
 type ExhibitDto = {
   id: string;
   sellerUserId: string;
-  status: ListingStatus;
+  status: ExhibitStatus;
   isVisible: boolean;
-  type: ListingType;
+  type: ExhibitType;
   kind: string;
   maker: string | null;
   machineName: string | null;
@@ -67,11 +67,11 @@ type ExhibitDto = {
   updatedAt: string;
 };
 
-const exhibitClient = prisma.listing;
+const exhibitClient = prisma.exhibit;
 
 const createListingSchema = z
   .object({
-    type: z.nativeEnum(ListingType),
+    type: z.nativeEnum(ExhibitType),
     kind: z.string().min(1, "kind is required"),
     maker: z.string().trim().min(1).optional().nullable(),
     machineName: z.string().trim().min(1).optional().nullable(),
@@ -93,7 +93,7 @@ const createListingSchema = z
     hasNailSheet: z.boolean().optional(),
     hasManual: z.boolean().optional(),
     pickupAvailable: z.boolean().optional(),
-    status: z.nativeEnum(ListingStatus).optional(),
+    status: z.nativeEnum(ExhibitStatus).optional(),
     isVisible: z.boolean().optional(),
   })
   .refine(
@@ -136,9 +136,9 @@ const toRecord = (exhibit: unknown): ExhibitRecord => {
   return {
     id: String(candidate.id),
     sellerUserId: String(candidate.sellerUserId),
-    status: candidate.status as ListingStatus,
+    status: candidate.status as ExhibitStatus,
     isVisible: Boolean(candidate.isVisible),
-    type: candidate.type as ListingType,
+    type: candidate.type as ExhibitType,
     kind: String(candidate.kind),
     maker: (candidate.maker as string | null) ?? null,
     machineName: (candidate.machineName as string | null) ?? null,
@@ -197,14 +197,14 @@ const toDto = (exhibit: ExhibitRecord): ExhibitDto => ({
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-const parseExhibitStatus = (value: string | null): ListingStatus | undefined => {
+const parseExhibitStatus = (value: string | null): ExhibitStatus | undefined => {
   if (!value) return undefined;
-  return Object.values(ListingStatus).includes(value as ListingStatus)
-    ? (value as ListingStatus)
+  return Object.values(ExhibitStatus).includes(value as ExhibitStatus)
+    ? (value as ExhibitStatus)
     : undefined;
 };
 
-const publicListingStatuses = [ListingStatus.PUBLISHED, ListingStatus.SOLD];
+const publicListingStatuses = [ExhibitStatus.PUBLISHED, ExhibitStatus.SOLD];
 
 type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
 
@@ -250,7 +250,7 @@ export async function GET(request: Request) {
 
     type ExhibitVisibilityWhere = {
       sellerUserId?: string;
-      status?: ListingStatus | { in: ListingStatus[] };
+      status?: ExhibitStatus | { in: ExhibitStatus[] };
     };
 
     const accessibleScopes: ExhibitVisibilityWhere[] = [
@@ -282,9 +282,9 @@ export async function GET(request: Request) {
     const where = {
       OR: accessibleScopes,
       ...(andConditions.length ? { AND: andConditions } : {}),
-    } satisfies Prisma.ListingWhereInput & {
+    } satisfies Prisma.ExhibitWhereInput & {
       sellerUserId?: string;
-      status?: ListingStatus | { in: ListingStatus[] };
+      status?: ExhibitStatus | { in: ExhibitStatus[] };
     };
 
     const exhibits = await exhibitClient.findMany({
@@ -390,7 +390,7 @@ export async function POST(request: Request) {
     const created = await exhibitClient.create({
       data: {
         sellerUserId,
-        status: data.status ?? ListingStatus.DRAFT,
+        status: data.status ?? ExhibitStatus.DRAFT,
         isVisible: data.isVisible ?? true,
         type: data.type,
         kind: data.kind,

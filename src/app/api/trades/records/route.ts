@@ -1,4 +1,4 @@
-import { Prisma, NaviType, TradeStatus } from "@prisma/client";
+import { Prisma, NaviType, DealingStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
@@ -33,7 +33,7 @@ const toRecord = (dealing: unknown) => {
     id: Number(candidate.id),
     sellerUserId: String(candidate.sellerUserId),
     buyerUserId: String(candidate.buyerUserId),
-    status: candidate.status as TradeStatus,
+    status: candidate.status as DealingStatus,
     payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
     naviId: (candidate.naviId as number | null) ?? null,
     createdAt: toDate(candidate.createdAt),
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
   }
 
   try {
-    const dealings = await prisma.trade.findMany({
+    const dealings = await prisma.dealing.findMany({
       where: {
         OR: [{ sellerUserId: currentUserId }, { buyerUserId: currentUserId }],
       },

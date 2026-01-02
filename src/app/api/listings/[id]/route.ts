@@ -1,4 +1,4 @@
-import { ListingStatus, RemovalStatus } from "@prisma/client";
+import { ExhibitStatus, RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -10,10 +10,10 @@ import {
   type StorageLocationSnapshot,
 } from "@/lib/exhibits/storageLocation";
 
-const exhibitClient = prisma.listing;
+const exhibitClient = prisma.exhibit;
 
 const updateListingSchema = z.object({
-  status: z.nativeEnum(ListingStatus).optional(),
+  status: z.nativeEnum(ExhibitStatus).optional(),
   isVisible: z.boolean().optional(),
   note: z.string().optional().nullable(),
 });
@@ -48,7 +48,7 @@ const toSnapshotFromStorageLocation = (location?: {
 const toDto = (exhibit: any) => ({
   id: String(exhibit.id),
   sellerUserId: String(exhibit.sellerUserId),
-  status: exhibit.status as ListingStatus,
+  status: exhibit.status as ExhibitStatus,
   isVisible: Boolean(exhibit.isVisible),
   type: String(exhibit.type),
   kind: String(exhibit.kind),
