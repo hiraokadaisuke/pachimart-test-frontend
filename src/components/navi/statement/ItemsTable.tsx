@@ -1,7 +1,7 @@
 "use client";
 
-import { formatYen } from "@/lib/trade/calcTotals";
-import { StatementItem } from "@/lib/trade/types";
+import { formatYen } from "@/lib/dealings/calcTotals";
+import { StatementItem } from "@/lib/dealings/types";
 
 type ItemsTableProps = {
   items: StatementItem[];

@@ -9,7 +9,7 @@ import {
   formatStorageLocationShort,
   resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
-} from "@/lib/listings/storageLocation";
+} from "@/lib/exhibits/storageLocation";
 
 type ExhibitRecord = {
   id: string;
