@@ -1167,10 +1167,10 @@ const inMemoryPrisma = buildInMemoryPrisma();
 export type InMemoryPrismaClient = typeof inMemoryPrisma;
 
 // In production we must rely on the real database; the in-memory variant only exists for local
-// preview/sandboxes where PRISMA_DATABASE_URL is intentionally absent. The runtime switch keeps a
+// preview/sandboxes where APP_DATABASE_URL is intentionally absent. The runtime switch keeps a
 // single source of truth in DB-backed environments.
 export const prisma: PrismaClient | typeof inMemoryPrisma =
-  process.env.PRISMA_DATABASE_URL
+  process.env.APP_DATABASE_URL
     ? globalForPrisma.prisma ??
       new PrismaClient({
         log: process.env.NODE_ENV === "development" ? ["query", "error", "warn"] : ["error"],

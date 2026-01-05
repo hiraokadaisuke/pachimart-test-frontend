@@ -72,8 +72,9 @@ curl "https://<your-domain>/api/trades/in-progress/1"
 
 ### 1. PR 作成とシード実行
 
-1. PR を作成すると GitHub Actions が `prisma migrate`/`prisma db seed` を実行します（`SEED_MODE=preview`）。
-2. seed は冪等で、ローカル DB や手動 migrate/seed は不要です。
+1. Preview 用の GitHub Actions（`db-init` など）は `APP_DATABASE_URL` を指す Preview DB に対して `prisma migrate`/`prisma db seed` を実行します（`SEED_MODE=preview`）。
+2. Production/本番向けのジョブでは seed を実行しません（`VERCEL_ENV=production` では seed 処理が即時スキップされます）。
+3. seed は冪等で、ローカル DB や手動 migrate/seed は不要です。
 
 ### 2. Vercel Preview の準備
 
@@ -109,8 +110,9 @@ curl "https://<your-domain>/api/trades/in-progress/1"
 ### 5. DB 運用 (migrate/seed)
 
 - `prisma/schema.prisma` への変更はコミットに含め、`prisma migrate` はローカルで実行しません。
-- GitHub Actions Secrets に `PRISMA_DATABASE_URL` を設定し、Actions からのみ DB を初期化します。
-- seed は `preview`/`dev` モードでのみ動作し、冪等です（重複投入や二重実行で壊れません）。
+- Vercel の Environment ごとに `APP_DATABASE_URL` を設定します（Production/Preview/Development で値を分ける）。ローカル開発では `.env.local` に `APP_DATABASE_URL` を指定してください。
+- GitHub Actions から DB を操作する場合も `APP_DATABASE_URL` を Secrets として登録し、Preview 用の接続文字列のみを渡します。
+- seed は `preview`/`development` モードまたは `VERCEL_ENV` が Preview/Development のときのみ動作し、Production では常にスキップされます（冪等・安全な動作）。
 
 #### 開発用ユーザー ID 一覧（ownerUserId 等で利用できます）
 
