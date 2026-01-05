@@ -305,15 +305,21 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         ? await tx.exhibit.findUnique({ where: { id: current.listingId } as any })
         : null;
 
-      const listingSnapshot =
-        (current.listingSnapshot as Prisma.JsonValue | null | undefined) ??
-        (payload.listingSnapshot as Prisma.JsonValue | null | undefined) ??
-        (listing ? (buildListingSnapshot(listing as Record<string, unknown>) as Prisma.JsonValue) : null);
+      const listingSnapshot: Prisma.InputJsonValue | null =
+        (current.listingSnapshot as Prisma.InputJsonValue | null | undefined) ??
+        (payload.listingSnapshot as Prisma.InputJsonValue | null | undefined) ??
+        (listing
+          ? (buildListingSnapshot(listing as Record<string, unknown>) as Prisma.InputJsonValue)
+          : null);
+
+      const listingSnapshotRecord = isJsonObject(listingSnapshot)
+        ? (listingSnapshot as Record<string, unknown>)
+        : null;
 
       const makerName =
         toString(
           conditionsCandidate.makerName ??
-            (isJsonObject(listingSnapshot) ? listingSnapshot.maker : null) ??
+            listingSnapshotRecord?.maker ??
             (listing as { maker?: unknown } | null)?.maker ??
             ""
         ) || undefined;
@@ -321,7 +327,9 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       const productName =
         toString(
           conditionsCandidate.productName ??
-            (isJsonObject(listingSnapshot) ? listingSnapshot.machineName ?? listingSnapshot.title : null) ??
+            ((listingSnapshotRecord?.machineName ?? listingSnapshotRecord?.title) as
+              | unknown
+              | null) ??
             (listing as { machineName?: unknown } | null)?.machineName ??
             "商品"
         ) || "商品";
@@ -349,11 +357,11 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       const { items, totals } = calculateOnlineInquiryTotals(amountInput);
       const memo = toString(conditionsCandidate.memo ?? (payload as Record<string, unknown>).memo ?? "");
 
-      const normalizedPayload: Prisma.JsonValue = {
+      const normalizedPayload: Prisma.InputJsonValue = {
         ...payload,
         buyerCompanyName: current.buyerUser?.companyName ?? undefined,
         sellerCompanyName: current.ownerUser?.companyName ?? undefined,
-        listingSnapshot: listingSnapshot ?? Prisma.JsonNull,
+        listingSnapshot: listingSnapshot ?? null,
         conditions: {
           unitPrice,
           quantity,
@@ -370,7 +378,11 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
 
       const updatedNavi = await tx.navi.update({
         where: { id } as any,
-        data: { status: parsed.data.status, payload: normalizedPayload, listingSnapshot },
+        data: {
+          status: parsed.data.status,
+          payload: normalizedPayload,
+          listingSnapshot: listingSnapshot ?? null,
+        },
       });
 
       const existingTradeId = (current.trade as { id?: unknown } | null)?.id;
