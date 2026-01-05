@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
+import { validateTradeLedgerConsistency } from "@/lib/server/ledger";
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -107,7 +108,17 @@ export async function GET(request: Request) {
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
-    return NextResponse.json(dealings.map((dealing: unknown) => toDto(toRecord(dealing))));
+    const warnings = (
+      await Promise.all(dealings.map((dealing) => validateTradeLedgerConsistency(Number((dealing as any).id))))
+    ).flat();
+
+    const response = NextResponse.json(dealings.map((dealing: unknown) => toDto(toRecord(dealing))));
+
+    if (warnings.length) {
+      response.headers.set("x-ledger-warnings", encodeURIComponent(JSON.stringify(warnings)));
+    }
+
+    return response;
   } catch (error) {
     console.error("Failed to fetch trades", error);
     return NextResponse.json(
