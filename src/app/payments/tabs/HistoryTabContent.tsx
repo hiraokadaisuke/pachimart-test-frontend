@@ -94,7 +94,7 @@ export function HistoryTabContent() {
         entry.makerName ?? "-",
         entry.itemName ?? "-",
         formatNumber(signedAmount),
-        entry.balanceAfterYen !== undefined ? formatNumber(entry.balanceAfterYen) : "-",
+        entry.balanceAfterYen != null ? formatNumber(entry.balanceAfterYen) : "-",
         entry.memo ?? "",
       ];
     });
@@ -197,7 +197,7 @@ export function HistoryTabContent() {
                     <td className={`px-3 py-2 text-right font-semibold ${isNegative ? "text-rose-600" : "text-emerald-700"}`}>
                       {formatNumber(signedAmount)} 円
                     </td>
-                    <td className="px-3 py-2 text-right">{entry.balanceAfterYen !== undefined ? `${formatNumber(entry.balanceAfterYen)} 円` : "-"}</td>
+                    <td className="px-3 py-2 text-right">{entry.balanceAfterYen != null ? `${formatNumber(entry.balanceAfterYen)} 円` : "-"}</td>
                   </tr>
                 );
               })}

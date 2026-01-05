@@ -89,22 +89,25 @@ const buildLedgerSnapshot = (trade: TradeRecord) => {
 export async function addLedgerEntry(entry: LedgerEntryInput) {
   if (!entry.userId || !Number.isFinite(entry.amountYen) || entry.amountYen <= 0) return null;
 
-  return prisma.ledgerEntry.create({
-    data: {
-      userId: entry.userId,
-      tradeId: entry.tradeId ?? null,
-      category: entry.category,
-      kind: entry.kind ?? LedgerEntryKind.PLANNED,
-      amountYen: Math.trunc(entry.amountYen),
-      occurredAt: entry.occurredAt ?? new Date(),
-      counterpartyName: entry.counterpartyName ?? null,
-      makerName: entry.makerName ?? null,
-      itemName: entry.itemName ?? null,
-      memo: entry.memo ?? null,
-      balanceAfterYen: entry.balanceAfterYen ?? null,
-      breakdown: entry.breakdown ?? null,
-    },
-  });
+  const data: Prisma.LedgerEntryCreateInput = {
+    userId: entry.userId,
+    tradeId: entry.tradeId ?? null,
+    category: entry.category,
+    kind: entry.kind ?? LedgerEntryKind.PLANNED,
+    amountYen: Math.trunc(entry.amountYen),
+    occurredAt: entry.occurredAt ?? new Date(),
+    counterpartyName: entry.counterpartyName ?? null,
+    makerName: entry.makerName ?? null,
+    itemName: entry.itemName ?? null,
+    memo: entry.memo ?? null,
+    balanceAfterYen: entry.balanceAfterYen ?? null,
+  };
+
+  if (entry.breakdown !== undefined) {
+    data.breakdown = entry.breakdown as Prisma.InputJsonValue;
+  }
+
+  return prisma.ledgerEntry.create({ data });
 }
 
 async function ledgerEntryExists(params: {
@@ -202,7 +205,7 @@ export async function recordLedgerForStatus(
   const trade = transformTrade(tradeDto);
   const snapshot = buildLedgerSnapshot(trade);
 
-  if ([DealingStatus.APPROVAL_REQUIRED, DealingStatus.PAYMENT_REQUIRED].includes(nextStatus)) {
+  if (nextStatus === DealingStatus.APPROVAL_REQUIRED || nextStatus === DealingStatus.PAYMENT_REQUIRED) {
     await ensurePlannedLedgerEntries(trade);
   }
 

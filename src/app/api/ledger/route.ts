@@ -1,4 +1,4 @@
-import { LedgerEntryCategory, LedgerEntryKind } from "@prisma/client";
+import { LedgerEntryCategory, LedgerEntryKind, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -17,7 +17,7 @@ const entrySchema = z.object({
   itemName: z.string().optional(),
   memo: z.string().optional(),
   balanceAfterYen: z.number().int().optional(),
-  breakdown: z.unknown().optional(),
+  breakdown: z.custom<Prisma.JsonValue>().optional(),
 });
 
 const toDto = (entry: unknown) => {

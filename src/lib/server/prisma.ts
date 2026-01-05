@@ -319,7 +319,7 @@ type InMemoryPrisma = {
       Promise<InMemoryMachineModel[]>;
   };
   ledgerEntry: {
-    create: ({ data }: { data: Partial<InMemoryLedgerEntry> }) => Promise<InMemoryLedgerEntry>;
+    create: ({ data }: { data: Prisma.LedgerEntryCreateInput }) => Promise<InMemoryLedgerEntry>;
     findMany: ({
       where,
       orderBy,

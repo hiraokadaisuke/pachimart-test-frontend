@@ -503,6 +503,8 @@ export function markTradeCompleted(
     advanced.totalAmount ??
     calculateStatementTotals(advanced.items, advanced.taxRate ?? 0.1).total;
 
+  const tradeNumericId = Number(dealingId);
+
   if (Number.isFinite(amount) && amount > 0) {
     const sellerBalanceAfter = creditBalance(advanced.sellerUserId, amount);
     if (sellerBalanceAfter !== null) {
