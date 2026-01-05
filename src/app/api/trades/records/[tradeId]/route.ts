@@ -9,7 +9,7 @@ import {
   findStatusTransition,
   resolveActorRole,
 } from "@/lib/dealings/statusMachine";
-import { recordLedgerForStatus } from "@/lib/server/ledger";
+import { recordLedgerForStatus, validateTradeLedgerConsistency } from "@/lib/server/ledger";
 
 const toDate = (value: unknown, fallback?: Date): Date => {
   if (value instanceof Date) return value;
@@ -190,9 +190,15 @@ export async function PATCH(request: Request, { params }: { params: { tradeId: s
     });
 
     const updatedRecord = toRecord(updated);
-    await recordLedgerForStatus(record.status, targetStatus, updatedRecord);
+    await recordLedgerForStatus(record.status, targetStatus, updatedRecord, currentUserId);
+    const warnings = await validateTradeLedgerConsistency(updatedRecord.id);
 
-    return NextResponse.json(toDto(updatedRecord));
+    const response = NextResponse.json(toDto(updatedRecord));
+    if (warnings.length) {
+      response.headers.set("x-ledger-warnings", encodeURIComponent(JSON.stringify(warnings)));
+    }
+
+    return response;
   } catch (error) {
     console.error("Failed to update trade", error);
     return NextResponse.json(

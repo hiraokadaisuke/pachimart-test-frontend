@@ -10,6 +10,7 @@ import {
   OnlineInquiryStatus,
   LedgerEntryCategory,
   LedgerEntryKind,
+  LedgerEntrySource,
 } from "@prisma/client";
 
 import { DEV_USERS } from "@/lib/dev-user/users";
@@ -153,6 +154,10 @@ type InMemoryLedgerEntry = {
   memo?: string | null;
   balanceAfterYen?: number | null;
   breakdown?: Prisma.JsonValue | null;
+  createdByUserId: string;
+  source: LedgerEntrySource;
+  tradeStatusAtCreation?: DealingStatus | null;
+  dedupeKey: string;
 };
 
 type InMemoryMachineModel = {
@@ -1111,6 +1116,10 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           memo: (data.memo as string | null | undefined) ?? null,
           balanceAfterYen: (data.balanceAfterYen as number | null | undefined) ?? null,
           breakdown: (data.breakdown as Prisma.JsonValue | null | undefined) ?? null,
+          createdByUserId: String((data as any).createdByUserId ?? data.userId ?? ""),
+          source: (data as any).source ?? LedgerEntrySource.TRADE_STATUS_TRANSITION,
+          tradeStatusAtCreation: (data as any).tradeStatusAtCreation ?? null,
+          dedupeKey: String((data as any).dedupeKey ?? `ledger_${ledgerEntries.length + 1}`),
         };
 
         ledgerEntries.push(record);
