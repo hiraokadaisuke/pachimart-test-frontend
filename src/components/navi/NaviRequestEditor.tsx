@@ -1701,6 +1701,12 @@ function OnlineInquiryCreator({
     setIsSubmitting(true);
 
     try {
+      const resolvedUnitPrice = draft?.conditions.unitPrice ?? unitPrice;
+      const resolvedQuantity = draft?.conditions.quantity ?? quantity;
+      const resolvedShippingFee = draft?.conditions.shippingFee ?? 0;
+      const resolvedHandlingFee = draft?.conditions.handlingFee ?? 0;
+      const resolvedTaxRate = draft?.conditions.taxRate ?? 0.1;
+
       const response = await fetchWithDevHeader(
         "/api/online-inquiries",
         {
@@ -1708,8 +1714,15 @@ function OnlineInquiryCreator({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             listingId: exhibitId ?? productId ?? "",
-            quantity,
+            quantity: resolvedQuantity,
+            unitPriceExclTax: resolvedUnitPrice,
+            shippingFee: resolvedShippingFee,
+            handlingFee: resolvedHandlingFee,
+            taxRate: resolvedTaxRate,
+            makerName,
+            productName,
             buyerUserId: currentUser.id,
+            sellerUserId,
             buyerMemo: memo,
             shippingAddress: resolvedShippingAddress,
             contactPerson,

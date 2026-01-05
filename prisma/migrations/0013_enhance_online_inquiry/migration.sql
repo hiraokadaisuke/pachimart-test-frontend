@@ -1,0 +1,27 @@
+-- AlterEnum
+CREATE TYPE "OnlineInquiryStatus_new" AS ENUM ('INQUIRY_RESPONSE_REQUIRED', 'ACCEPTED', 'DECLINED', 'CANCELED');
+
+-- AlterTable
+ALTER TABLE "OnlineInquiry"
+ADD COLUMN     "buyerMemo" TEXT,
+ADD COLUMN     "makerName" TEXT,
+ADD COLUMN     "productName" TEXT,
+ADD COLUMN     "unitPriceExclTax" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "taxRate" DOUBLE PRECISION NOT NULL DEFAULT 0.1,
+ADD COLUMN     "shippingFee" INTEGER NOT NULL DEFAULT 0,
+ADD COLUMN     "handlingFee" INTEGER NOT NULL DEFAULT 0,
+ALTER COLUMN "status" SET DEFAULT 'INQUIRY_RESPONSE_REQUIRED',
+ALTER COLUMN "status" TYPE "OnlineInquiryStatus_new" USING (
+  CASE "status"::text
+    WHEN 'PENDING' THEN 'INQUIRY_RESPONSE_REQUIRED'
+    WHEN 'ACCEPTED' THEN 'ACCEPTED'
+    WHEN 'REJECTED' THEN 'DECLINED'
+    ELSE 'INQUIRY_RESPONSE_REQUIRED'
+  END::"OnlineInquiryStatus_new"
+);
+
+-- DropEnum
+DROP TYPE "OnlineInquiryStatus";
+
+-- RenameEnum
+ALTER TYPE "OnlineInquiryStatus_new" RENAME TO "OnlineInquiryStatus";

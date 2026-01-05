@@ -7,6 +7,7 @@ import MyPageLayout from "@/components/layout/MyPageLayout";
 import { NaviSectionRow, NaviSectionTable } from "@/components/navi/NaviSectionTable";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { fetchOnlineInquiryDetail, type OnlineInquiryDetail } from "@/lib/online-inquiries/api";
+import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
 
 type InquiryView = OnlineInquiryDetail;
 
@@ -97,7 +98,21 @@ export default function InquiryDetailPage() {
 }
 
 function InquirySummary({ record }: { record: InquiryView }) {
-  const totalAmount = useMemo(() => record.unitPrice * record.quantity, [record.quantity, record.unitPrice]);
+  const { totals } = useMemo(
+    () =>
+      calculateOnlineInquiryTotals({
+        id: record.id,
+        unitPriceExclTax: record.unitPriceExclTax,
+        quantity: record.quantity,
+        shippingFee: record.shippingFee,
+        handlingFee: record.handlingFee,
+        taxRate: record.taxRate,
+        makerName: record.makerName,
+        productName: record.productName,
+      }),
+    [record]
+  );
+  const totalAmount = totals.total;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -146,7 +161,7 @@ function InquirySummary({ record }: { record: InquiryView }) {
                 <NaviSectionRow label="メーカー" value={record.makerName ?? "-"} />
                 <NaviSectionRow label="機種名" value={record.productName} />
                 <NaviSectionRow label="台数" value={`${record.quantity}台`} />
-                <NaviSectionRow label="単価" value={formatYen(record.unitPrice)} />
+                <NaviSectionRow label="単価" value={formatYen(record.unitPriceExclTax)} />
               </tbody>
             </NaviSectionTable>
           </div>
@@ -160,17 +175,18 @@ function InquirySummary({ record }: { record: InquiryView }) {
           <div className="overflow-x-auto px-2 py-3">
             <NaviSectionTable>
               <tbody className="text-neutral-900">
-                <NaviSectionRow label="単価" value={formatYen(record.unitPrice)} />
+                <NaviSectionRow label="単価" value={formatYen(record.unitPriceExclTax)} />
                 <NaviSectionRow label="台数" value={`${record.quantity}台`} />
                 <NaviSectionRow label="撤去日" value="-" />
                 <NaviSectionRow label="機械発送日" value={record.desiredShipDate || "-"} />
                 <NaviSectionRow label="書類発送予定日" value="-" />
                 <NaviSectionRow label="支払日" value={record.desiredPaymentDate || "-"} />
-                <NaviSectionRow label="機械運賃" value="-" />
-                <NaviSectionRow label="出庫手数料" value="-" />
+                <NaviSectionRow label="機械運賃" value={formatYen(record.shippingFee)} />
+                <NaviSectionRow label="出庫手数料" value={formatYen(record.handlingFee)} />
                 <NaviSectionRow label="段ボール" value="-" />
                 <NaviSectionRow label="釘シート" value="-" />
                 <NaviSectionRow label="保険" value="-" />
+                <NaviSectionRow label="消費税率" value={`${Math.round(record.taxRate * 1000) / 10}%`} />
                 <NaviSectionRow label="特記事項" value="-" />
                 <NaviSectionRow label="取引条件（テキスト）" value="-" />
                 <NaviSectionRow label="備考" value={record.memo ?? "-"} />

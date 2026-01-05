@@ -683,6 +683,9 @@ const buildTradePayload = (
 async function clearExistingData() {
   console.log("Clearing existing dev data...");
   await prisma.message.deleteMany({ where: { senderUserId: { in: DEV_USER_IDS } } });
+  await prisma.onlineInquiry.deleteMany({
+    where: { OR: [{ buyerUserId: { in: DEV_USER_IDS } }, { sellerUserId: { in: DEV_USER_IDS } }] },
+  });
   await prisma.dealing.deleteMany({
     where: { OR: [{ sellerUserId: { in: DEV_USER_IDS } }, { buyerUserId: { in: DEV_USER_IDS } }] },
   });
@@ -792,6 +795,88 @@ async function seedBuyerShippingAddresses() {
       throw error;
     }
   }
+}
+
+async function seedOnlineInquiries(listings: ListingSeed[]) {
+  const listingMap = new Map(listings.map((listing) => [listing.id, listing]));
+  const comparisonListing = listingMap.get("listing_dev_comparison_buyer");
+  const phoneReadyListing = listingMap.get("listing_dev_phone_ready");
+  const bundleListing = listingMap.get("listing_dev_bundle");
+
+  if (!comparisonListing || !phoneReadyListing || !bundleListing) {
+    console.warn("Required listings are missing. Skipping online inquiry seed.");
+    return [] as string[];
+  }
+
+  const inquiries = [
+    {
+      listingId: comparisonListing.id,
+      buyerUserId: "dev_user_1",
+      sellerUserId: comparisonListing.sellerUserId,
+      body: "オンライン問い合わせのサンプルです。送料込みで見積もりをお願いします。",
+      buyerMemo: "オンライン問い合わせのサンプルです。送料込みで見積もりをお願いします。",
+      makerName: comparisonListing.maker,
+      productName: comparisonListing.machineName,
+      unitPriceExclTax: comparisonListing.unitPriceExclTax ?? 0,
+      quantity: 2,
+      taxRate: 0.1,
+      shippingFee: 8000,
+      handlingFee: 5000,
+      shippingAddress: USERS[0]?.address ?? null,
+      contactPerson: USERS[0]?.contactName ?? null,
+      desiredShipDate: "2024-12-05",
+      desiredPaymentDate: "2024-12-20",
+      status: "INQUIRY_RESPONSE_REQUIRED" as const,
+      createdAt: now,
+      updatedAt: now,
+    },
+    {
+      listingId: phoneReadyListing.id,
+      buyerUserId: "dev_user_3",
+      sellerUserId: phoneReadyListing.sellerUserId,
+      body: "在庫があれば即納希望です。",
+      buyerMemo: "在庫があれば即納希望です。",
+      makerName: phoneReadyListing.maker,
+      productName: phoneReadyListing.machineName,
+      unitPriceExclTax: phoneReadyListing.unitPriceExclTax ?? 0,
+      quantity: 1,
+      taxRate: 0.1,
+      shippingFee: 12000,
+      handlingFee: 3000,
+      shippingAddress: USERS[2]?.address ?? null,
+      contactPerson: USERS[2]?.contactName ?? null,
+      desiredShipDate: "2024-12-10",
+      desiredPaymentDate: "2024-12-25",
+      status: "ACCEPTED" as const,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 3),
+      updatedAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 2),
+    },
+    {
+      listingId: bundleListing.id,
+      buyerUserId: "dev_user_4",
+      sellerUserId: bundleListing.sellerUserId,
+      body: "条件が合わず今回は見送ります。",
+      buyerMemo: "条件が合わず今回は見送ります。",
+      makerName: bundleListing.maker,
+      productName: bundleListing.machineName,
+      unitPriceExclTax: bundleListing.unitPriceExclTax ?? 0,
+      quantity: 2,
+      taxRate: 0.1,
+      shippingFee: 15000,
+      handlingFee: 6000,
+      shippingAddress: USERS[3]?.address ?? null,
+      contactPerson: USERS[3]?.contactName ?? null,
+      desiredShipDate: "2024-12-18",
+      desiredPaymentDate: "2025-01-10",
+      status: "DECLINED" as const,
+      createdAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 7),
+      updatedAt: new Date(now.getTime() - 1000 * 60 * 60 * 24 * 5),
+    },
+  ];
+
+  const created = await prisma.onlineInquiry.createMany({ data: inquiries });
+  console.log(`Seeded ${created.count} online inquiries.`);
+  return inquiries.map((inquiry) => inquiry.listingId);
 }
 
 async function seedNavis(listings: ListingSeed[]) {
@@ -955,6 +1040,7 @@ async function main() {
   await seedMakersAndModels();
   await seedBuyerShippingAddresses();
   const listings = await seedListings();
+  await seedOnlineInquiries(listings);
   const { navis, trades } = await seedNavis(listings);
 
   console.log(`Navi created: ${navis.length}`);

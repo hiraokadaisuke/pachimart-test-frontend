@@ -3,25 +3,25 @@ import { NaviType } from "@prisma/client";
 import { fetchOnlineInquiries, type OnlineInquiryListItem } from "@/lib/online-inquiries/api";
 import { findDevUserById } from "@/lib/dev-user/users";
 import { buildTodosFromStatus } from "@/lib/dealings/todo";
-import { type StatementItem, type TradeRecord } from "@/lib/dealings/types";
+import { type TradeRecord } from "@/lib/dealings/types";
+import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
 
-const buildInquiryItems = (inquiry: OnlineInquiryListItem): StatementItem[] => {
-  return [
-    {
-      lineId: `inquiry-${inquiry.id}`,
-      maker: inquiry.makerName ?? undefined,
-      itemName: inquiry.machineName ?? "商品",
-      qty: inquiry.quantity,
-      amount: inquiry.totalAmount,
-      isTaxable: false,
-    },
-  ];
-};
+const buildAmountInput = (inquiry: OnlineInquiryListItem) => ({
+    id: inquiry.id,
+    unitPriceExclTax: inquiry.unitPriceExclTax,
+    quantity: inquiry.quantity,
+    shippingFee: inquiry.shippingFee,
+    handlingFee: inquiry.handlingFee,
+    taxRate: inquiry.taxRate,
+    makerName: inquiry.makerName,
+    productName: inquiry.productName ?? inquiry.machineName,
+  });
 
 const mapInquiryToTradeRecord = (inquiry: OnlineInquiryListItem): TradeRecord => {
   const sellerCompany = findDevUserById(inquiry.sellerUserId)?.companyName ?? inquiry.sellerUserId;
   const buyerCompany = findDevUserById(inquiry.buyerUserId)?.companyName ?? inquiry.buyerUserId;
-  const items = buildInquiryItems(inquiry);
+  const amountInput = buildAmountInput(inquiry);
+  const { items, totals } = calculateOnlineInquiryTotals(amountInput);
   const todos = buildTodosFromStatus("PAYMENT_REQUIRED");
 
   return {
@@ -36,9 +36,9 @@ const mapInquiryToTradeRecord = (inquiry: OnlineInquiryListItem): TradeRecord =>
     updatedAt: inquiry.updatedAt,
     contractDate: inquiry.updatedAt,
     makerName: inquiry.makerName ?? undefined,
-    itemName: inquiry.machineName ?? "商品",
+    itemName: inquiry.productName ?? inquiry.machineName ?? "商品",
     quantity: inquiry.quantity,
-    totalAmount: inquiry.totalAmount,
+    totalAmount: totals.total,
     seller: {
       companyName: sellerCompany,
       userId: inquiry.sellerUserId,
@@ -49,7 +49,7 @@ const mapInquiryToTradeRecord = (inquiry: OnlineInquiryListItem): TradeRecord =>
     },
     todos,
     items,
-    taxRate: 0,
+    taxRate: inquiry.taxRate,
     shipping: {},
   } satisfies TradeRecord;
 };

@@ -7,12 +7,17 @@ const onlineInquiryListItemSchema = z.object({
   listingId: z.string(),
   buyerUserId: z.string(),
   sellerUserId: z.string(),
-  status: z.enum(["PENDING", "ACCEPTED", "REJECTED"]),
+  status: z.enum(["INQUIRY_RESPONSE_REQUIRED", "ACCEPTED", "DECLINED", "CANCELED"]),
   createdAt: z.string(),
   updatedAt: z.string(),
   makerName: z.string().nullable(),
+  productName: z.string().nullable(),
   machineName: z.string().nullable(),
   quantity: z.number(),
+  unitPriceExclTax: z.number(),
+  shippingFee: z.number(),
+  handlingFee: z.number(),
+  taxRate: z.number(),
   totalAmount: z.number(),
   partnerName: z.string(),
   buyerCompanyName: z.string().nullable(),
@@ -24,13 +29,16 @@ const onlineInquiryDetailSchema = z.object({
   listingId: z.string(),
   buyerUserId: z.string(),
   sellerUserId: z.string(),
-  status: z.enum(["PENDING", "ACCEPTED", "REJECTED"]),
+  status: z.enum(["INQUIRY_RESPONSE_REQUIRED", "ACCEPTED", "DECLINED", "CANCELED"]),
   buyerCompanyName: z.string(),
   sellerCompanyName: z.string(),
   makerName: z.string().nullable(),
   productName: z.string(),
   quantity: z.number(),
-  unitPrice: z.number(),
+  unitPriceExclTax: z.number(),
+  shippingFee: z.number(),
+  handlingFee: z.number(),
+  taxRate: z.number(),
   totalAmount: z.number(),
   shippingAddress: z.string(),
   contactPerson: z.string(),
@@ -44,7 +52,7 @@ const onlineInquiryDetailSchema = z.object({
 export type OnlineInquiryListItem = z.infer<typeof onlineInquiryListItemSchema>;
 export type OnlineInquiryDetail = z.infer<typeof onlineInquiryDetailSchema>;
 export type OnlineInquiryStatus = OnlineInquiryListItem["status"];
-export type OnlineInquiryAction = "accept" | "reject";
+export type OnlineInquiryAction = "accept" | "decline" | "cancel";
 
 const ONLINE_INQUIRY_UPDATED_EVENT = "online_inquiry_updated";
 

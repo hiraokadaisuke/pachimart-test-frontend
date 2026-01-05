@@ -57,39 +57,40 @@ enum ExhibitType {
 }
 
 enum OnlineInquiryStatus {
-  PENDING
+  INQUIRY_RESPONSE_REQUIRED
   ACCEPTED
-  REJECTED
+  DECLINED
+  CANCELED
 }
 
 model User {
-  id              String     @id
-  companyName     String
-  contactName     String?
-  address         String?
-  tel             String?
-  navisOwned      Navi[]     @relation("NaviOwner")
-  navisBought     Navi[]     @relation("NaviBuyer")
-  dealingsAsSeller  Dealing[]          @relation("TradeSeller")
-  dealingsAsBuyer   Dealing[]          @relation("TradeBuyer")
-  messagesSent    Message[]        @relation("Sender")
+  id               String            @id
+  companyName      String
+  contactName      String?
+  address          String?
+  tel              String?
+  navisOwned       Navi[]            @relation("NaviOwner")
+  navisBought      Navi[]            @relation("NaviBuyer")
+  dealingsAsSeller Dealing[]         @relation("TradeSeller")
+  dealingsAsBuyer  Dealing[]         @relation("TradeBuyer")
+  messagesSent     Message[]         @relation("Sender")
   storageLocations StorageLocation[]
 }
 
 model Navi {
-  id             Int        @id @default(autoincrement())
-  status         NaviStatus @default(DRAFT)
-  naviType       NaviType   @default(PHONE_AGREEMENT)
-  ownerUserId    String
-  buyerUserId    String?
-  listingId      String?
+  id              Int        @id @default(autoincrement())
+  status          NaviStatus @default(DRAFT)
+  naviType        NaviType   @default(PHONE_AGREEMENT)
+  ownerUserId     String
+  buyerUserId     String?
+  listingId       String?
   listingSnapshot Json?
-  payload        Json?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  payload         Json?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
 
-  ownerUser User  @relation("NaviOwner", fields: [ownerUserId], references: [id])
-  buyerUser User? @relation("NaviBuyer", fields: [buyerUserId], references: [id])
+  ownerUser User      @relation("NaviOwner", fields: [ownerUserId], references: [id])
+  buyerUser User?     @relation("NaviBuyer", fields: [buyerUserId], references: [id])
   trade     Dealing?
   messages  Message[]
 
@@ -97,14 +98,14 @@ model Navi {
 }
 
 model Dealing {
-  id            Int          @id @default(autoincrement())
-  sellerUserId  String
-  buyerUserId   String
-  status        DealingStatus
-  payload       Json?
-  naviId        Int?         @unique
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id           Int           @id @default(autoincrement())
+  sellerUserId String
+  buyerUserId  String
+  status       DealingStatus
+  payload      Json?
+  naviId       Int?          @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 
   sellerUser User  @relation("TradeSeller", fields: [sellerUserId], references: [id])
   buyerUser  User  @relation("TradeBuyer", fields: [buyerUserId], references: [id])
@@ -115,7 +116,7 @@ model Dealing {
 
 model Message {
   id           Int               @id @default(autoincrement())
-  naviId       Int              @map("tradeNaviId")
+  naviId       Int               @map("tradeNaviId")
   senderUserId String
   senderRole   MessageSenderRole
   body         String
@@ -126,47 +127,54 @@ model Message {
 }
 
 model OnlineInquiry {
-  id                String   @id @default(cuid())
-  listingId         String
-  buyerUserId       String
-  sellerUserId      String
-  body              String
-  quantity          Int
-  shippingAddress   String?
-  contactPerson     String?
-  desiredShipDate   String?
+  id                 String              @id @default(cuid())
+  listingId          String
+  buyerUserId        String
+  sellerUserId       String
+  body               String
+  buyerMemo          String?
+  makerName          String?
+  productName        String?
+  unitPriceExclTax   Int
+  quantity           Int
+  taxRate            Float               @default(0.1)
+  shippingFee        Int                 @default(0)
+  handlingFee        Int                 @default(0)
+  shippingAddress    String?
+  contactPerson      String?
+  desiredShipDate    String?
   desiredPaymentDate String?
-  status            OnlineInquiryStatus @default(PENDING)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  status             OnlineInquiryStatus @default(INQUIRY_RESPONSE_REQUIRED)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
 }
 
 model Exhibit {
-  id               String         @id @default(cuid())
-  sellerUserId     String
-  status           ExhibitStatus  @default(DRAFT)
-  isVisible        Boolean        @default(true)
-  type             ExhibitType    @default(PACHINKO)
-  kind             String
-  maker            String?
-  machineName      String?
-  quantity         Int
-  unitPriceExclTax Int?
-  isNegotiable     Boolean        @default(false)
-  removalStatus    RemovalStatus  @default(SCHEDULED)
-  removalDate      DateTime?
-  hasNailSheet     Boolean        @default(false)
-  hasManual        Boolean        @default(false)
-  pickupAvailable  Boolean        @default(false)
-  storageLocation  String
-  storageLocationId String
+  id                      String        @id @default(cuid())
+  sellerUserId            String
+  status                  ExhibitStatus @default(DRAFT)
+  isVisible               Boolean       @default(true)
+  type                    ExhibitType   @default(PACHINKO)
+  kind                    String
+  maker                   String?
+  machineName             String?
+  quantity                Int
+  unitPriceExclTax        Int?
+  isNegotiable            Boolean       @default(false)
+  removalStatus           RemovalStatus @default(SCHEDULED)
+  removalDate             DateTime?
+  hasNailSheet            Boolean       @default(false)
+  hasManual               Boolean       @default(false)
+  pickupAvailable         Boolean       @default(false)
+  storageLocation         String
+  storageLocationId       String
   storageLocationSnapshot Json?
-  shippingFeeCount Int
-  handlingFeeCount Int
-  allowPartial     Boolean
-  note             String?
-  createdAt        DateTime       @default(now())
-  updatedAt        DateTime       @updatedAt
+  shippingFeeCount        Int
+  handlingFeeCount        Int
+  allowPartial            Boolean
+  note                    String?
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
 
   storageLocationRecord StorageLocation @relation(fields: [storageLocationId], references: [id])
 
@@ -175,7 +183,6 @@ model Exhibit {
   @@index([isVisible])
   @@index([updatedAt])
   @@index([storageLocationId])
-
   @@map("Exhibit")
 }
 
@@ -193,46 +200,46 @@ model MachineModel {
 
   maker Maker @relation(fields: [makerId], references: [id])
 
-  @@index([type])
   @@unique([makerId, type, name])
+  @@index([type])
 }
 
 model StorageLocation {
-  id                  String   @id @default(cuid())
-  ownerUserId         String
-  name                String
-  addressLine         String?  @map("address")
-  postalCode          String?
-  prefecture          String?
-  city                String?
-  handlingFeePerUnit  Int?
+  id                   String   @id @default(cuid())
+  ownerUserId          String
+  name                 String
+  addressLine          String?  @map("address")
+  postalCode           String?
+  prefecture           String?
+  city                 String?
+  handlingFeePerUnit   Int?
   shippingFeesByRegion Json?
-  isActive            Boolean  @default(true)
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  isActive             Boolean  @default(true)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  ownerUser User     @relation(fields: [ownerUserId], references: [id])
+  ownerUser User      @relation(fields: [ownerUserId], references: [id])
   exhibits  Exhibit[]
 
+  @@unique([name, ownerUserId])
   @@index([ownerUserId])
   @@index([isActive])
-  @@unique([name, ownerUserId])
 }
 
 model BuyerShippingAddress {
-  id           String   @id @default(cuid())
-  ownerUserId  String
-  label        String?
-  companyName  String?
-  postalCode   String?
-  prefecture   String?
-  city         String?
-  addressLine  String?
-  tel          String?
-  contactName  String?
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id          String   @id @default(cuid())
+  ownerUserId String
+  label       String?
+  companyName String?
+  postalCode  String?
+  prefecture  String?
+  city        String?
+  addressLine String?
+  tel         String?
+  contactName String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([ownerUserId, isActive])
 }

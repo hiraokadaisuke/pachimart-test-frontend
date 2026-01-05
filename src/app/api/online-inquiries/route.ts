@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
+import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
 
 const listQuerySchema = z.object({
   role: z.enum(["buyer", "seller"]),
@@ -12,7 +13,14 @@ const listQuerySchema = z.object({
 const requestSchema = z.object({
   listingId: z.string().min(1, "listingId is required"),
   quantity: z.number().int().positive("quantity must be a positive integer"),
+  unitPriceExclTax: z.number().int().nonnegative("unitPriceExclTax must be zero or positive"),
+  shippingFee: z.number().int().default(0),
+  handlingFee: z.number().int().default(0),
+  taxRate: z.number().nonnegative().default(0.1),
+  makerName: z.string().optional(),
+  productName: z.string().optional(),
   buyerUserId: z.string().min(1, "buyerUserId is required"),
+  sellerUserId: z.string().optional(),
   buyerMemo: z.string().optional(),
   shippingAddress: z.string().optional(),
   contactPerson: z.string().optional(),
@@ -22,13 +30,6 @@ const requestSchema = z.object({
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
-
-const calculateTotalAmount = (unitPriceExclTax: number | null, quantity: number) => {
-  const price = unitPriceExclTax ?? 0;
-  const subtotal = price * quantity;
-  const tax = Math.round(subtotal * 0.1);
-  return subtotal + tax;
-};
 
 export async function GET(request: Request) {
   const currentUserId = getCurrentUserId(request);
@@ -82,12 +83,25 @@ export async function GET(request: Request) {
 
     const payload = inquiries.map((inquiry) => {
       const exhibit = exhibitMap.get(inquiry.listingId);
+      const makerName = inquiry.makerName ?? exhibit?.maker ?? null;
+      const productName = inquiry.productName ?? exhibit?.machineName ?? "商品";
       const buyerCompanyName = userMap.get(inquiry.buyerUserId) ?? null;
       const sellerCompanyName = userMap.get(inquiry.sellerUserId) ?? null;
       const partnerName =
         role === "buyer"
           ? sellerCompanyName ?? inquiry.sellerUserId
           : buyerCompanyName ?? inquiry.buyerUserId;
+
+      const { totals } = calculateOnlineInquiryTotals({
+        id: inquiry.id,
+        unitPriceExclTax: inquiry.unitPriceExclTax,
+        quantity: inquiry.quantity,
+        shippingFee: inquiry.shippingFee,
+        handlingFee: inquiry.handlingFee,
+        taxRate: inquiry.taxRate,
+        makerName,
+        productName,
+      });
 
       return {
         id: inquiry.id,
@@ -97,10 +111,15 @@ export async function GET(request: Request) {
         status: inquiry.status,
         createdAt: inquiry.createdAt,
         updatedAt: inquiry.updatedAt,
-        makerName: exhibit?.maker ?? null,
-        machineName: exhibit?.machineName ?? null,
+        makerName,
+        productName,
+        machineName: productName,
         quantity: inquiry.quantity,
-        totalAmount: calculateTotalAmount(exhibit?.unitPriceExclTax ?? null, inquiry.quantity),
+        unitPriceExclTax: inquiry.unitPriceExclTax,
+        shippingFee: inquiry.shippingFee,
+        handlingFee: inquiry.handlingFee,
+        taxRate: inquiry.taxRate,
+        totalAmount: totals.total,
         partnerName,
         buyerCompanyName,
         sellerCompanyName,
@@ -147,8 +166,15 @@ export async function POST(request: Request) {
   const {
     listingId,
     quantity,
+    unitPriceExclTax,
+    shippingFee,
+    handlingFee,
+    taxRate,
+    makerName,
+    productName,
     buyerMemo,
     buyerUserId,
+    sellerUserId,
     shippingAddress,
     contactPerson,
     desiredShipDate,
@@ -173,6 +199,13 @@ export async function POST(request: Request) {
       );
     }
 
+    if (sellerUserId && sellerUserId !== exhibit.sellerUserId) {
+      return NextResponse.json(
+        { error: "出品者が一致しません。最新の情報を確認してください。" },
+        { status: 400 }
+      );
+    }
+
     if (exhibit.status === ExhibitStatus.SOLD) {
       return NextResponse.json(
         { error: "成約済みのためオンライン問い合わせは利用できません" },
@@ -181,6 +214,12 @@ export async function POST(request: Request) {
     }
 
     const normalizedBody = (buyerMemo ?? "").toString().trim() || "問い合わせが送信されました。";
+    const normalizedMaker = makerName ?? exhibit.maker ?? null;
+    const normalizedProduct = productName ?? exhibit.machineName ?? null;
+    const normalizedTaxRate = Number.isFinite(taxRate) ? taxRate : 0.1;
+    const normalizedShippingFee = Number.isFinite(shippingFee) ? shippingFee : 0;
+    const normalizedHandlingFee = Number.isFinite(handlingFee) ? handlingFee : 0;
+    const normalizedUnitPrice = Number.isFinite(unitPriceExclTax) ? unitPriceExclTax : 0;
 
     const createInquiry = async (tx: Prisma.TransactionClient | InMemoryPrismaClient) =>
       tx.onlineInquiry.create({
@@ -189,12 +228,19 @@ export async function POST(request: Request) {
           buyerUserId,
           sellerUserId: exhibit.sellerUserId,
           body: normalizedBody,
+          buyerMemo: normalizedBody,
+          makerName: normalizedMaker,
+          productName: normalizedProduct,
+          unitPriceExclTax: normalizedUnitPrice,
           quantity,
+          taxRate: normalizedTaxRate,
+          shippingFee: normalizedShippingFee,
+          handlingFee: normalizedHandlingFee,
           shippingAddress: shippingAddress ?? null,
           contactPerson: contactPerson ?? null,
           desiredShipDate: desiredShipDate ?? null,
           desiredPaymentDate: desiredPaymentDate ?? null,
-          status: "PENDING",
+          status: "INQUIRY_RESPONSE_REQUIRED",
         },
       });
 
