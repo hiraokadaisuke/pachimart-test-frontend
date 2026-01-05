@@ -178,6 +178,7 @@ export default function InventoryPage() {
   const [salesModalOpen, setSalesModalOpen] = useState(false);
   const [salesCandidateIds, setSalesCandidateIds] = useState<string[]>([]);
   const [serialCompletionMap, setSerialCompletionMap] = useState<Record<string, boolean>>({});
+  const [warehouseOptions, setWarehouseOptions] = useState<string[]>([]);
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
@@ -186,6 +187,14 @@ export default function InventoryPage() {
   useEffect(() => {
     setMasterData(loadMasterData());
   }, []);
+
+  useEffect(() => {
+    if (masterData.warehouses.length > 0) {
+      setWarehouseOptions(masterData.warehouses);
+      return;
+    }
+    setWarehouseOptions(["東京第1倉庫", "埼玉倉庫", "大阪倉庫"]);
+  }, [masterData.warehouses]);
 
   useEffect(() => {
     const refreshInvoices = () => setPurchaseInvoices(loadPurchaseInvoices());
@@ -473,6 +482,10 @@ export default function InventoryPage() {
 
   const handleVisibilityChange = (id: string, visible: boolean) => {
     handleUpdateRecord(id, { isVisible: visible });
+  };
+
+  const handleWarehouseChange = (id: string, warehouse: string) => {
+    handleUpdateRecord(id, { warehouse, storageLocation: warehouse });
   };
 
   const getCellText = (record: InventoryRecord, key: string) => {
@@ -1375,6 +1388,24 @@ export default function InventoryPage() {
                                   <p className="text-[10px] text-red-600">{saleErrors[item.id]}</p>
                                 )}
                               </div>
+                            ) : col.key === "warehouse" ? (
+                              <select
+                                value={item.warehouse ?? item.storageLocation ?? ""}
+                                onChange={(event) => handleWarehouseChange(item.id, event.target.value)}
+                                className="w-full border border-gray-300 bg-white px-1 py-0.5 text-xs"
+                              >
+                                {[
+                                  item.warehouse ?? item.storageLocation,
+                                  ...warehouseOptions,
+                                ]
+                                  .filter((warehouse): warehouse is string => Boolean(warehouse))
+                                  .filter((warehouse, index, list) => list.indexOf(warehouse) === index)
+                                  .map((warehouse) => (
+                                    <option key={warehouse} value={warehouse}>
+                                      {warehouse}
+                                    </option>
+                                  ))}
+                              </select>
                             ) : col.key === "id" && managementId ? (
                               managementId.isSplit ? (
                                 <span className="flex flex-col items-center leading-tight">

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
+import { splitInventoryForSales } from "@/lib/inventory/salesInvoiceSplit";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
 import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
@@ -247,8 +248,10 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     }
     if (!window.confirm("よろしいですか？")) return;
 
+    const { inventoryIdMap, soldInventoryIds } = splitInventoryForSales(rows);
+
     const items: SalesInvoiceItem[] = rows.map((row) => ({
-      inventoryId: row.inventoryId,
+      inventoryId: row.inventoryId ? inventoryIdMap.get(row.inventoryId) ?? row.inventoryId : row.inventoryId,
       maker: row.maker,
       productName: row.productName,
       type: row.type,
@@ -293,7 +296,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       buyerName: "株式会社ピーコム",
       staff,
       manager,
-      inventoryIds: inventories?.map((item) => item.id) ?? [],
+      inventoryIds: soldInventoryIds.length > 0 ? soldInventoryIds : inventories?.map((item) => item.id) ?? [],
       items,
       subtotal,
       tax,
@@ -312,8 +315,8 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     const invoiceInventoryIds = rows
       .map((row) => row.inventoryId)
       .filter((id): id is string => Boolean(id));
-    if (invoiceInventoryIds.length > 0) {
-      updateInventoryStatuses(invoiceInventoryIds, "sold");
+    if (soldInventoryIds.length > 0) {
+      updateInventoryStatuses(soldInventoryIds, "sold");
     }
 
     alert("登録完了");

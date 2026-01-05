@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
 import { addSalesInvoice, generateSalesInvoiceId, loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { loadInventoryRecords, updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
+import { splitInventoryForSales } from "@/lib/inventory/salesInvoiceSplit";
 import type { SerialInputRow } from "@/lib/serialInputStorage";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
@@ -274,8 +275,10 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     }
     if (!window.confirm("よろしいですか？")) return;
 
+    const { inventoryIdMap, soldInventoryIds } = splitInventoryForSales(rows);
+
     const items: SalesInvoiceItem[] = rows.map((row) => ({
-      inventoryId: row.inventoryId,
+      inventoryId: row.inventoryId ? inventoryIdMap.get(row.inventoryId) ?? row.inventoryId : row.inventoryId,
       maker: row.maker,
       productName: row.productName,
       type: row.type,
@@ -305,7 +308,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
       buyerName: "株式会社ピーコム",
       staff,
       manager,
-      inventoryIds: invoiceInventoryIds,
+      inventoryIds: soldInventoryIds.length > 0 ? soldInventoryIds : invoiceInventoryIds,
       items,
       subtotal,
       tax,
@@ -315,8 +318,8 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
       paymentDueDate: paymentDate,
       invoiceOriginalRequired: invoiceOriginal === "要",
     });
-    if (invoiceInventoryIds.length > 0) {
-      updateInventoryStatuses(invoiceInventoryIds, "sold");
+    if (soldInventoryIds.length > 0) {
+      updateInventoryStatuses(soldInventoryIds, "sold");
     }
 
     alert("登録完了");
