@@ -51,7 +51,14 @@ type InMemoryOnlineInquiry = {
   buyerUserId: string;
   sellerUserId: string;
   body: string;
+  buyerMemo: string | null;
+  makerName: string | null;
+  productName: string | null;
+  unitPriceExclTax: number;
   quantity: number;
+  taxRate: number;
+  shippingFee: number;
+  handlingFee: number;
   shippingAddress: string | null;
   contactPerson: string | null;
   desiredShipDate: string | null;
@@ -477,12 +484,23 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           buyerUserId: String(data.buyerUserId ?? ""),
           sellerUserId: String(data.sellerUserId ?? ""),
           body: String(data.body ?? ""),
+          buyerMemo: (data.buyerMemo as string | null | undefined) ?? null,
+          makerName: (data.makerName as string | null | undefined) ?? null,
+          productName: (data.productName as string | null | undefined) ?? null,
+          unitPriceExclTax: Number.isFinite(Number(data.unitPriceExclTax))
+            ? Number(data.unitPriceExclTax)
+            : 0,
           quantity: Number.isFinite(Number(data.quantity)) ? Number(data.quantity) : 0,
+          taxRate: Number.isFinite(Number(data.taxRate)) ? Number(data.taxRate) : 0.1,
+          shippingFee: Number.isFinite(Number(data.shippingFee)) ? Number(data.shippingFee) : 0,
+          handlingFee: Number.isFinite(Number(data.handlingFee)) ? Number(data.handlingFee) : 0,
           shippingAddress: (data.shippingAddress as string | null | undefined) ?? null,
           contactPerson: (data.contactPerson as string | null | undefined) ?? null,
           desiredShipDate: (data.desiredShipDate as string | null | undefined) ?? null,
           desiredPaymentDate: (data.desiredPaymentDate as string | null | undefined) ?? null,
-          status: (data.status as OnlineInquiryStatus | undefined) ?? OnlineInquiryStatus.PENDING,
+          status:
+            (data.status as OnlineInquiryStatus | undefined) ??
+            OnlineInquiryStatus.INQUIRY_RESPONSE_REQUIRED,
           createdAt: nowDate,
           updatedAt: nowDate,
         };
@@ -501,7 +519,24 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         const updated: InMemoryOnlineInquiry = {
           ...onlineInquiries[idx],
           ...data,
-          status: (data.status as OnlineInquiryStatus | undefined) ?? onlineInquiries[idx].status,
+          buyerMemo: (data.buyerMemo as string | null | undefined) ?? onlineInquiries[idx].buyerMemo,
+          makerName: (data.makerName as string | null | undefined) ?? onlineInquiries[idx].makerName,
+          productName:
+            (data.productName as string | null | undefined) ?? onlineInquiries[idx].productName,
+          unitPriceExclTax: Number.isFinite(Number(data.unitPriceExclTax))
+            ? Number(data.unitPriceExclTax)
+            : onlineInquiries[idx].unitPriceExclTax,
+          taxRate: Number.isFinite(Number(data.taxRate))
+            ? Number(data.taxRate)
+            : onlineInquiries[idx].taxRate,
+          shippingFee: Number.isFinite(Number(data.shippingFee))
+            ? Number(data.shippingFee)
+            : onlineInquiries[idx].shippingFee,
+          handlingFee: Number.isFinite(Number(data.handlingFee))
+            ? Number(data.handlingFee)
+            : onlineInquiries[idx].handlingFee,
+          status:
+            (data.status as OnlineInquiryStatus | undefined) ?? onlineInquiries[idx].status,
           updatedAt: now(),
         };
 

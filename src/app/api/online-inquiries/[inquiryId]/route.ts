@@ -3,19 +3,18 @@ import { z } from "zod";
 
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { prisma } from "@/lib/server/prisma";
+import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-const calculateTotalAmount = (unitPriceExclTax: number | null, quantity: number) => {
-  const price = unitPriceExclTax ?? 0;
-  const subtotal = price * quantity;
-  const tax = Math.round(subtotal * 0.1);
-  return subtotal + tax;
-};
-
 const updateSchema = z.object({
-  action: z.enum(["accept", "reject"]),
+  action: z.enum(["accept", "decline", "cancel"]).optional(),
+  shippingAddress: z.string().optional(),
+  contactPerson: z.string().optional(),
+  desiredShipDate: z.string().optional(),
+  desiredPaymentDate: z.string().optional(),
+  buyerMemo: z.string().optional(),
 });
 
 const buildInquiryDetail = async (inquiry: {
@@ -23,12 +22,19 @@ const buildInquiryDetail = async (inquiry: {
   listingId: string;
   buyerUserId: string;
   sellerUserId: string;
+  unitPriceExclTax: number;
   quantity: number;
+  taxRate: number;
+  shippingFee: number;
+  handlingFee: number;
   shippingAddress: string | null;
   contactPerson: string | null;
   desiredShipDate: string | null;
   desiredPaymentDate: string | null;
   body: string;
+  buyerMemo: string | null;
+  makerName: string | null;
+  productName: string | null;
   status: string;
   createdAt: Date;
   updatedAt: Date;
@@ -36,11 +42,26 @@ const buildInquiryDetail = async (inquiry: {
   const [listing, buyerUser, sellerUser] = await Promise.all([
     prisma.exhibit.findUnique({
       where: { id: inquiry.listingId },
-      select: { maker: true, machineName: true, unitPriceExclTax: true },
+      select: { maker: true, machineName: true },
     }),
     prisma.user.findUnique({ where: { id: inquiry.buyerUserId }, select: { companyName: true, id: true } }),
     prisma.user.findUnique({ where: { id: inquiry.sellerUserId }, select: { companyName: true, id: true } }),
   ]);
+
+  const makerName = inquiry.makerName ?? listing?.maker ?? null;
+  const productName = inquiry.productName ?? listing?.machineName ?? "商品";
+  const memo = inquiry.buyerMemo ?? inquiry.body ?? "";
+
+  const { totals } = calculateOnlineInquiryTotals({
+    id: inquiry.id,
+    unitPriceExclTax: inquiry.unitPriceExclTax,
+    quantity: inquiry.quantity,
+    shippingFee: inquiry.shippingFee,
+    handlingFee: inquiry.handlingFee,
+    taxRate: inquiry.taxRate,
+    makerName,
+    productName,
+  });
 
   return {
     id: inquiry.id,
@@ -50,16 +71,19 @@ const buildInquiryDetail = async (inquiry: {
     status: inquiry.status,
     buyerCompanyName: buyerUser?.companyName ?? inquiry.buyerUserId,
     sellerCompanyName: sellerUser?.companyName ?? inquiry.sellerUserId,
-    makerName: listing?.maker ?? null,
-    productName: listing?.machineName ?? "商品",
+    makerName,
+    productName,
     quantity: inquiry.quantity,
-    unitPrice: listing?.unitPriceExclTax ?? 0,
-    totalAmount: calculateTotalAmount(listing?.unitPriceExclTax ?? null, inquiry.quantity),
+    unitPriceExclTax: inquiry.unitPriceExclTax,
+    shippingFee: inquiry.shippingFee,
+    handlingFee: inquiry.handlingFee,
+    taxRate: inquiry.taxRate,
+    totalAmount: totals.total,
     shippingAddress: inquiry.shippingAddress ?? "",
     contactPerson: inquiry.contactPerson ?? "",
     desiredShipDate: inquiry.desiredShipDate ?? "",
     desiredPaymentDate: inquiry.desiredPaymentDate ?? "",
-    memo: inquiry.body ?? "",
+    memo,
     createdAt: inquiry.createdAt,
     updatedAt: inquiry.updatedAt,
   };
@@ -125,7 +149,20 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
   }
 
   const inquiryId = params.inquiryId;
-  const nextStatus = parsed.data.action === "accept" ? "ACCEPTED" : "REJECTED";
+  const { action, shippingAddress, contactPerson, desiredShipDate, desiredPaymentDate, buyerMemo } =
+    parsed.data;
+
+  const hasUpdates =
+    action ||
+    shippingAddress !== undefined ||
+    contactPerson !== undefined ||
+    desiredShipDate !== undefined ||
+    desiredPaymentDate !== undefined ||
+    buyerMemo !== undefined;
+
+  if (!hasUpdates) {
+    return NextResponse.json({ error: "No updates provided" }, { status: 400 });
+  }
 
   try {
     const inquiry = await prisma.onlineInquiry.findUnique({ where: { id: inquiryId } });
@@ -134,13 +171,67 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    if (inquiry.sellerUserId !== currentUserId) {
+    const isBuyer = inquiry.buyerUserId === currentUserId;
+    const isSeller = inquiry.sellerUserId === currentUserId;
+
+    if (!isBuyer && !isSeller) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+
+    const resolveNullable = (value: string | undefined | null) =>
+      value === undefined ? undefined : value ?? null;
+
+    let nextStatus = inquiry.status;
+
+    if (action) {
+      if ((action === "accept" || action === "decline") && !isSeller) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      if (action === "cancel" && !isBuyer) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      nextStatus =
+        action === "accept"
+          ? "ACCEPTED"
+          : action === "decline"
+            ? "DECLINED"
+            : "CANCELED";
+      updateData.status = nextStatus;
+    }
+
+    if (shippingAddress !== undefined) {
+      if (!isBuyer) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      updateData.shippingAddress = resolveNullable(shippingAddress);
+    }
+
+    if (contactPerson !== undefined) {
+      if (!isBuyer) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      updateData.contactPerson = resolveNullable(contactPerson);
+    }
+
+    if (desiredShipDate !== undefined) {
+      if (!isBuyer) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      updateData.desiredShipDate = resolveNullable(desiredShipDate);
+    }
+
+    if (desiredPaymentDate !== undefined) {
+      if (!isBuyer) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      updateData.desiredPaymentDate = resolveNullable(desiredPaymentDate);
+    }
+
+    if (buyerMemo !== undefined) {
+      if (!isBuyer) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      updateData.buyerMemo = resolveNullable(buyerMemo);
+      updateData.body = resolveNullable(buyerMemo) ?? inquiry.body;
     }
 
     const updated = await prisma.onlineInquiry.update({
       where: { id: inquiryId },
-      data: { status: nextStatus },
+      data: updateData,
     });
 
     const response = await buildInquiryDetail(updated);

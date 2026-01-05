@@ -1605,6 +1605,9 @@ function OnlineInquiryCreator({
     searchParams.get("unitPrice"),
     linkedExhibit?.unitPriceExclTax ?? product?.price ?? 0
   );
+  const shippingFee = parseNumberParam(searchParams.get("shippingFee"), 0);
+  const handlingFee = parseNumberParam(searchParams.get("handlingFee"), 0);
+  const taxRate = parseNumberParam(searchParams.get("taxRate"), 0.1);
   const hasEstimateParams = Boolean(
     searchParams.get("subtotal") ||
       searchParams.get("machineShippingTotal") ||
@@ -1701,6 +1704,12 @@ function OnlineInquiryCreator({
     setIsSubmitting(true);
 
     try {
+      const resolvedUnitPrice = unitPrice;
+      const resolvedQuantity = quantity;
+      const resolvedShippingFee = shippingFee;
+      const resolvedHandlingFee = handlingFee;
+      const resolvedTaxRate = taxRate;
+
       const response = await fetchWithDevHeader(
         "/api/online-inquiries",
         {
@@ -1708,8 +1717,15 @@ function OnlineInquiryCreator({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             listingId: exhibitId ?? productId ?? "",
-            quantity,
+            quantity: resolvedQuantity,
+            unitPriceExclTax: resolvedUnitPrice,
+            shippingFee: resolvedShippingFee,
+            handlingFee: resolvedHandlingFee,
+            taxRate: resolvedTaxRate,
+            makerName,
+            productName,
             buyerUserId: currentUser.id,
+            sellerUserId,
             buyerMemo: memo,
             shippingAddress: resolvedShippingAddress,
             contactPerson,

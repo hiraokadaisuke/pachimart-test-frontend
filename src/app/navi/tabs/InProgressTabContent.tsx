@@ -175,7 +175,7 @@ function buildInquiryRowFromDto(dto: OnlineInquiryListItem, viewerId: string): I
       viewerId
     ),
     makerName: dto.makerName ?? "-",
-    itemName: dto.machineName ?? "商品",
+    itemName: dto.productName ?? dto.machineName ?? "商品",
     quantity: dto.quantity,
     totalAmount: dto.totalAmount,
     updatedAt: updatedAtLabel,
@@ -358,7 +358,7 @@ export function InProgressTabContent() {
   const filteredInquiryRows = useMemo(
     () =>
       mappedInquiryRows
-        .filter((inquiry) => inquiry.status === "PENDING")
+        .filter((inquiry) => inquiry.status === "INQUIRY_RESPONSE_REQUIRED")
         .filter(
           (inquiry) => inquiry.sellerUserId === currentUser.id || inquiry.buyerUserId === currentUser.id
         )
@@ -397,7 +397,7 @@ export function InProgressTabContent() {
     if (!targetId) return;
     setPendingInquiryIds((prev) => new Set(prev).add(targetId));
     try {
-      await respondOnlineInquiry(targetId, "reject");
+      await respondOnlineInquiry(targetId, "cancel");
       await loadInquiries();
     } catch (error) {
       console.error(error);
@@ -433,7 +433,7 @@ export function InProgressTabContent() {
     if (!targetId) return;
     setPendingInquiryIds((prev) => new Set(prev).add(targetId));
     try {
-      await respondOnlineInquiry(targetId, "reject");
+      await respondOnlineInquiry(targetId, "decline");
       await loadInquiries();
     } catch (error) {
       console.error(error);
