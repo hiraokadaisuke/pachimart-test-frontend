@@ -90,6 +90,54 @@ function formatDate(isoString: string | null) {
   return `${month}/${day}`;
 }
 
+function formatMonthDay(dateLike?: string | Date | null) {
+  if (!dateLike) return "-";
+  if (dateLike instanceof Date && !Number.isNaN(dateLike.getTime())) {
+    const month = `${dateLike.getMonth() + 1}`.padStart(2, "0");
+    const day = `${dateLike.getDate()}`.padStart(2, "0");
+    return `${month}/${day}`;
+  }
+
+  const normalized =
+    typeof dateLike === "string" ? dateLike.trim().replace(/-/g, "/") : String(dateLike);
+  if (!normalized) return "-";
+
+  const parsed = new Date(normalized);
+  if (Number.isNaN(parsed.getTime())) return "-";
+
+  const month = `${parsed.getMonth() + 1}`.padStart(2, "0");
+  const day = `${parsed.getDate()}`.padStart(2, "0");
+  return `${month}/${day}`;
+}
+
+type RemovalStatusCandidate = {
+  removalStatus?: string | null;
+  removalDate?: string | Date | null;
+  removalScheduledAt?: string | Date | null;
+  machineRemovalDate?: string | Date | null;
+  removedAt?: string | Date | null;
+  removalCompletedAt?: string | Date | null;
+  isRemoved?: boolean | null;
+};
+
+function resolveRemovalLabel(exhibit: Exhibit) {
+  const candidate = exhibit as Exhibit & RemovalStatusCandidate;
+  const statusValue = candidate.removalStatus ?? null;
+  const normalizedStatus = typeof statusValue === "string" ? statusValue.trim().toUpperCase() : "";
+  const isRemovedStatus =
+    normalizedStatus === "REMOVED" ||
+    normalizedStatus === "REMOVAL_COMPLETED" ||
+    (typeof statusValue === "string" && statusValue.includes("撤去済"));
+
+  if (candidate.isRemoved || candidate.removedAt || candidate.removalCompletedAt || isRemovedStatus) {
+    return "撤去済";
+  }
+
+  const scheduledDate =
+    candidate.removalDate ?? candidate.removalScheduledAt ?? candidate.machineRemovalDate ?? null;
+  return formatMonthDay(scheduledDate);
+}
+
 function extractPrefecture(exhibit: Exhibit) {
   const snapshot = resolveStorageLocationSnapshot(exhibit.storageLocationSnapshot);
   const candidates = [snapshot?.prefecture, snapshot?.address, exhibit.storageLocation];
@@ -310,7 +358,7 @@ export default function ProductListPage() {
         key: "removalDate",
         label: "撤去日",
         width: "110px",
-        render: (row: Exhibit) => formatDate(row.removalDate),
+        render: (row: Exhibit) => resolveRemovalLabel(row),
       },
       {
         key: "seller",
