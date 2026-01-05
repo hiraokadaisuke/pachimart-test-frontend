@@ -217,7 +217,7 @@ export function transformTrade(dto: TradeDto): TradeRecord {
     buyerName: buyer.companyName,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
-    paymentDate: dto.paymentAt ?? toString(conditions.paymentDue) || undefined,
+    paymentDate: dto.paymentAt ?? (toString(conditions.paymentDue) || undefined),
     completedAt: dto.completedAt ?? undefined,
     canceledAt: dto.canceledAt ?? undefined,
     contractDate: contractDate || undefined,
