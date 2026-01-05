@@ -20,8 +20,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Resolve failed initial migration
-        run: npx prisma migrate resolve --schema prisma/schema.prisma --applied 0001_initial
+      - name: Resolve failed migration 0013_enhance_online_inquiry
+        run: npx prisma migrate resolve --schema prisma/schema.prisma --rolled-back 0013_enhance_online_inquiry
         env:
           PRISMA_DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL || secrets.DATABASE_URL }}
 
