@@ -28,6 +28,11 @@ import {
   shippingAddressToShippingInfo,
   type ShippingAddressDto,
 } from "@/lib/shipping-address/api";
+import {
+  fetchStorageLocations,
+  storageLocationToShippingInfo,
+  type StorageLocationDto,
+} from "@/lib/storage-locations/api";
 
 import { NaviSectionRow, NaviSectionTable } from "@/components/navi/NaviSectionTable";
 import { StatementDocument } from "./StatementDocument";
@@ -57,6 +62,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const [shipping, setShipping] = useState<ShippingInfo>({});
   const [contacts, setContacts] = useState<BuyerContact[]>([]);
   const [shippingAddresses, setShippingAddresses] = useState<ShippingAddressDto[]>([]);
+  const [storageLocations, setStorageLocations] = useState<StorageLocationDto[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState("");
   const [savingAddress, setSavingAddress] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -143,6 +149,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
     if (!dealing || !isBuyer) {
       setShippingAddresses([]);
+      setStorageLocations([]);
       setSelectedAddressId("");
       return;
     }
@@ -155,6 +162,16 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       .catch((loadError) => {
         if (canceled) return;
         console.warn("Failed to load shipping addresses", loadError);
+      });
+
+    fetchStorageLocations(currentUser.id)
+      .then((list) => {
+        if (canceled) return;
+        setStorageLocations(list);
+      })
+      .catch((loadError) => {
+        if (canceled) return;
+        console.warn("Failed to load storage locations", loadError);
       });
 
     return () => {
@@ -200,16 +217,26 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
   const handleAddressSelect = (addressId: string) => {
     setSelectedAddressId(addressId);
-    const matched = shippingAddresses.find((address) => address.id === addressId);
-    if (!matched) return;
+    const matchedAddress = shippingAddresses.find((address) => address.id === addressId);
+    const matchedWarehouse = storageLocations.find((location) => `warehouse:${location.id}` === addressId);
 
-    const mapped = shippingAddressToShippingInfo(matched);
+    if (!matchedAddress && !matchedWarehouse) return;
+
+    const mappedAddress = matchedAddress ? shippingAddressToShippingInfo(matchedAddress) : null;
+    const mappedWarehouse = matchedWarehouse
+      ? storageLocationToShippingInfo(matchedWarehouse, dealing?.buyer.companyName)
+      : null;
+
+    const mapped = mappedWarehouse ?? mappedAddress;
+
+    if (!mapped) return;
+
     setShipping((prev) => ({
       ...prev,
       ...mapped,
       companyName: mapped.companyName ?? prev.companyName ?? dealing?.buyer.companyName,
     }));
-    setMessage("登録済み住所を読み込みました。");
+    setMessage(mappedWarehouse ? "倉庫住所を読み込みました。" : "登録済み住所を読み込みました。");
     setError(null);
   };
 
@@ -511,25 +538,6 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
 
         {totals && (
           <div className="space-y-6">
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
-                <p className="text-[11px] font-semibold text-neutral-500">売主</p>
-                <p className="text-sm font-semibold text-slate-900">{dealing.seller.companyName}</p>
-              </div>
-              <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
-                <p className="text-[11px] font-semibold text-neutral-500">買主</p>
-                <p className="text-sm font-semibold text-slate-900">{dealing.buyer.companyName}</p>
-              </div>
-              <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
-                <p className="text-[11px] font-semibold text-neutral-500">更新日</p>
-                <p className="text-sm font-semibold text-slate-900">{formatDateLabel(dealing.updatedAt)}</p>
-              </div>
-              <div className="rounded border border-slate-200 bg-white px-3 py-3 shadow-sm">
-                <p className="text-[11px] font-semibold text-neutral-500">合計（税込）</p>
-                <p className="text-base font-bold text-indigo-700">{formatYen(totals.total)}</p>
-              </div>
-            </div>
-
             <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
               <div className="space-y-4">
                 <section className="rounded-lg border border-slate-400 bg-white text-sm shadow-sm">
@@ -584,6 +592,13 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                                   onChange={(e) => handleAddressSelect(e.target.value)}
                                 >
                                   <option value="">登録済み住所を選択</option>
+                                  {storageLocations.map((location) => (
+                                    <option key={`warehouse-${location.id}`} value={`warehouse:${location.id}`}>
+                                      {`${location.name} (${location.prefecture ?? ""}${location.city ?? ""}${
+                                        location.addressLine ?? ""
+                                      })`}
+                                    </option>
+                                  ))}
                                   {shippingAddresses.map((address) => (
                                     <option key={address.id} value={address.id}>
                                       {address.label || address.addressLine || address.companyName || "登録済み住所"}
