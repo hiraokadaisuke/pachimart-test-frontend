@@ -9,7 +9,6 @@ import {
   getTradesForUser,
   loadAllTrades,
 } from "./storage";
-import { loadAcceptedOnlineInquiryTrades } from "./onlineInquiryTrades";
 
 async function loadTradesFromApi(): Promise<TradeRecord[]> {
   try {
@@ -73,27 +72,18 @@ export async function loadTradesForUser(userId: string): Promise<TradeRecord[]> 
 }
 
 export async function loadHistoryTradesForUser(userId: string): Promise<TradeRecord[]> {
-  const [trades, onlineInquiryTrades] = await Promise.all([
-    loadTradesFromApi(),
-    loadAcceptedOnlineInquiryTrades(),
-  ]);
-  return getHistoryTradesForUser(userId, [...trades, ...onlineInquiryTrades]);
+  const trades = await loadTradesFromApi();
+  return getHistoryTradesForUser(userId, trades);
 }
 
 export async function loadPurchaseHistoryForUser(userId: string): Promise<TradeRecord[]> {
-  const [trades, onlineInquiryTrades] = await Promise.all([
-    loadTradesFromApi(),
-    loadAcceptedOnlineInquiryTrades(),
-  ]);
-  return getPurchaseHistoryForUser(userId, [...trades, ...onlineInquiryTrades]);
+  const trades = await loadTradesFromApi();
+  return getPurchaseHistoryForUser(userId, trades);
 }
 
 export async function loadSalesHistoryForUser(userId: string): Promise<TradeRecord[]> {
-  const [trades, onlineInquiryTrades] = await Promise.all([
-    loadTradesFromApi(),
-    loadAcceptedOnlineInquiryTrades(),
-  ]);
-  return getSalesHistoryForUser(userId, [...trades, ...onlineInquiryTrades]);
+  const trades = await loadTradesFromApi();
+  return getSalesHistoryForUser(userId, trades);
 }
 
 export async function loadTradeById(tradeId: string): Promise<TradeRecord | null> {

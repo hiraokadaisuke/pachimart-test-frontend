@@ -14,6 +14,7 @@ import {
 import { createTradeFromDraft } from "./storage";
 import { type BuyerContact, type ShippingInfo, type TradeRecord } from "./types";
 import { tradeDtoListSchema, type TradeDto, transformTrade } from "./transform";
+import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
 
 const naviSchema = z.object({
   id: z.number(),
@@ -174,21 +175,53 @@ export function mapOnlineInquiryToTradeRecord(dealing: NaviDto): TradeRecord | n
 
   const snapshot = resolveListingSnapshot(dealing.listingSnapshot);
   const draft = buildOnlineInquiryDraft(dealing, dealing.payload, snapshot);
-  const record = createTradeFromDraft(draft, dealing.ownerUserId, {
-    termsText: undefined,
-  });
+
+  const sellerCompany = findDevUserById(dealing.ownerUserId)?.companyName ?? dealing.ownerUserId;
+  const buyerCompany =
+    findDevUserById(draft.buyerId ?? dealing.buyerUserId ?? "")?.companyName ??
+    draft.buyerId ??
+    dealing.buyerUserId ??
+    "buyer";
+
+  const amountInput = {
+    id: draft.id,
+    unitPriceExclTax: draft.conditions.unitPrice ?? 0,
+    quantity: draft.conditions.quantity ?? 1,
+    shippingFee: draft.conditions.shippingFee ?? 0,
+    handlingFee: draft.conditions.handlingFee ?? 0,
+    taxRate: draft.conditions.taxRate ?? 0.1,
+    makerName: draft.conditions.makerName ?? snapshot?.maker ?? undefined,
+    productName:
+      draft.conditions.productName ?? snapshot?.machineName ?? snapshot?.title ?? "商品",
+  };
+
+  const { items, totals } = calculateOnlineInquiryTotals(amountInput);
+  const todos = buildTodosFromStatus("APPROVAL_REQUIRED");
 
   return {
-    ...record,
+    id: draft.id,
     naviId: dealing.id,
     naviType: dealing.naviType,
-    id: draft.id,
-    buyerUserId: draft.buyerId ?? dealing.buyerUserId ?? record.buyerUserId,
+    status: "APPROVAL_REQUIRED",
+    sellerUserId: dealing.ownerUserId,
+    buyerUserId: draft.buyerId ?? dealing.buyerUserId ?? "buyer",
+    sellerName: sellerCompany,
+    buyerName: buyerCompany,
     createdAt: draft.createdAt ?? dealing.createdAt,
     updatedAt: draft.updatedAt ?? dealing.updatedAt,
-    todos: buildTodosFromStatus("APPROVAL_REQUIRED"),
+    contractDate: draft.updatedAt ?? dealing.updatedAt,
+    makerName: amountInput.makerName ?? undefined,
+    itemName: amountInput.productName ?? "商品",
+    quantity: amountInput.quantity,
+    totalAmount: totals.total,
+    seller: { companyName: sellerCompany, userId: dealing.ownerUserId },
+    buyer: { companyName: buyerCompany, userId: draft.buyerId ?? dealing.buyerUserId ?? "buyer" },
+    todos,
+    items,
+    taxRate: amountInput.taxRate,
+    shipping: {},
     listingSnapshot: snapshot,
-  };
+  } satisfies TradeRecord;
 }
 
 const normalizeDealingRecord = (dealing: TradeRecord): TradeRecord => {

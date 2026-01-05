@@ -14,7 +14,6 @@ import type { TradeMessage } from "@/lib/messages/transform";
 import { calculateStatementTotals } from "@/lib/dealings/calcTotals";
 import { getInProgressDescription } from "@/lib/dealings/copy";
 import { loadAllTradesWithApi } from "@/lib/dealings/dataSources";
-import { loadAcceptedOnlineInquiryTrades } from "@/lib/dealings/onlineInquiryTrades";
 import { getStatementPath } from "@/lib/dealings/navigation";
 import { TradeRecord } from "@/lib/dealings/types";
 import { advanceTradeTodo, getTodoPresentation } from "@/lib/dealings/todo";
@@ -138,11 +137,10 @@ export function InProgressTabContent() {
 
   const refreshTrades = useCallback(async () => {
     try {
-      const [navis, inquiries] = await Promise.all([loadAllTradesWithApi(), loadAcceptedOnlineInquiryTrades()]);
-      const combinedDealings = [...navis, ...inquiries];
+      const navis = await loadAllTradesWithApi();
 
       console.table(
-        combinedDealings.map((dealing) => ({
+        navis.map((dealing) => ({
           id: dealing.id,
           status: dealing.status,
           source: dealing.naviType ?? "UNKNOWN",
@@ -151,7 +149,7 @@ export function InProgressTabContent() {
         }))
       );
 
-      const data = combinedDealings.filter((dealing) => dealing.status !== "APPROVAL_REQUIRED");
+      const data = navis.filter((dealing) => dealing.status !== "APPROVAL_REQUIRED");
       const ownedDealings = data.filter(
         (dealing) => dealing.sellerUserId === currentUser.id || dealing.buyerUserId === currentUser.id
       );
