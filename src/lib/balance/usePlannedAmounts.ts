@@ -5,7 +5,6 @@ import { NaviType } from "@prisma/client";
 
 import { calculateStatementTotals } from "@/lib/dealings/calcTotals";
 import { loadAllTradesWithApi } from "@/lib/dealings/dataSources";
-import { loadAcceptedOnlineInquiryTrades } from "@/lib/dealings/onlineInquiryTrades";
 import { resolveCurrentTodoKind } from "@/lib/dealings/todo";
 import { TradeRecord } from "@/lib/dealings/types";
 
@@ -74,11 +73,8 @@ export function usePlannedAmounts(currentUserId: string) {
     }
 
     try {
-      const [dealings, inquiries] = await Promise.all([
-        loadAllTradesWithApi(),
-        loadAcceptedOnlineInquiryTrades(),
-      ]);
-      const totals = calculatePlannedAmounts([...dealings, ...inquiries], currentUserId);
+      const dealings = await loadAllTradesWithApi();
+      const totals = calculatePlannedAmounts(dealings, currentUserId);
       setPlannedAmounts(totals);
     } catch (error) {
       console.error("Failed to load planned balances", error);

@@ -1,8 +1,10 @@
+import { DealingStatus, ExhibitStatus, PrismaClient, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
 import { getCurrentUserId } from "@/lib/server/currentUser";
-import { prisma } from "@/lib/server/prisma";
+import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
 
 const handleUnknownError = (error: unknown) =>
@@ -229,10 +231,73 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
       updateData.body = resolveNullable(buyerMemo) ?? inquiry.body;
     }
 
-    const updated = await prisma.onlineInquiry.update({
-      where: { id: inquiryId },
-      data: updateData,
-    });
+    const processAcceptance = async (db: Prisma.TransactionClient | InMemoryPrismaClient) => {
+      const updated = await db.onlineInquiry.update({
+        where: { id: inquiryId },
+        data: updateData,
+      });
+
+      const listing = await db.exhibit.findUnique({ where: { id: updated.listingId } });
+      const [buyerUser, sellerUser] = await Promise.all([
+        db.user.findUnique({ where: { id: updated.buyerUserId } }),
+        db.user.findUnique({ where: { id: updated.sellerUserId } }),
+      ]);
+
+      const makerName = updated.makerName ?? listing?.maker ?? null;
+      const productName = updated.productName ?? listing?.machineName ?? "商品";
+      const memo = updated.buyerMemo ?? updated.body ?? "";
+
+      const payload = {
+        onlineInquiryId: updated.id,
+        buyerCompanyName: buyerUser?.companyName,
+        sellerCompanyName: sellerUser?.companyName,
+        listingSnapshot: listing ? buildListingSnapshot(listing as Record<string, unknown>) : undefined,
+        conditions: {
+          unitPrice: updated.unitPriceExclTax,
+          quantity: updated.quantity,
+          shippingFee: updated.shippingFee,
+          handlingFee: updated.handlingFee,
+          taxRate: updated.taxRate,
+          makerName,
+          productName,
+          memo,
+        },
+      } satisfies Record<string, unknown>;
+
+      const trades = await db.dealing.findMany();
+      const existingTrade = trades.find((trade) => {
+        const candidate = (trade as { payload?: unknown }).payload;
+        if (!candidate || typeof candidate !== "object") return false;
+        return (candidate as { onlineInquiryId?: string }).onlineInquiryId === updated.id;
+      });
+
+      if (!existingTrade) {
+        await db.dealing.create({
+          data: {
+            sellerUserId: updated.sellerUserId,
+            buyerUserId: updated.buyerUserId,
+            status: DealingStatus.IN_PROGRESS,
+            payload,
+          },
+        });
+      }
+
+      if (listing && listing.status !== ExhibitStatus.SOLD) {
+        await db.exhibit.update({ where: { id: listing.id }, data: { status: ExhibitStatus.SOLD } });
+      }
+
+      return updated;
+    };
+
+    const updated =
+      nextStatus === "ACCEPTED"
+        ? await (prisma instanceof PrismaClient
+            ? prisma.$transaction((tx) => processAcceptance(tx))
+            : prisma.$transaction((tx: InMemoryPrismaClient) => processAcceptance(tx)))
+        : await prisma.onlineInquiry.update({
+            where: { id: inquiryId },
+            data: updateData,
+          });
 
     const response = await buildInquiryDetail(updated);
 

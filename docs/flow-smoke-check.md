@@ -57,6 +57,7 @@
    - `Navi.naviType=ONLINE_INQUIRY` かつ `status=SENT` が表示される。
 7. 売手が承認
    - `Trade` が生成され、`Listing.status=SOLD` になる。
+   - `/payments` → 「進行中」で承認した問い合わせが表示され、金額は問い合わせ一覧と一致する。
 8. `/products` で成約済み表示を確認
 
 ## シナリオC：応相談（オンライン問い合わせ不可）
