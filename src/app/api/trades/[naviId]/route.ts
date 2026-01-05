@@ -10,6 +10,8 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
+import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
+import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
 
 const naviClient = prisma.navi;
 
@@ -149,6 +151,18 @@ const resolveBuyerUserId = (trade: NaviRecord): string | null => {
   return null;
 };
 
+const isJsonObject = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
+const toNumber = (value: unknown, fallback = 0): number => {
+  const parsed = typeof value === "string" ? Number(value) : value;
+  if (typeof parsed === "number" && Number.isFinite(parsed)) return parsed;
+  return fallback;
+};
+
+const toString = (value: unknown, fallback = ""): string =>
+  typeof value === "string" ? value : fallback;
+
 export async function GET(request: Request, { params }: { params: { naviId: string } }) {
   const id = parseNaviId(params.naviId);
 
@@ -266,14 +280,16 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
     }
 
     const { updated, trade } = await (prisma as any).$transaction(async (tx: any) => {
-      const current = await tx.navi.findUnique({ where: { id } as any, include: { trade: true } });
+      const current = await tx.navi.findUnique({
+        where: { id } as any,
+        include: { trade: true, ownerUser: true, buyerUser: true },
+      });
 
       if (!current) throw new DealingNotFoundError();
 
-      const payload =
-        current.payload && typeof current.payload === "object" && !Array.isArray(current.payload)
-          ? ({ ...(current.payload as Record<string, unknown>) } as Record<string, unknown>)
-          : ({} as Record<string, unknown>);
+      const payload = isJsonObject(current.payload)
+        ? ({ ...current.payload } as Record<string, unknown>)
+        : ({} as Record<string, unknown>);
 
       const resolvedBuyerId = resolveBuyerUserId(toRecord(current));
 
@@ -281,17 +297,80 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         throw new BuyerRequiredError();
       }
 
-      const nextPayload = {
+      const conditionsCandidate = isJsonObject(payload.conditions)
+        ? (payload.conditions as Record<string, unknown>)
+        : {};
+
+      const listing = current.listingId
+        ? await tx.exhibit.findUnique({ where: { id: current.listingId } as any })
+        : null;
+
+      const listingSnapshot =
+        (current.listingSnapshot as Prisma.JsonValue | null | undefined) ??
+        (payload.listingSnapshot as Prisma.JsonValue | null | undefined) ??
+        (listing ? (buildListingSnapshot(listing as Record<string, unknown>) as Prisma.JsonValue) : null);
+
+      const makerName =
+        toString(
+          conditionsCandidate.makerName ??
+            (isJsonObject(listingSnapshot) ? listingSnapshot.maker : null) ??
+            (listing as { maker?: unknown } | null)?.maker ??
+            ""
+        ) || undefined;
+
+      const productName =
+        toString(
+          conditionsCandidate.productName ??
+            (isJsonObject(listingSnapshot) ? listingSnapshot.machineName ?? listingSnapshot.title : null) ??
+            (listing as { machineName?: unknown } | null)?.machineName ??
+            "商品"
+        ) || "商品";
+
+      const unitPrice = toNumber(
+        conditionsCandidate.unitPrice ?? conditionsCandidate.unitPriceExclTax,
+        0
+      );
+      const quantity = toNumber(conditionsCandidate.quantity, 1) || 1;
+      const shippingFee = toNumber(conditionsCandidate.shippingFee, 0);
+      const handlingFee = toNumber(conditionsCandidate.handlingFee, 0);
+      const taxRate = toNumber(conditionsCandidate.taxRate, 0.1);
+
+      const amountInput = {
+        id: String(current.id),
+        unitPriceExclTax: unitPrice,
+        quantity,
+        shippingFee,
+        handlingFee,
+        taxRate,
+        makerName,
+        productName,
+      };
+
+      const { items, totals } = calculateOnlineInquiryTotals(amountInput);
+      const memo = toString(conditionsCandidate.memo ?? (payload as Record<string, unknown>).memo ?? "");
+
+      const normalizedPayload: Prisma.JsonValue = {
         ...payload,
-        listingSnapshot:
-          (current.listingSnapshot as Prisma.JsonValue | null | undefined) ??
-          (payload.listingSnapshot as Prisma.JsonValue | null | undefined) ??
-          null,
-      } as Prisma.JsonValue;
+        buyerCompanyName: current.buyerUser?.companyName ?? undefined,
+        sellerCompanyName: current.ownerUser?.companyName ?? undefined,
+        listingSnapshot: listingSnapshot ?? Prisma.JsonNull,
+        conditions: {
+          unitPrice,
+          quantity,
+          shippingFee,
+          handlingFee,
+          taxRate,
+          makerName,
+          productName,
+          memo,
+        },
+        items,
+        totals,
+      };
 
       const updatedNavi = await tx.navi.update({
         where: { id } as any,
-        data: { status: parsed.data.status, payload: nextPayload },
+        data: { status: parsed.data.status, payload: normalizedPayload, listingSnapshot },
       });
 
       const existingTradeId = (current.trade as { id?: unknown } | null)?.id;
@@ -305,28 +384,15 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
             sellerUserId: updatedNavi.ownerUserId,
             buyerUserId: resolvedBuyerId!,
             status: DealingStatus.IN_PROGRESS,
-            payload: nextPayload ?? Prisma.JsonNull,
+            payload: normalizedPayload ?? Prisma.JsonNull,
             naviId: updatedNavi.id,
           },
           update: {},
           select: { id: true },
         });
 
-        if (updatedNavi.listingId) {
-          await tx.exhibit
-            .update({
-              where: { id: updatedNavi.listingId } as any,
-              data: { status: ExhibitStatus.SOLD },
-            })
-            .catch((error: unknown) => {
-              console.warn(
-                "Failed to update listing status after trade approval",
-                {
-                  listingId: updatedNavi.listingId,
-                  error,
-                }
-              );
-            });
+        if (listing && listing.status !== ExhibitStatus.SOLD) {
+          await tx.exhibit.update({ where: { id: listing.id } as any, data: { status: ExhibitStatus.SOLD } });
         }
       }
 
