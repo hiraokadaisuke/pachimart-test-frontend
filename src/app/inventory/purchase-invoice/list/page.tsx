@@ -7,11 +7,25 @@ import { deletePurchaseInvoices, loadPurchaseInvoices } from "@/lib/demo-data/pu
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
+import { formatShortId } from "@/lib/inventory/idDisplay";
 
 const labelCellClass = "bg-slate-100 text-center font-semibold text-slate-800";
 const borderCell = "border border-gray-300";
 const inputCellStyles =
   "w-full rounded-none border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-400";
+
+const buildModelSummary = (invoice: PurchaseInvoice) => {
+  const names = invoice.items
+    .map((item) => (item.machineName ?? "").trim())
+    .filter((name) => name !== "");
+  if (names.length === 0) {
+    return { display: "-", tooltip: undefined };
+  }
+  const uniqueNames = Array.from(new Set(names));
+  const display = uniqueNames.length > 1 ? `${uniqueNames[0]} + 他` : uniqueNames[0];
+  const tooltip = uniqueNames.join("\n");
+  return { display, tooltip };
+};
 
 export default function PurchaseInvoiceListPage() {
   const router = useRouter();
@@ -298,7 +312,19 @@ export default function PurchaseInvoiceListPage() {
           <table className="min-w-full table-fixed border-collapse text-sm text-neutral-800">
             <thead>
               <tr className="border border-gray-300 bg-slate-600 text-left text-xs font-bold uppercase tracking-wide text-white">
-                {["購入伝票ID", "伝票発行日", "メーカー名", "機種名", "仕入先", "入庫日", "担当", "合計金額", "選択", "詳細"].map((label) => (
+                {[
+                  "購入伝票ID",
+                  "伝票発行日",
+                  "メーカー名",
+                  "機種名",
+                  "支払日",
+                  "仕入先",
+                  "入庫日",
+                  "担当",
+                  "合計金額",
+                  "選択",
+                  "詳細",
+                ].map((label) => (
                   <th key={label} className="whitespace-nowrap border border-gray-300 px-3 py-3">
                     <span className="inline-flex items-center gap-1">
                       {label}
@@ -311,7 +337,7 @@ export default function PurchaseInvoiceListPage() {
             <tbody>
               {limitedInvoices.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="border border-gray-300 px-4 py-6 text-center text-sm text-neutral-600">
+                  <td colSpan={11} className="border border-gray-300 px-4 py-6 text-center text-sm text-neutral-600">
                     作成済みの購入伝票はありません。
                   </td>
                 </tr>
@@ -329,20 +355,28 @@ export default function PurchaseInvoiceListPage() {
                     primaryInventory?.arrivalDate;
                   const stockIn = formatDate(stockInRaw);
                   const staffName = invoice.staff ?? primaryInventory?.staff ?? primaryInventory?.buyerStaff ?? "-";
+                  const paymentDate = formatDate(invoice.formInput?.paymentDate);
+                  const modelSummary = buildModelSummary(invoice);
 
                   return (
                     <tr
                       key={invoice.invoiceId}
                       className={`${index % 2 === 0 ? "bg-amber-50" : "bg-white"} border border-gray-300 hover:bg-amber-100`}
                     >
-                      <td className="whitespace-nowrap border border-gray-300 px-3 py-2 font-mono">{invoice.invoiceId}</td>
+                      <td
+                        className="whitespace-nowrap border border-gray-300 px-3 py-2 font-mono"
+                        title={invoice.invoiceId}
+                      >
+                        {formatShortId(invoice.invoiceId)}
+                      </td>
                       <td className="whitespace-nowrap border border-gray-300 px-3 py-2">{formatDate(invoice.createdAt)}</td>
                       <td className="whitespace-nowrap border border-gray-300 px-3 py-2">
                         {invoice.items[0]?.maker ?? "-"}
                       </td>
-                      <td className="whitespace-nowrap border border-gray-300 px-3 py-2">
-                        {invoice.displayTitle ?? invoice.items[0]?.machineName ?? "-"}
+                      <td className="whitespace-nowrap border border-gray-300 px-3 py-2" title={modelSummary.tooltip}>
+                        {modelSummary.display}
                       </td>
+                      <td className="whitespace-nowrap border border-gray-300 px-3 py-2">{paymentDate}</td>
                       <td className="whitespace-nowrap border border-gray-300 px-3 py-2">{supplierName}</td>
                       <td className="whitespace-nowrap border border-gray-300 px-3 py-2">{stockIn}</td>
                       <td className="whitespace-nowrap border border-gray-300 px-3 py-2">{staffName}</td>
