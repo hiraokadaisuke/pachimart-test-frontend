@@ -190,6 +190,8 @@ export function transformTrade(dto: TradeDto): TradeRecord {
   const items = buildItems(conditions);
 
   const contractDate = toString(conditions.machineShipmentDate || conditions.removalDate);
+  const shipmentDate = toString(conditions.machineShipmentDate || conditions.removalDate);
+  const documentShipmentDate = toString(conditions.documentShipmentDate);
 
   const buyer: TradeRecord["buyer"] = {
     companyName: buyerCompanyName || dto.buyerUser?.companyName || "",
@@ -215,13 +217,15 @@ export function transformTrade(dto: TradeDto): TradeRecord {
     buyerName: buyer.companyName,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
-    paymentDate: dto.paymentAt ?? undefined,
+    paymentDate: dto.paymentAt ?? toString(conditions.paymentDue) || undefined,
     completedAt: dto.completedAt ?? undefined,
     canceledAt: dto.canceledAt ?? undefined,
     contractDate: contractDate || undefined,
-    shipmentDate: contractDate || undefined,
+    shipmentDate: shipmentDate || undefined,
     receiveMethod: toString(conditions.machineShipmentType),
-    shippingMethod: toString(conditions.documentShipmentType),
+    shippingMethod: toString(conditions.machineShipmentType || conditions.documentShipmentType),
+    documentSentDate: documentShipmentDate || undefined,
+    documentReceivedDate: documentShipmentDate || undefined,
     handlerName: toString(conditions.handler),
     paymentMethod: "銀行振込",
     paymentTerms: toString(conditions.terms || conditions.notes),
