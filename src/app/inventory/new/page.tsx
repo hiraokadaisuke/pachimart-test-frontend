@@ -54,15 +54,22 @@ type InventoryFormRow = {
 };
 
 const MACHINE_CATALOG: MachineCatalogItem[] = [
-  { kind: "P", maker: "三洋", title: "大海物語5" },
-  { kind: "P", maker: "京楽", title: "乃木坂46" },
-  { kind: "P", maker: "サミー", title: "牙狼11" },
-  { kind: "P", maker: "SANKYO", title: "ガンダムSEED" },
-  { kind: "S", maker: "ユニバーサル", title: "バジリスク絆3" },
-  { kind: "S", maker: "北電子", title: "アイムジャグラーEX" },
-  { kind: "S", maker: "大都技研", title: "押忍！番長ZERO" },
-  { kind: "S", maker: "サミー", title: "スマスロ北斗の拳" },
-  { kind: "S", maker: "山佐", title: "モンキーターンV" },
+  ...["PメーカーA", "PメーカーB", "PメーカーC", "PメーカーD", "PメーカーE", "PメーカーF", "PメーカーG"].flatMap(
+    (maker) =>
+      Array.from({ length: 7 }, (_, index) => ({
+        kind: "P" as const,
+        maker,
+        title: `${maker}機種${index + 1}`,
+      })),
+  ),
+  ...["SメーカーA", "SメーカーB", "SメーカーC", "SメーカーD", "SメーカーE", "SメーカーF", "SメーカーG"].flatMap(
+    (maker) =>
+      Array.from({ length: 7 }, (_, index) => ({
+        kind: "S" as const,
+        maker,
+        title: `${maker}機種${index + 1}`,
+      })),
+  ),
 ];
 
 const DEVICE_TYPES: InventoryFormRow["type"][] = ["本体", "枠", "セル"];
@@ -131,6 +138,7 @@ export default function InventoryNewPage() {
   const [selectedCorporateId, setSelectedCorporateId] = useState<string>("");
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [openModelIndex, setOpenModelIndex] = useState<number | null>(null);
   const makerOptions = useMemo(() => getMakerOptions(MACHINE_CATALOG), []);
   const makerOptionsByKind = useMemo(
     () => ({
@@ -435,6 +443,10 @@ export default function InventoryNewPage() {
     }).slice(0, 8);
   };
 
+  const handleModelBlur = () => {
+    window.setTimeout(() => setOpenModelIndex(null), 150);
+  };
+
   return (
     <div className="mx-auto max-w-[1500px] space-y-2 px-2 pb-6 pt-2 mx-[1cm]">
       <div className="space-y-2 p-3">
@@ -675,11 +687,13 @@ export default function InventoryNewPage() {
                         value={row.model}
                         onChange={(event) => handleRowChange(index, "model", event.target.value)}
                         onKeyDown={(event) => handleMachineEnter(event, index, "model")}
+                        onFocus={() => setOpenModelIndex(index)}
+                        onBlur={handleModelBlur}
                         ref={registerFocus(focusKey(index, "model"))}
                         placeholder="機種名検索"
                         className={`${inputBase} min-w-[240px]`}
                       />
-                      {suggestions.length > 0 && (
+                      {openModelIndex === index && suggestions.length > 0 && (
                         <div className="absolute z-20 mt-1 max-h-48 w-full overflow-y-auto border border-slate-400 bg-white">
                           {suggestions.map((machine) => (
                             <button
@@ -689,6 +703,7 @@ export default function InventoryNewPage() {
                                 handleRowChange(index, "model", machine.title);
                                 handleRowChange(index, "maker", machine.maker);
                                 handleRowChange(index, "kind", machine.kind);
+                                setOpenModelIndex(null);
                               }}
                               className="flex w-full items-center justify-between px-2 py-1 text-left text-[12px] hover:bg-slate-100"
                             >
@@ -781,6 +796,7 @@ export default function InventoryNewPage() {
                         type="date"
                         value={row.removeDate}
                         onChange={(event) => handleRowChange(index, "removeDate", event.target.value)}
+                        onClick={(event) => event.currentTarget.showPicker?.()}
                         onKeyDown={(event) => handleMachineEnter(event, index, "removeDate")}
                         ref={registerFocus(focusKey(index, "removeDate"))}
                         className={inputBase}

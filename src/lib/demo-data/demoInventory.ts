@@ -116,7 +116,15 @@ const writeLocalStorage = (key: string, value: unknown) => {
 export const loadInventoryRecords = (): InventoryRecord[] => {
   const stored = readLocalStorage<InventoryRecord[]>(INVENTORY_KEY);
   if (stored && Array.isArray(stored)) {
-    return stored.map(normalizeInventory);
+    const uniqueMap = new Map<string, InventoryRecord>();
+    stored.forEach((record) => {
+      uniqueMap.set(record.id, record);
+    });
+    const deduped = Array.from(uniqueMap.values()).map(normalizeInventory);
+    if (deduped.length !== stored.length) {
+      writeLocalStorage(INVENTORY_KEY, deduped);
+    }
+    return deduped;
   }
   return [];
 };
@@ -207,7 +215,14 @@ export const resetInventoryRecords = (): void => {
   window.localStorage.removeItem(INVENTORY_KEY);
 };
 
-export const generateInventoryId = (): string => `INV-${Date.now()}`;
+const generateUniqueSuffix = (): string => {
+  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
+    return crypto.randomUUID();
+  }
+  return `${Date.now()}-${Math.floor(Math.random() * 100000)}`;
+};
+
+export const generateInventoryId = (): string => `INV-${generateUniqueSuffix()}`;
 
 export const formatCurrency = (value?: number): string => {
   if (value == null || Number.isNaN(value)) return "-";
