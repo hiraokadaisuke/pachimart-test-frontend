@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
+import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
+import type { SerialInputRow } from "@/lib/serialInputStorage";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
 const yellowInput =
@@ -19,18 +21,34 @@ const toDateInputValue = (value?: string) => {
   return new Date().toISOString().slice(0, 10);
 };
 
+const toNumber = (value: string | number | undefined) => {
+  const normalized = typeof value === "string" ? value.replace(/,/g, "").trim() : value;
+  const num = Number(normalized);
+  return Number.isNaN(num) ? 0 : num;
+};
+
+const toInputNumber = (value?: number) => {
+  if (value == null || value === 0) return "";
+  return String(value);
+};
+
 type BaseRow = {
   inventoryId?: string;
   maker?: string;
   productName?: string;
   type?: string;
+  kind?: string;
+  maxQuantity?: number;
   quantity: number;
-  unitPrice: number;
+  unitPrice: string;
   amount: number;
-  remainingDebt?: number;
+  remainingDebt?: string;
   applicationPrefecture?: string;
   applicationDate?: string;
   note?: string;
+  selectedSerialIndexes?: number[];
+  serialRows?: SerialInputRow[];
+  serialSelectionError?: string;
 };
 
 type Props = {
@@ -48,11 +66,11 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   const [staff, setStaff] = useState("デモユーザー");
   const [manager, setManager] = useState("担当者A");
   const [subtotal, setSubtotal] = useState(0);
-  const [insurance, setInsurance] = useState(0);
+  const [insurance, setInsurance] = useState("");
   const [bankNote, setBankNote] = useState("三井住友銀行 渋谷支店 普通 1234567 株式会社ピーコム");
   const [paymentMethod, setPaymentMethod] = useState("口座振込");
   const [paymentDate, setPaymentDate] = useState("");
-  const [paymentAmount, setPaymentAmount] = useState(0);
+  const [paymentAmount, setPaymentAmount] = useState("");
   const [startDate, setStartDate] = useState("");
   const [introductionStore, setIntroductionStore] = useState("-");
   const [installationDate, setInstallationDate] = useState("");
@@ -60,31 +78,47 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   const [documentArrivalDate, setDocumentArrivalDate] = useState("");
   const [storageLocation, setStorageLocation] = useState("倉庫A");
   const [remarks, setRemarks] = useState("特記事項があれば入力してください");
+  const [serialModalState, setSerialModalState] = useState<{
+    rowIndex: number;
+    inventoryId: string;
+    inventoryLabel: string;
+    kind?: string;
+    maxQuantity: number;
+    requiredQuantity: number;
+  } | null>(null);
 
   const buildRowsFromInventory = useCallback((items: InventoryRecord[] | undefined) => {
     if (!items || items.length === 0) return [] as BaseRow[];
     return items.map<BaseRow>((item) => {
       const quantity = item.quantity ?? 1;
-      const unitPrice = item.saleUnitPrice ?? item.unitPrice ?? 0;
+      const unitPriceValue = item.saleUnitPrice ?? item.unitPrice ?? 0;
       return {
         inventoryId: item.id,
         maker: item.maker ?? "",
         productName: item.model ?? item.machineName ?? "",
         type: item.type ?? item.deviceType ?? "",
+        kind: item.kind ?? item.type ?? item.deviceType,
+        maxQuantity: quantity,
         quantity,
-        unitPrice,
-        amount: quantity * unitPrice,
-        remainingDebt: item.remainingDebt ?? 0,
+        unitPrice: toInputNumber(unitPriceValue),
+        amount: quantity * toNumber(unitPriceValue),
+        remainingDebt: toInputNumber(item.remainingDebt),
         applicationPrefecture: item.customFields?.applicationPrefecture ?? "",
         applicationDate: item.customFields?.applicationDate ?? "",
         note: item.note ?? item.notes ?? item.customFields?.note ?? "",
+        selectedSerialIndexes: [],
+        serialRows: [],
       };
     });
   }, []);
 
   const resetForm = useCallback(() => {
     const mapped = buildRowsFromInventory(inventories);
-    setRows(mapped.length > 0 ? mapped : [{ quantity: 1, unitPrice: 0, amount: 0 }]);
+    setRows(
+      mapped.length > 0
+        ? mapped
+        : [{ quantity: 1, unitPrice: "", amount: 0, remainingDebt: "" }],
+    );
     setHallName("ダミーホール");
     setContactName("御中");
     setHallTel("03-0000-0000");
@@ -93,11 +127,11 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     setStaff("デモユーザー");
     setManager("担当者A");
     setSubtotal(0);
-    setInsurance(0);
+    setInsurance("");
     setBankNote("三井住友銀行 渋谷支店 普通 1234567 株式会社ピーコム");
     setPaymentMethod("口座振込");
     setPaymentDate("");
-    setPaymentAmount(0);
+    setPaymentAmount("");
     setStartDate("");
     setIntroductionStore("-");
     setInstallationDate("");
@@ -112,12 +146,12 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   }, [resetForm]);
 
   useEffect(() => {
-    const total = rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0);
+    const total = rows.reduce((sum, row) => sum + toNumber(row.quantity) * toNumber(row.unitPrice), 0);
     setSubtotal(total);
   }, [rows]);
 
   const tax = useMemo(() => Math.floor(subtotal * 0.1), [subtotal]);
-  const totalAmount = useMemo(() => subtotal + tax + (Number(insurance) || 0), [subtotal, tax, insurance]);
+  const totalAmount = useMemo(() => subtotal + tax + toNumber(insurance), [subtotal, tax, insurance]);
   const existingSalesInvoiceIds = useMemo(() => {
     if (!inventories || inventories.length === 0) return [] as string[];
     const targetIds = new Set(inventories.map((item) => item.id));
@@ -139,14 +173,40 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     setRows((prev) =>
       prev.map((row, i) => {
         if (i !== index) return row;
-        const updated: BaseRow = {
-          ...row,
-          [key]: key === "quantity" || key === "unitPrice" ? Number(value) || 0 : value,
-        } as BaseRow;
-        if (key === "quantity" || key === "unitPrice") {
-          updated.amount = (Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0);
+        const updated: BaseRow = { ...row } as BaseRow;
+        if (key === "quantity") {
+          const nextQuantity = Math.max(0, Number(value) || 0);
+          updated.quantity = nextQuantity;
+          if ((row.selectedSerialIndexes?.length ?? 0) > nextQuantity) {
+            updated.selectedSerialIndexes = [];
+            updated.serialSelectionError = "数量変更により番号選択をやり直してください。";
+          } else {
+            updated.serialSelectionError = "";
+          }
+          updated.amount = nextQuantity * toNumber(row.unitPrice);
+          return updated;
         }
-        return updated;
+        if (key === "unitPrice") {
+          updated.unitPrice = value;
+          updated.amount = toNumber(row.quantity) * toNumber(value);
+          return updated;
+        }
+        if (key === "remainingDebt") {
+          updated.remainingDebt = value;
+          return updated;
+        }
+        switch (key) {
+          case "maker":
+          case "productName":
+          case "type":
+          case "applicationPrefecture":
+          case "applicationDate":
+          case "note":
+            updated[key] = value;
+            return updated;
+          default:
+            return updated;
+        }
       }),
     );
   };
@@ -156,8 +216,9 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       ...prev,
       {
         quantity: 1,
-        unitPrice: 0,
+        unitPrice: "",
         amount: 0,
+        remainingDebt: "",
       },
     ]);
   };
@@ -175,8 +236,13 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       alert("明細を1行以上入力してください");
       return;
     }
-    if (rows.some((row) => !row.quantity || !row.unitPrice)) {
+    if (rows.some((row) => !row.quantity || String(row.unitPrice ?? "").trim() === "")) {
       alert("数量と単価を入力してください");
+      return;
+    }
+    const missingSerial = rows.find((row) => row.inventoryId && (row.selectedSerialIndexes?.length ?? 0) !== row.quantity);
+    if (missingSerial) {
+      alert("番号選択が未完了です。明細の「番号」を確認してください。");
       return;
     }
     if (!window.confirm("よろしいですか？")) return;
@@ -187,19 +253,26 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       productName: row.productName,
       type: row.type,
       quantity: Number(row.quantity) || 0,
-      unitPrice: Number(row.unitPrice) || 0,
-      amount: (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0),
-      remainingDebt: row.remainingDebt,
+      unitPrice: toNumber(row.unitPrice),
+      amount: toNumber(row.quantity) * toNumber(row.unitPrice),
+      remainingDebt: row.remainingDebt ? toNumber(row.remainingDebt) : undefined,
       applicationPrefecture: row.applicationPrefecture,
       applicationDate: row.applicationDate,
       note: row.note,
+      selectedSerialIndexes: row.selectedSerialIndexes,
+      selectedSerialRows:
+        row.serialRows && row.selectedSerialIndexes
+          ? row.selectedSerialIndexes
+              .map((index) => row.serialRows?.[index])
+              .filter((serialRow): serialRow is SerialInputRow => Boolean(serialRow))
+          : undefined,
     }));
 
     const memoLines = [
       remarks,
       paymentMethod ? `支払方法: ${paymentMethod}` : undefined,
       paymentDate ? `支払日: ${paymentDate}` : undefined,
-      paymentAmount ? `支払金額: ${paymentAmount.toLocaleString("ja-JP")}` : undefined,
+      paymentAmount ? `支払金額: ${toNumber(paymentAmount).toLocaleString("ja-JP")}` : undefined,
       startDate ? `開始日: ${startDate}` : undefined,
       introductionStore ? `導入店舗: ${introductionStore}` : undefined,
       installationDate ? `設置日: ${installationDate}` : undefined,
@@ -224,11 +297,11 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       items,
       subtotal,
       tax,
-      insurance: Number(insurance) || 0,
+      insurance: toNumber(insurance),
       totalAmount,
       paymentMethod,
       paymentDate,
-      paymentAmount,
+      paymentAmount: paymentAmount ? toNumber(paymentAmount) : undefined,
       introductionStore,
       installationDate,
       openingDate,
@@ -384,6 +457,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                   <th className="border border-[#333] px-2 py-2">メーカー名</th>
                   <th className="border border-[#333] px-2 py-2">商品名</th>
                   <th className="border border-[#333] px-2 py-2">タイプ</th>
+                  <th className="border border-[#333] px-2 py-2">番号</th>
                   <th className="border border-[#333] px-2 py-2">数量</th>
                   <th className="border border-[#333] px-2 py-2">単価</th>
                   <th className="border border-[#333] px-2 py-2">金額</th>
@@ -424,12 +498,56 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                       />
                     </td>
                     <td className="border border-[#333] px-1 py-1">
-                      <input
-                        type="number"
-                        value={row.quantity}
-                        onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                        className={`${yellowInput} text-right`}
-                      />
+                      <div className="flex flex-col items-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!row.inventoryId || !row.maxQuantity) return;
+                            setSerialModalState({
+                              rowIndex: index,
+                              inventoryId: row.inventoryId,
+                              inventoryLabel: row.productName ?? row.maker ?? row.inventoryId,
+                              kind: row.kind,
+                              maxQuantity: row.maxQuantity,
+                              requiredQuantity: row.quantity,
+                            });
+                          }}
+                          disabled={!row.inventoryId}
+                          className="border border-[#333] bg-[#f3f3f3] px-3 py-1 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          選択
+                        </button>
+                        {row.inventoryId && (
+                          <div className="text-[10px] text-neutral-600">
+                            選択済 {row.selectedSerialIndexes?.length ?? 0}/{row.quantity}
+                          </div>
+                        )}
+                        {row.serialSelectionError && (
+                          <div className="text-[10px] text-red-600">{row.serialSelectionError}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="border border-[#333] px-1 py-1">
+                      {row.maxQuantity && row.maxQuantity > 1 ? (
+                        <select
+                          value={row.quantity}
+                          onChange={(e) => handleChange(index, "quantity", e.target.value)}
+                          className={`${yellowInput} text-right`}
+                        >
+                          {Array.from({ length: row.maxQuantity }, (_, i) => i + 1).map((value) => (
+                            <option key={value} value={value}>
+                              {value}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="number"
+                          value={row.quantity}
+                          onChange={(e) => handleChange(index, "quantity", e.target.value)}
+                          className={`${yellowInput} text-right`}
+                        />
+                      )}
                     </td>
                     <td className="border border-[#333] px-1 py-1">
                       <input
@@ -445,7 +563,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                     <td className="border border-[#333] px-1 py-1">
                       <input
                         type="number"
-                        value={row.remainingDebt ?? 0}
+                        value={row.remainingDebt ?? ""}
                         onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
                         className={`${yellowInput} text-right`}
                       />
@@ -506,7 +624,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                     <input
                       type="number"
                       value={insurance}
-                      onChange={(e) => setInsurance(Number(e.target.value) || 0)}
+                      onChange={(e) => setInsurance(e.target.value)}
                       className={`${yellowInput} w-36 text-right`}
                     />
                   </div>
@@ -553,7 +671,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                     <input
                       type="number"
                       value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(Number(e.target.value) || 0)}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
                       className={`${yellowInput} w-40 text-right`}
                     />
                     <span className="border border-[#333] px-3 py-1">円</span>
@@ -613,7 +731,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="w-24">残債</span>
                     <span className="border border-[#333] bg-white px-2 py-1 text-right font-semibold">
-                      {moneyDisplay(rows[0]?.remainingDebt ?? 0)}
+                      {moneyDisplay(toNumber(rows[0]?.remainingDebt))}
                     </span>
                   </div>
                 </div>
@@ -673,6 +791,33 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
           </div>
         </div>
       </div>
+      {serialModalState && (
+        <SalesInvoiceSerialModal
+          open={Boolean(serialModalState)}
+          inventoryId={serialModalState.inventoryId}
+          inventoryLabel={serialModalState.inventoryLabel}
+          kind={serialModalState.kind}
+          availableQuantity={serialModalState.maxQuantity}
+          requiredQuantity={serialModalState.requiredQuantity}
+          selectedIndexes={rows[serialModalState.rowIndex]?.selectedSerialIndexes ?? []}
+          onClose={() => setSerialModalState(null)}
+          onConfirm={({ selectedIndexes, rows: serialRows }) => {
+            setRows((prev) =>
+              prev.map((row, index) =>
+                index === serialModalState.rowIndex
+                  ? {
+                      ...row,
+                      selectedSerialIndexes: selectedIndexes,
+                      serialRows: serialRows,
+                      serialSelectionError: "",
+                    }
+                  : row,
+              ),
+            );
+            setSerialModalState(null);
+          }}
+        />
+      )}
     </div>
   );
 }
