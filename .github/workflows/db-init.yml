@@ -7,8 +7,9 @@ jobs:
   db-init:
     runs-on: ubuntu-latest
     env:
-      PRISMA_DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL }}
+      APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL != '' && secrets.APP_DATABASE_URL || secrets.PRISMA_DATABASE_URL }}
       SEED_MODE: preview
+      VERCEL_ENV: preview
     steps:
       - name: Checkout
         uses: actions/checkout@v4

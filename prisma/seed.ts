@@ -12,7 +12,7 @@ import {
 
 const prisma = new PrismaClient();
 
-const ALLOWED_SEED_MODES = ["preview", "dev"] as const;
+const ALLOWED_SEED_MODES = ["preview", "development"] as const;
 
 type DevUser = {
   id: string;
@@ -1022,18 +1022,28 @@ async function seedNavis(listings: ListingSeed[]) {
 }
 
 async function main() {
-  const seedMode = process.env.SEED_MODE;
+  const seedMode = process.env.SEED_MODE?.toLowerCase();
+  const vercelEnv = process.env.VERCEL_ENV;
 
-  if (!seedMode || !ALLOWED_SEED_MODES.includes(seedMode as (typeof ALLOWED_SEED_MODES)[number])) {
+  if (vercelEnv === "production") {
+    console.log("Skipping seed because VERCEL_ENV=production.");
+    return;
+  }
+
+  const isSeedModeAllowed =
+    !!seedMode && ALLOWED_SEED_MODES.includes(seedMode as (typeof ALLOWED_SEED_MODES)[number]);
+  const isEnvSeedAllowed = vercelEnv === "preview" || vercelEnv === "development";
+
+  if (!isSeedModeAllowed && !isEnvSeedAllowed) {
     console.log(
-      `Skipping user seeding. Set SEED_MODE to one of ${ALLOWED_SEED_MODES.join(", ")} (current: ${
+      `Skipping user seeding. Set SEED_MODE to one of ${ALLOWED_SEED_MODES.join(", ")} or run in preview/development (current: ${
         seedMode ?? "undefined"
-      }).`
+      }, VERCEL_ENV: ${vercelEnv ?? "undefined"}).`
     );
     return;
   }
 
-  console.log(`Running seed for mode: ${seedMode}`);
+  console.log(`Running seed for mode: ${seedMode ?? vercelEnv ?? "development"}`);
   await clearExistingData();
   await seedUsers();
   await seedStorageLocations();

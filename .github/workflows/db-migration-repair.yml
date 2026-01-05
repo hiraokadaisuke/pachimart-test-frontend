@@ -7,7 +7,7 @@ jobs:
   repair-migrations:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL }}
+      APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL != '' && secrets.APP_DATABASE_URL || secrets.PRISMA_DATABASE_URL || secrets.DATABASE_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -23,9 +23,9 @@ jobs:
       - name: Resolve failed migration 0013_enhance_online_inquiry
         run: npx prisma migrate resolve --schema prisma/schema.prisma --rolled-back 0013_enhance_online_inquiry
         env:
-          PRISMA_DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL || secrets.DATABASE_URL }}
+          APP_DATABASE_URL: ${{ env.APP_DATABASE_URL }}
 
       - name: Deploy pending migrations
         run: npx prisma migrate deploy --schema prisma/schema.prisma
         env:
-          PRISMA_DATABASE_URL: ${{ secrets.PRISMA_DATABASE_URL || secrets.DATABASE_URL }}
+          APP_DATABASE_URL: ${{ env.APP_DATABASE_URL }}
