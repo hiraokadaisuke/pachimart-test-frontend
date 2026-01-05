@@ -172,6 +172,13 @@ type InMemoryPrisma = {
       sellerUser: { id: string; companyName: string } | null;
       buyerUser: { id: string; companyName: string } | null;
     })[]>;
+    create: ({ data }: { data: Partial<InMemoryTrade> }) => Promise<
+      InMemoryTrade & {
+        navi: InMemoryNavi | null;
+        sellerUser: { id: string; companyName: string } | null;
+        buyerUser: { id: string; companyName: string } | null;
+      }
+    >;
     findUnique: ({ where }: { where: { id?: number | null; naviId?: number | null } }) => Promise<
       | (InMemoryTrade & {
           navi: InMemoryNavi | null;
@@ -548,6 +555,10 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       findMany: async ({ where }: { where?: { status?: DealingStatus } } = {}) => {
         const filtered = trades.filter((trade) => (where?.status ? trade.status === where.status : true));
         return filtered.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).map(attachRelations);
+      },
+      create: async ({ data }: { data: Partial<InMemoryTrade> }) => {
+        const record = upsertTrade({ id: null, naviId: data.naviId as number | null | undefined }, data, {});
+        return attachRelations(record);
       },
       findUnique: async ({ where }: { where: { id?: number | null; naviId?: number | null } }) => {
         const id = Number(where.id ?? 0);

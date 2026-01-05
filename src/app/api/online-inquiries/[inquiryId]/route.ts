@@ -1,4 +1,4 @@
-import { DealingStatus, ExhibitStatus, PrismaClient } from "@prisma/client";
+import { DealingStatus, ExhibitStatus, PrismaClient, Prisma } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -231,7 +231,7 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
       updateData.body = resolveNullable(buyerMemo) ?? inquiry.body;
     }
 
-    const processAcceptance = async (db: PrismaClient | InMemoryPrismaClient) => {
+    const processAcceptance = async (db: Prisma.TransactionClient | InMemoryPrismaClient) => {
       const updated = await db.onlineInquiry.update({
         where: { id: inquiryId },
         data: updateData,
