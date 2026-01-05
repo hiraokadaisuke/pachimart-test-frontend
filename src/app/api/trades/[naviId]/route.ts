@@ -399,6 +399,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       let createdTrade: { id: unknown } | null = null;
 
       if (isApproving && !existingTradeId) {
+        // The upsert keeps trade creation idempotent per Navi approval; callers can retry safely.
         createdTrade = await tx.dealing.upsert({
           where: { naviId: updatedNavi.id } as any,
           create: {

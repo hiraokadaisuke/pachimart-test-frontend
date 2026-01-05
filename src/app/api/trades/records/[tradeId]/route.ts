@@ -4,6 +4,11 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
+import {
+  buildStatusUpdate,
+  findStatusTransition,
+  resolveActorRole,
+} from "@/lib/dealings/statusMachine";
 
 const toDate = (value: unknown, fallback?: Date): Date => {
   if (value instanceof Date) return value;
@@ -156,34 +161,26 @@ export async function PATCH(request: Request, { params }: { params: { tradeId: s
       return NextResponse.json(toDto(record));
     }
 
-    if (record.status === DealingStatus.CANCELED || record.status === DealingStatus.COMPLETED) {
-      return NextResponse.json(toDto(record), { status: 409 });
+    const actorRole = resolveActorRole(record.buyerUserId, record.sellerUserId, currentUserId);
+    const transition = findStatusTransition(record.status, targetStatus);
+
+    if (!transition) {
+      return NextResponse.json(
+        { error: "Invalid status transition" },
+        { status: 409 }
+      );
     }
 
-    if (targetStatus === DealingStatus.CONFIRM_REQUIRED && record.buyerUserId !== currentUserId) {
+    if (transition.actor !== "any" && transition.actor !== actorRole) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    if (targetStatus === DealingStatus.COMPLETED && record.buyerUserId !== currentUserId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    let update: Prisma.DealingUpdateInput = { status: targetStatus };
-
-    if (targetStatus === DealingStatus.CONFIRM_REQUIRED) {
-      update = {
-        status: DealingStatus.CONFIRM_REQUIRED,
-        paymentAt: record.paymentAt ?? now,
-      };
-    }
-
-    if (targetStatus === DealingStatus.COMPLETED) {
-      update = {
-        status: DealingStatus.COMPLETED,
-        paymentAt: record.paymentAt ?? now,
-        completedAt: record.completedAt ?? now,
-      };
-    }
+    const update = buildStatusUpdate(
+      record.status,
+      transition,
+      { paymentAt: record.paymentAt, completedAt: record.completedAt },
+      now
+    ) as Prisma.DealingUpdateInput;
 
     const updated = await prisma.dealing.update({
       where: { id: tradeId } as any,

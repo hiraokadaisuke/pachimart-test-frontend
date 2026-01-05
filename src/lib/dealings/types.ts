@@ -1,14 +1,9 @@
-import { NaviType } from "@prisma/client";
+import { DealingStatus, NaviType } from "@prisma/client";
 
 import { TodoItem } from "@/lib/todo/types";
 import { type ListingSnapshot } from "./listingSnapshot";
 
-export type TradeStatus =
-  | "APPROVAL_REQUIRED"
-  | "PAYMENT_REQUIRED"
-  | "CONFIRM_REQUIRED"
-  | "COMPLETED"
-  | "CANCELED";
+export type TradeStatus = DealingStatus;
 
 export type CompanyProfile = {
   userId?: string;
