@@ -4,6 +4,7 @@ import { z } from "zod";
 import { findDevUserById } from "@/lib/dev-user/users";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { buildTodosFromStatus } from "./todo";
+import { mergeTrades } from "./merge";
 import { type NaviDraft } from "@/lib/navi/types";
 import {
   formatListingStorageLocation,
@@ -275,6 +276,30 @@ const normalizeDealingRecord = (dealing: TradeRecord): TradeRecord => {
   };
 };
 
+async function fetchTradeDtos() {
+  const response = await fetchWithDevHeader("/api/trades/records");
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch trades: ${response.status}`);
+  }
+
+  const json = (await response.json()) as unknown;
+  const parsed = tradeDtoListSchema.safeParse(json);
+
+  if (!parsed.success) {
+    throw new Error(parsed.error.message);
+  }
+
+  return parsed.data;
+}
+
+const sortTradesByDate = (trades: TradeRecord[]) =>
+  trades.sort((a, b) => {
+    const aDate = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+    const bDate = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
+    return bDate - aDate;
+  });
+
 export async function fetchNavis(): Promise<NaviDto[]> {
   const response = await fetchWithDevHeader("/api/trades");
 
@@ -298,11 +323,17 @@ export async function fetchNavis(): Promise<NaviDto[]> {
 }
 
 export async function fetchTradeRecordsFromApi(): Promise<TradeRecord[]> {
-  const dealings = await fetchNavis();
+  const [dealings, tradeDtos] = await Promise.all([fetchNavis(), fetchTradeDtos()]);
 
-  return dealings
+  const naviTrades = dealings
     .map((dealing) => mapNaviToTradeRecord(dealing))
     .filter((dealing): dealing is TradeRecord => Boolean(dealing));
+
+  const tradeRecords = tradeDtos
+    .map((dto) => normalizeDealingRecord(transformTrade(dto as TradeDto)))
+    .filter((record): record is TradeRecord => Boolean(record?.id));
+
+  return sortTradesByDate(mergeTrades(tradeRecords, naviTrades));
 }
 
 export async function fetchNaviById(dealingId: string): Promise<NaviDto | null> {
@@ -330,21 +361,9 @@ export async function fetchNaviById(dealingId: string): Promise<NaviDto | null> 
 }
 
 export async function fetchTradeRecordById(dealingId: string): Promise<TradeRecord | null> {
-  const response = await fetchWithDevHeader("/api/trades/records");
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch trades: ${response.status}`);
-  }
-
-  const json = (await response.json()) as unknown;
-  const parsed = tradeDtoListSchema.safeParse(json);
-
-  if (!parsed.success) {
-    throw new Error(parsed.error.message);
-  }
-
+  const tradeDtos = await fetchTradeDtos();
   const numericId = Number(dealingId);
-  const matchingTrade = parsed.data.find(
+  const matchingTrade = tradeDtos.find(
     (candidate) => candidate.id === numericId || String(candidate.id) === dealingId
   );
 
