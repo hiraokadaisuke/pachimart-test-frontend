@@ -45,10 +45,9 @@ type SearchFilters = {
   model: string;
   supplier: string;
   staff: string;
+  warehouse: string;
   showHidden: "show" | "hide";
-  showStock: "show" | "hide";
   showCompleted: "show" | "hide";
-  displayCount: "all" | "50" | "100" | "200";
 };
 
 const RESERVED_SELECTION_WIDTH = 48;
@@ -90,10 +89,9 @@ const defaultFilters: SearchFilters = {
   model: "",
   supplier: "",
   staff: "",
+  warehouse: "",
   showHidden: "hide",
-  showStock: "show",
   showCompleted: "show",
-  displayCount: "all",
 };
 
 const formatDate = (value?: string) => {
@@ -301,7 +299,6 @@ export default function InventoryPage() {
     const keywordSupplier = searchFilters.supplier.trim().toLowerCase();
     const keywordStaff = searchFilters.staff.trim().toLowerCase();
     const showHidden = searchFilters.showHidden === "show";
-    const showStock = searchFilters.showStock === "show";
     const showCompleted = searchFilters.showCompleted === "show";
 
     const sorted = [...records].sort(
@@ -319,9 +316,7 @@ export default function InventoryPage() {
 
       const statusValue = (item.status ?? item.stockStatus ?? "倉庫") as InventoryStatusOption;
       const isCompleted = statusValue === "売却済";
-      const isStock = !isCompleted;
 
-      if (!showStock && isStock) return false;
       if (!showCompleted && isCompleted) return false;
 
       if (keywordMaker && !(item.maker ?? "").toLowerCase().includes(keywordMaker)) {
@@ -341,6 +336,13 @@ export default function InventoryPage() {
         return false;
       }
 
+      if (searchFilters.warehouse) {
+        const warehouseValue = item.warehouse ?? item.storageLocation ?? "";
+        if (warehouseValue !== searchFilters.warehouse) {
+          return false;
+        }
+      }
+
       if (!matchesDateRange(item.createdAt, searchFilters.createdAt)) return false;
 
       const stockInValue = item.stockInDate ?? item.arrivalDate;
@@ -350,10 +352,7 @@ export default function InventoryPage() {
     });
   }, [records, searchFilters]);
 
-  const displayRecords = useMemo(() => {
-    if (searchFilters.displayCount === "all") return filteredRecords;
-    return filteredRecords.slice(0, Number(searchFilters.displayCount));
-  }, [filteredRecords, searchFilters.displayCount]);
+  const displayRecords = filteredRecords;
 
   useEffect(() => {
     let active = true;
@@ -541,7 +540,7 @@ export default function InventoryPage() {
       case "staff":
         return record.staff ?? record.buyerStaff ?? "-";
       case "status":
-        return statusLabelMap.get(resolvePublishStatus(record)) ?? "未";
+        return statusLabelMap.get(resolvePublishStatus(record)) ?? "非公開";
       case "isConsignment":
         return record.isConsignment ?? record.consignment ? "○" : "-";
       case "isVisible":
@@ -788,6 +787,9 @@ export default function InventoryPage() {
     setSalesCandidateIds([]);
   };
 
+  const totalPageCount = 1;
+  const currentPage = 1;
+
   return (
     <div className="min-h-screen bg-white py-4">
       <div className="mx-auto max-w-[1800px] px-8">
@@ -872,6 +874,19 @@ export default function InventoryPage() {
                           }
                           className="w-full max-w-[130px] border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                         />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSearchDraft((prev) => {
+                              const next = { ...prev, createdAt: { from: "", to: "" } };
+                              setSearchFilters((current) => ({ ...current, createdAt: next.createdAt }));
+                              return next;
+                            })
+                          }
+                          className="border border-gray-300 bg-[#f7f3e9] px-2 py-0.5 text-[11px] font-semibold"
+                        >
+                          クリア
+                        </button>
                       </div>
                     </td>
                     <th className="w-28 border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
@@ -902,6 +917,19 @@ export default function InventoryPage() {
                           }
                           className="w-full max-w-[130px] border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                         />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setSearchDraft((prev) => {
+                              const next = { ...prev, stockInDate: { from: "", to: "" } };
+                              setSearchFilters((current) => ({ ...current, stockInDate: next.stockInDate }));
+                              return next;
+                            })
+                          }
+                          className="border border-gray-300 bg-[#f7f3e9] px-2 py-0.5 text-[11px] font-semibold"
+                        >
+                          クリア
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1013,13 +1041,13 @@ export default function InventoryPage() {
                       />
                     </td>
                     <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
-                      非表示物件
+                      非表示物件の表示
                     </th>
                     <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-3 text-xs">
                         {[
-                          { value: "hide", label: "しない" },
-                          { value: "show", label: "する" },
+                          { value: "hide", label: "表示しない" },
+                          { value: "show", label: "表示する" },
                         ].map((option) => (
                           <label key={option.value} className="flex items-center gap-1">
                             <input
@@ -1040,42 +1068,34 @@ export default function InventoryPage() {
                       </div>
                     </td>
                     <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
-                      在庫物件
+                      保管先倉庫
                     </th>
                     <td className="border border-gray-300 px-2 py-1">
-                      <div className="flex items-center gap-3 text-xs">
-                        {[
-                          { value: "show", label: "する" },
-                          { value: "hide", label: "しない" },
-                        ].map((option) => (
-                          <label key={option.value} className="flex items-center gap-1">
-                            <input
-                              type="radio"
-                              name="stock"
-                              value={option.value}
-                              checked={searchDraft.showStock === option.value}
-                              onChange={() =>
-                                setSearchDraft((prev) => ({
-                                  ...prev,
-                                  showStock: option.value as SearchFilters["showStock"],
-                                }))
-                              }
-                            />
-                            <span>{option.label}</span>
-                          </label>
+                      <select
+                        value={searchDraft.warehouse}
+                        onChange={(event) =>
+                          setSearchDraft((prev) => ({ ...prev, warehouse: event.target.value }))
+                        }
+                        className="w-full border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
+                      >
+                        <option value="">未選択（全件）</option>
+                        {warehouseOptions.map((warehouse) => (
+                          <option key={warehouse} value={warehouse}>
+                            {warehouse}
+                          </option>
                         ))}
-                      </div>
+                      </select>
                     </td>
                   </tr>
                   <tr>
                     <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
-                      完了物件
+                      販売済みの表示
                     </th>
                     <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-3 text-xs">
                         {[
-                          { value: "show", label: "する" },
-                          { value: "hide", label: "しない" },
+                          { value: "show", label: "表示する" },
+                          { value: "hide", label: "表示しない" },
                         ].map((option) => (
                           <label key={option.value} className="flex items-center gap-1">
                             <input
@@ -1095,31 +1115,8 @@ export default function InventoryPage() {
                         ))}
                       </div>
                     </td>
-                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
-                      表示数
-                    </th>
-                    <td className="border border-gray-300 px-2 py-1">
-                      <select
-                        value={searchDraft.displayCount}
-                        onChange={(event) =>
-                          setSearchDraft((prev) => ({
-                            ...prev,
-                            displayCount: event.target.value as SearchFilters["displayCount"],
-                          }))
-                        }
-                        className="border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
-                      >
-                        <option value="all">全件</option>
-                        <option value="50">50</option>
-                        <option value="100">100</option>
-                        <option value="200">200</option>
-                      </select>
-                    </td>
-                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
-                      表示件数
-                    </th>
-                    <td className="border border-gray-300 px-2 py-1 text-xs">
-                      {displayRecords.length} 件
+                    <td colSpan={4} className="border border-gray-300 px-2 py-1 text-xs text-neutral-500">
+                      ※倉庫や販売済みの表示条件は検索ボタン押下後に反映されます。
                     </td>
                   </tr>
                 </tbody>
@@ -1145,17 +1142,6 @@ export default function InventoryPage() {
                 >
                   Download
                 </button>
-                <div className="ml-auto flex items-center gap-2">
-                  <span className="text-xs text-neutral-700">選択: {selectedIds.size}件</span>
-                  <button
-                    type="button"
-                    onClick={handleBulkEditOpen}
-                    disabled={selectedIds.size === 0}
-                    className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    編集
-                  </button>
-                </div>
               </div>
             </form>
           </div>
@@ -1194,7 +1180,7 @@ export default function InventoryPage() {
                 disabled={selectedIds.size === 0}
                 className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                一括：中
+                一括：公開中
               </button>
               <button
                 type="button"
@@ -1202,7 +1188,7 @@ export default function InventoryPage() {
                 disabled={selectedIds.size === 0}
                 className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                一括：未
+                一括：非公開
               </button>
               <button
                 type="button"
@@ -1262,6 +1248,12 @@ export default function InventoryPage() {
           )}
 
           <div ref={tableRef} className="mt-4 w-full overflow-x-auto">
+            <div className="mb-1 flex flex-wrap items-center gap-4 text-[11px] text-neutral-700">
+              <span className="font-semibold">選択: {selectedIds.size}件</span>
+              <span>
+                総{filteredRecords.length}件 / {displayRecords.length}件表示 / {currentPage}/{totalPageCount}ページ
+              </span>
+            </div>
             <table className="min-w-full table-fixed border-collapse border-2 border-gray-300 text-[11px]">
               <thead className="bg-slate-600 text-left font-semibold text-white">
                 <tr>

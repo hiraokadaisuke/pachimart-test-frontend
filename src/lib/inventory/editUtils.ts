@@ -2,8 +2,8 @@ import type { InventoryRecord, ListingStatusOption } from "@/lib/demo-data/demoI
 import type { InventoryStatusOption } from "@/types/purchaseInvoices";
 
 export const PUBLISH_OPTIONS: Array<{ value: ListingStatusOption; label: string }> = [
-  { value: "listing", label: "中" },
-  { value: "not_listing", label: "未" },
+  { value: "listing", label: "公開中" },
+  { value: "not_listing", label: "非公開" },
 ];
 
 export const resolveListingStatus = (record: InventoryRecord): ListingStatusOption => {
