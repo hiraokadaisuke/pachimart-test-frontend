@@ -1,41 +1,25 @@
-import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
-import { mergeTrades } from "./merge";
+import { fetchTradeRecordsFromApi } from "./api";
 import { type TradeRecord } from "./types";
-import { tradeDtoListSchema, transformTrade } from "./transform";
-import {
-  getHistoryTradesForUser,
-  getPurchaseHistoryForUser,
-  getSalesHistoryForUser,
-  getTradesForUser,
-  loadAllTrades,
-} from "./storage";
+
+const sortTradesByDate = (trades: TradeRecord[]) =>
+  trades.sort((a, b) => {
+    const aDate = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
+    const bDate = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
+    return bDate - aDate;
+  });
+
+const HISTORY_STATUSES = [
+  "APPROVAL_REQUIRED",
+  "PAYMENT_REQUIRED",
+  "CONFIRM_REQUIRED",
+  "COMPLETED",
+  "CANCELED",
+];
 
 async function loadTradesFromApi(): Promise<TradeRecord[]> {
   try {
-    const recordsResponse = await fetchWithDevHeader("/api/trades/records");
-
-    if (!recordsResponse.ok) {
-      throw new Error(`Failed to fetch trades: ${recordsResponse.status}`);
-    }
-
-    const json = (await recordsResponse.json()) as unknown;
-    const parsed = tradeDtoListSchema.safeParse(json);
-
-    if (!parsed.success) {
-      throw new Error(parsed.error.message);
-    }
-
-    const eligibleTrades = parsed.data.filter((trade) =>
-      ["IN_PROGRESS", "COMPLETED", "CANCELED"].includes(trade.status)
-    );
-
-    const tradeRecords = eligibleTrades.map(transformTrade);
-
-    return tradeRecords.sort((a, b) => {
-      const aDate = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
-      const bDate = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
-      return bDate - aDate;
-    });
+    const trades = await fetchTradeRecordsFromApi();
+    return sortTradesByDate(trades);
   } catch (error) {
     console.error("Failed to load trades from API", error);
     return [];
@@ -43,47 +27,37 @@ async function loadTradesFromApi(): Promise<TradeRecord[]> {
 }
 
 export async function loadAllTradesWithApi(): Promise<TradeRecord[]> {
-  const [apiTrades, storedTrades] = await Promise.all([loadTradesFromApi(), Promise.resolve(loadAllTrades())]);
-
-  const apiTradesById = new Map(apiTrades.map((trade) => [trade.id, trade]));
-  const merged = mergeTrades(
-    apiTrades,
-    storedTrades.filter((stored) => {
-      const apiTrade = apiTradesById.get(stored.id);
-      if (!apiTrade) return true;
-
-      const apiUpdatedAt = new Date(apiTrade.updatedAt ?? apiTrade.createdAt ?? 0).getTime();
-      const storedUpdatedAt = new Date(stored.updatedAt ?? stored.createdAt ?? 0).getTime();
-
-      return storedUpdatedAt > apiUpdatedAt;
-    })
-  );
-
-  return merged.sort((a, b) => {
-    const aDate = new Date(a.updatedAt ?? a.createdAt ?? 0).getTime();
-    const bDate = new Date(b.updatedAt ?? b.createdAt ?? 0).getTime();
-    return bDate - aDate;
-  });
+  return loadTradesFromApi();
 }
 
 export async function loadTradesForUser(userId: string): Promise<TradeRecord[]> {
   const trades = await loadTradesFromApi();
-  return getTradesForUser(userId, trades);
+  return trades.filter(
+    (dealing) => dealing.sellerUserId === userId || dealing.buyerUserId === userId
+  );
 }
 
 export async function loadHistoryTradesForUser(userId: string): Promise<TradeRecord[]> {
   const trades = await loadTradesFromApi();
-  return getHistoryTradesForUser(userId, trades);
+  return trades.filter(
+    (dealing) =>
+      (dealing.sellerUserId === userId || dealing.buyerUserId === userId) &&
+      HISTORY_STATUSES.includes(dealing.status)
+  );
 }
 
 export async function loadPurchaseHistoryForUser(userId: string): Promise<TradeRecord[]> {
   const trades = await loadTradesFromApi();
-  return getPurchaseHistoryForUser(userId, trades);
+  return trades.filter(
+    (dealing) => dealing.buyerUserId === userId && HISTORY_STATUSES.includes(dealing.status)
+  );
 }
 
 export async function loadSalesHistoryForUser(userId: string): Promise<TradeRecord[]> {
   const trades = await loadTradesFromApi();
-  return getSalesHistoryForUser(userId, trades);
+  return trades.filter(
+    (dealing) => dealing.sellerUserId === userId && HISTORY_STATUSES.includes(dealing.status)
+  );
 }
 
 export async function loadTradeById(tradeId: string): Promise<TradeRecord | null> {
