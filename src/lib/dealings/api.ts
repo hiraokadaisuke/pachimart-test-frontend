@@ -390,6 +390,35 @@ export async function updateTradeStatus(dealingId: string, status: "APPROVED" | 
   }
 }
 
+async function updateDealingProgress(
+  dealingId: string,
+  status: "CONFIRM_REQUIRED" | "COMPLETED",
+  actorUserId?: string
+) {
+  const response = await fetchWithDevHeader(
+    `/api/trades/records/${dealingId}`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    },
+    actorUserId
+  );
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Failed to update dealing ${dealingId}: ${response.status} ${detail}`);
+  }
+}
+
+export async function markTradePaid(dealingId: string, actorUserId?: string) {
+  await updateDealingProgress(dealingId, "CONFIRM_REQUIRED", actorUserId);
+}
+
+export async function markTradeCompleted(dealingId: string, actorUserId?: string) {
+  await updateDealingProgress(dealingId, "COMPLETED", actorUserId);
+}
+
 export async function saveTradeShippingInfo(
   dealingId: string,
   shipping: ShippingInfo,

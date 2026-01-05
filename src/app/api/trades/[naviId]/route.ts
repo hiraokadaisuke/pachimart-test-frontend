@@ -30,6 +30,9 @@ type NaviRecord = {
   listingId: string | null;
   listingSnapshot: Prisma.JsonValue | null;
   payload: Prisma.JsonValue | null;
+  paymentAt?: Date | null;
+  completedAt?: Date | null;
+  canceledAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
   trade?: { id: unknown } | null;
@@ -44,6 +47,9 @@ const toDto = (dealing: NaviRecord, tradeId?: number) => ({
   listingId: dealing.listingId,
   listingSnapshot: (dealing.listingSnapshot as Prisma.JsonValue | null) ?? null,
   payload: (dealing.payload as Prisma.JsonValue | null) ?? null,
+  paymentAt: dealing.paymentAt ? dealing.paymentAt.toISOString() : null,
+  completedAt: dealing.completedAt ? dealing.completedAt.toISOString() : null,
+  canceledAt: dealing.canceledAt ? dealing.canceledAt.toISOString() : null,
   createdAt: dealing.createdAt.toISOString(),
   updatedAt: dealing.updatedAt.toISOString(),
   tradeId,
@@ -76,6 +82,9 @@ const toRecord = (dealing: unknown): NaviRecord => {
     listingId: (candidate.listingId as string | null) ?? null,
     listingSnapshot: (candidate.listingSnapshot as Prisma.JsonValue | null) ?? null,
     payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
+    paymentAt: (candidate as { paymentAt?: Date | null }).paymentAt ?? null,
+    completedAt: (candidate as { completedAt?: Date | null }).completedAt ?? null,
+    canceledAt: (candidate as { canceledAt?: Date | null }).canceledAt ?? null,
     createdAt: toDate(candidate.createdAt),
     updatedAt: toDate(candidate.updatedAt, toDate(candidate.createdAt)),
     trade: (() => {
@@ -395,7 +404,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
           create: {
             sellerUserId: updatedNavi.ownerUserId,
             buyerUserId: resolvedBuyerId!,
-            status: DealingStatus.IN_PROGRESS,
+            status: DealingStatus.PAYMENT_REQUIRED,
             payload: normalizedPayload ?? Prisma.JsonNull,
             naviId: updatedNavi.id,
           },

@@ -30,6 +30,9 @@ type InMemoryTrade = {
   sellerUserId: string;
   buyerUserId: string;
   status: DealingStatus;
+  paymentAt: Date | null;
+  completedAt: Date | null;
+  canceledAt: Date | null;
   payload: Prisma.JsonValue | null;
   naviId: number | null;
   createdAt: Date;
@@ -186,6 +189,21 @@ type InMemoryPrisma = {
           buyerUser: { id: string; companyName: string } | null;
         })
       | null
+    >;
+    update: ({
+      where,
+      data,
+      include,
+    }: {
+      where: { id?: number | null };
+      data: Prisma.DealingUpdateInput;
+      include?: { navi?: boolean; sellerUser?: boolean; buyerUser?: boolean };
+    }) => Promise<
+      InMemoryTrade & {
+        navi: InMemoryNavi | null;
+        sellerUser: { id: string; companyName: string } | null;
+        buyerUser: { id: string; companyName: string } | null;
+      }
     >;
     upsert: ({
       where,
@@ -386,7 +404,10 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       id: tradeSeq++,
       sellerUserId: String(create.sellerUserId ?? ""),
       buyerUserId: String(create.buyerUserId ?? ""),
-      status: (create.status as DealingStatus) ?? DealingStatus.IN_PROGRESS,
+      status: (create.status as DealingStatus) ?? DealingStatus.PAYMENT_REQUIRED,
+      paymentAt: (create as { paymentAt?: Date | null }).paymentAt ?? null,
+      completedAt: (create as { completedAt?: Date | null }).completedAt ?? null,
+      canceledAt: (create as { canceledAt?: Date | null }).canceledAt ?? null,
       payload: (create.payload as Prisma.JsonValue | null) ?? null,
       naviId: (create.naviId as number | null) ?? null,
       createdAt: now(),
@@ -565,6 +586,35 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         const naviId = where.naviId ?? null;
         const found = trades.find((trade) => trade.id === id || (naviId !== null && trade.naviId === naviId));
         return found ? attachRelations(found) : null;
+      },
+      update: async ({ where, data }) => {
+        const id = Number(where.id ?? 0);
+        const idx = trades.findIndex((trade) => trade.id === id);
+
+        if (idx < 0) {
+          throw new Error("Trade not found");
+        }
+
+        const resolveUpdateValue = <T>(value: unknown): T | undefined => {
+          if (value && typeof value === "object" && "set" in (value as Record<string, unknown>)) {
+            return (value as { set?: T }).set;
+          }
+
+          return value as T | undefined;
+        };
+
+        const updated: InMemoryTrade = {
+          ...trades[idx],
+          status: resolveUpdateValue<DealingStatus>(data.status) ?? trades[idx].status,
+          paymentAt: resolveUpdateValue<Date | null>(data.paymentAt) ?? trades[idx].paymentAt,
+          completedAt: resolveUpdateValue<Date | null>(data.completedAt) ?? trades[idx].completedAt,
+          canceledAt: resolveUpdateValue<Date | null>(data.canceledAt) ?? trades[idx].canceledAt,
+          payload: resolveUpdateValue<Prisma.JsonValue | null>(data.payload) ?? trades[idx].payload,
+          updatedAt: now(),
+        };
+
+        trades[idx] = updated;
+        return attachRelations(updated);
       },
       upsert: async ({
         where,

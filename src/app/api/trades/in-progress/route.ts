@@ -9,6 +9,9 @@ type DealingRecord = {
   sellerUserId: string;
   buyerUserId: string;
   status: DealingStatus;
+  paymentAt: Date | null;
+  completedAt: Date | null;
+  canceledAt: Date | null;
   payload: Prisma.JsonValue | null;
   naviId: number | null;
   createdAt: Date;
@@ -31,6 +34,9 @@ const toDto = (dealing: DealingRecord) => ({
   sellerUserId: dealing.sellerUserId,
   buyerUserId: dealing.buyerUserId,
   status: dealing.status,
+  paymentAt: dealing.paymentAt ? dealing.paymentAt.toISOString() : null,
+  completedAt: dealing.completedAt ? dealing.completedAt.toISOString() : null,
+  canceledAt: dealing.canceledAt ? dealing.canceledAt.toISOString() : null,
   payload: (dealing.payload as Prisma.JsonValue | null) ?? null,
   naviId: dealing.naviId,
   createdAt: dealing.createdAt.toISOString(),
@@ -77,6 +83,9 @@ const toRecord = (dealing: unknown): DealingRecord => {
     sellerUserId: String(candidate.sellerUserId),
     buyerUserId: String(candidate.buyerUserId),
     status: candidate.status as DealingStatus,
+    paymentAt: (candidate.paymentAt as Date | null) ?? null,
+    completedAt: (candidate.completedAt as Date | null) ?? null,
+    canceledAt: (candidate.canceledAt as Date | null) ?? null,
     payload: (candidate.payload as Prisma.JsonValue | null) ?? null,
     naviId: (candidate.naviId as number | null) ?? null,
     createdAt: toDate(candidate.createdAt),
@@ -112,9 +121,13 @@ export async function GET(request: Request) {
   }
 
   try {
+    const statusFilter = {
+      notIn: [DealingStatus.COMPLETED, DealingStatus.CANCELED],
+    } satisfies Prisma.EnumDealingStatusFilter<"Dealing">;
+
     const dealings = await prisma.dealing.findMany({
       where: {
-        status: DealingStatus.IN_PROGRESS,
+        status: statusFilter as any,
         OR: [{ sellerUserId: currentUserId }, { buyerUserId: currentUserId }],
       },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
