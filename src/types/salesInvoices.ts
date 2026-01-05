@@ -1,3 +1,5 @@
+import type { SerialInputRow } from "@/lib/serialInputStorage";
+
 export type SalesInvoiceItem = {
   inventoryId?: string;
   maker?: string;
@@ -10,6 +12,8 @@ export type SalesInvoiceItem = {
   applicationPrefecture?: string;
   applicationDate?: string;
   note?: string;
+  selectedSerialIndexes?: number[];
+  selectedSerialRows?: SerialInputRow[];
 };
 
 export type SalesInvoice = {
