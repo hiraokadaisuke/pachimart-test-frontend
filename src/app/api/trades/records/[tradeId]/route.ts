@@ -9,6 +9,7 @@ import {
   findStatusTransition,
   resolveActorRole,
 } from "@/lib/dealings/statusMachine";
+import { recordLedgerForStatus } from "@/lib/server/ledger";
 
 const toDate = (value: unknown, fallback?: Date): Date => {
   if (value instanceof Date) return value;
@@ -188,7 +189,10 @@ export async function PATCH(request: Request, { params }: { params: { tradeId: s
       include: { navi: true, sellerUser: true, buyerUser: true } as any,
     });
 
-    return NextResponse.json(toDto(toRecord(updated)));
+    const updatedRecord = toRecord(updated);
+    await recordLedgerForStatus(record.status, targetStatus, updatedRecord);
+
+    return NextResponse.json(toDto(updatedRecord));
   } catch (error) {
     console.error("Failed to update trade", error);
     return NextResponse.json(

@@ -43,20 +43,28 @@ export function HistoryTabContent() {
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(INITIAL_FILTERS);
 
   useEffect(() => {
-    const syncLedger = () => {
-      setLedgerEntries(listLedgerEntries(currentUser.id));
+    let active = true;
+
+    const syncLedger = async () => {
+      const entries = await listLedgerEntries(currentUser.id);
+      if (active) {
+        setLedgerEntries(entries);
+      }
     };
 
-    syncLedger();
+    void syncLedger();
+
     if (typeof window !== "undefined") {
       window.addEventListener("ledger_updated", syncLedger);
-      window.addEventListener("storage", syncLedger);
       return () => {
+        active = false;
         window.removeEventListener("ledger_updated", syncLedger);
-        window.removeEventListener("storage", syncLedger);
       };
     }
-    return;
+
+    return () => {
+      active = false;
+    };
   }, [currentUser.id]);
 
   const filteredEntries = useMemo(() => applyFilters(ledgerEntries, appliedFilters), [appliedFilters, ledgerEntries]);
