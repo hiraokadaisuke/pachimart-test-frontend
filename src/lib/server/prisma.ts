@@ -8,6 +8,8 @@ import {
   NaviType,
   DealingStatus,
   OnlineInquiryStatus,
+  LedgerEntryCategory,
+  LedgerEntryKind,
 } from "@prisma/client";
 
 import { DEV_USERS } from "@/lib/dev-user/users";
@@ -135,6 +137,22 @@ type InMemoryBuyerShippingAddress = {
 type InMemoryMaker = {
   id: string;
   name: string;
+};
+
+type InMemoryLedgerEntry = {
+  id: string;
+  userId: string;
+  tradeId: number | null;
+  category: LedgerEntryCategory;
+  kind: LedgerEntryKind;
+  amountYen: number;
+  occurredAt: Date;
+  counterpartyName?: string | null;
+  makerName?: string | null;
+  itemName?: string | null;
+  memo?: string | null;
+  balanceAfterYen?: number | null;
+  breakdown?: Prisma.JsonValue | null;
 };
 
 type InMemoryMachineModel = {
@@ -300,6 +318,26 @@ type InMemoryPrisma = {
     findMany: (args?: { where?: { type?: ExhibitType }; orderBy?: { name?: "asc" | "desc" } }) =>
       Promise<InMemoryMachineModel[]>;
   };
+  ledgerEntry: {
+    create: ({ data }: { data: Prisma.LedgerEntryCreateInput }) => Promise<InMemoryLedgerEntry>;
+    findMany: ({
+      where,
+      orderBy,
+    }?: {
+      where?: { userId?: string };
+      orderBy?: { occurredAt?: "asc" | "desc" };
+    }) => Promise<InMemoryLedgerEntry[]>;
+    findFirst: ({
+      where,
+    }: {
+      where?: {
+        userId?: string;
+        tradeId?: number | null;
+        category?: LedgerEntryCategory;
+        kind?: LedgerEntryKind;
+      };
+    }) => Promise<InMemoryLedgerEntry | null>;
+  };
   $transaction: <T>(callback: (client: InMemoryPrisma) => Promise<T> | T) => Promise<T>;
   $queryRaw: (...params: unknown[]) => Promise<void>;
 };
@@ -326,6 +364,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   const exhibits: InMemoryListing[] = [];
   const storageLocations: InMemoryStorageLocation[] = [];
   const buyerShippingAddresses: InMemoryBuyerShippingAddress[] = [];
+  const ledgerEntries: InMemoryLedgerEntry[] = [];
   const makers: InMemoryMaker[] = [
     { id: "maker_sanyo", name: "三洋" },
     { id: "maker_heiwa", name: "平和" },
@@ -1054,6 +1093,52 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           return a.name.localeCompare(b.name, "ja");
         });
         return sorted.map((model) => ({ ...model }));
+      },
+    },
+    ledgerEntry: {
+      create: async ({ data }) => {
+        const record: InMemoryLedgerEntry = {
+          id: data.id ?? `ledger_${ledgerEntries.length + 1}`,
+          userId: String(data.userId ?? ""),
+          tradeId: (data.tradeId as number | null | undefined) ?? null,
+          category: (data.category as LedgerEntryCategory | undefined) ?? LedgerEntryCategory.PURCHASE,
+          kind: (data.kind as LedgerEntryKind | undefined) ?? LedgerEntryKind.PLANNED,
+          amountYen: Math.trunc(Number(data.amountYen ?? 0)),
+          occurredAt: data.occurredAt instanceof Date ? data.occurredAt : new Date(),
+          counterpartyName: (data.counterpartyName as string | null | undefined) ?? null,
+          makerName: (data.makerName as string | null | undefined) ?? null,
+          itemName: (data.itemName as string | null | undefined) ?? null,
+          memo: (data.memo as string | null | undefined) ?? null,
+          balanceAfterYen: (data.balanceAfterYen as number | null | undefined) ?? null,
+          breakdown: (data.breakdown as Prisma.JsonValue | null | undefined) ?? null,
+        };
+
+        ledgerEntries.push(record);
+        return { ...record };
+      },
+      findMany: async ({ where, orderBy } = {}) => {
+        const filtered = ledgerEntries.filter((entry) => {
+          if (where?.userId && entry.userId !== where.userId) return false;
+          return true;
+        });
+
+        const sorted = [...filtered].sort((a, b) => {
+          const order = orderBy?.occurredAt === "asc" ? 1 : -1;
+          return (a.occurredAt.getTime() - b.occurredAt.getTime()) * order;
+        });
+
+        return sorted.map((entry) => ({ ...entry }));
+      },
+      findFirst: async ({ where } = {}) => {
+        const match = ledgerEntries.find((entry) => {
+          if (where?.userId && entry.userId !== where.userId) return false;
+          if (where?.tradeId !== undefined && entry.tradeId !== where.tradeId) return false;
+          if (where?.category && entry.category !== where.category) return false;
+          if (where?.kind && entry.kind !== where.kind) return false;
+          return true;
+        });
+
+        return match ? { ...match } : null;
       },
     },
     $transaction: async <T>(callback: (client: ReturnType<typeof buildInMemoryPrisma>) => Promise<T> | T): Promise<T> =>

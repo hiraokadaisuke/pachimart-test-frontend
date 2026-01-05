@@ -112,7 +112,7 @@ export function BalanceProvider({ children }: { children: React.ReactNode }) {
         setBalances(result.state);
 
         if (deltaAmount !== 0) {
-          addLedgerEntry(userId, {
+          void addLedgerEntry(userId, {
             category: deltaAmount >= 0 ? "DEPOSIT" : "WITHDRAWAL",
             amountYen: Math.abs(deltaAmount),
             balanceAfterYen: result.nextBalance,

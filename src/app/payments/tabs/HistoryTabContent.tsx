@@ -43,20 +43,28 @@ export function HistoryTabContent() {
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(INITIAL_FILTERS);
 
   useEffect(() => {
-    const syncLedger = () => {
-      setLedgerEntries(listLedgerEntries(currentUser.id));
+    let active = true;
+
+    const syncLedger = async () => {
+      const entries = await listLedgerEntries(currentUser.id);
+      if (active) {
+        setLedgerEntries(entries);
+      }
     };
 
-    syncLedger();
+    void syncLedger();
+
     if (typeof window !== "undefined") {
       window.addEventListener("ledger_updated", syncLedger);
-      window.addEventListener("storage", syncLedger);
       return () => {
+        active = false;
         window.removeEventListener("ledger_updated", syncLedger);
-        window.removeEventListener("storage", syncLedger);
       };
     }
-    return;
+
+    return () => {
+      active = false;
+    };
   }, [currentUser.id]);
 
   const filteredEntries = useMemo(() => applyFilters(ledgerEntries, appliedFilters), [appliedFilters, ledgerEntries]);
@@ -86,7 +94,7 @@ export function HistoryTabContent() {
         entry.makerName ?? "-",
         entry.itemName ?? "-",
         formatNumber(signedAmount),
-        entry.balanceAfterYen !== undefined ? formatNumber(entry.balanceAfterYen) : "-",
+        entry.balanceAfterYen != null ? formatNumber(entry.balanceAfterYen) : "-",
         entry.memo ?? "",
       ];
     });
@@ -189,7 +197,7 @@ export function HistoryTabContent() {
                     <td className={`px-3 py-2 text-right font-semibold ${isNegative ? "text-rose-600" : "text-emerald-700"}`}>
                       {formatNumber(signedAmount)} 円
                     </td>
-                    <td className="px-3 py-2 text-right">{entry.balanceAfterYen !== undefined ? `${formatNumber(entry.balanceAfterYen)} 円` : "-"}</td>
+                    <td className="px-3 py-2 text-right">{entry.balanceAfterYen != null ? `${formatNumber(entry.balanceAfterYen)} 円` : "-"}</td>
                   </tr>
                 );
               })}

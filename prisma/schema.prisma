@@ -51,6 +51,18 @@ enum RemovalStatus {
   SCHEDULED
 }
 
+enum LedgerEntryCategory {
+  PURCHASE
+  SALE
+  DEPOSIT
+  WITHDRAWAL
+}
+
+enum LedgerEntryKind {
+  PLANNED
+  ACTUAL
+}
+
 enum ExhibitType {
   PACHINKO
   SLOT
@@ -189,6 +201,25 @@ model Exhibit {
   @@index([updatedAt])
   @@index([storageLocationId])
   @@map("Exhibit")
+}
+
+model LedgerEntry {
+  id              String             @id @default(cuid())
+  userId          String
+  tradeId         Int?
+  category        LedgerEntryCategory
+  kind            LedgerEntryKind    @default(PLANNED)
+  amountYen       Int
+  occurredAt      DateTime           @default(now())
+  counterpartyName String?
+  makerName       String?
+  itemName        String?
+  memo            String?
+  balanceAfterYen Int?
+  breakdown       Json?
+
+  @@index([userId, occurredAt])
+  @@index([tradeId])
 }
 
 model Maker {

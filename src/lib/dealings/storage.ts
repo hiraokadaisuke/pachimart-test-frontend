@@ -464,10 +464,12 @@ export function markTradePaid(
 
   const updated = upsertDealingInternal(advanced);
 
-  addLedgerEntry(buyerId, {
+  const tradeNumericId = Number(dealingId);
+
+  void addLedgerEntry(buyerId, {
     category: "PURCHASE",
     amountYen: amount,
-    tradeId: dealingId,
+    tradeId: Number.isFinite(tradeNumericId) ? tradeNumericId : undefined,
     counterpartyName: advanced.sellerName ?? advanced.seller.companyName,
     makerName: advanced.items[0]?.maker,
     itemName: advanced.items[0]?.itemName,
@@ -501,16 +503,18 @@ export function markTradeCompleted(
     advanced.totalAmount ??
     calculateStatementTotals(advanced.items, advanced.taxRate ?? 0.1).total;
 
+  const tradeNumericId = Number(dealingId);
+
   if (Number.isFinite(amount) && amount > 0) {
     const sellerBalanceAfter = creditBalance(advanced.sellerUserId, amount);
     if (sellerBalanceAfter !== null) {
       creditedTradeIds.add(dealingId);
       saveCreditedDealingIds(creditedTradeIds);
 
-      addLedgerEntry(advanced.sellerUserId, {
+      void addLedgerEntry(advanced.sellerUserId, {
         category: "SALE",
         amountYen: amount,
-        tradeId: dealingId,
+        tradeId: Number.isFinite(tradeNumericId) ? tradeNumericId : undefined,
         counterpartyName: advanced.buyerName ?? advanced.buyer.companyName,
         makerName: advanced.items[0]?.maker,
         itemName: advanced.items[0]?.itemName,
