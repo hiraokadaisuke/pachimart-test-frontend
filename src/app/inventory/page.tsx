@@ -8,6 +8,7 @@ import {
   loadInventoryRecords,
   resetInventoryRecords,
   saveDraft,
+  saveInventoryRecords,
   updateInventoryRecord,
   updateInventoryStatuses,
   updateInventoryStatus,
@@ -22,6 +23,7 @@ import type { SalesInvoice } from "@/types/salesInvoices";
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import { buildEditForm, buildPayload, PUBLISH_OPTIONS, resolvePublishStatus } from "@/lib/inventory/editUtils";
 import { loadSerialRows, type SerialInputRow } from "@/lib/serialInputStorage";
+import { formatShortId } from "@/lib/inventory/idDisplay";
 
 type Column = {
   key: keyof InventoryRecord | "status";
@@ -125,18 +127,6 @@ const matchesDateRange = (value: string | undefined, range: DateRange) => {
 
 const statusLabelMap = new Map(PUBLISH_OPTIONS.map((option) => [option.value, option.label]));
 
-const buildManagementId = (index: number) => {
-  const globalIndex = index + 1;
-  const group = Math.floor((globalIndex - 1) / 9999) + 1;
-  const sequence = ((globalIndex - 1) % 9999) + 1;
-  return {
-    group,
-    sequence,
-    label: `${group}-${sequence}`,
-    isSplit: sequence >= 100,
-  };
-};
-
 const isSerialRowComplete = (row: SerialInputRow) =>
   REQUIRED_SERIAL_KEYS.every((key) => String(row[key] ?? "").trim() !== "");
 
@@ -210,6 +200,34 @@ export default function InventoryPage() {
     window.addEventListener("focus", refreshInvoices);
     return () => window.removeEventListener("focus", refreshInvoices);
   }, []);
+
+  useEffect(() => {
+    if (records.length === 0 || salesInvoices.length === 0) return;
+    const soldIds = new Set(
+      salesInvoices.flatMap((invoice) => [
+        ...(invoice.inventoryIds ?? []),
+        ...(invoice.items ?? [])
+          .map((item) => item.inventoryId)
+          .filter((id): id is string => Boolean(id)),
+      ]),
+    );
+    let updated = false;
+    const nextRecords = records.map((record): InventoryRecord => {
+      if (!soldIds.has(record.id)) return record;
+      if (record.listingStatus === "sold") return record;
+      updated = true;
+      return {
+        ...record,
+        listingStatus: "sold",
+        status: "売却済",
+        stockStatus: "売却済",
+      };
+    });
+    if (updated) {
+      saveInventoryRecords(nextRecords);
+      setRecords(nextRecords);
+    }
+  }, [records, salesInvoices]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -453,14 +471,6 @@ export default function InventoryPage() {
     });
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedIds(new Set(displayRecords.map((item) => item.id)));
-      return;
-    }
-    setSelectedIds(new Set());
-  };
-
   const handleBulkUpdate = (status: ListingStatusOption) => {
     if (selectedIds.size === 0) {
       alert("行を選択してください");
@@ -662,13 +672,10 @@ export default function InventoryPage() {
 
   const handleCsvDownload = () => {
     const headers = visibleColumns.map((col) => col.label);
-    const rows = displayRecords.map((record, index) =>
+    const rows = displayRecords.map((record) =>
       visibleColumns
         .map((col) => {
-          const value =
-            col.key === "id"
-              ? buildManagementId(index).label
-              : getCellText(record, String(col.key));
+          const value = col.key === "id" ? formatShortId(record.id) : getCellText(record, String(col.key));
           const normalized = value ?? "";
           return `"${String(normalized).replace(/"/g, '""')}"`;
         })
@@ -1146,7 +1153,10 @@ export default function InventoryPage() {
             </form>
           </div>
 
-        <div className="mt-3 flex flex-wrap items-center gap-2 border border-gray-300 px-2 py-2 text-[11px]">
+          <p className="mt-2 text-[11px] text-neutral-600">
+            ※販売伝票作成済みの在庫は在庫0相当として扱われ、一覧では薄いグレー表示になります。
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2 border border-gray-300 px-2 py-2 text-[11px]">
             <div className="flex flex-wrap items-center gap-2 text-neutral-700">
               <button
                 type="button"
@@ -1257,14 +1267,7 @@ export default function InventoryPage() {
             <table className="min-w-full table-fixed border-collapse border-2 border-gray-300 text-[11px]">
               <thead className="bg-slate-600 text-left font-semibold text-white">
                 <tr>
-                  <th className="w-10 border border-gray-300 px-1 py-1">
-                    <input
-                      type="checkbox"
-                      checked={displayRecords.length > 0 && selectedIds.size === displayRecords.length}
-                      onChange={(event) => handleSelectAll(event.target.checked)}
-                      className="h-4 w-4 border-gray-300"
-                    />
-                  </th>
+                  <th className="w-10 border border-gray-300 px-1 py-1" />
                   {visibleColumns.map((col) => (
                     <th
                       key={col.key}
@@ -1303,8 +1306,13 @@ export default function InventoryPage() {
                     </td>
                   </tr>
                 ) : (
-                  displayRecords.map((item, index) => (
-                    <tr key={item.id} className="border-t border-gray-300 text-[11px] hover:bg-[#fffbe6]">
+                  displayRecords.map((item) => {
+                    const isSalesInvoiced = salesInvoiceMap.has(item.id);
+                    const rowClass = isSalesInvoiced
+                      ? "border-t border-gray-300 bg-gray-50 text-[11px] hover:bg-gray-100"
+                      : "border-t border-gray-300 text-[11px] hover:bg-[#fffbe6]";
+                    return (
+                      <tr key={item.id} className={rowClass}>
                       <td className="w-10 border border-gray-300 px-1 py-0.5 align-middle">
                         <input
                           type="checkbox"
@@ -1316,8 +1324,7 @@ export default function InventoryPage() {
                       {visibleColumns.map((col) => {
                         const fullText = getCellText(item, String(col.key));
                         const statusValue = resolvePublishStatus(item);
-                        const managementId = col.key === "id" ? buildManagementId(index) : null;
-                        const displayText = col.key === "id" ? managementId?.label ?? fullText : fullText;
+                        const displayText = col.key === "id" ? formatShortId(item.id) : fullText;
                         const numeric = NUMERIC_COLUMNS.includes(col.key);
                         const isDate = DATE_COLUMNS.includes(col.key);
                         const shouldWrap = WRAP_COLUMNS.includes(col.key);
@@ -1339,7 +1346,8 @@ export default function InventoryPage() {
                                 onChange={(event) =>
                                   handleStatusChange(item.id, event.target.value as ListingStatusOption)
                                 }
-                                className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-xs"
+                                disabled={isSalesInvoiced}
+                                className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-xs disabled:bg-gray-100 disabled:text-neutral-500"
                               >
                                 {PUBLISH_OPTIONS.map((option) => (
                                   <option key={option.value} value={option.value}>
@@ -1416,15 +1424,6 @@ export default function InventoryPage() {
                                     </option>
                                   ))}
                               </select>
-                            ) : col.key === "id" && managementId ? (
-                              managementId.isSplit ? (
-                                <span className="flex flex-col items-center leading-tight">
-                                  <span>{`${managementId.group}-`}</span>
-                                  <span>{managementId.sequence}</span>
-                                </span>
-                              ) : (
-                                <span className="block text-center">{managementId.label}</span>
-                              )
                             ) : (
                               <span className={`block max-w-full ${numeric ? "tabular-nums" : ""}`}>
                                 {displayText}
@@ -1484,7 +1483,8 @@ export default function InventoryPage() {
                         )}
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>

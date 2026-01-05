@@ -9,12 +9,15 @@ import {
   loadSalesInvoices,
   saveSalesInvoices,
 } from "@/lib/demo-data/salesInvoices";
+import { loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import {
   addSalesInvoiceGroup,
   generateSalesInvoiceGroupId,
   loadSalesInvoiceGroups,
 } from "@/lib/demo-data/salesInvoiceGroups";
 import type { SalesInvoice, SalesInvoiceGroup } from "@/types/salesInvoices";
+import { formatShortId } from "@/lib/inventory/idDisplay";
+import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 
 interface SalesInvoiceRow {
   id: string;
@@ -24,6 +27,8 @@ interface SalesInvoiceRow {
   modelDisplay: string;
   modelSearch: string;
   modelTooltip?: string;
+  warehouseDisplay: string;
+  warehouseTooltip?: string;
   customer: string;
   staff: string;
   totalAmount: number;
@@ -91,6 +96,20 @@ const buildModelSummary = (items: SalesInvoice["items"]) => {
   return { display, search, tooltip };
 };
 
+const buildWarehouseSummary = (inventoryIds: string[], inventoryMap: Map<string, InventoryRecord>) => {
+  const names = inventoryIds
+    .map((id) => inventoryMap.get(id))
+    .map((inventory) => (inventory?.warehouse ?? inventory?.storageLocation ?? "").trim())
+    .filter((name) => name !== "");
+  if (names.length === 0) {
+    return { display: "-", tooltip: undefined };
+  }
+  const uniqueNames = Array.from(new Set(names));
+  const display = uniqueNames.length > 1 ? `${uniqueNames[0]} + 他` : uniqueNames[0];
+  const tooltip = uniqueNames.join("\n");
+  return { display, tooltip };
+};
+
 const resolveSalesToKey = (invoice: SalesInvoice) => {
   const salesToId = invoice.salesToId?.trim();
   const name = (invoice.vendorName || invoice.buyerName || "").trim();
@@ -108,6 +127,7 @@ const resolveCommonValue = (values: Array<string | undefined>) => {
 export default function SalesInvoiceListPage() {
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [groups, setGroups] = useState<SalesInvoiceGroup[]>([]);
+  const [inventories, setInventories] = useState<InventoryRecord[]>([]);
   const [formValues, setFormValues] = useState({
     id: "",
     maker: "",
@@ -123,6 +143,7 @@ export default function SalesInvoiceListPage() {
   useEffect(() => {
     setInvoices(loadAllSalesInvoices());
     setGroups(loadSalesInvoiceGroups());
+    setInventories(loadInventoryRecords());
   }, []);
 
   const mergedInvoiceIds = useMemo(() => {
@@ -133,11 +154,25 @@ export default function SalesInvoiceListPage() {
     return ids;
   }, [groups]);
 
+  const inventoryMap = useMemo(
+    () => new Map(inventories.map((inventory) => [inventory.id, inventory])),
+    [inventories],
+  );
+
   const invoiceRows = useMemo<SalesInvoiceRow[]>(() => {
     return invoices
       .filter((invoice) => !mergedInvoiceIds.has(invoice.invoiceId))
       .map((invoice) => {
         const modelSummary = buildModelSummary(invoice.items ?? []);
+        const inventoryIds = Array.from(
+          new Set([
+            ...(invoice.inventoryIds ?? []),
+            ...(invoice.items ?? [])
+              .map((item) => item.inventoryId)
+              .filter((id): id is string => Boolean(id)),
+          ]),
+        );
+        const warehouseSummary = buildWarehouseSummary(inventoryIds, inventoryMap);
         return {
           id: invoice.invoiceId,
           rowType: "invoice",
@@ -146,6 +181,8 @@ export default function SalesInvoiceListPage() {
           modelDisplay: modelSummary.display,
           modelSearch: modelSummary.search,
           modelTooltip: modelSummary.tooltip,
+          warehouseDisplay: warehouseSummary.display,
+          warehouseTooltip: warehouseSummary.tooltip,
           customer: (invoice.vendorName || invoice.buyerName || "").trim(),
           staff: invoice.staff ?? "",
           totalAmount: resolveInvoiceTotal(invoice),
@@ -153,7 +190,7 @@ export default function SalesInvoiceListPage() {
           transferDate: invoice.transferDate,
         };
       });
-  }, [invoices, mergedInvoiceIds]);
+  }, [invoices, inventoryMap, mergedInvoiceIds]);
 
   const groupRows = useMemo(() => {
     const invoiceMap = new Map(invoices.map((invoice) => [invoice.invoiceId, invoice]));
@@ -175,6 +212,17 @@ export default function SalesInvoiceListPage() {
       const totalAmount = groupedInvoices.reduce((sum, entry) => sum + resolveInvoiceTotal(entry), 0);
       const transferDate =
         group.transferDate || resolveCommonValue(groupedInvoices.map((entry) => entry.transferDate)) || "";
+      const inventoryIds = Array.from(
+        new Set(
+          groupedInvoices.flatMap((entry) => [
+            ...(entry.inventoryIds ?? []),
+            ...(entry.items ?? [])
+              .map((item) => item.inventoryId)
+              .filter((id): id is string => Boolean(id)),
+          ]),
+        ),
+      );
+      const warehouseSummary = buildWarehouseSummary(inventoryIds, inventoryMap);
 
       acc.push({
         id: group.id,
@@ -184,6 +232,8 @@ export default function SalesInvoiceListPage() {
         modelDisplay: modelSummary.display,
         modelSearch: modelSummary.search,
         modelTooltip: modelSummary.tooltip,
+        warehouseDisplay: warehouseSummary.display,
+        warehouseTooltip: warehouseSummary.tooltip,
         customer: group.salesToName,
         staff,
         totalAmount,
@@ -192,7 +242,7 @@ export default function SalesInvoiceListPage() {
       });
       return acc;
     }, []);
-  }, [groups, invoices]);
+  }, [groups, inventoryMap, invoices]);
 
   const rows = useMemo(() => [...groupRows, ...invoiceRows], [groupRows, invoiceRows]);
 
@@ -488,10 +538,11 @@ export default function SalesInvoiceListPage() {
               <th className="border border-gray-300 px-3 py-2 text-left">伝票発行日</th>
               <th className="border border-gray-300 px-3 py-2 text-left">メーカー名</th>
               <th className="border border-gray-300 px-3 py-2 text-left">機種名</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">保管倉庫</th>
               <th className="border border-gray-300 px-3 py-2 text-left">販売先</th>
               <th className="border border-gray-300 px-3 py-2 text-left">区分</th>
               <th className="border border-gray-300 px-3 py-2 text-left">担当</th>
-              <th className="border border-gray-300 px-3 py-2 text-left">入金日</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">入金予定日</th>
               <th className="border border-gray-300 px-3 py-2 text-right">合計金額</th>
               <th className="border border-gray-300 px-3 py-2 text-center">選択</th>
               <th className="border border-gray-300 px-3 py-2 text-center">詳細</th>
@@ -500,7 +551,7 @@ export default function SalesInvoiceListPage() {
           <tbody>
             {filteredInvoices.length === 0 && (
               <tr>
-                <td colSpan={11} className="border border-gray-300 px-4 py-8 text-center text-sm text-slate-700">
+                <td colSpan={12} className="border border-gray-300 px-4 py-8 text-center text-sm text-slate-700">
                   該当データがありません。
                 </td>
               </tr>
@@ -517,15 +568,20 @@ export default function SalesInvoiceListPage() {
                 invoice.invoiceType === "vendor" ? "業者" : invoice.invoiceType === "hall" ? "ホール" : "混在";
               return (
                 <tr key={invoice.id} className={`${rowColor}`}>
-                  <td className="border border-gray-300 px-3 py-2 font-semibold">{invoice.id}</td>
-                  <td className="border border-gray-300 px-3 py-2">{formatDate(invoice.issueDate)}</td>
-                  <td className="border border-gray-300 px-3 py-2">{invoice.maker}</td>
-                  <td className="border border-gray-300 px-3 py-2" title={invoice.modelTooltip}>
-                    {invoice.modelDisplay}
-                  </td>
-                  <td className="border border-gray-300 px-3 py-2">{invoice.customer}</td>
-                  <td className="border border-gray-300 px-3 py-2">{typeLabel}</td>
-                  <td className="border border-gray-300 px-3 py-2">{invoice.staff}</td>
+              <td className="border border-gray-300 px-3 py-2 font-semibold" title={invoice.id}>
+                {formatShortId(invoice.id)}
+              </td>
+              <td className="border border-gray-300 px-3 py-2">{formatDate(invoice.issueDate)}</td>
+              <td className="border border-gray-300 px-3 py-2">{invoice.maker}</td>
+              <td className="border border-gray-300 px-3 py-2" title={invoice.modelTooltip}>
+                {invoice.modelDisplay}
+              </td>
+              <td className="border border-gray-300 px-3 py-2" title={invoice.warehouseTooltip}>
+                {invoice.warehouseDisplay}
+              </td>
+              <td className="border border-gray-300 px-3 py-2">{invoice.customer}</td>
+              <td className="border border-gray-300 px-3 py-2">{typeLabel}</td>
+              <td className="border border-gray-300 px-3 py-2">{invoice.staff}</td>
                   <td className="border border-gray-300 px-3 py-2">{formatDate(invoice.transferDate)}</td>
                   <td className="border border-gray-300 px-3 py-2 text-right">
                     {formatCurrency(invoice.totalAmount)}
