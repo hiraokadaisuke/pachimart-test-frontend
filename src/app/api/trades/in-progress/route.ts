@@ -121,9 +121,13 @@ export async function GET(request: Request) {
   }
 
   try {
+    const statusFilter = {
+      notIn: [DealingStatus.COMPLETED, DealingStatus.CANCELED],
+    } satisfies Prisma.EnumDealingStatusFilter<"Dealing">;
+
     const dealings = await prisma.dealing.findMany({
       where: {
-        status: { notIn: [DealingStatus.COMPLETED, DealingStatus.CANCELED] },
+        status: statusFilter as any,
         OR: [{ sellerUserId: currentUserId }, { buyerUserId: currentUserId }],
       },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order

@@ -190,6 +190,21 @@ type InMemoryPrisma = {
         })
       | null
     >;
+    update: ({
+      where,
+      data,
+      include,
+    }: {
+      where: { id?: number | null };
+      data: Prisma.DealingUpdateInput;
+      include?: { navi?: boolean; sellerUser?: boolean; buyerUser?: boolean };
+    }) => Promise<
+      InMemoryTrade & {
+        navi: InMemoryNavi | null;
+        sellerUser: { id: string; companyName: string } | null;
+        buyerUser: { id: string; companyName: string } | null;
+      }
+    >;
     upsert: ({
       where,
       create,
@@ -571,6 +586,35 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         const naviId = where.naviId ?? null;
         const found = trades.find((trade) => trade.id === id || (naviId !== null && trade.naviId === naviId));
         return found ? attachRelations(found) : null;
+      },
+      update: async ({ where, data }) => {
+        const id = Number(where.id ?? 0);
+        const idx = trades.findIndex((trade) => trade.id === id);
+
+        if (idx < 0) {
+          throw new Error("Trade not found");
+        }
+
+        const resolveUpdateValue = <T>(value: unknown): T | undefined => {
+          if (value && typeof value === "object" && "set" in (value as Record<string, unknown>)) {
+            return (value as { set?: T }).set;
+          }
+
+          return value as T | undefined;
+        };
+
+        const updated: InMemoryTrade = {
+          ...trades[idx],
+          status: resolveUpdateValue<DealingStatus>(data.status) ?? trades[idx].status,
+          paymentAt: resolveUpdateValue<Date | null>(data.paymentAt) ?? trades[idx].paymentAt,
+          completedAt: resolveUpdateValue<Date | null>(data.completedAt) ?? trades[idx].completedAt,
+          canceledAt: resolveUpdateValue<Date | null>(data.canceledAt) ?? trades[idx].canceledAt,
+          payload: resolveUpdateValue<Prisma.JsonValue | null>(data.payload) ?? trades[idx].payload,
+          updatedAt: now(),
+        };
+
+        trades[idx] = updated;
+        return attachRelations(updated);
       },
       upsert: async ({
         where,
