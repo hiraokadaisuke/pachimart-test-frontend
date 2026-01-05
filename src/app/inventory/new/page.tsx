@@ -41,16 +41,16 @@ type InventoryFormRow = {
   model: string;
   kind: "" | "P" | "S";
   type: "" | "本体" | "枠" | "セル";
-  quantity: number;
-  unitPrice: number;
-  saleUnitPrice: number;
+  quantity: number | "";
+  unitPrice: number | "";
+  saleUnitPrice: number | "";
   hasRemainingDebt: boolean;
   stockInDate: string;
   removeDate: string;
   pattern: string;
   warehouse: string;
   note: string;
-  listingStatus: "listing" | "sold" | "not_listing";
+  isPublished: boolean;
 };
 
 const MACHINE_CATALOG: MachineCatalogItem[] = [
@@ -72,16 +72,16 @@ const createBlankRow = (today: string): InventoryFormRow => ({
   model: "",
   kind: "",
   type: "",
-  quantity: 1,
-  unitPrice: 0,
-  saleUnitPrice: 0,
+  quantity: "",
+  unitPrice: "",
+  saleUnitPrice: "",
   hasRemainingDebt: false,
   stockInDate: today,
   removeDate: "",
   pattern: "",
   warehouse: "",
   note: "",
-  listingStatus: "listing",
+  isPublished: true,
 });
 
 const todayString = () => new Date().toISOString().slice(0, 10);
@@ -89,8 +89,10 @@ const todayString = () => new Date().toISOString().slice(0, 10);
 const getMakerOptions = (catalog: MachineCatalogItem[]) =>
   Array.from(new Set(catalog.map((item) => item.maker)));
 
-const mapListingStatusToStockStatus = (status: InventoryFormRow["listingStatus"]) => {
-  if (status === "sold") return "売却済";
+const parseNumberInput = (value: string) => (value === "" ? "" : Number(value));
+const normalizeNumber = (value: number | "") => (value === "" || Number.isNaN(value) ? 0 : value);
+
+const mapListingStatusToStockStatus = (status: "listing" | "not_listing") => {
   if (status === "listing") return "出品中";
   return "倉庫";
 };
@@ -108,7 +110,7 @@ type MachineFieldOrder =
   | "removeDate"
   | "pattern"
   | "warehouse"
-  | "listingStatus";
+  | "isPublished";
 
 type SupplierFieldOrder = "supplier" | "inputDate" | "buyerStaff";
 
@@ -128,6 +130,7 @@ export default function InventoryNewPage() {
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
   const [selectedCorporateId, setSelectedCorporateId] = useState<string>("");
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const makerOptions = useMemo(() => getMakerOptions(MACHINE_CATALOG), []);
   const makerOptionsByKind = useMemo(
     () => ({
@@ -160,7 +163,7 @@ export default function InventoryNewPage() {
     "removeDate",
     "pattern",
     "warehouse",
-    "listingStatus",
+    "isPublished",
   ];
   const supplierOrder: SupplierFieldOrder[] = ["supplier", "inputDate", "buyerStaff"];
 
@@ -312,10 +315,10 @@ export default function InventoryNewPage() {
   const summary = useMemo(() => {
     return rows.reduce(
       (acc, row) => {
-        const qty = row.quantity ?? 0;
+        const qty = normalizeNumber(row.quantity);
         if (row.kind === "P") acc.pCount += qty;
         if (row.kind === "S") acc.sCount += qty;
-        const unit = row.unitPrice ?? 0;
+        const unit = normalizeNumber(row.unitPrice);
         acc.totalAmount += unit * qty;
         return acc;
       },
@@ -323,7 +326,25 @@ export default function InventoryNewPage() {
     );
   }, [rows]);
 
-  const handleSubmit = () => {
+  const resetForm = () => {
+    const todayValue = todayString();
+    setToday(todayValue);
+    setRows([createBlankRow(todayValue)]);
+    setSupplierInfo((prev) => ({
+      ...prev,
+      inputDate: todayValue,
+      isVisible: true,
+      taxType: "exclusive",
+      isConsignment: false,
+      notes: "",
+      buyerStaff: "",
+    }));
+    requestAnimationFrame(() => focusTo(focusKey(0, machineOrder[0])));
+  };
+
+  const handleSubmit = (mode: "single" | "continuous") => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const corporate = selectedCorporate;
     const branch = selectedBranch;
     const supplierName = supplierInfo.supplier || corporate?.corporateName || "";
@@ -337,7 +358,7 @@ export default function InventoryNewPage() {
     const prepared: InventoryRecord[] = rows
       .filter((row) => row.maker || row.model)
       .map((row) => {
-        const listingStatus = row.listingStatus;
+        const listingStatus = row.isPublished ? "listing" : "not_listing";
         const status = mapListingStatusToStockStatus(listingStatus);
         const stockInDate = row.stockInDate || supplierInfo.inputDate || today;
         return {
@@ -356,9 +377,9 @@ export default function InventoryNewPage() {
           machineName: row.model,
           kind: row.kind || undefined,
           type: row.type || undefined,
-          quantity: row.quantity,
-          unitPrice: row.unitPrice,
-          saleUnitPrice: row.saleUnitPrice,
+          quantity: normalizeNumber(row.quantity),
+          unitPrice: normalizeNumber(row.unitPrice),
+          saleUnitPrice: normalizeNumber(row.saleUnitPrice),
           stockInDate,
           arrivalDate: stockInDate,
           removeDate: row.removeDate || undefined,
@@ -383,11 +404,25 @@ export default function InventoryNewPage() {
 
     if (prepared.length === 0) {
       alert("登録する行を入力してください");
+      setIsSubmitting(false);
       return;
     }
 
-    addInventoryRecords(prepared);
-    router.push("/inventory");
+    try {
+      addInventoryRecords(prepared);
+      if (mode === "continuous") {
+        alert("在庫を登録しました。続けて入力してください。");
+        resetForm();
+      } else {
+        alert("在庫を登録しました。");
+        router.push("/inventory");
+      }
+    } catch (error) {
+      console.error("在庫登録に失敗しました", error);
+      alert("登録に失敗しました。もう一度お試しください。");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const machineMatches = (keyword: string, maker?: string, kind?: InventoryFormRow["kind"]) => {
@@ -582,7 +617,7 @@ export default function InventoryNewPage() {
                 <th className={excelTh}>撤去日</th>
                 <th className={excelTh}>柄</th>
                 <th className={excelTh}>保管先</th>
-                <th className={excelTh}>状況</th>
+                <th className={excelTh}>公開</th>
               </tr>
             </thead>
             <tbody>
@@ -687,7 +722,7 @@ export default function InventoryNewPage() {
                         type="number"
                         min={0}
                         value={row.quantity}
-                        onChange={(event) => handleRowChange(index, "quantity", Number(event.target.value))}
+                        onChange={(event) => handleRowChange(index, "quantity", parseNumberInput(event.target.value))}
                         onKeyDown={(event) => handleMachineEnter(event, index, "quantity")}
                         ref={registerFocus(focusKey(index, "quantity"))}
                         className={`${inputBase} text-right`}
@@ -698,7 +733,7 @@ export default function InventoryNewPage() {
                         type="number"
                         min={0}
                         value={row.unitPrice}
-                        onChange={(event) => handleRowChange(index, "unitPrice", Number(event.target.value))}
+                        onChange={(event) => handleRowChange(index, "unitPrice", parseNumberInput(event.target.value))}
                         onKeyDown={(event) => handleMachineEnter(event, index, "unitPrice")}
                         ref={registerFocus(focusKey(index, "unitPrice"))}
                         className={`${inputBase} text-right`}
@@ -709,7 +744,9 @@ export default function InventoryNewPage() {
                         type="number"
                         min={0}
                         value={row.saleUnitPrice}
-                        onChange={(event) => handleRowChange(index, "saleUnitPrice", Number(event.target.value))}
+                        onChange={(event) =>
+                          handleRowChange(index, "saleUnitPrice", parseNumberInput(event.target.value))
+                        }
                         onKeyDown={(event) => handleMachineEnter(event, index, "saleUnitPrice")}
                         ref={registerFocus(focusKey(index, "saleUnitPrice"))}
                         className={`${inputBase} text-right`}
@@ -775,23 +812,17 @@ export default function InventoryNewPage() {
                       </select>
                     </td>
                     <td className={`${excelTd} text-center`}>
-                      <select
-                        value={row.listingStatus}
-                        onChange={(event) =>
-                          handleRowChange(
-                            index,
-                            "listingStatus",
-                            event.target.value as InventoryFormRow["listingStatus"],
-                          )
-                        }
-                        onKeyDown={(event) => handleMachineEnter(event, index, "listingStatus")}
-                        ref={registerFocus(focusKey(index, "listingStatus"))}
-                        className={`${selectBase} text-center`}
-                      >
-                        <option value="listing">出品</option>
-                        <option value="sold">売却</option>
-                        <option value="not_listing">非出品</option>
-                      </select>
+                      <label className="flex items-center justify-center gap-1 text-[11px] text-neutral-700">
+                        <input
+                          type="checkbox"
+                          checked={row.isPublished}
+                          onChange={(event) => handleRowChange(index, "isPublished", event.target.checked)}
+                          onKeyDown={(event) => handleMachineEnter(event, index, "isPublished")}
+                          ref={registerFocus(focusKey(index, "isPublished"))}
+                          className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
+                        />
+                        公開
+                      </label>
                     </td>
                   </tr>
                 );
@@ -819,10 +850,19 @@ export default function InventoryNewPage() {
             </button>
             <button
               type="button"
-              onClick={handleSubmit}
-              className={`${excelBtn} border-yellow-700 bg-yellow-300 text-yellow-900`}
+              onClick={() => handleSubmit("single")}
+              disabled={isSubmitting}
+              className={`${excelBtn} border-yellow-700 bg-yellow-300 text-yellow-900 disabled:cursor-not-allowed disabled:opacity-40`}
             >
-              確認
+              登録
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSubmit("continuous")}
+              disabled={isSubmitting}
+              className={`${excelBtn} border-emerald-700 bg-emerald-200 text-emerald-900 disabled:cursor-not-allowed disabled:opacity-40`}
+            >
+              連続登録
             </button>
           </div>
       </div>
