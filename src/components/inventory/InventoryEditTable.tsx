@@ -1,6 +1,6 @@
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { ListingStatusOption } from "@/lib/demo-data/demoInventory";
-import { buildEditForm, STATUS_OPTIONS } from "@/lib/inventory/editUtils";
+import { buildEditForm, PUBLISH_OPTIONS } from "@/lib/inventory/editUtils";
 
 type InventoryEditTableProps = {
   groups: Array<[string, InventoryRecord[]]>;
@@ -28,7 +28,7 @@ const InventoryEditTable = ({ groups, bulkEditForms, onChange }: InventoryEditTa
                 <th className="border border-gray-300 px-2 py-1">撤去日</th>
                 <th className="border border-gray-300 px-2 py-1">保管先</th>
                 <th className="border border-gray-300 px-2 py-1">担当者</th>
-                <th className="border border-gray-300 px-2 py-1">状況</th>
+                <th className="border border-gray-300 px-2 py-1">公開</th>
                 <th className="border border-gray-300 px-2 py-1">表示</th>
                 <th className="border border-gray-300 px-2 py-1">備考</th>
               </tr>
@@ -131,7 +131,7 @@ const InventoryEditTable = ({ groups, bulkEditForms, onChange }: InventoryEditTa
                         }
                         className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5"
                       >
-                        {STATUS_OPTIONS.map((option) => (
+                        {PUBLISH_OPTIONS.map((option) => (
                           <option key={option.value} value={option.value}>
                             {option.label}
                           </option>

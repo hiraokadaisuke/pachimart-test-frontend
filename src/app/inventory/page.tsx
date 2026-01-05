@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type DragEvent as ReactDragEvent } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import {
   loadInventoryRecords,
@@ -19,7 +20,7 @@ import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import type { InventoryStatusOption, PurchaseInvoice } from "@/types/purchaseInvoices";
 import type { SalesInvoice } from "@/types/salesInvoices";
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
-import { buildEditForm, buildPayload, resolveListingStatus, STATUS_OPTIONS } from "@/lib/inventory/editUtils";
+import { buildEditForm, buildPayload, PUBLISH_OPTIONS, resolvePublishStatus } from "@/lib/inventory/editUtils";
 import { loadSerialRows, type SerialInputRow } from "@/lib/serialInputStorage";
 
 type Column = {
@@ -52,6 +53,7 @@ type SearchFilters = {
 
 const RESERVED_SELECTION_WIDTH = 48;
 const COLUMN_SETTINGS_KEY = "inventory_table_columns_v1";
+const SALES_INVOICE_CREATE_SELECTED_IDS_KEY = "sales_invoice_create_selected_ids";
 
 const NUMERIC_COLUMNS: Array<Column["key"]> = ["quantity", "unitPrice", "saleUnitPrice"];
 const DATE_COLUMNS: Array<Column["key"]> = ["createdAt", "stockInDate", "removeDate"];
@@ -74,7 +76,7 @@ const INITIAL_COLUMNS: Column[] = [
   { key: "warehouse", label: "保管先", width: 108, minWidth: 88, visible: true },
   { key: "supplier", label: "仕入先", width: 108, minWidth: 88, visible: true },
   { key: "staff", label: "担当", width: 72, minWidth: 64, visible: true },
-  { key: "status", label: "状況", width: 76, minWidth: 64, visible: true },
+  { key: "status", label: "公開", width: 76, minWidth: 64, visible: true },
   { key: "isConsignment", label: "委託", width: 52, minWidth: 48, visible: true },
   { key: "isVisible", label: "表示", width: 52, minWidth: 48, visible: true },
   { key: "note", label: "備考", width: 120, minWidth: 96, visible: true },
@@ -123,7 +125,7 @@ const matchesDateRange = (value: string | undefined, range: DateRange) => {
   return true;
 };
 
-const statusLabelMap = new Map(STATUS_OPTIONS.map((option) => [option.value, option.label]));
+const statusLabelMap = new Map(PUBLISH_OPTIONS.map((option) => [option.value, option.label]));
 
 const buildManagementId = (index: number) => {
   const globalIndex = index + 1;
@@ -146,6 +148,7 @@ const isSerialCompleteForQuantity = (rows: SerialInputRow[], quantity: number) =
 };
 
 export default function InventoryPage() {
+  const router = useRouter();
   const [records, setRecords] = useState<InventoryRecord[]>([]);
   const [columns, setColumns] = useState<Column[]>(INITIAL_COLUMNS);
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
@@ -466,7 +469,7 @@ export default function InventoryPage() {
     }
 
     const statusLabel = statusLabelMap.get(status) ?? status;
-    const message = `${selectedIds.size}件を${statusLabel}に変更します。よろしいですか？`;
+    const message = `${selectedIds.size}件の公開状態を「${statusLabel}」に変更します。よろしいですか？`;
     const confirmed = window.confirm(message);
     if (!confirmed) return;
 
@@ -488,6 +491,19 @@ export default function InventoryPage() {
     handleUpdateRecord(id, { warehouse, storageLocation: warehouse });
   };
 
+  const handleSalesCreate = () => {
+    if (selectedIds.size === 0) {
+      alert("在庫を選択してください。");
+      return;
+    }
+    const ids = [...selectedIds];
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(SALES_INVOICE_CREATE_SELECTED_IDS_KEY, JSON.stringify(ids));
+    }
+    const params = new URLSearchParams({ ids: ids.join(",") });
+    router.push(`/inventory/sales-invoice/create?${params.toString()}`);
+  };
+
   const getCellText = (record: InventoryRecord, key: string) => {
     switch (key) {
       case "id":
@@ -507,7 +523,9 @@ export default function InventoryPage() {
       case "unitPrice":
         return record.unitPrice != null ? record.unitPrice.toLocaleString() : "-";
       case "saleUnitPrice":
-        return record.saleUnitPrice != null ? record.saleUnitPrice.toLocaleString() : "-";
+        return record.saleUnitPrice == null || record.saleUnitPrice === 0
+          ? "応相談"
+          : record.saleUnitPrice.toLocaleString();
       case "hasRemainingDebt":
         return record.hasRemainingDebt ? "有" : "無";
       case "stockInDate":
@@ -523,7 +541,7 @@ export default function InventoryPage() {
       case "staff":
         return record.staff ?? record.buyerStaff ?? "-";
       case "status":
-        return statusLabelMap.get(resolveListingStatus(record)) ?? "非出品";
+        return statusLabelMap.get(resolvePublishStatus(record)) ?? "未";
       case "isConsignment":
         return record.isConsignment ?? record.consignment ? "○" : "-";
       case "isVisible":
@@ -1142,7 +1160,7 @@ export default function InventoryPage() {
             </form>
           </div>
 
-          <div className="mt-3 flex flex-wrap items-center gap-2 border border-gray-300 px-2 py-2 text-[11px]">
+        <div className="mt-3 flex flex-wrap items-center gap-2 border border-gray-300 px-2 py-2 text-[11px]">
             <div className="flex flex-wrap items-center gap-2 text-neutral-700">
               <button
                 type="button"
@@ -1160,23 +1178,23 @@ export default function InventoryPage() {
               >
                 販売伝票作成
               </button>
-            </div>
-            <div className="ml-auto flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleBulkUpdate("sold")}
+                onClick={handleSalesCreate}
                 disabled={selectedIds.size === 0}
                 className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                一括：売却
+                販売
               </button>
+            </div>
+            <div className="ml-auto flex flex-wrap items-center gap-2">
               <button
                 type="button"
                 onClick={() => handleBulkUpdate("listing")}
                 disabled={selectedIds.size === 0}
                 className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                一括：出品
+                一括：中
               </button>
               <button
                 type="button"
@@ -1184,7 +1202,7 @@ export default function InventoryPage() {
                 disabled={selectedIds.size === 0}
                 className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                一括：非出品
+                一括：未
               </button>
               <button
                 type="button"
@@ -1305,7 +1323,7 @@ export default function InventoryPage() {
                       </td>
                       {visibleColumns.map((col) => {
                         const fullText = getCellText(item, String(col.key));
-                        const statusValue = resolveListingStatus(item);
+                        const statusValue = resolvePublishStatus(item);
                         const managementId = col.key === "id" ? buildManagementId(index) : null;
                         const displayText = col.key === "id" ? managementId?.label ?? fullText : fullText;
                         const numeric = NUMERIC_COLUMNS.includes(col.key);
@@ -1331,7 +1349,7 @@ export default function InventoryPage() {
                                 }
                                 className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-xs"
                               >
-                                {STATUS_OPTIONS.map((option) => (
+                                {PUBLISH_OPTIONS.map((option) => (
                                   <option key={option.value} value={option.value}>
                                     {option.label}
                                   </option>

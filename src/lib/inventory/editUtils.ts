@@ -1,10 +1,9 @@
 import type { InventoryRecord, ListingStatusOption } from "@/lib/demo-data/demoInventory";
 import type { InventoryStatusOption } from "@/types/purchaseInvoices";
 
-export const STATUS_OPTIONS: Array<{ value: ListingStatusOption; label: string }> = [
-  { value: "listing", label: "出品" },
-  { value: "sold", label: "売却" },
-  { value: "not_listing", label: "非出品" },
+export const PUBLISH_OPTIONS: Array<{ value: ListingStatusOption; label: string }> = [
+  { value: "listing", label: "中" },
+  { value: "not_listing", label: "未" },
 ];
 
 export const resolveListingStatus = (record: InventoryRecord): ListingStatusOption => {
@@ -14,6 +13,9 @@ export const resolveListingStatus = (record: InventoryRecord): ListingStatusOpti
   if (status === "出品中") return "listing";
   return "not_listing";
 };
+
+export const resolvePublishStatus = (record: InventoryRecord): ListingStatusOption =>
+  resolveListingStatus(record) === "listing" ? "listing" : "not_listing";
 
 export const mapListingStatusToStockStatus = (status: ListingStatusOption): InventoryStatusOption => {
   if (status === "sold") return "売却済";
@@ -35,7 +37,7 @@ export const buildEditForm = (record: InventoryRecord): Partial<InventoryRecord>
   warehouse: record.warehouse ?? record.storageLocation ?? "",
   supplier: record.supplier ?? "",
   staff: record.staff ?? record.buyerStaff ?? "",
-  listingStatus: resolveListingStatus(record),
+  listingStatus: resolvePublishStatus(record),
   note: record.note ?? record.notes ?? "",
   isVisible: record.isVisible ?? true,
   isConsignment: record.isConsignment ?? record.consignment ?? false,

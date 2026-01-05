@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
@@ -16,8 +16,17 @@ const getSaleDate = (record: InventoryRecord): string | undefined => {
   return record.removeDate ?? record.removalDate ?? record.createdAt;
 };
 
-export default function SalesInvoiceCreatePage() {
+const SALES_INVOICE_CREATE_SELECTED_IDS_KEY = "sales_invoice_create_selected_ids";
+
+const parseIdList = (value: string | null) =>
+  (value ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+function SalesInvoiceCreateContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [records, setRecords] = useState<InventoryRecord[]>([]);
   const [invoicedInventoryIds, setInvoicedInventoryIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState({
@@ -30,10 +39,36 @@ export default function SalesInvoiceCreatePage() {
     saleDate: "",
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [prefillIds, setPrefillIds] = useState<string[]>([]);
+
+  const queryPrefillIds = useMemo(
+    () => parseIdList(searchParams?.get("ids") ?? null),
+    [searchParams],
+  );
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
   }, []);
+
+  useEffect(() => {
+    if (queryPrefillIds.length > 0) {
+      setPrefillIds(queryPrefillIds);
+      return;
+    }
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(SALES_INVOICE_CREATE_SELECTED_IDS_KEY);
+    if (!raw) return;
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setPrefillIds(parsed.filter((id) => typeof id === "string"));
+      }
+    } catch (error) {
+      console.error("販売伝票作成の選択在庫読み込みに失敗しました", error);
+    } finally {
+      window.localStorage.removeItem(SALES_INVOICE_CREATE_SELECTED_IDS_KEY);
+    }
+  }, [queryPrefillIds]);
 
   useEffect(() => {
     const invoices = loadSalesInvoices();
@@ -49,6 +84,12 @@ export default function SalesInvoiceCreatePage() {
     setInvoicedInventoryIds(ids);
   }, []);
 
+  useEffect(() => {
+    if (prefillIds.length > 0) {
+      setSelectedIds(new Set(prefillIds));
+    }
+  }, [prefillIds]);
+
   const soldRecords = useMemo(
     () =>
       records
@@ -57,8 +98,17 @@ export default function SalesInvoiceCreatePage() {
     [records, invoicedInventoryIds],
   );
 
+  const prefillIdSet = useMemo(() => new Set(prefillIds), [prefillIds]);
+
+  const baseRecords = useMemo(() => {
+    if (prefillIds.length > 0) {
+      return records.filter((record) => prefillIdSet.has(record.id));
+    }
+    return soldRecords;
+  }, [prefillIds.length, prefillIdSet, records, soldRecords]);
+
   const filteredRecords = useMemo(() => {
-    const limited = soldRecords
+    const limited = baseRecords
       .filter((record) => record.id.toLowerCase().includes(filters.id.toLowerCase()))
       .filter((record) => (record.maker ?? "").toLowerCase().includes(filters.maker.toLowerCase()))
       .filter((record) => (record.model ?? record.machineName ?? "").toLowerCase().includes(filters.model.toLowerCase()))
@@ -72,9 +122,9 @@ export default function SalesInvoiceCreatePage() {
         return formatted === filters.saleDate;
       });
 
-    const limit = Number(filters.displayCount) || limited.length;
+    const limit = prefillIds.length > 0 ? limited.length : Number(filters.displayCount) || limited.length;
     return limited.slice(0, limit);
-  }, [filters, soldRecords]);
+  }, [baseRecords, filters, prefillIds.length]);
 
   const handleInputChange = (
     key: keyof typeof filters,
@@ -327,5 +377,13 @@ export default function SalesInvoiceCreatePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function SalesInvoiceCreatePage() {
+  return (
+    <Suspense fallback={<div className="p-4 text-sm text-neutral-600">読み込み中...</div>}>
+      <SalesInvoiceCreateContent />
+    </Suspense>
   );
 }
