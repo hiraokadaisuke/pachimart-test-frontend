@@ -29,7 +29,9 @@ enum MessageSenderRole {
 }
 
 enum DealingStatus {
-  IN_PROGRESS
+  APPROVAL_REQUIRED
+  PAYMENT_REQUIRED
+  CONFIRM_REQUIRED
   COMPLETED
   CANCELED
 
@@ -102,6 +104,9 @@ model Dealing {
   sellerUserId String
   buyerUserId  String
   status       DealingStatus
+  paymentAt    DateTime?
+  completedAt  DateTime?
+  canceledAt   DateTime?
   payload      Json?
   naviId       Int?          @unique
   createdAt    DateTime      @default(now())

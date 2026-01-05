@@ -14,7 +14,10 @@ export const tradeDtoSchema = z.object({
   id: z.number(),
   sellerUserId: z.string(),
   buyerUserId: z.string(),
-  status: z.enum(["IN_PROGRESS", "COMPLETED", "CANCELED"]),
+  status: z.enum(["APPROVAL_REQUIRED", "PAYMENT_REQUIRED", "CONFIRM_REQUIRED", "COMPLETED", "CANCELED"]),
+  paymentAt: z.string().nullable().optional(),
+  completedAt: z.string().nullable().optional(),
+  canceledAt: z.string().nullable().optional(),
   payload: z.unknown().nullable().optional(),
   naviId: z.number().nullable().optional(),
   createdAt: z.string(),
@@ -167,7 +170,9 @@ function buildShippingInfo(payload: TradePayload): ShippingInfo {
 }
 
 const DB_STATUS_TO_TRADE_STATUS: Record<TradeDto["status"], TradeRecord["status"]> = {
-  IN_PROGRESS: "PAYMENT_REQUIRED",
+  APPROVAL_REQUIRED: "APPROVAL_REQUIRED",
+  PAYMENT_REQUIRED: "PAYMENT_REQUIRED",
+  CONFIRM_REQUIRED: "CONFIRM_REQUIRED",
   COMPLETED: "COMPLETED",
   CANCELED: "CANCELED",
 };
@@ -210,6 +215,9 @@ export function transformTrade(dto: TradeDto): TradeRecord {
     buyerName: buyer.companyName,
     createdAt: dto.createdAt,
     updatedAt: dto.updatedAt,
+    paymentDate: dto.paymentAt ?? undefined,
+    completedAt: dto.completedAt ?? undefined,
+    canceledAt: dto.canceledAt ?? undefined,
     contractDate: contractDate || undefined,
     shipmentDate: contractDate || undefined,
     receiveMethod: toString(conditions.machineShipmentType),

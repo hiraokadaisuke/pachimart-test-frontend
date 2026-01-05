@@ -276,7 +276,7 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
           data: {
             sellerUserId: updated.sellerUserId,
             buyerUserId: updated.buyerUserId,
-            status: DealingStatus.IN_PROGRESS,
+            status: DealingStatus.PAYMENT_REQUIRED,
             payload,
           },
         });

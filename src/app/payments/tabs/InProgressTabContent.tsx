@@ -16,10 +16,9 @@ import { getInProgressDescription } from "@/lib/dealings/copy";
 import { loadAllTradesWithApi } from "@/lib/dealings/dataSources";
 import { getStatementPath } from "@/lib/dealings/navigation";
 import { TradeRecord } from "@/lib/dealings/types";
-import { advanceTradeTodo, getTodoPresentation } from "@/lib/dealings/todo";
+import { getTodoPresentation } from "@/lib/dealings/todo";
 import { todoUiMap } from "@/lib/todo/todoUiMap";
-import { useBalance } from "@/lib/balance/BalanceContext";
-import { markTradeCompleted, markTradePaid, saveTradeRecord } from "@/lib/dealings/storage";
+import { markTradeCompleted, markTradePaid } from "@/lib/dealings/api";
 
 const SECTION_LABELS = {
   approval: todoUiMap["application_sent"],
@@ -105,7 +104,6 @@ export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [dealings, setDealings] = useState<TradeRecord[]>([]);
   const router = useRouter();
-  const { getBalance } = useBalance();
   const [statusFilter, setStatusFilter] = useState<"all" | "inProgress" | "completed">("inProgress");
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -161,7 +159,7 @@ export function InProgressTabContent() {
   }, [currentUser.id]);
 
   const handleCompleteTodo = useCallback(
-    (row: DealingRow) => {
+    async (row: DealingRow) => {
       const targetDealing = dealings.find((dealing) => dealing.id === row.id);
 
       if (!targetDealing) {
@@ -169,56 +167,28 @@ export function InProgressTabContent() {
         return;
       }
 
-      // 支払い（買手側の「支払い完了」想定）
-      if (row.status === "application_approved") {
-        const paymentAmount = row.totalAmount;
-
-        const currentBalance = getBalance(row.buyerUserId);
-        if (currentBalance < paymentAmount) {
-          console.error("Insufficient balance to mark trade as paid", {
-            tradeId: row.id,
-            buyerUserId: row.buyerUserId,
-            paymentAmount,
-          });
+      try {
+        if (row.status === "application_approved") {
+          await markTradePaid(row.id, currentUser.id);
+          await refreshTrades();
           return;
         }
 
-        const updated = markTradePaid(row.id, currentUser.id, targetDealing);
-        if (!updated) {
-          console.error("Failed to mark trade as paid", { tradeId: row.id });
+        if (row.status === "payment_confirmed") {
+          await markTradeCompleted(row.id, currentUser.id);
+          await refreshTrades();
           return;
         }
 
-        setDealings((prev) => prev.map((dealing) => (dealing.id === updated.id ? updated : dealing)));
-        return;
-      }
-
-      // 完了
-      if (row.status === "payment_confirmed") {
-        const updated = markTradeCompleted(row.id, currentUser.id, targetDealing);
-        if (!updated) {
-          console.error("Failed to mark trade as completed", { tradeId: row.id });
-          return;
-        }
-
-        setDealings((prev) => prev.map((dealing) => (dealing.id === updated.id ? updated : dealing)));
-        return;
-      }
-
-      // その他は既存の todo 進行ロジックへ（fallback）
-      const advanced = advanceTradeTodo(targetDealing, row.status, currentUser.id);
-      if (!advanced) {
         console.warn("Todo completion is not supported for fetched trades", {
           tradeId: row.id,
           todoKind: row.status,
         });
-        return;
+      } catch (error) {
+        console.error("Failed to update trade status", error);
       }
-
-      saveTradeRecord(advanced);
-      setDealings((prev) => prev.map((dealing) => (dealing.id === advanced.id ? advanced : dealing)));
     },
-    [currentUser.id, getBalance, dealings]
+    [currentUser.id, dealings, refreshTrades]
   );
 
   useEffect(() => {

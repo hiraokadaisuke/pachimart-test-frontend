@@ -30,6 +30,9 @@ type InMemoryTrade = {
   sellerUserId: string;
   buyerUserId: string;
   status: DealingStatus;
+  paymentAt: Date | null;
+  completedAt: Date | null;
+  canceledAt: Date | null;
   payload: Prisma.JsonValue | null;
   naviId: number | null;
   createdAt: Date;
@@ -386,7 +389,10 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       id: tradeSeq++,
       sellerUserId: String(create.sellerUserId ?? ""),
       buyerUserId: String(create.buyerUserId ?? ""),
-      status: (create.status as DealingStatus) ?? DealingStatus.IN_PROGRESS,
+      status: (create.status as DealingStatus) ?? DealingStatus.PAYMENT_REQUIRED,
+      paymentAt: (create as { paymentAt?: Date | null }).paymentAt ?? null,
+      completedAt: (create as { completedAt?: Date | null }).completedAt ?? null,
+      canceledAt: (create as { canceledAt?: Date | null }).canceledAt ?? null,
       payload: (create.payload as Prisma.JsonValue | null) ?? null,
       naviId: (create.naviId as number | null) ?? null,
       createdAt: now(),

@@ -1007,7 +1007,7 @@ async function seedNavis(listings: ListingSeed[]) {
     data: {
       sellerUserId: "dev_user_1",
       buyerUserId: "dev_user_3",
-      status: DealingStatus.IN_PROGRESS,
+      status: DealingStatus.PAYMENT_REQUIRED,
       payload: buildTradePayload(soldBundleListing, "dev_user_1", "dev_user_3"),
       naviId: approvedNavi.id,
     },
