@@ -37,9 +37,33 @@ jobs:
         env:
           APP_DATABASE_URL: ${{ secrets.PREVIEW_APP_DATABASE_URL }}
         run: |
-          if [ -d "prisma/migrations" ] && [ "$(ls -A prisma/migrations)" ]; then
+          if [ -z "$APP_DATABASE_URL" ]; then
+            echo "APP_DATABASE_URL is empty. Aborting."
+            exit 1
+          fi
+
+          MIGRATIONS_DIR="prisma/migrations"
+          SKIP_MIGRATION="0009_add_message_trade_navi_id"
+          SKIP_PATH="$MIGRATIONS_DIR/$SKIP_MIGRATION"
+          TEMP_PATH="$MIGRATIONS_DIR/_skip_$SKIP_MIGRATION"
+
+          if [ -d "$MIGRATIONS_DIR" ] && [ "$(ls -A "$MIGRATIONS_DIR")" ]; then
+            if [ -d "$SKIP_PATH" ]; then
+              echo "Temporarily moving $SKIP_PATH to $TEMP_PATH"
+              mv "$SKIP_PATH" "$TEMP_PATH"
+            fi
+
             echo "migrations found -> prisma migrate deploy"
             npx prisma migrate deploy --schema prisma/schema.prisma
+
+            if [ -d "$TEMP_PATH" ]; then
+              echo "Restoring $SKIP_MIGRATION after deploy"
+              mv "$TEMP_PATH" "$SKIP_PATH"
+              echo "Marking $SKIP_MIGRATION as applied without running it"
+              npx prisma migrate resolve --schema prisma/schema.prisma --applied "$SKIP_MIGRATION"
+            else
+              echo "$SKIP_MIGRATION not present; no skip needed"
+            fi
           else
             echo "no migrations -> prisma db push"
             npx prisma db push --schema prisma/schema.prisma
