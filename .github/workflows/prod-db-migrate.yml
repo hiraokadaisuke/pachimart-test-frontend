@@ -9,6 +9,10 @@ jobs:
     env:
       APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
     steps:
+      - name: Warn before resetting production database
+        run: |
+          echo "THIS WILL WIPE PRODUCTION DB before applying migrations"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -23,5 +27,27 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate --schema prisma/schema.prisma
 
+      - name: Reset production database
+        run: |
+          if [ -z "$APP_DATABASE_URL" ]; then
+            echo "APP_DATABASE_URL is empty. Aborting."
+            exit 1
+          fi
+
+          printf "DROP SCHEMA IF EXISTS public CASCADE;\nCREATE SCHEMA public;" \
+            | npx prisma db execute --schema prisma/schema.prisma --stdin
+
       - name: Deploy pending migrations
-        run: npx prisma migrate deploy --schema prisma/schema.prisma
+        run: |
+          if [ -z "$APP_DATABASE_URL" ]; then
+            echo "APP_DATABASE_URL is empty. Aborting."
+            exit 1
+          fi
+
+          npx prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Seed production database (if configured)
+        run: |
+          node -e "const p=require('./package.json'); process.exit(p?.prisma?.seed?0:1)" \
+            && npx prisma db seed --schema prisma/schema.prisma \
+            || echo "No prisma.seed configured. Skipping."
