@@ -46,6 +46,12 @@ type InventoryFormRow = {
   warehouse: string;
   note: string;
   isPublished: boolean;
+  isPickupAvailable: boolean;
+  hasNailSheet: boolean;
+  hasManual: boolean;
+  isShippingTwoPackages: boolean;
+  isHandlingFeeTwoPackages: boolean;
+  isSeparateSaleProhibited: boolean;
 };
 
 const DEVICE_TYPES: InventoryFormRow["type"][] = ["本体", "枠", "セル"];
@@ -65,6 +71,12 @@ const createBlankRow = (today: string): InventoryFormRow => ({
   warehouse: "",
   note: "",
   isPublished: true,
+  isPickupAvailable: false,
+  hasNailSheet: false,
+  hasManual: false,
+  isShippingTwoPackages: false,
+  isHandlingFeeTwoPackages: false,
+  isSeparateSaleProhibited: false,
 });
 
 const todayString = () => new Date().toISOString().slice(0, 10);
@@ -93,6 +105,15 @@ type MachineFieldOrder =
   | "isPublished";
 
 type SupplierFieldOrder = "supplier" | "inputDate" | "buyerStaff";
+
+const PUBLISH_OPTIONS = [
+  { key: "isPickupAvailable", label: "引取可" },
+  { key: "hasNailSheet", label: "釘シート" },
+  { key: "hasManual", label: "説明書" },
+  { key: "isShippingTwoPackages", label: "送料2口" },
+  { key: "isHandlingFeeTwoPackages", label: "出庫手数料2口" },
+  { key: "isSeparateSaleProhibited", label: "ばら売不可" },
+] as const satisfies ReadonlyArray<{ key: keyof InventoryFormRow; label: string }>;
 
 export default function InventoryNewPage() {
   const router = useRouter();
@@ -206,8 +227,30 @@ export default function InventoryNewPage() {
     }
   };
 
+  const resetPublishOptions = (row: InventoryFormRow): InventoryFormRow => ({
+    ...row,
+    isPickupAvailable: false,
+    hasNailSheet: false,
+    hasManual: false,
+    isShippingTwoPackages: false,
+    isHandlingFeeTwoPackages: false,
+    isSeparateSaleProhibited: false,
+  });
+
   const handleRowChange = <K extends keyof InventoryFormRow>(index: number, key: K, value: InventoryFormRow[K]) => {
-    setRows((prev) => prev.map((row, idx) => (idx === index ? { ...row, [key]: value } : row)));
+    setRows((prev) =>
+      prev.map((row, idx) => {
+        if (idx !== index) return row;
+        if (key === "isPublished") {
+          const next = { ...row, isPublished: value as InventoryFormRow["isPublished"] };
+          if (!value) {
+            return resetPublishOptions(next);
+          }
+          return next;
+        }
+        return { ...row, [key]: value };
+      }),
+    );
   };
 
   const handleSupplierChange = <K extends keyof SupplierInfo>(key: K, value: SupplierInfo[K]) => {
@@ -380,6 +423,12 @@ export default function InventoryNewPage() {
           buyerStaff: supplierInfo.buyerStaff || undefined,
           note: row.note || supplierInfo.notes || undefined,
           notes: row.note || supplierInfo.notes || undefined,
+          isPickupAvailable: row.isPickupAvailable,
+          hasNailSheet: row.hasNailSheet,
+          hasManual: row.hasManual,
+          isShippingTwoPackages: row.isShippingTwoPackages,
+          isHandlingFeeTwoPackages: row.isHandlingFeeTwoPackages,
+          isSeparateSaleProhibited: row.isSeparateSaleProhibited,
         } satisfies InventoryRecord;
       });
 
@@ -801,17 +850,36 @@ export default function InventoryNewPage() {
                       </select>
                     </td>
                     <td className={`${excelTd} text-center`}>
-                      <label className="flex items-center justify-center gap-1 text-[11px] text-neutral-700">
-                        <input
-                          type="checkbox"
-                          checked={row.isPublished}
-                          onChange={(event) => handleRowChange(index, "isPublished", event.target.checked)}
-                          onKeyDown={(event) => handleMachineEnter(event, index, "isPublished")}
-                          ref={registerFocus(focusKey(index, "isPublished"))}
-                          className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
-                        />
-                        公開
-                      </label>
+                      <div className="space-y-1">
+                        <label className="flex items-center justify-center gap-1 text-[11px] text-neutral-700">
+                          <input
+                            type="checkbox"
+                            checked={row.isPublished}
+                            onChange={(event) => handleRowChange(index, "isPublished", event.target.checked)}
+                            onKeyDown={(event) => handleMachineEnter(event, index, "isPublished")}
+                            ref={registerFocus(focusKey(index, "isPublished"))}
+                            className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
+                          />
+                          公開
+                        </label>
+                        {row.isPublished && (
+                          <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[10px] text-neutral-700">
+                            {PUBLISH_OPTIONS.map((option) => (
+                              <label key={option.key} className="flex items-center gap-1">
+                                <input
+                                  type="checkbox"
+                                  checked={row[option.key]}
+                                  onChange={(event) =>
+                                    handleRowChange(index, option.key, event.target.checked)
+                                  }
+                                  className="h-3 w-3 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
+                                />
+                                <span className="leading-tight">{option.label}</span>
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 );

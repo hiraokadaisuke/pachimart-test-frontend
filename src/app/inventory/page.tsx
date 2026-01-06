@@ -126,6 +126,21 @@ const matchesDateRange = (value: string | undefined, range: DateRange) => {
 };
 
 const statusLabelMap = new Map(PUBLISH_OPTIONS.map((option) => [option.value, option.label]));
+const PUBLISH_OPTION_LABELS = [
+  { key: "isPickupAvailable", label: "引取可" },
+  { key: "hasNailSheet", label: "釘シートあり" },
+  { key: "hasManual", label: "遊技機説明書あり" },
+  { key: "isShippingTwoPackages", label: "送料2個口" },
+  { key: "isHandlingFeeTwoPackages", label: "出庫手数料2個口" },
+  { key: "isSeparateSaleProhibited", label: "ばら売り不可" },
+] as const satisfies ReadonlyArray<{ key: keyof InventoryRecord; label: string }>;
+
+const buildPublishOptionsLabel = (record: InventoryRecord): string => {
+  const activeLabels = PUBLISH_OPTION_LABELS.filter((option) => record[option.key]).map(
+    (option) => option.label,
+  );
+  return activeLabels.length > 0 ? activeLabels.join(" / ") : "出品オプションなし";
+};
 
 const isSerialRowComplete = (row: SerialInputRow) =>
   REQUIRED_SERIAL_KEYS.every((key) => String(row[key] ?? "").trim() !== "");
@@ -1395,6 +1410,7 @@ export default function InventoryPage() {
                   displayRecords.map((item) => {
                     const isSalesInvoiced = salesInvoiceMap.has(item.id);
                     const isDeletionBlocked = isSalesInvoiced;
+                    const publishOptionsLabel = buildPublishOptionsLabel(item);
                     const rowClass = isSalesInvoiced
                       ? "border-t border-gray-300 bg-gray-50 text-[11px] hover:bg-gray-100"
                       : "border-t border-gray-300 text-[11px] hover:bg-[#fffbe6]";
@@ -1434,6 +1450,7 @@ export default function InventoryPage() {
                                   handleStatusChange(item.id, event.target.value as ListingStatusOption)
                                 }
                                 disabled={isSalesInvoiced}
+                                title={publishOptionsLabel}
                                 className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-xs disabled:bg-gray-100 disabled:text-neutral-500"
                               >
                                 {PUBLISH_OPTIONS.map((option) => (
