@@ -23,17 +23,16 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate --schema prisma/schema.prisma
 
-      - name: Deploy pending migrations
+      - name: DANGER: Reset Production DB (wipe public schema)
         run: |
+          set -e
           if [ -z "$APP_DATABASE_URL" ]; then
-            echo "APP_DATABASE_URL is empty. Aborting."
-            exit 1
+            echo "APP_DATABASE_URL is empty"; exit 1;
           fi
+          echo "DANGER: wiping production DB schema (public)"
+          printf "DROP SCHEMA IF EXISTS public CASCADE;\nCREATE SCHEMA public;" \\
+            | npx prisma db execute --schema prisma/schema.prisma --stdin
+          echo "Reset done."
 
-          npx prisma migrate deploy --schema prisma/schema.prisma
-
-      - name: Seed production database (if configured)
-        run: |
-          node -e "const p=require('./package.json'); process.exit(p?.prisma?.seed?0:1)" \
-            && npx prisma db seed --schema prisma/schema.prisma \
-            || echo "No prisma.seed configured. Skipping."
+      - name: Deploy pending migrations
+        run: npx prisma migrate deploy --schema prisma/schema.prisma
