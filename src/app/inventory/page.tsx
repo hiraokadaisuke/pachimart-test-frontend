@@ -430,6 +430,17 @@ export default function InventoryPage() {
     [purchaseInvoices],
   );
 
+  const purchaseLinkedIds = useMemo(() => {
+    const ids = new Set<string>();
+    purchaseInvoices.forEach((invoice) => {
+      invoice.inventoryIds?.forEach((id) => ids.add(id));
+      invoice.items?.forEach((item) => {
+        if (item.inventoryId) ids.add(item.inventoryId);
+      });
+    });
+    return ids;
+  }, [purchaseInvoices]);
+
   const salesInvoiceMap = useMemo(() => {
     const map = new Map<string, { invoiceId: string; invoiceType: SalesInvoice["invoiceType"] }>();
     salesInvoices.forEach((invoice) => {
@@ -498,6 +509,26 @@ export default function InventoryPage() {
 
   const handleWarehouseChange = (id: string, warehouse: string) => {
     handleUpdateRecord(id, { warehouse, storageLocation: warehouse });
+  };
+
+  const handleDeleteRecord = (record: InventoryRecord) => {
+    const hasPurchaseInvoice =
+      Boolean(record.purchaseInvoiceId) || purchaseLinkedIds.has(record.id);
+    const hasSalesInvoice = salesInvoiceMap.has(record.id);
+    if (hasPurchaseInvoice || hasSalesInvoice) {
+      alert("伝票作成済みのため削除できません。");
+      return;
+    }
+    const confirmed = window.confirm("対象の在庫を削除します。よろしいですか？");
+    if (!confirmed) return;
+    const updated = records.filter((item) => item.id !== record.id);
+    saveInventoryRecords(updated);
+    setRecords(updated);
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.delete(record.id);
+      return next;
+    });
   };
 
   const handleSalesCreate = () => {
@@ -1308,6 +1339,8 @@ export default function InventoryPage() {
                 ) : (
                   displayRecords.map((item) => {
                     const isSalesInvoiced = salesInvoiceMap.has(item.id);
+                    const isPurchaseInvoiced = Boolean(item.purchaseInvoiceId) || purchaseLinkedIds.has(item.id);
+                    const isDeletionBlocked = isSalesInvoiced || isPurchaseInvoiced;
                     const rowClass = isSalesInvoiced
                       ? "border-t border-gray-300 bg-gray-50 text-[11px] hover:bg-gray-100"
                       : "border-t border-gray-300 text-[11px] hover:bg-[#fffbe6]";
@@ -1433,18 +1466,29 @@ export default function InventoryPage() {
                         );
                       })}
                       <td className="border border-gray-300 px-1 py-0.5 text-center">
-                        <Link
-                          href={`/inventory/${item.id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className={`block w-full border border-gray-300 px-1 py-1 text-[11px] font-semibold shadow-[inset_0_1px_0_#fff] ${
-                            serialCompletionMap[item.id]
-                              ? "bg-emerald-100 text-emerald-800"
-                              : "bg-[#f7f3e9] text-neutral-800"
-                          }`}
-                        >
-                          ＋
-                        </Link>
+                        <div className="flex items-center justify-center gap-1">
+                          <Link
+                            href={`/inventory/${item.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className={`block w-full border border-gray-300 px-1 py-1 text-[11px] font-semibold shadow-[inset_0_1px_0_#fff] ${
+                              serialCompletionMap[item.id]
+                                ? "bg-emerald-100 text-emerald-800"
+                                : "bg-[#f7f3e9] text-neutral-800"
+                            }`}
+                          >
+                            ＋
+                          </Link>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteRecord(item)}
+                            disabled={isDeletionBlocked}
+                            title={isDeletionBlocked ? "伝票作成済みのため削除できません。" : "在庫を削除"}
+                            className="border border-gray-300 bg-white px-1 py-1 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-neutral-400"
+                          >
+                            削除
+                          </button>
+                        </div>
                       </td>
                       <td className="border border-gray-300 px-1 py-0.5 text-center">
                         {item.purchaseInvoiceId ? (

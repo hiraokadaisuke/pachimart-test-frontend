@@ -235,7 +235,7 @@ export default function SerialInputPanel({
 
   const handleApply = (key: ColumnKey) => {
     const { startIndex, endIndex } = resolveRange();
-    const shouldSequence = key === "board" || key === "main";
+    const shouldSequence = key !== "removalDate";
     setRows((prev) =>
       prev.map((row, index) => {
         if (index < startIndex || index > endIndex) return row;
