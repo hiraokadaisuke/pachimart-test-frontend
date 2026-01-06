@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { loadInventoryRecords, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 import {
@@ -13,6 +13,10 @@ import {
 
 const COLUMN_KEYS = ["board", "frame", "main", "removalDate"] as const;
 type ColumnKey = (typeof COLUMN_KEYS)[number];
+const BULK_INPUT_KEYS = ["board", "frame", "main"] as const;
+type BulkInputKey = (typeof BULK_INPUT_KEYS)[number];
+type BulkInputValue = { first: string; second: string };
+type BulkInputs = Record<BulkInputKey, BulkInputValue> & { removalDate: string };
 
 const getColumnLabels = (type: string) => ({
   board: type === "S" ? "回胴部" : "遊技盤番号等",
@@ -81,15 +85,16 @@ export default function SerialInputPanel({
   const [inventory, setInventory] = useState<InventoryRecord | null>(null);
   const [units, setUnits] = useState<number>(1);
   const [rows, setRows] = useState<SerialInputRow[]>([]);
-  const [inputs, setInputs] = useState<Record<ColumnKey, string>>({
-    board: "",
-    frame: "",
-    main: "",
+  const [inputs, setInputs] = useState<BulkInputs>({
+    board: { first: "", second: "" },
+    frame: { first: "", second: "" },
+    main: { first: "", second: "" },
     removalDate: "",
   });
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const bulkInputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
   const machineName = inventory?.machineName ?? "";
   const machineKind = useMemo(() => {
@@ -97,6 +102,7 @@ export default function SerialInputPanel({
     return rawKind === "S" ? "S" : "P";
   }, [inventory?.kind, inventory?.type]);
   const columnLabels = useMemo(() => getColumnLabels(machineKind), [machineKind]);
+  const bulkInputCount = BULK_INPUT_KEYS.length * 2;
 
   useEffect(() => {
     if (!inventoryId) return;
@@ -104,6 +110,9 @@ export default function SerialInputPanel({
     const loadData = async () => {
       const all = loadInventoryRecords();
       const target = all.find((record) => record.id === inventoryId) ?? null;
+      const resolvedKind = ((target?.kind ?? target?.type ?? "P").toString().toUpperCase() === "S" ? "S" : "P") as
+        | "P"
+        | "S";
       const savedRows = await loadSerialRows(inventoryId);
       const savedPayload = loadSerialInput(inventoryId) ?? loadSerialDraft(inventoryId);
       const fallbackRows = savedPayload?.rows ?? [];
@@ -120,10 +129,21 @@ export default function SerialInputPanel({
       });
       setRows(initialRows);
       if (adjustedRows.length > 0) {
+        const splitCombinedValue = (value: string, kind: "P" | "S") => {
+          const trimmed = value.trim();
+          if (!trimmed) return { first: "", second: "" };
+          const delimiter = kind === "S" ? "/" : "　";
+          const parts = trimmed.split(delimiter);
+          if (parts.length < 2) return { first: trimmed, second: "" };
+          return {
+            first: parts[0]?.trim() ?? "",
+            second: parts.slice(1).join(delimiter).trim(),
+          };
+        };
         setInputs({
-          board: adjustedRows[0]?.board ?? "",
-          frame: adjustedRows[0]?.frame ?? "",
-          main: adjustedRows[0]?.main ?? "",
+          board: splitCombinedValue(adjustedRows[0]?.board ?? "", resolvedKind),
+          frame: splitCombinedValue(adjustedRows[0]?.frame ?? "", resolvedKind),
+          main: splitCombinedValue(adjustedRows[0]?.main ?? "", resolvedKind),
           removalDate: adjustedRows[0]?.removalDate ?? "",
         });
       }
@@ -161,15 +181,19 @@ export default function SerialInputPanel({
     });
   }, [rows, allowIncompleteSelection]);
 
-  const handleInputChange = (key: ColumnKey, value: string) => {
-    setInputs((prev) => ({ ...prev, [key]: value }));
+  const handleInputChange = (key: BulkInputKey, part: keyof BulkInputValue, value: string) => {
+    setInputs((prev) => ({ ...prev, [key]: { ...prev[key], [part]: value } }));
   };
 
-  const handleCopy = (key: ColumnKey) => {
-    const currentIndex = COLUMN_KEYS.indexOf(key);
-    const nextKey = COLUMN_KEYS[currentIndex + 1];
+  const handleRemovalDateChange = (value: string) => {
+    setInputs((prev) => ({ ...prev, removalDate: value }));
+  };
+
+  const handleCopy = (key: BulkInputKey) => {
+    const currentIndex = BULK_INPUT_KEYS.indexOf(key);
+    const nextKey = BULK_INPUT_KEYS[currentIndex + 1];
     if (!nextKey) return;
-    setInputs((prev) => ({ ...prev, [nextKey]: prev[key] }));
+    setInputs((prev) => ({ ...prev, [nextKey]: { ...prev[key] } }));
   };
 
   const resolveRange = () => {
@@ -199,23 +223,44 @@ export default function SerialInputPanel({
     return `${prefix}${String(nextNumber).padStart(digits.length, "0")}`;
   };
 
+  const buildCombinedValue = (firstValue: string, secondValue: string, kind: "P" | "S") => {
+    const firstTrimmed = firstValue.trim();
+    const secondTrimmed = secondValue.trim();
+    if (!firstTrimmed && !secondTrimmed) return "";
+    if (!firstTrimmed) return secondTrimmed;
+    if (!secondTrimmed) return firstTrimmed;
+    const delimiter = kind === "S" ? "/" : "　";
+    return `${firstTrimmed}${delimiter}${secondTrimmed}`;
+  };
+
   const handleApply = (key: ColumnKey) => {
     const { startIndex, endIndex } = resolveRange();
     const shouldSequence = key === "board" || key === "main";
     setRows((prev) =>
       prev.map((row, index) => {
         if (index < startIndex || index > endIndex) return row;
-        if (shouldSequence) {
-          const sequential = buildSequentialValue(inputs[key], index - startIndex);
-          return { ...row, [key]: sequential };
+        if (key === "removalDate") {
+          return { ...row, [key]: inputs.removalDate };
         }
-        return { ...row, [key]: inputs[key] };
+        const bulkKey = key as BulkInputKey;
+        const baseValue = inputs[bulkKey];
+        const secondValue = shouldSequence ? buildSequentialValue(baseValue.second, index - startIndex) : baseValue.second;
+        const combinedValue = buildCombinedValue(baseValue.first, secondValue, machineKind);
+        return { ...row, [key]: combinedValue };
       }),
     );
   };
 
   const updateRowValue = (index: number, key: ColumnKey, value: string) => {
     setRows((prev) => prev.map((row, rowIndex) => (rowIndex === index ? { ...row, [key]: value } : row)));
+  };
+
+  const handleBulkInputKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, inputIndex: number) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    if (bulkInputCount === 0) return;
+    const nextIndex = (inputIndex + 1) % bulkInputCount;
+    bulkInputRefs.current[nextIndex]?.focus();
   };
 
   const handleUnitsChange = (nextUnits: number) => {
@@ -395,43 +440,73 @@ export default function SerialInputPanel({
               </div>
               <span className="text-[10px] font-medium text-neutral-600">範囲指定</span>
             </div>
-            {COLUMN_KEYS.map((key) => (
-              <div key={key} className="border-l border-black px-3 py-2">
-                <div className="flex items-center justify-between border-b border-black pb-1 text-[12px] font-semibold">
-                  <span>{columnLabels[key]}</span>
-                  <span className="text-[11px] font-medium">No</span>
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className="min-w-[76px] border border-black bg-neutral-50 px-2 py-1 text-center text-[12px] font-semibold">
-                    {rangeLabel}
-                  </span>
-                  <input
-                    type={key === "removalDate" ? "date" : "text"}
-                    value={inputs[key]}
-                    onChange={(event) => handleInputChange(key, event.target.value)}
-                    onClick={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
-                    onFocus={(event) => key === "removalDate" && showNativePicker(event.currentTarget)}
-                    className="h-8 w-28 border border-black px-2 text-[12px] focus:border-emerald-600 focus:outline-none sm:w-32"
-                  />
-                  {key !== "removalDate" && (
+            {COLUMN_KEYS.map((key) => {
+              const isRemovalDate = key === "removalDate";
+              const isBulkKey = key !== "removalDate";
+              const bulkIndex = isBulkKey ? BULK_INPUT_KEYS.indexOf(key as BulkInputKey) : -1;
+              return (
+                <div key={key} className="border-l border-black px-3 py-2">
+                  <div className="flex items-center justify-between border-b border-black pb-1 text-[12px] font-semibold">
+                    <span>{columnLabels[key]}</span>
+                    <span className="text-[11px] font-medium">No</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <span className="min-w-[76px] border border-black bg-neutral-50 px-2 py-1 text-center text-[12px] font-semibold">
+                      {rangeLabel}
+                    </span>
+                    {isRemovalDate ? (
+                      <input
+                        type="date"
+                        value={inputs.removalDate}
+                        onChange={(event) => handleRemovalDateChange(event.target.value)}
+                        onClick={(event) => showNativePicker(event.currentTarget)}
+                        onFocus={(event) => showNativePicker(event.currentTarget)}
+                        className="h-8 w-28 border border-black px-2 text-[12px] focus:border-emerald-600 focus:outline-none sm:w-32"
+                      />
+                    ) : (
+                      <>
+                        <input
+                          type="text"
+                          value={inputs[key as BulkInputKey].first}
+                          onChange={(event) => handleInputChange(key as BulkInputKey, "first", event.target.value)}
+                          onKeyDown={(event) => handleBulkInputKeyDown(event, bulkIndex * 2)}
+                          ref={(element) => {
+                            bulkInputRefs.current[bulkIndex * 2] = element;
+                          }}
+                          className="h-8 w-28 border border-black px-2 text-[12px] focus:border-emerald-600 focus:outline-none sm:w-32"
+                        />
+                        <input
+                          type="text"
+                          value={inputs[key as BulkInputKey].second}
+                          onChange={(event) => handleInputChange(key as BulkInputKey, "second", event.target.value)}
+                          onKeyDown={(event) => handleBulkInputKeyDown(event, bulkIndex * 2 + 1)}
+                          ref={(element) => {
+                            bulkInputRefs.current[bulkIndex * 2 + 1] = element;
+                          }}
+                          className="h-8 w-28 border border-black px-2 text-[12px] focus:border-emerald-600 focus:outline-none sm:w-32"
+                        />
+                      </>
+                    )}
+                    {!isRemovalDate && (
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(key as BulkInputKey)}
+                        className="flex h-8 items-center justify-center border border-black bg-white px-2 text-[12px] font-semibold hover:bg-neutral-100"
+                      >
+                        →
+                      </button>
+                    )}
                     <button
                       type="button"
-                      onClick={() => handleCopy(key)}
-                      className="flex h-8 items-center justify-center border border-black bg-white px-2 text-[12px] font-semibold hover:bg-neutral-100"
+                      onClick={() => handleApply(key)}
+                      className="flex h-8 items-center justify-center border border-black bg-neutral-100 px-3 text-[12px] font-semibold hover:bg-neutral-200"
                     >
-                      →
+                      反映
                     </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => handleApply(key)}
-                    className="flex h-8 items-center justify-center border border-black bg-neutral-100 px-3 text-[12px] font-semibold hover:bg-neutral-200"
-                  >
-                    反映
-                  </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
