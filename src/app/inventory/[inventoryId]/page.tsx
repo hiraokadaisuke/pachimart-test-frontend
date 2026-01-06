@@ -378,7 +378,7 @@ export default function InventoryDetailPage() {
 
   return (
     <div className="min-h-screen bg-white py-6 mx-[1cm]">
-      <div className="mx-auto max-w-[1600px] px-[38px]">
+      <div className="mx-auto max-w-[1600px] px-4">
         {saleModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
             <div className="w-[320px] border border-gray-400 bg-white px-5 py-4 text-sm text-neutral-900 shadow-md">

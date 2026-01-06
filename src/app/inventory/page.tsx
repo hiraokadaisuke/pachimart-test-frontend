@@ -16,7 +16,7 @@ import {
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
 import { DEFAULT_MASTER_DATA, loadMasterData, type MasterData } from "@/lib/demo-data/demoMasterData";
-import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
+import { loadPurchaseInvoices, savePurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import type { InventoryStatusOption, PurchaseInvoice } from "@/types/purchaseInvoices";
 import type { SalesInvoice } from "@/types/salesInvoices";
@@ -133,6 +133,21 @@ const isSerialRowComplete = (row: SerialInputRow) =>
 const isSerialCompleteForQuantity = (rows: SerialInputRow[], quantity: number) => {
   if (rows.length !== quantity) return false;
   return rows.every((row) => isSerialRowComplete(row));
+};
+
+const computePurchaseInvoiceTotal = (invoice: PurchaseInvoice): number => {
+  const items = invoice.items ?? [];
+  const subtotal = items.reduce((sum, item) => {
+    const amount = item.amount ?? (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+    return sum + (Number.isNaN(amount) ? 0 : amount);
+  }, 0);
+  const tax = Math.floor(subtotal * 0.1);
+  const shippingInsurance = Number(invoice.formInput?.shippingInsurance || 0);
+  const extraCostTotal = (invoice.extraCosts ?? []).reduce(
+    (sum, item) => sum + (Number(item.amount) || 0),
+    0,
+  );
+  return subtotal + tax + shippingInsurance + extraCostTotal;
 };
 
 export default function InventoryPage() {
@@ -511,19 +526,59 @@ export default function InventoryPage() {
     handleUpdateRecord(id, { warehouse, storageLocation: warehouse });
   };
 
+  const updatePurchaseInvoicesForInventoryDelete = (inventoryId: string) => {
+    let updated = false;
+    const nextInvoices: PurchaseInvoice[] = [];
+
+    purchaseInvoices.forEach((invoice) => {
+      const nextItems = (invoice.items ?? []).filter((item) => item.inventoryId !== inventoryId);
+      const nextInventoryIds = (invoice.inventoryIds ?? []).filter((id) => id !== inventoryId);
+      const itemsChanged = nextItems.length !== (invoice.items ?? []).length;
+      const idsChanged = nextInventoryIds.length !== (invoice.inventoryIds ?? []).length;
+
+      if (!itemsChanged && !idsChanged) {
+        nextInvoices.push(invoice);
+        return;
+      }
+
+      updated = true;
+      if (nextItems.length === 0) {
+        return;
+      }
+
+      const nextInvoice: PurchaseInvoice = {
+        ...invoice,
+        items: nextItems,
+        inventoryIds: nextInventoryIds,
+      };
+      nextInvoice.totalAmount = computePurchaseInvoiceTotal(nextInvoice);
+      nextInvoices.push(nextInvoice);
+    });
+
+    if (updated) {
+      savePurchaseInvoices(nextInvoices);
+      setPurchaseInvoices(nextInvoices);
+    }
+  };
+
   const handleDeleteRecord = (record: InventoryRecord) => {
     const hasPurchaseInvoice =
       Boolean(record.purchaseInvoiceId) || purchaseLinkedIds.has(record.id);
     const hasSalesInvoice = salesInvoiceMap.has(record.id);
-    if (hasPurchaseInvoice || hasSalesInvoice) {
-      alert("伝票作成済みのため削除できません。");
+    if (hasSalesInvoice) {
+      alert("販売伝票に紐づいているため削除できません。");
       return;
     }
-    const confirmed = window.confirm("対象の在庫を削除します。よろしいですか？");
+    const confirmed = window.confirm(
+      hasPurchaseInvoice
+        ? "対象の在庫を削除します。関連する購入伝票も更新されます。よろしいですか？"
+        : "対象の在庫を削除します。よろしいですか？",
+    );
     if (!confirmed) return;
     const updated = records.filter((item) => item.id !== record.id);
     saveInventoryRecords(updated);
     setRecords(updated);
+    updatePurchaseInvoicesForInventoryDelete(record.id);
     setSelectedIds((prev) => {
       const next = new Set(prev);
       next.delete(record.id);
@@ -1339,8 +1394,7 @@ export default function InventoryPage() {
                 ) : (
                   displayRecords.map((item) => {
                     const isSalesInvoiced = salesInvoiceMap.has(item.id);
-                    const isPurchaseInvoiced = Boolean(item.purchaseInvoiceId) || purchaseLinkedIds.has(item.id);
-                    const isDeletionBlocked = isSalesInvoiced || isPurchaseInvoiced;
+                    const isDeletionBlocked = isSalesInvoiced;
                     const rowClass = isSalesInvoiced
                       ? "border-t border-gray-300 bg-gray-50 text-[11px] hover:bg-gray-100"
                       : "border-t border-gray-300 text-[11px] hover:bg-[#fffbe6]";
@@ -1483,7 +1537,7 @@ export default function InventoryPage() {
                             type="button"
                             onClick={() => handleDeleteRecord(item)}
                             disabled={isDeletionBlocked}
-                            title={isDeletionBlocked ? "伝票作成済みのため削除できません。" : "在庫を削除"}
+                            title={isDeletionBlocked ? "販売伝票作成済みのため削除できません。" : "在庫を削除"}
                             className="border border-gray-300 bg-white px-1 py-1 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-neutral-400"
                           >
                             削除

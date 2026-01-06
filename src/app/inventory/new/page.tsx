@@ -12,6 +12,7 @@ import {
   type SupplierCategory,
   type SupplierCorporate,
 } from "@/lib/demo-data/demoMasterData";
+import { MACHINE_CATALOG, getMakerOptions } from "@/lib/inventory/machineCatalog";
 
 type SupplierInfo = {
   supplier: string;
@@ -27,12 +28,6 @@ type SupplierInfo = {
   isConsignment: boolean;
   notes: string;
   buyerStaff: string;
-};
-
-type MachineCatalogItem = {
-  kind: "P" | "S";
-  maker: string;
-  title: string;
 };
 
 type InventoryFormRow = {
@@ -52,81 +47,6 @@ type InventoryFormRow = {
   note: string;
   isPublished: boolean;
 };
-
-const MACHINE_CATALOG: MachineCatalogItem[] = [
-  ...[
-    {
-      maker: "SANKYO",
-      titles: ["フィーバー機動戦士ガンダムSEED", "フィーバー蒼穹のファフナー", "フィーバー炎炎ノ消防隊", "フィーバー戦姫絶唱シンフォギア", "フィーバー宇宙戦艦ヤマト2199", "フィーバー創聖のアクエリオン", "フィーバーゴルゴ13"],
-    },
-    {
-      maker: "三洋",
-      titles: ["海物語 ミドル", "海物語 甘デジ", "大海物語4", "スーパー海物語IN沖縄5", "ギンギラパラダイス", "源さん超韋駄天", "スーパー海物語IN JAPAN"],
-    },
-    {
-      maker: "京楽",
-      titles: ["ぱちんこ AKB48", "ぱちんこ 乃木坂46", "ぱちんこ 仮面ライダー", "ぱちんこ ウルトラマンティガ", "ぱちんこ 仕事人", "ぱちんこ まどか☆マギカ", "ぱちんこ K-ON!"],
-    },
-    {
-      maker: "平和",
-      titles: ["ルパン三世", "戦国乙女", "ガールズ&パンツァー", "バジリスク", "シティーハンター", "黄門ちゃま", "ルパン三世〜復活のマモー〜"],
-    },
-    {
-      maker: "サミー",
-      titles: ["ぱちんこ北斗の拳", "ぱちんこ真・北斗無双", "ぱちんこモンキーターン", "ぱちんこダンバイン", "ぱちんこあの日見た花の名前を僕達はまだ知らない。", "ぱちんこコードギアス", "ぱちんこ頭文字D"],
-    },
-    {
-      maker: "藤商事",
-      titles: ["地獄少女", "リング", "とある科学の超電磁砲", "とある魔術の禁書目録", "地獄少女 宵伽", "リング バースデイ", "喰霊-零-"],
-    },
-    {
-      maker: "大一商会",
-      titles: ["ダイナマイトキング", "ひぐらしのなく頃に", "バイオハザード", "バジリスク絆", "一騎当千", "哲也", "ガメラ"],
-    },
-  ].flatMap((maker) =>
-    maker.titles.map((title) => ({
-      kind: "P" as const,
-      maker: maker.maker,
-      title,
-    })),
-  ),
-  ...[
-    {
-      maker: "サミー",
-      titles: ["パチスロ北斗の拳", "パチスロ甲鉄城のカバネリ", "パチスロ物語シリーズ", "パチスロカイジ", "パチスロバイオハザード7", "パチスロ真・北斗無双", "パチスロエウレカセブン"],
-    },
-    {
-      maker: "ユニバーサル",
-      titles: ["SLOTバジリスク絆2", "SLOTまどか☆マギカ", "SLOTアナザーゴッドハーデス", "SLOTミリオンゴッド凱旋", "SLOTハナビ", "SLOTギルティクラウン", "SLOT青鬼"],
-    },
-    {
-      maker: "大都技研",
-      titles: ["押忍!番長ZERO", "秘宝伝 解き放たれた女神", "吉宗", "Re:ゼロから始める異世界生活", "番長3", "政宗3", "クレアの秘宝伝"],
-    },
-    {
-      maker: "山佐",
-      titles: ["モンキーターンIV", "タイガー&バニー", "ゴッドイーター", "パチスロ鉄拳4", "パチスロキングパルサー", "パチスロピンクパンサー", "パチスロハイパーラッシュ"],
-    },
-    {
-      maker: "北電子",
-      titles: ["アイムジャグラー", "ゴーゴージャグラー", "マイジャグラー", "ファンキージャグラー", "ハッピージャグラー", "ミラクルジャグラー", "ジャグラーガールズ"],
-    },
-    {
-      maker: "オリンピア",
-      titles: ["パチスロ ルパン三世", "パチスロ南国育ち", "パチスロ閃乱カグラ", "パチスロハイビスカス", "麻雀格闘倶楽部", "パチスロ青鬼", "パチスロガールズ&パンツァー"],
-    },
-    {
-      maker: "エンターライズ",
-      titles: ["パチスロモンスターハンター", "パチスロバイオハザードRE:2", "パチスロデビルメイクライ5", "パチスロ大神", "パチスロロックマン", "パチスロストリートファイター", "パチスロモンキーターン"],
-    },
-  ].flatMap((maker) =>
-    maker.titles.map((title) => ({
-      kind: "S" as const,
-      maker: maker.maker,
-      title,
-    })),
-  ),
-];
 
 const DEVICE_TYPES: InventoryFormRow["type"][] = ["本体", "枠", "セル"];
 
@@ -148,9 +68,6 @@ const createBlankRow = (today: string): InventoryFormRow => ({
 });
 
 const todayString = () => new Date().toISOString().slice(0, 10);
-
-const getMakerOptions = (catalog: MachineCatalogItem[]) =>
-  Array.from(new Set(catalog.map((item) => item.maker)));
 
 const parseNumberInput = (value: string) => (value === "" ? "" : Number(value));
 const normalizeNumber = (value: number | "") => (value === "" || Number.isNaN(value) ? 0 : value);
