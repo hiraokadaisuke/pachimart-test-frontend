@@ -32,7 +32,8 @@ jobs:
             exit 1
           fi
           echo "DANGER: wiping production DB schema (public)"
-          printf "DROP SCHEMA IF EXISTS public CASCADE;\nCREATE SCHEMA public;" \n            | npx prisma db execute --schema prisma/schema.prisma --stdin
+          printf "DROP SCHEMA IF EXISTS public CASCADE;\nCREATE SCHEMA public;" \
+            | npx prisma db execute --schema prisma/schema.prisma --stdin
           echo "Reset done."
 
       - name: Deploy pending migrations
@@ -40,4 +41,6 @@ jobs:
 
       - name: Seed production database (if configured)
         run: |
-          node -e "const p=require('./package.json'); process.exit(p?.prisma?.seed?0:1)" \n            && npx prisma db seed --schema prisma/schema.prisma \n            || echo "No prisma.seed configured. Skipping."
+          node -e "const p=require('./package.json'); process.exit(p?.prisma?.seed?0:1)" \
+            && npx prisma db seed --schema prisma/schema.prisma \
+            || echo "No prisma.seed configured. Skipping."
