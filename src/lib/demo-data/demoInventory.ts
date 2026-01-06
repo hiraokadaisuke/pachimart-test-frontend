@@ -44,6 +44,12 @@ export type InventoryRecord = {
   notes?: string;
   consignment?: boolean;
   customFields?: Record<string, string>;
+  isPickupAvailable?: boolean;
+  hasNailSheet?: boolean;
+  hasManual?: boolean;
+  isShippingTwoPackages?: boolean;
+  isHandlingFeeTwoPackages?: boolean;
+  isSeparateSaleProhibited?: boolean;
 };
 
 export type ColumnSetting = {
@@ -99,6 +105,12 @@ const normalizeInventory = (record: InventoryRecord): InventoryRecord => {
     hasRemainingDebt: record.hasRemainingDebt ?? false,
     taxType: record.taxType ?? "exclusive",
     isConsignment: record.isConsignment ?? record.consignment ?? false,
+    isPickupAvailable: record.isPickupAvailable ?? false,
+    hasNailSheet: record.hasNailSheet ?? false,
+    hasManual: record.hasManual ?? false,
+    isShippingTwoPackages: record.isShippingTwoPackages ?? false,
+    isHandlingFeeTwoPackages: record.isHandlingFeeTwoPackages ?? false,
+    isSeparateSaleProhibited: record.isSeparateSaleProhibited ?? false,
   };
 };
 
