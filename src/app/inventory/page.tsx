@@ -12,6 +12,7 @@ import {
   updateInventoryRecord,
   updateInventoryStatuses,
   updateInventoryStatus,
+  generateInventoryId,
   type ListingStatusOption,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
@@ -22,8 +23,8 @@ import type { InventoryStatusOption, PurchaseInvoice } from "@/types/purchaseInv
 import type { SalesInvoice } from "@/types/salesInvoices";
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import { buildEditForm, buildPayload, PUBLISH_OPTIONS, resolvePublishStatus } from "@/lib/inventory/editUtils";
-import { loadSerialRows, type SerialInputRow } from "@/lib/serialInputStorage";
-import { formatShortId } from "@/lib/inventory/idDisplay";
+import { loadSerialDraft, loadSerialInput, loadSerialRows, type SerialInputRow } from "@/lib/serialInputStorage";
+import { formatCompactId } from "@/lib/inventory/idDisplay";
 
 type Column = {
   key: keyof InventoryRecord | "status";
@@ -164,6 +165,8 @@ const computePurchaseInvoiceTotal = (invoice: PurchaseInvoice): number => {
   );
   return subtotal + tax + shippingInsurance + extraCostTotal;
 };
+
+const formatInventoryShortId = (value: string) => formatCompactId(value, 6);
 
 export default function InventoryPage() {
   const router = useRouter();
@@ -576,6 +579,49 @@ export default function InventoryPage() {
     }
   };
 
+  const updatePurchaseInvoicesForInventorySplit = (
+    inventoryId: string,
+    nextIds: [string, string],
+  ) => {
+    let updated = false;
+    const nextInvoices = purchaseInvoices.map((invoice) => {
+      const items = invoice.items ?? [];
+      const inventoryIds = invoice.inventoryIds ?? [];
+      const itemMatched = items.some((item) => item.inventoryId === inventoryId);
+      const idMatched = inventoryIds.includes(inventoryId);
+      if (!itemMatched && !idMatched) return invoice;
+
+      updated = true;
+      const nextItems = items.flatMap((item) => {
+        if (item.inventoryId !== inventoryId) return [item];
+        const unitPrice = Number(item.unitPrice) || 0;
+        const buildItem = (type: string, nextId: string) => ({
+          ...item,
+          inventoryId: nextId,
+          type,
+          quantity: 1,
+          amount: unitPrice ? unitPrice * 1 : Number(item.amount) || 0,
+        });
+        return [buildItem("セル", nextIds[0]), buildItem("枠", nextIds[1])];
+      });
+      const nextInventoryIds = inventoryIds.flatMap((id) =>
+        id === inventoryId ? nextIds : [id],
+      );
+      const nextInvoice: PurchaseInvoice = {
+        ...invoice,
+        items: nextItems,
+        inventoryIds: nextInventoryIds,
+      };
+      nextInvoice.totalAmount = computePurchaseInvoiceTotal(nextInvoice);
+      return nextInvoice;
+    });
+
+    if (updated) {
+      savePurchaseInvoices(nextInvoices);
+      setPurchaseInvoices(nextInvoices);
+    }
+  };
+
   const handleDeleteRecord = (record: InventoryRecord) => {
     const hasPurchaseInvoice =
       Boolean(record.purchaseInvoiceId) || purchaseLinkedIds.has(record.id);
@@ -599,6 +645,82 @@ export default function InventoryPage() {
       next.delete(record.id);
       return next;
     });
+  };
+
+  const handleDecomposeInventory = async () => {
+    if (selectedIds.size === 0) {
+      alert("在庫を選択してください。");
+      return;
+    }
+    if (selectedIds.size > 1) {
+      alert("分解は1件ずつ実行してください。");
+      return;
+    }
+
+    const targetId = Array.from(selectedIds)[0];
+    const target = records.find((record) => record.id === targetId);
+    if (!target) {
+      alert("対象の在庫が見つかりません。");
+      return;
+    }
+
+    const normalizedKind = (target.kind ?? "").toString().toUpperCase();
+    const resolvedType = (target.type ?? target.deviceType ?? "").toString().trim();
+    const quantity = Number(target.quantity ?? 1);
+
+    if (salesInvoiceMap.has(target.id)) {
+      alert("販売伝票作成済みのため分解できません。");
+      return;
+    }
+    if (normalizedKind !== "P") {
+      alert("種別がPの在庫のみ分解できます。");
+      return;
+    }
+    if (resolvedType !== "本体") {
+      alert("タイプが本体の在庫のみ分解できます。");
+      return;
+    }
+    if (quantity !== 1) {
+      alert("仕入数が1の在庫のみ分解できます。");
+      return;
+    }
+
+    const serialInput = loadSerialInput(target.id) ?? loadSerialDraft(target.id);
+    const serialRows = await loadSerialRows(target.id);
+    if (serialInput || serialRows.length > 0) {
+      alert("番号入力済みのため分解できません。");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      "選択した在庫（本体）をセル/枠に分解します。元の本体在庫は削除されます。よろしいですか？",
+    );
+    if (!confirmed) return;
+
+    const cellId = generateInventoryId();
+    const frameId = generateInventoryId();
+    const baseRecord: InventoryRecord = {
+      ...target,
+      quantity: 1,
+    };
+    const cellRecord: InventoryRecord = {
+      ...baseRecord,
+      id: cellId,
+      type: "セル",
+    };
+    const frameRecord: InventoryRecord = {
+      ...baseRecord,
+      id: frameId,
+      type: "枠",
+    };
+    const updatedRecords = records.flatMap((record) => {
+      if (record.id !== target.id) return [record];
+      return [cellRecord, frameRecord];
+    });
+    saveInventoryRecords(updatedRecords);
+    setRecords(updatedRecords);
+    updatePurchaseInvoicesForInventorySplit(target.id, [cellId, frameId]);
+    setSelectedIds(new Set());
   };
 
   const handleSalesCreate = () => {
@@ -776,7 +898,8 @@ export default function InventoryPage() {
     const rows = displayRecords.map((record) =>
       visibleColumns
         .map((col) => {
-          const value = col.key === "id" ? formatShortId(record.id) : getCellText(record, String(col.key));
+          const value =
+            col.key === "id" ? formatInventoryShortId(record.id) : getCellText(record, String(col.key));
           const normalized = value ?? "";
           return `"${String(normalized).replace(/"/g, '""')}"`;
         })
@@ -1283,6 +1406,13 @@ export default function InventoryPage() {
               >
                 販売
               </button>
+              <button
+                type="button"
+                onClick={handleDecomposeInventory}
+                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff]"
+              >
+                分解
+              </button>
             </div>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               <button
@@ -1427,7 +1557,7 @@ export default function InventoryPage() {
                       {visibleColumns.map((col) => {
                         const fullText = getCellText(item, String(col.key));
                         const statusValue = resolvePublishStatus(item);
-                        const displayText = col.key === "id" ? formatShortId(item.id) : fullText;
+                        const displayText = col.key === "id" ? formatInventoryShortId(item.id) : fullText;
                         const numeric = NUMERIC_COLUMNS.includes(col.key);
                         const isDate = DATE_COLUMNS.includes(col.key);
                         const shouldWrap = WRAP_COLUMNS.includes(col.key);

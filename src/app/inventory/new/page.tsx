@@ -1015,12 +1015,12 @@ export default function InventoryNewPage() {
       </div>
       {publishModalState.open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-md border border-slate-600 bg-white">
-            <div className="border-b border-slate-600 bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-800">
+          <div className="w-full max-w-2xl border border-slate-600 bg-white">
+            <div className="border-b border-slate-600 bg-slate-100 px-6 py-3 text-base font-semibold text-slate-800">
               出品オプション設定
             </div>
-            <div className="space-y-3 px-4 py-3">
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-slate-800">
+            <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-4">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm text-slate-800">
                 {PUBLISH_OPTIONS.map((option) => (
                   <label key={option.key} className="flex items-center gap-2">
                     <input
@@ -1042,14 +1042,14 @@ export default function InventoryNewPage() {
                 <button
                   type="button"
                   onClick={handlePublishCancel}
-                  className="h-8 rounded-none border border-slate-500 bg-slate-100 px-4 text-xs font-semibold text-slate-700"
+                  className="h-9 rounded-none border border-slate-500 bg-slate-100 px-5 text-sm font-semibold text-slate-700"
                 >
                   キャンセル
                 </button>
                 <button
                   type="button"
                   onClick={handlePublishConfirm}
-                  className="h-8 rounded-none border border-emerald-700 bg-emerald-200 px-4 text-xs font-semibold text-emerald-900"
+                  className="h-9 rounded-none border border-emerald-700 bg-emerald-200 px-5 text-sm font-semibold text-emerald-900"
                 >
                   完了
                 </button>
