@@ -1,4 +1,4 @@
-name: Prod DB Migrate v2
+name: Prod DB Migrate
 
 on:
   workflow_dispatch:
