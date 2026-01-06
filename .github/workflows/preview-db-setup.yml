@@ -42,32 +42,40 @@ jobs:
             exit 1
           fi
 
-          MIGRATIONS_DIR="prisma/migrations"
-          SKIP_MIGRATION="0009_add_message_trade_navi_id"
-          SKIP_PATH="$MIGRATIONS_DIR/$SKIP_MIGRATION"
-          TEMP_PATH="$MIGRATIONS_DIR/_skip_$SKIP_MIGRATION"
+            MIGRATIONS_DIR="prisma/migrations"
+            if [ -d "$MIGRATIONS_DIR" ] && [ "$(ls -A "$MIGRATIONS_DIR")" ]; then
+              STASH_DIR="/tmp/prisma-migrations-stash"
+              mkdir -p "$STASH_DIR"
 
-          if [ -d "$MIGRATIONS_DIR" ] && [ "$(ls -A "$MIGRATIONS_DIR")" ]; then
-            if [ -d "$SKIP_PATH" ]; then
-              echo "Temporarily moving $SKIP_PATH to $TEMP_PATH"
-              mv "$SKIP_PATH" "$TEMP_PATH"
-            fi
+              echo "Stashing migrations 0009 and later..."
+              for d in \
+                "$MIGRATIONS_DIR"/0009_* "$MIGRATIONS_DIR"/0010_* "$MIGRATIONS_DIR"/0011_* "$MIGRATIONS_DIR"/0012_* \
+                "$MIGRATIONS_DIR"/0013_* "$MIGRATIONS_DIR"/0014_* "$MIGRATIONS_DIR"/0015_* "$MIGRATIONS_DIR"/0016_* \
+                "$MIGRATIONS_DIR"/0017_* "$MIGRATIONS_DIR"/0018_* "$MIGRATIONS_DIR"/0019_* "$MIGRATIONS_DIR"/0020_*; do
+                if [ -d "$d" ]; then
+                  echo "Stashing $d"
+                  mv "$d" "$STASH_DIR/"
+                fi
+              done
 
-            echo "migrations found -> prisma migrate deploy"
-            npx prisma migrate deploy --schema prisma/schema.prisma
+              echo "Applying migrations up to 0008..."
+              npx prisma migrate deploy --schema prisma/schema.prisma
 
-            if [ -d "$TEMP_PATH" ]; then
-              echo "Restoring $SKIP_MIGRATION after deploy"
-              mv "$TEMP_PATH" "$SKIP_PATH"
-              echo "Marking $SKIP_MIGRATION as applied without running it"
-              npx prisma migrate resolve --schema prisma/schema.prisma --applied "$SKIP_MIGRATION"
+              if [ -d "$STASH_DIR" ] && [ "$(ls -A "$STASH_DIR")" ]; then
+                echo "Restoring stashed migrations..."
+                mv "$STASH_DIR"/* "$MIGRATIONS_DIR"/
+                echo "Marking 0009_add_message_trade_navi_id as applied without running it"
+                npx prisma migrate resolve --schema prisma/schema.prisma --applied 0009_add_message_trade_navi_id || echo "resolve skipped"
+              else
+                echo "No migrations were stashed; skipping resolve"
+              fi
+
+              echo "Applying remaining migrations..."
+              npx prisma migrate deploy --schema prisma/schema.prisma
             else
-              echo "$SKIP_MIGRATION not present; no skip needed"
+              echo "no migrations -> prisma db push"
+              npx prisma db push --schema prisma/schema.prisma
             fi
-          else
-            echo "no migrations -> prisma db push"
-            npx prisma db push --schema prisma/schema.prisma
-          fi
 
       - name: Seed Preview DB (if configured)
         env:
