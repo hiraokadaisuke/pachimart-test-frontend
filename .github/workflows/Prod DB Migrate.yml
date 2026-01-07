@@ -2,9 +2,47 @@ name: Prod DB Migrate
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type MIGRATE to proceed"
+        required: true
+
+concurrency:
+  group: prod-db-migrate
+  cancel-in-progress: false
 
 jobs:
-  test:
+  migrate:
     runs-on: ubuntu-latest
+    environment: production
     steps:
-      - run: echo "hello"
+      - name: Guard - confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "MIGRATE" ]; then
+            echo "Confirmation mismatch. Aborting."
+            exit 1
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate --schema prisma/schema.prisma
+
+      - name: Prisma migrate status (no changes)
+        env:
+          DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
+        run: npx prisma migrate status --schema prisma/schema.prisma
+
+      - name: Deploy pending migrations
+        env:
+          DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
+        run: npx prisma migrate deploy --schema prisma/schema.prisma
