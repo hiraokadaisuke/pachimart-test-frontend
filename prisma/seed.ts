@@ -787,6 +787,51 @@ async function seedMakersAndModels() {
   console.log(`Seeded ${MAKERS.length} makers and ${MACHINE_MODELS.length} machine models.`);
 }
 
+async function seedMastersOnly() {
+  for (const maker of MAKERS) {
+    await prisma.maker.upsert({
+      where: { name: maker.name },
+      update: {},
+      create: { name: maker.name },
+    });
+  }
+
+  const makerNames = [...new Set(MAKERS.map((maker) => maker.name))];
+  const makers = await prisma.maker.findMany({
+    where: {
+      name: {
+        in: makerNames,
+      },
+    },
+  });
+  const makerMap = new Map(makers.map((maker) => [maker.name, maker.id]));
+
+  for (const model of MACHINE_MODELS) {
+    const makerId = makerMap.get(model.makerName);
+    if (!makerId) {
+      throw new Error(`Maker not found for model seed: ${model.makerName}`);
+    }
+
+    await prisma.machineModel.upsert({
+      where: {
+        makerId_type_name: {
+          makerId,
+          type: model.type,
+          name: model.name,
+        },
+      },
+      update: {},
+      create: {
+        makerId,
+        type: model.type,
+        name: model.name,
+      },
+    });
+  }
+
+  console.log(`Seeded ${MAKERS.length} makers and ${MACHINE_MODELS.length} machine models.`);
+}
+
 async function seedListings() {
   const createdListings = [] as ListingSeed[];
   for (const listing of LISTINGS) {
@@ -1044,6 +1089,12 @@ async function seedNavis(listings: ListingSeed[]) {
 async function main() {
   const seedMode = process.env.SEED_MODE?.toLowerCase();
   const vercelEnv = process.env.VERCEL_ENV;
+
+  if (seedMode === "masters") {
+    console.log("Seeding masters only...");
+    await seedMastersOnly();
+    return;
+  }
 
   if (vercelEnv === "production") {
     console.log("Skipping seed because VERCEL_ENV=production.");
