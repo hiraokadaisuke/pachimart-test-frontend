@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
+import { findDevUserById } from "@/lib/dev-user/users";
 
 const storageLocationClient = prisma.storageLocation;
 
@@ -13,6 +14,27 @@ const parseNumber = (value: unknown) => {
   if (typeof value === "number") return value;
   if (typeof value === "string" && value.trim() !== "") return Number(value);
   return NaN;
+};
+
+const ensureUserExists = async (ownerUserId: string) => {
+  const devUser = findDevUserById(ownerUserId);
+
+  const existing = await prisma.user.findUnique({
+    where: { id: ownerUserId },
+    select: { id: true },
+  });
+
+  if (existing) return;
+
+  await prisma.user.create({
+    data: {
+      id: ownerUserId,
+      companyName: devUser?.companyName ?? "開発ユーザー",
+      contactName: devUser?.contactName ?? undefined,
+      address: devUser?.address ?? undefined,
+      tel: devUser?.tel ?? undefined,
+    },
+  });
 };
 
 export async function GET(request: Request) {
@@ -91,6 +113,8 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
+
+    await ensureUserExists(ownerUserId);
 
     const created = await storageLocationClient.create({
       data: {

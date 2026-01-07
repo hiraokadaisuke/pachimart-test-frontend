@@ -252,12 +252,17 @@ type InMemoryPrisma = {
       where,
     }?: {
       where?: { id?: { in?: string[] } };
-    }) => Promise<{ id: string; companyName: string; contactName?: string; tel?: string }[]>;
+    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }[]>;
     findUnique: ({
       where,
     }: {
       where: { id?: string | null };
-    }) => Promise<{ id: string; companyName: string; contactName?: string; tel?: string } | null>;
+    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string } | null>;
+    create: ({
+      data,
+    }: {
+      data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
+    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
   };
   message: {
     findMany: ({ where, orderBy }?: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
@@ -349,12 +354,13 @@ type InMemoryPrisma = {
 
 const buildInMemoryPrisma = (): InMemoryPrisma => {
   const userDirectory = Object.values(DEV_USERS).reduce<
-    Record<string, { id: string; companyName: string; contactName?: string; tel?: string }>
+    Record<string, { id: string; companyName: string; contactName?: string; address?: string; tel?: string }>
   >((acc, user) => {
       acc[user.id] = {
         id: user.id,
         companyName: user.companyName,
         contactName: user.contactName,
+        address: user.address,
         tel: user.tel,
       };
       return acc;
@@ -691,6 +697,27 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         const id = where.id ?? "";
         const found = userDirectory[id];
         return found ? { ...found } : null;
+      },
+      create: async ({
+        data,
+      }: {
+        data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
+      }) => {
+        const id = String(data.id ?? "");
+        if (!id) {
+          throw new Error("User id is required");
+        }
+
+        const record = {
+          id,
+          companyName: String(data.companyName ?? ""),
+          contactName: data.contactName ?? undefined,
+          address: data.address ?? undefined,
+          tel: data.tel ?? undefined,
+        };
+
+        userDirectory[id] = record;
+        return { ...record };
       },
     },
     message: {
