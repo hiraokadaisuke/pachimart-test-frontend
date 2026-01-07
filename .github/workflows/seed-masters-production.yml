@@ -1,0 +1,42 @@
+name: Seed Masters (Production)
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type RUN to execute"
+        required: true
+
+jobs:
+  seed-masters:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate --schema prisma/schema.prisma
+
+      - name: Deploy pending migrations
+        env:
+          APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
+        run: npx prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Seed masters only
+        env:
+          APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
+          SEED_MODE: masters
+        run: |
+          if [ "${{ inputs.confirm }}" != "RUN" ]; then
+            echo "Confirmation mismatch. Aborting."
+            exit 1
+          fi
+          npx prisma db seed --schema prisma/schema.prisma
