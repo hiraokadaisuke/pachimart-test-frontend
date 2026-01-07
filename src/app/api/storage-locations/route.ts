@@ -19,10 +19,15 @@ const parseNumber = (value: unknown) => {
 const ensureUserExists = async (ownerUserId: string) => {
   const devUser = findDevUserById(ownerUserId);
 
-  await prisma.user.upsert({
+  const existing = await prisma.user.findUnique({
     where: { id: ownerUserId },
-    update: {},
-    create: {
+    select: { id: true },
+  });
+
+  if (existing) return;
+
+  await prisma.user.create({
+    data: {
       id: ownerUserId,
       companyName: devUser?.companyName ?? "開発ユーザー",
       contactName: devUser?.contactName ?? null,
