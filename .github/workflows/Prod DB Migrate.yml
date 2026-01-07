@@ -39,10 +39,11 @@ jobs:
 
       - name: Prisma migrate status (no changes)
         env:
-          DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
+          APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
         run: npx prisma migrate status --schema prisma/schema.prisma
 
       - name: Deploy pending migrations
         env:
-          DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
+          APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
         run: npx prisma migrate deploy --schema prisma/schema.prisma
+
