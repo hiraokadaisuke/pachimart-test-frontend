@@ -311,6 +311,8 @@ const now = new Date();
 
 const MAKERS: MakerSeed[] = [
   { name: "三洋" },
+  // テスト用マスタ追加分（パチンコ）
+  { name: "サンセイ" },
   { name: "平和" },
   { name: "三共" },
   { name: "サミー" },
@@ -320,15 +322,23 @@ const MAKERS: MakerSeed[] = [
   { name: "藤商事" },
   { name: "京楽" },
   { name: "北電子" },
+  // テスト用マスタ追加分（スロット）
+  { name: "山佐" },
+  { name: "大都技研" },
 ];
 
 const MACHINE_MODELS: MachineModelSeed[] = [
   { makerName: "三洋", type: ExhibitType.PACHINKO, name: "P海物語5" },
   { makerName: "三洋", type: ExhibitType.PACHINKO, name: "P大海物語4スペシャル" },
   { makerName: "三洋", type: ExhibitType.PACHINKO, name: "Pギンギラパラダイス" },
+  { makerName: "三洋", type: ExhibitType.PACHINKO, name: "P海物語 テスト01" },
+  { makerName: "三洋", type: ExhibitType.PACHINKO, name: "P海物語 テスト02" },
   { makerName: "三洋", type: ExhibitType.SLOT, name: "Sスーパー海物語" },
   { makerName: "三洋", type: ExhibitType.SLOT, name: "S海物語リミックス" },
   { makerName: "三洋", type: ExhibitType.SLOT, name: "S海物語Z" },
+  { makerName: "サンセイ", type: ExhibitType.PACHINKO, name: "P牙狼 テスト01" },
+  { makerName: "サンセイ", type: ExhibitType.PACHINKO, name: "P牙狼 テスト02" },
+  { makerName: "サンセイ", type: ExhibitType.PACHINKO, name: "P真・牙狼 テスト03" },
   { makerName: "平和", type: ExhibitType.PACHINKO, name: "Pルパン三世2000カラット" },
   { makerName: "平和", type: ExhibitType.PACHINKO, name: "P麻雀物語4" },
   { makerName: "平和", type: ExhibitType.PACHINKO, name: "Pバンドリ!" },
@@ -347,12 +357,16 @@ const MACHINE_MODELS: MachineModelSeed[] = [
   { makerName: "サミー", type: ExhibitType.SLOT, name: "S北斗の拳" },
   { makerName: "サミー", type: ExhibitType.SLOT, name: "S甲鉄城のカバネリ" },
   { makerName: "サミー", type: ExhibitType.SLOT, name: "Sエウレカセブン4" },
+  { makerName: "サミー", type: ExhibitType.SLOT, name: "S北斗の拳 テスト01" },
+  { makerName: "サミー", type: ExhibitType.SLOT, name: "S北斗の拳 テスト02" },
   { makerName: "ユニバーサル", type: ExhibitType.PACHINKO, name: "Pバジリスク桜花忍法帖" },
   { makerName: "ユニバーサル", type: ExhibitType.PACHINKO, name: "Pアナザーゴッドハーデス" },
   { makerName: "ユニバーサル", type: ExhibitType.PACHINKO, name: "P魔法少女まどか☆マギカ" },
   { makerName: "ユニバーサル", type: ExhibitType.SLOT, name: "Sバジリスク絆2" },
   { makerName: "ユニバーサル", type: ExhibitType.SLOT, name: "Sアナザーゴッドハーデス解き放たれし槍撃" },
   { makerName: "ユニバーサル", type: ExhibitType.SLOT, name: "Sまどか☆マギカ叛逆" },
+  { makerName: "ユニバーサル", type: ExhibitType.SLOT, name: "Sバジリスク テスト01" },
+  { makerName: "ユニバーサル", type: ExhibitType.SLOT, name: "Sバジリスク テスト02" },
   { makerName: "オリンピア", type: ExhibitType.PACHINKO, name: "P南国育ち30" },
   { makerName: "オリンピア", type: ExhibitType.PACHINKO, name: "Pルパン三世消されたルパン" },
   { makerName: "オリンピア", type: ExhibitType.PACHINKO, name: "Pプレミアムうまい棒" },
@@ -383,6 +397,12 @@ const MACHINE_MODELS: MachineModelSeed[] = [
   { makerName: "北電子", type: ExhibitType.SLOT, name: "SアイムジャグラーEX" },
   { makerName: "北電子", type: ExhibitType.SLOT, name: "Sゴーゴージャグラー3" },
   { makerName: "北電子", type: ExhibitType.SLOT, name: "Sファンキージャグラー2" },
+  { makerName: "山佐", type: ExhibitType.SLOT, name: "Sモンキーターン テスト01" },
+  { makerName: "山佐", type: ExhibitType.SLOT, name: "Sモンキーターン テスト02" },
+  { makerName: "山佐", type: ExhibitType.SLOT, name: "S鉄拳 テスト03" },
+  { makerName: "大都技研", type: ExhibitType.SLOT, name: "S番長 テスト01" },
+  { makerName: "大都技研", type: ExhibitType.SLOT, name: "S番長 テスト02" },
+  { makerName: "大都技研", type: ExhibitType.SLOT, name: "S吉宗 テスト03" },
 ];
 
 const LISTINGS: ListingSeed[] = [
