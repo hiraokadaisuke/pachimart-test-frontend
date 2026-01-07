@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
@@ -124,6 +125,12 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("Failed to create storage location", error);
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+      return NextResponse.json(
+        { error: "Conflict", detail: "StorageLocation name already exists" },
+        { status: 409 }
+      );
+    }
     return NextResponse.json(
       { error: "Failed to create storage location", detail: handleUnknownError(error) },
       { status: 500 }

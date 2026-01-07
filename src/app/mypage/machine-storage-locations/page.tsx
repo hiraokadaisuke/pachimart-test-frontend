@@ -7,7 +7,7 @@ import SettingsSubTabs from "@/components/mypage/SettingsSubTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
-import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
+import { fetchWithDevHeader, resolveCurrentDevUserId } from "@/lib/api/fetchWithDevHeader";
 
 type RegionKey =
   | "hokkaido"
@@ -94,6 +94,10 @@ export default function MachineStorageLocationsPage() {
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const totalCountLabel = useMemo(() => `全件数：${locations.length}件`, [locations.length]);
+  const resolveDevUserId = useCallback(
+    () => resolveCurrentDevUserId() ?? currentUser.id,
+    [currentUser.id]
+  );
 
   const fetchLocations = useCallback(async () => {
     setLoadingMessage("読み込み中...");
@@ -102,7 +106,7 @@ export default function MachineStorageLocationsPage() {
       const response = await fetchWithDevHeader(
         "/api/storage-locations",
         {},
-        currentUser.id
+        resolveDevUserId()
       );
       if (!response.ok) {
         throw new Error("倉庫一覧の取得に失敗しました。");
@@ -115,7 +119,7 @@ export default function MachineStorageLocationsPage() {
     } finally {
       setLoadingMessage(null);
     }
-  }, [currentUser.id]);
+  }, [resolveDevUserId]);
 
   useEffect(() => {
     fetchLocations();
@@ -206,6 +210,7 @@ export default function MachineStorageLocationsPage() {
     setLoadingMessage(mode === "edit" ? "更新中..." : "登録中...");
     setErrorMessage(null);
     try {
+      const devUserId = resolveDevUserId();
       const response = await fetchWithDevHeader(
         editingId ? `/api/storage-locations/${editingId}` : "/api/storage-locations",
         {
@@ -215,11 +220,36 @@ export default function MachineStorageLocationsPage() {
           },
           body: JSON.stringify(payload),
         },
-        currentUser.id
+        devUserId
       );
 
       if (!response.ok) {
-        throw new Error(editingId ? "倉庫情報の更新に失敗しました。" : "倉庫情報の登録に失敗しました。");
+        let detail: string | null = null;
+        try {
+          const data = (await response.json()) as { detail?: unknown } | null;
+          if (data?.detail) {
+            detail = String(data.detail);
+          }
+        } catch (error) {
+          detail = null;
+        }
+
+        if (response.status === 401) {
+          setErrorMessage("ユーザー情報の取得に失敗しました。画面をリロードして再度お試しください。");
+          return;
+        }
+        if (response.status === 400) {
+          setErrorMessage("入力内容に不備があります（必須項目・数値）");
+          return;
+        }
+        if (response.status === 409) {
+          setErrorMessage("同名の倉庫が既に存在します（倉庫名を変更してください）");
+          return;
+        }
+
+        const baseMessage = "倉庫情報の保存に失敗しました。";
+        setErrorMessage(detail ? `${baseMessage}（${detail}）` : baseMessage);
+        return;
       }
 
       await fetchLocations();
@@ -246,7 +276,7 @@ export default function MachineStorageLocationsPage() {
         {
           method: "DELETE",
         },
-        currentUser.id
+        resolveDevUserId()
       );
 
       if (!response.ok) {
