@@ -30,9 +30,9 @@ const ensureUserExists = async (ownerUserId: string) => {
     data: {
       id: ownerUserId,
       companyName: devUser?.companyName ?? "開発ユーザー",
-      contactName: devUser?.contactName ?? null,
-      address: devUser?.address ?? null,
-      tel: devUser?.tel ?? null,
+      contactName: devUser?.contactName ?? undefined,
+      address: devUser?.address ?? undefined,
+      tel: devUser?.tel ?? undefined,
     },
   });
 };
