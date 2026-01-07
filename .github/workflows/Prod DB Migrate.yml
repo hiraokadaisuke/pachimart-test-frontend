@@ -3,6 +3,10 @@ name: Prod DB Migrate
 on:
   workflow_dispatch:
     inputs:
+      mode:
+        description: "deploy | wipe-and-deploy"
+        required: true
+        default: "deploy"
       confirm:
         description: "Type MIGRATE to proceed"
         required: true
@@ -37,12 +41,23 @@ jobs:
       - name: Prisma generate
         run: npx prisma generate --schema prisma/schema.prisma
 
-      - name: Prisma migrate status (informational)
+      - name: WIPE public schema (DANGER)
+        if: inputs.mode == 'wipe-and-deploy'
         env:
           APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
-        run: npx prisma migrate status --schema prisma/schema.prisma || true
+        run: |
+          npx prisma db execute --schema prisma/schema.prisma --stdin <<'SQL'
+          DROP SCHEMA IF EXISTS public CASCADE;
+          CREATE SCHEMA public;
+          SQL
 
       - name: Deploy pending migrations
         env:
           APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
         run: npx prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Seed (if configured)
+        if: inputs.mode == 'wipe-and-deploy'
+        env:
+          APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
+        run: npx prisma db seed --schema prisma/schema.prisma
