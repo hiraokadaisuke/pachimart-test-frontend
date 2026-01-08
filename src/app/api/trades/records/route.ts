@@ -2,8 +2,9 @@ import { Prisma, NaviType, DealingStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
 import { validateTradeLedgerConsistency } from "@/lib/server/ledger";
+import { getUserIdCandidates } from "@/lib/server/users";
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -92,16 +93,20 @@ const toDto = (dealing: ReturnType<typeof toRecord>) => ({
 });
 
 export async function GET(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   try {
     const dealings = await prisma.dealing.findMany({
       where: {
-        OR: [{ sellerUserId: currentUserId }, { buyerUserId: currentUserId }],
+        OR: [
+          { sellerUserId: { in: currentUserIds } },
+          { buyerUserId: { in: currentUserIds } },
+        ],
       },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,

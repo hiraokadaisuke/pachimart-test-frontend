@@ -2,9 +2,10 @@ import { ExhibitStatus, Prisma, PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
 import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
+import { getUserIdCandidates, resolveUserId } from "@/lib/server/users";
 
 const listQuerySchema = z.object({
   role: z.enum(["buyer", "seller"]),
@@ -32,12 +33,13 @@ const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
 export async function GET(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const currentUserIds = getUserIdCandidates(currentUser);
   const parsedQuery = listQuerySchema.safeParse(Object.fromEntries(new URL(request.url).searchParams));
 
   if (!parsedQuery.success) {
@@ -51,7 +53,10 @@ export async function GET(request: Request) {
 
   try {
     const inquiries = await prisma.onlineInquiry.findMany({
-      where: role === "buyer" ? { buyerUserId: currentUserId } : { sellerUserId: currentUserId },
+      where:
+        role === "buyer"
+          ? { buyerUserId: { in: currentUserIds } }
+          : { sellerUserId: { in: currentUserIds } },
       orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     });
 
@@ -137,12 +142,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const currentUserIds = getUserIdCandidates(currentUser);
   let body: unknown;
 
   try {
@@ -181,7 +187,7 @@ export async function POST(request: Request) {
     desiredPaymentDate,
   } = parsed.data;
 
-  if (buyerUserId !== currentUserId) {
+  if (!currentUserIds.includes(buyerUserId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -192,18 +198,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    if (exhibit.sellerUserId === buyerUserId) {
+    const resolvedBuyerUserId = await resolveUserId(buyerUserId);
+    const resolvedSellerUserId = await resolveUserId(exhibit.sellerUserId);
+
+    if (resolvedSellerUserId === resolvedBuyerUserId) {
       return NextResponse.json(
         { error: "出品者は自分の出品に問い合わせできません" },
         { status: 403 }
       );
     }
 
-    if (sellerUserId && sellerUserId !== exhibit.sellerUserId) {
-      return NextResponse.json(
-        { error: "出品者が一致しません。最新の情報を確認してください。" },
-        { status: 400 }
-      );
+    if (sellerUserId) {
+      const resolvedIncomingSellerUserId = await resolveUserId(sellerUserId);
+      if (resolvedIncomingSellerUserId !== resolvedSellerUserId) {
+        return NextResponse.json(
+          { error: "出品者が一致しません。最新の情報を確認してください。" },
+          { status: 400 }
+        );
+      }
     }
 
     if (exhibit.status === ExhibitStatus.SOLD) {
@@ -225,8 +237,8 @@ export async function POST(request: Request) {
       tx.onlineInquiry.create({
         data: {
           listingId: exhibit.id,
-          buyerUserId,
-          sellerUserId: exhibit.sellerUserId,
+          buyerUserId: resolvedBuyerUserId,
+          sellerUserId: resolvedSellerUserId,
           body: normalizedBody,
           buyerMemo: normalizedBody,
           makerName: normalizedMaker,

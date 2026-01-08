@@ -566,6 +566,15 @@ const BUYER_SHIPPING_ADDRESSES: BuyerShippingAddressSeed[] = [
 ];
 
 const DEV_USER_IDS = USERS.map((user) => user.id);
+const userIdMap = new Map<string, string>();
+
+const resolveUserId = (devUserId: string) => {
+  const userId = userIdMap.get(devUserId);
+  if (!userId) {
+    throw new Error(`User id not found for devUserId: ${devUserId}`);
+  }
+  return userId;
+};
 
 const toIsoString = (value: Date | null | undefined): string | null => {
   if (!value) return null;
@@ -619,9 +628,11 @@ const buildPhoneAgreementPayload = (
     taxRate: number;
     memo: string | null;
     handler: string | null;
+    buyerDevUserId: string;
   }>
 ) => {
   const createdAt = new Date().toISOString();
+  const buyerDevUserId = options?.buyerDevUserId ?? buyerUserId;
   return {
     id: listing.id,
     ownerUserId,
@@ -629,7 +640,7 @@ const buildPhoneAgreementPayload = (
     productId: listing.id,
     buyerId: buyerUserId,
     buyerPending: false,
-    buyerCompanyName: USERS.find((user) => user.id === buyerUserId)?.companyName ?? null,
+    buyerCompanyName: USERS.find((user) => user.id === buyerDevUserId)?.companyName ?? null,
     buyerContactName: options?.handler ?? "購買担当A",
     buyerAddress: `${listing.storageLocation} 経由搬入予定`,
     buyerTel: "080-0000-0000",
@@ -661,12 +672,16 @@ const buildTradePayload = (
     shippingFee: number;
     handlingFee: number;
     status: DealingStatus;
+    buyerDevUserId: string;
+    sellerDevUserId: string;
   }>
 ) => {
   const shipmentDate = "2024-12-05";
+  const buyerDevUserId = overrides?.buyerDevUserId ?? buyerUserId;
+  const sellerDevUserId = overrides?.sellerDevUserId ?? sellerUserId;
   return {
-    buyerCompanyName: USERS.find((user) => user.id === buyerUserId)?.companyName ?? "",
-    sellerCompanyName: USERS.find((user) => user.id === sellerUserId)?.companyName ?? "",
+    buyerCompanyName: USERS.find((user) => user.id === buyerDevUserId)?.companyName ?? "",
+    sellerCompanyName: USERS.find((user) => user.id === sellerDevUserId)?.companyName ?? "",
     buyerContactName: "現場担当B",
     buyerAddress: "福岡県福岡市中央区1-2-3",
     buyerTel: "090-1234-5678",
@@ -676,7 +691,7 @@ const buildTradePayload = (
       { personName: "経理担当", tel: "090-0000-9999" },
     ],
     buyerShippingAddress: {
-      companyName: USERS.find((user) => user.id === buyerUserId)?.companyName ?? "",
+      companyName: USERS.find((user) => user.id === buyerDevUserId)?.companyName ?? "",
       address: "福岡県福岡市中央区天神2-4-5",
       tel: "092-123-4567",
       personName: "配送窓口",
@@ -702,18 +717,26 @@ const buildTradePayload = (
 
 async function clearExistingData() {
   console.log("Clearing existing dev data...");
-  await prisma.message.deleteMany({ where: { senderUserId: { in: DEV_USER_IDS } } });
+  const users = await prisma.user.findMany({
+    where: {
+      OR: [{ id: { in: DEV_USER_IDS } }, { devUserId: { in: DEV_USER_IDS } }],
+    },
+    select: { id: true },
+  });
+  const userIds = Array.from(new Set([...users.map((user) => user.id), ...DEV_USER_IDS]));
+
+  await prisma.message.deleteMany({ where: { senderUserId: { in: userIds } } });
   await prisma.onlineInquiry.deleteMany({
-    where: { OR: [{ buyerUserId: { in: DEV_USER_IDS } }, { sellerUserId: { in: DEV_USER_IDS } }] },
+    where: { OR: [{ buyerUserId: { in: userIds } }, { sellerUserId: { in: userIds } }] },
   });
   await prisma.dealing.deleteMany({
-    where: { OR: [{ sellerUserId: { in: DEV_USER_IDS } }, { buyerUserId: { in: DEV_USER_IDS } }] },
+    where: { OR: [{ sellerUserId: { in: userIds } }, { buyerUserId: { in: userIds } }] },
   });
-  await prisma.navi.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
-  await prisma.exhibit.deleteMany({ where: { sellerUserId: { in: DEV_USER_IDS } } });
-  await prisma.storageLocation.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
+  await prisma.navi.deleteMany({ where: { ownerUserId: { in: userIds } } });
+  await prisma.exhibit.deleteMany({ where: { sellerUserId: { in: userIds } } });
+  await prisma.storageLocation.deleteMany({ where: { ownerUserId: { in: userIds } } });
   try {
-    await prisma.buyerShippingAddress.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
+    await prisma.buyerShippingAddress.deleteMany({ where: { ownerUserId: { in: userIds } } });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021") {
       console.warn("BuyerShippingAddress table not found. Skipping deleteMany.");
@@ -726,7 +749,41 @@ async function clearExistingData() {
 async function seedUsers() {
   console.log(`Seeding ${USERS.length} users...`);
   for (const user of USERS) {
-    await prisma.user.upsert({ where: { id: user.id }, update: user, create: user });
+    const existingById = await prisma.user.findUnique({ where: { id: user.id } });
+
+    if (existingById) {
+      const updated = await prisma.user.update({
+        where: { id: existingById.id },
+        data: {
+          devUserId: user.id,
+          companyName: user.companyName,
+          contactName: user.contactName,
+          address: user.address,
+          tel: user.tel,
+        },
+      });
+      userIdMap.set(user.id, updated.id);
+      continue;
+    }
+
+    const created = await prisma.user.upsert({
+      where: { devUserId: user.id },
+      update: {
+        companyName: user.companyName,
+        contactName: user.contactName,
+        address: user.address,
+        tel: user.tel,
+      },
+      create: {
+        devUserId: user.id,
+        companyName: user.companyName,
+        contactName: user.contactName,
+        address: user.address,
+        tel: user.tel,
+      },
+    });
+
+    userIdMap.set(user.id, created.id);
   }
 }
 
@@ -735,14 +792,16 @@ async function seedStorageLocations() {
 
   for (const location of locations) {
     const { address, ...rest } = location;
+    const ownerUserId = resolveUserId(rest.ownerUserId);
 
     await prisma.storageLocation.upsert({
       where: {
-        name_ownerUserId: { name: rest.name, ownerUserId: rest.ownerUserId },
+        name_ownerUserId: { name: rest.name, ownerUserId },
       },
       update: {},
       create: {
         ...rest,
+        ownerUserId,
         addressLine: location.addressLine ?? address ?? null,
       },
     });
@@ -835,9 +894,11 @@ async function seedMastersOnly() {
 async function seedListings() {
   const createdListings = [] as ListingSeed[];
   for (const listing of LISTINGS) {
+    const sellerUserId = resolveUserId(listing.sellerUserId);
     const created = await prisma.exhibit.create({
       data: {
         ...listing,
+        sellerUserId,
         createdAt: listing.createdAt ?? now,
         updatedAt: listing.updatedAt ?? listing.createdAt ?? now,
       },
@@ -851,7 +912,10 @@ async function seedListings() {
 async function seedBuyerShippingAddresses() {
   try {
     for (const address of BUYER_SHIPPING_ADDRESSES) {
-      await prisma.buyerShippingAddress.create({ data: { ...address, isActive: true } });
+      const ownerUserId = resolveUserId(address.ownerUserId);
+      await prisma.buyerShippingAddress.create({
+        data: { ...address, ownerUserId, isActive: true },
+      });
     }
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021") {
@@ -876,8 +940,8 @@ async function seedOnlineInquiries(listings: ListingSeed[]) {
   const inquiries = [
     {
       listingId: comparisonListing.id,
-      buyerUserId: "dev_user_1",
-      sellerUserId: comparisonListing.sellerUserId,
+      buyerUserId: resolveUserId("dev_user_1"),
+      sellerUserId: resolveUserId(comparisonListing.sellerUserId),
       body: "オンライン問い合わせのサンプルです。送料込みで見積もりをお願いします。",
       buyerMemo: "オンライン問い合わせのサンプルです。送料込みで見積もりをお願いします。",
       makerName: comparisonListing.maker,
@@ -897,8 +961,8 @@ async function seedOnlineInquiries(listings: ListingSeed[]) {
     },
     {
       listingId: phoneReadyListing.id,
-      buyerUserId: "dev_user_3",
-      sellerUserId: phoneReadyListing.sellerUserId,
+      buyerUserId: resolveUserId("dev_user_3"),
+      sellerUserId: resolveUserId(phoneReadyListing.sellerUserId),
       body: "在庫があれば即納希望です。",
       buyerMemo: "在庫があれば即納希望です。",
       makerName: phoneReadyListing.maker,
@@ -918,8 +982,8 @@ async function seedOnlineInquiries(listings: ListingSeed[]) {
     },
     {
       listingId: bundleListing.id,
-      buyerUserId: "dev_user_4",
-      sellerUserId: bundleListing.sellerUserId,
+      buyerUserId: resolveUserId("dev_user_4"),
+      sellerUserId: resolveUserId(bundleListing.sellerUserId),
       body: "条件が合わず今回は見送ります。",
       buyerMemo: "条件が合わず今回は見送ります。",
       makerName: bundleListing.maker,
@@ -955,18 +1019,25 @@ async function seedNavis(listings: ListingSeed[]) {
     throw new Error("Required listings are missing for seeding navis");
   }
 
-  const phonePayload = buildPhoneAgreementPayload(phoneListing, "dev_user_1", "dev_user_2", {
+  const phoneSellerUserId = resolveUserId("dev_user_1");
+  const phoneBuyerUserId = resolveUserId("dev_user_2");
+  const comparisonSellerUserId = resolveUserId(comparisonListing.sellerUserId);
+  const comparisonBuyerUserId = resolveUserId("dev_user_1");
+  const approvedBuyerUserId = resolveUserId("dev_user_3");
+
+  const phonePayload = buildPhoneAgreementPayload(phoneListing, phoneSellerUserId, phoneBuyerUserId, {
     quantity: 1,
     shippingFee: 9000,
     memo: "電話ヒアリング済み、承認待ち",
+    buyerDevUserId: "dev_user_2",
   });
 
   const phoneNavi = await prisma.navi.create({
     data: {
       status: NaviStatus.SENT,
       naviType: NaviType.PHONE_AGREEMENT,
-      ownerUserId: "dev_user_1",
-      buyerUserId: "dev_user_2",
+      ownerUserId: phoneSellerUserId,
+      buyerUserId: phoneBuyerUserId,
       listingId: phoneListing.id,
       listingSnapshot: buildListingSnapshot(phoneListing),
       payload: phonePayload,
@@ -976,10 +1047,10 @@ async function seedNavis(listings: ListingSeed[]) {
   const inquiryPayload = {
     inquiryType: "ONLINE_INQUIRY",
     id: comparisonListing.id,
-    ownerUserId: comparisonListing.sellerUserId,
+    ownerUserId: comparisonSellerUserId,
     status: "sent_to_buyer",
     productId: comparisonListing.id,
-    buyerId: "dev_user_1",
+    buyerId: comparisonBuyerUserId,
     buyerCompanyName: USERS.find((user) => user.id === "dev_user_1")?.companyName ?? null,
     buyerContactName: "調達担当C",
     buyerAddress: "東京都千代田区丸の内1-1-1",
@@ -1005,8 +1076,8 @@ async function seedNavis(listings: ListingSeed[]) {
     data: {
       status: NaviStatus.SENT,
       naviType: NaviType.ONLINE_INQUIRY,
-      ownerUserId: comparisonListing.sellerUserId,
-      buyerUserId: "dev_user_1",
+      ownerUserId: comparisonSellerUserId,
+      buyerUserId: comparisonBuyerUserId,
       listingId: comparisonListing.id,
       listingSnapshot: buildListingSnapshot(comparisonListing),
       payload: inquiryPayload,
@@ -1016,25 +1087,25 @@ async function seedNavis(listings: ListingSeed[]) {
   const onlineInquiryMessages = [
     {
       naviId: onlineInquiryNavi.id,
-      senderUserId: "dev_user_1",
+      senderUserId: comparisonBuyerUserId,
       senderRole: MessageSenderRole.buyer,
       body: "商品の状態を確認したいです。発送希望日は12/1です。",
     },
     {
       naviId: onlineInquiryNavi.id,
-      senderUserId: comparisonListing.sellerUserId,
+      senderUserId: comparisonSellerUserId,
       senderRole: MessageSenderRole.seller,
       body: "在庫ございます。送料込みの見積りをお送りします。",
     },
     {
       naviId: onlineInquiryNavi.id,
-      senderUserId: "dev_user_1",
+      senderUserId: comparisonBuyerUserId,
       senderRole: MessageSenderRole.buyer,
       body: "ありがとうございます。支払条件は通常通りで問題ありません。",
     },
     {
       naviId: onlineInquiryNavi.id,
-      senderUserId: comparisonListing.sellerUserId,
+      senderUserId: comparisonSellerUserId,
       senderRole: MessageSenderRole.seller,
       body: "承知しました。発送準備を進めます。",
     },
@@ -1048,20 +1119,26 @@ async function seedNavis(listings: ListingSeed[]) {
 
   const soldBundleListing = { ...bundleListing, status: ExhibitStatus.SOLD };
 
-  const approvedPayload = buildPhoneAgreementPayload(soldBundleListing, "dev_user_1", "dev_user_3", {
+  const approvedPayload = buildPhoneAgreementPayload(
+    soldBundleListing,
+    phoneSellerUserId,
+    approvedBuyerUserId,
+    {
     quantity: 2,
     shippingFee: 12000,
     handlingFee: 5000,
     memo: "承認済みでTrade生成済みサンプル",
     handler: "田中 担当",
-  });
+    buyerDevUserId: "dev_user_3",
+  }
+  );
 
   const approvedNavi = await prisma.navi.create({
     data: {
       status: NaviStatus.APPROVED,
       naviType: NaviType.PHONE_AGREEMENT,
-      ownerUserId: "dev_user_1",
-      buyerUserId: "dev_user_3",
+      ownerUserId: phoneSellerUserId,
+      buyerUserId: approvedBuyerUserId,
       listingId: bundleListing.id,
       listingSnapshot: buildListingSnapshot(soldBundleListing),
       payload: approvedPayload,
@@ -1070,10 +1147,13 @@ async function seedNavis(listings: ListingSeed[]) {
 
   const trade = await prisma.dealing.create({
     data: {
-      sellerUserId: "dev_user_1",
-      buyerUserId: "dev_user_3",
+      sellerUserId: phoneSellerUserId,
+      buyerUserId: approvedBuyerUserId,
       status: DealingStatus.PAYMENT_REQUIRED,
-      payload: buildTradePayload(soldBundleListing, "dev_user_1", "dev_user_3"),
+      payload: buildTradePayload(soldBundleListing, phoneSellerUserId, approvedBuyerUserId, {
+        buyerDevUserId: "dev_user_3",
+        sellerDevUserId: "dev_user_1",
+      }),
       naviId: approvedNavi.id,
     },
   });

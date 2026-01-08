@@ -15,6 +15,15 @@ import {
 
 import { DEV_USERS } from "@/lib/dev-user/users";
 
+type InMemoryUser = {
+  id: string;
+  devUserId?: string | null;
+  companyName: string;
+  contactName?: string | null;
+  address?: string | null;
+  tel?: string | null;
+};
+
 type InMemoryNavi = {
   id: number;
   status: NaviStatus;
@@ -251,18 +260,29 @@ type InMemoryPrisma = {
     findMany: ({
       where,
     }?: {
-      where?: { id?: { in?: string[] } };
-    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }[]>;
+      where?: { id?: { in?: string[] }; devUserId?: { in?: string[] } };
+    }) => Promise<InMemoryUser[]>;
     findUnique: ({
       where,
     }: {
-      where: { id?: string | null };
-    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string } | null>;
+      where: { id?: string | null; devUserId?: string | null };
+    }) => Promise<InMemoryUser | null>;
     create: ({
       data,
     }: {
-      data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
-    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
+      data: Partial<InMemoryUser>;
+    }) => Promise<InMemoryUser>;
+    update: ({ where, data }: { where: { id?: string | null; devUserId?: string | null }; data: Partial<InMemoryUser> }) =>
+      Promise<InMemoryUser>;
+    upsert: ({
+      where,
+      create,
+      update,
+    }: {
+      where: { id?: string | null; devUserId?: string | null };
+      create: Partial<InMemoryUser>;
+      update: Partial<InMemoryUser>;
+    }) => Promise<InMemoryUser>;
   };
   message: {
     findMany: ({ where, orderBy }?: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
@@ -353,11 +373,10 @@ type InMemoryPrisma = {
 };
 
 const buildInMemoryPrisma = (): InMemoryPrisma => {
-  const userDirectory = Object.values(DEV_USERS).reduce<
-    Record<string, { id: string; companyName: string; contactName?: string; address?: string; tel?: string }>
-  >((acc, user) => {
+  const userDirectory = Object.values(DEV_USERS).reduce<Record<string, InMemoryUser>>((acc, user) => {
       acc[user.id] = {
         id: user.id,
+        devUserId: user.id,
         companyName: user.companyName,
         contactName: user.contactName,
         address: user.address,
@@ -421,6 +440,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   let exhibitSeq = 1;
   let storageLocationSeq = 1;
   let buyerShippingAddressSeq = 1;
+  let userSeq = 1;
 
   const attachRelations = (trade: InMemoryTrade) => ({
     ...trade,
@@ -688,34 +708,112 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
     },
     user: {
       findMany: async ({ where } = {}) => {
-        const ids = where?.id?.in ?? null;
-        const records = ids ? ids.map((id) => userDirectory[id]).filter(Boolean) : Object.values(userDirectory);
-        return records.map((user) => ({ ...user }));
+        const users = Object.values(userDirectory);
+        if (!where?.id?.in?.length && !where?.devUserId?.in?.length) {
+          return users.map((user) => ({ ...user }));
+        }
+        return users
+          .filter((user) => {
+            if (where?.id?.in?.length && !where.id.in.includes(user.id)) return false;
+            if (where?.devUserId?.in?.length && !where.devUserId.in.includes(user.devUserId ?? "")) return false;
+            return true;
+          })
+          .map((user) => ({ ...user }));
       },
-      findUnique: async ({ where }: { where: { id?: string | null } }) => {
-        const id = where.id ?? "";
-        const found = userDirectory[id];
-        return found ? { ...found } : null;
+      findUnique: async ({ where }: { where: { id?: string | null; devUserId?: string | null } }) => {
+        if (where?.id) {
+          const found = userDirectory[where.id];
+          return found ? { ...found } : null;
+        }
+        if (where?.devUserId) {
+          const found = Object.values(userDirectory).find((user) => user.devUserId === where.devUserId);
+          return found ? { ...found } : null;
+        }
+        return null;
       },
       create: async ({
         data,
       }: {
-        data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
+        data: Partial<InMemoryUser>;
       }) => {
-        const id = String(data.id ?? "");
-        if (!id) {
-          throw new Error("User id is required");
-        }
-
-        const record = {
-          id,
+        const record: InMemoryUser = {
+          id: String(data.id ?? `user_${userSeq++}`),
+          devUserId: (data.devUserId as string | null | undefined) ?? null,
           companyName: String(data.companyName ?? ""),
-          contactName: data.contactName ?? undefined,
-          address: data.address ?? undefined,
-          tel: data.tel ?? undefined,
+          contactName: (data.contactName as string | null | undefined) ?? null,
+          address: (data.address as string | null | undefined) ?? null,
+          tel: (data.tel as string | null | undefined) ?? null,
         };
 
-        userDirectory[id] = record;
+        userDirectory[record.id] = record;
+        return { ...record };
+      },
+      update: async ({ where, data }) => {
+        const targetId =
+          where.id ??
+          Object.values(userDirectory).find((user) => user.devUserId && user.devUserId === where.devUserId)?.id;
+
+        if (!targetId || !userDirectory[targetId]) {
+          throw new Error("User not found");
+        }
+
+        const existing = userDirectory[targetId];
+        const updated: InMemoryUser = {
+          ...existing,
+          ...data,
+          id: existing.id,
+          devUserId:
+            data.devUserId !== undefined ? (data.devUserId as string | null | undefined) ?? null : existing.devUserId,
+          companyName: data.companyName ? String(data.companyName) : existing.companyName,
+          contactName:
+            data.contactName !== undefined
+              ? (data.contactName as string | null | undefined) ?? null
+              : existing.contactName,
+          address:
+            data.address !== undefined ? (data.address as string | null | undefined) ?? null : existing.address,
+          tel: data.tel !== undefined ? (data.tel as string | null | undefined) ?? null : existing.tel,
+        };
+
+        userDirectory[targetId] = updated;
+        return { ...updated };
+      },
+      upsert: async ({ where, create, update }) => {
+        const existing =
+          (where.id ? userDirectory[where.id] : undefined) ??
+          Object.values(userDirectory).find((user) => user.devUserId && user.devUserId === where.devUserId);
+
+        if (existing) {
+          const updated: InMemoryUser = {
+            ...existing,
+            ...update,
+            id: existing.id,
+            devUserId:
+              update.devUserId !== undefined
+                ? (update.devUserId as string | null | undefined) ?? null
+                : existing.devUserId,
+            companyName: update.companyName ? String(update.companyName) : existing.companyName,
+            contactName:
+              update.contactName !== undefined
+                ? (update.contactName as string | null | undefined) ?? null
+                : existing.contactName,
+            address:
+              update.address !== undefined ? (update.address as string | null | undefined) ?? null : existing.address,
+            tel: update.tel !== undefined ? (update.tel as string | null | undefined) ?? null : existing.tel,
+          };
+          userDirectory[existing.id] = updated;
+          return { ...updated };
+        }
+
+        const record: InMemoryUser = {
+          id: String(create.id ?? `user_${userSeq++}`),
+          devUserId: (create.devUserId as string | null | undefined) ?? null,
+          companyName: String(create.companyName ?? ""),
+          contactName: (create.contactName as string | null | undefined) ?? null,
+          address: (create.address as string | null | undefined) ?? null,
+          tel: (create.tel as string | null | undefined) ?? null,
+        };
+
+        userDirectory[record.id] = record;
         return { ...record };
       },
     },

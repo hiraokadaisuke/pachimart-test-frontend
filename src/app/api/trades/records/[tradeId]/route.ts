@@ -3,13 +3,14 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
 import {
   buildStatusUpdate,
   findStatusTransition,
   resolveActorRole,
 } from "@/lib/dealings/statusMachine";
 import { recordLedgerForStatus, validateTradeLedgerConsistency } from "@/lib/server/ledger";
+import { getUserIdCandidates } from "@/lib/server/users";
 
 const toDate = (value: unknown, fallback?: Date): Date => {
   if (value instanceof Date) return value;
@@ -109,11 +110,12 @@ const handleUnknownError = (error: unknown) =>
 
 export async function PATCH(request: Request, { params }: { params: { tradeId: string } }) {
   const tradeId = parseId(params.tradeId);
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   if (!tradeId) {
     return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
@@ -151,7 +153,7 @@ export async function PATCH(request: Request, { params }: { params: { tradeId: s
 
     const record = toRecord(existing);
 
-    if (record.sellerUserId !== currentUserId && record.buyerUserId !== currentUserId) {
+    if (!currentUserIds.includes(record.sellerUserId) && !currentUserIds.includes(record.buyerUserId)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -162,7 +164,10 @@ export async function PATCH(request: Request, { params }: { params: { tradeId: s
       return NextResponse.json(toDto(record));
     }
 
-    const actorRole = resolveActorRole(record.buyerUserId, record.sellerUserId, currentUserId);
+    const actorUserId = currentUserIds.includes(record.buyerUserId)
+      ? record.buyerUserId
+      : record.sellerUserId;
+    const actorRole = resolveActorRole(record.buyerUserId, record.sellerUserId, actorUserId);
     const transition = findStatusTransition(record.status, targetStatus);
 
     if (!transition) {
@@ -190,7 +195,7 @@ export async function PATCH(request: Request, { params }: { params: { tradeId: s
     });
 
     const updatedRecord = toRecord(updated);
-    await recordLedgerForStatus(record.status, targetStatus, updatedRecord, currentUserId);
+    await recordLedgerForStatus(record.status, targetStatus, updatedRecord, currentUser.id);
     const warnings = await validateTradeLedgerConsistency(updatedRecord.id);
 
     const response = NextResponse.json(toDto(updatedRecord));

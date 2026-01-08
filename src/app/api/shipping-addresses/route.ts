@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
+import { getUserIdCandidates } from "@/lib/server/users";
 
 const client = prisma.buyerShippingAddress;
 
@@ -100,15 +101,17 @@ const toDto = (address: BuyerShippingAddressRecord): BuyerShippingAddressDto => 
 });
 
 export async function GET(request: Request) {
-  const ownerUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!ownerUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ownerUserIds = getUserIdCandidates(currentUser);
+
   try {
     const addresses = await client.findMany({
-      where: { ownerUserId, isActive: true },
+      where: { ownerUserId: { in: ownerUserIds }, isActive: true },
       orderBy: { updatedAt: "desc" },
     });
 
@@ -123,12 +126,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const ownerUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!ownerUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ownerUserId = currentUser.id;
   let body: unknown;
 
   try {

@@ -3,8 +3,9 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
+import { getUserIdCandidates, resolveOptionalUserId } from "@/lib/server/users";
 
 const naviClient = prisma.navi;
 const exhibitClient = prisma.exhibit;
@@ -104,16 +105,20 @@ const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
 export async function GET(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   try {
     const dealings = await naviClient.findMany({
       where: {
-        OR: [{ ownerUserId: currentUserId }, { buyerUserId: currentUserId }],
+        OR: [
+          { ownerUserId: { in: currentUserIds } },
+          { buyerUserId: { in: currentUserIds } },
+        ],
       },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,
@@ -130,11 +135,12 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   let body: unknown;
 
@@ -158,7 +164,7 @@ export async function POST(request: Request) {
 
   const { ownerUserId, buyerUserId, status, payload, listingId, naviType } = parsed.data;
 
-  if (ownerUserId !== currentUserId) {
+  if (!currentUserIds.includes(ownerUserId)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -166,7 +172,7 @@ export async function POST(request: Request) {
 
   if (listingId) {
     const exhibit = await exhibitClient.findUnique({
-      where: { id: listingId, sellerUserId: currentUserId } as any,
+      where: { id: listingId, sellerUserId: { in: currentUserIds } } as any,
     });
 
     if (!exhibit) {
@@ -179,10 +185,12 @@ export async function POST(request: Request) {
   const listingSnapshotInput = exhibitSnapshot ?? undefined;
 
   try {
+    const resolvedBuyerUserId = await resolveOptionalUserId(buyerUserId);
+
     const created = await naviClient.create({
       data: {
-        ownerUserId: currentUserId,
-        buyerUserId: buyerUserId ?? null,
+        ownerUserId: currentUser.id,
+        buyerUserId: resolvedBuyerUserId,
         listingId: listingId ?? null,
         listingSnapshot: listingSnapshotInput as any,
         status: status ?? NaviStatus.DRAFT,

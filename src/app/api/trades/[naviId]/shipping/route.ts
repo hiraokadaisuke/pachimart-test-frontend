@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
+import { getUserIdCandidates, resolveUserId } from "@/lib/server/users";
 
 const shippingInfoSchema = z.object({
   companyName: z.string().optional(),
@@ -77,7 +78,7 @@ const toRecord = (dealing: unknown): NaviRecord => {
   };
 };
 
-const resolveBuyerUserId = (dealing: NaviRecord): string | null => {
+const resolveBuyerIdentifier = (dealing: NaviRecord): string | null => {
   if (dealing.buyerUserId) return dealing.buyerUserId;
 
   if (dealing.payload && typeof dealing.payload === "object" && !Array.isArray(dealing.payload)) {
@@ -92,15 +93,17 @@ const resolveBuyerUserId = (dealing: NaviRecord): string | null => {
 
 export async function PATCH(request: Request, { params }: { params: { naviId: string } }) {
   const naviId = parseNaviId(params.naviId);
-  const actorUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
   if (!naviId) {
     return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
   }
 
-  if (!actorUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   let body: unknown;
 
@@ -131,9 +134,14 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       }
 
       const dealing = toRecord(existing);
-      const buyerUserId = resolveBuyerUserId(dealing);
+      const buyerIdentifier = resolveBuyerIdentifier(dealing);
+      const resolvedBuyerId = buyerIdentifier ? await resolveUserId(buyerIdentifier, tx as any) : null;
 
-      if (!buyerUserId || buyerUserId !== actorUserId) {
+      const isBuyer =
+        Boolean(buyerIdentifier && currentUserIds.includes(buyerIdentifier)) ||
+        Boolean(resolvedBuyerId && currentUserIds.includes(resolvedBuyerId));
+
+      if (!buyerIdentifier || !isBuyer) {
         return { updated: null, status: 403 as const };
       }
 

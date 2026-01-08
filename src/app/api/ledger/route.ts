@@ -2,9 +2,10 @@ import { DealingStatus, LedgerEntryCategory, LedgerEntryKind, LedgerEntrySource,
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
 import { addLedgerEntry, validateTradeLedgerConsistency } from "@/lib/server/ledger";
 import { prisma } from "@/lib/server/prisma";
+import { getUserIdCandidates } from "@/lib/server/users";
 
 const entrySchema = z.object({
   category: z.nativeEnum(LedgerEntryCategory),
@@ -59,11 +60,12 @@ const stringifyCsv = (rows: Array<Array<string | number | null | undefined>>) =>
     .join("\n");
 
 export async function GET(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   try {
     const url = new URL(request.url);
@@ -83,8 +85,8 @@ export async function GET(request: Request) {
       );
 
     const tradeId = tradeIdParam ? Number(tradeIdParam) : null;
-    const where: { userId?: string } & Prisma.LedgerEntryWhereInput = {
-      userId: currentUserId,
+    const where: { userId?: string | { in: string[] } } & Prisma.LedgerEntryWhereInput = {
+      userId: { in: currentUserIds },
     };
 
     if (from || to) {
@@ -180,9 +182,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -214,10 +216,10 @@ export async function POST(request: Request) {
     }
 
     const created = await addLedgerEntry({
-      userId: currentUserId,
+      userId: currentUser.id,
       ...parsed.data,
       occurredAt: parsed.data.occurredAt ? new Date(parsed.data.occurredAt) : undefined,
-      createdByUserId: currentUserId,
+      createdByUserId: currentUser.id,
       source: LedgerEntrySource.MANUAL_ADJUSTMENT,
       tradeStatusAtCreation: tradeStatus,
     });

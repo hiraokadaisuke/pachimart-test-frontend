@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
+import { getUserIdCandidates } from "@/lib/server/users";
 import {
   buildStorageLocationSnapshot,
   formatStorageLocationShort,
@@ -239,7 +240,8 @@ export async function GET(request: Request) {
     const sellerUserIdParam = url.searchParams.get("sellerUserId") ?? undefined;
     const statusParam = url.searchParams.get("status");
     const status = parseExhibitStatus(statusParam);
-    const currentUserId = getCurrentUserId(request);
+    const currentUser = await getCurrentUser(request);
+    const currentUserIds = currentUser ? getUserIdCandidates(currentUser) : [];
 
     if (statusParam && !status) {
       return NextResponse.json(
@@ -249,7 +251,7 @@ export async function GET(request: Request) {
     }
 
     type ExhibitVisibilityWhere = {
-      sellerUserId?: string;
+      sellerUserId?: string | { in: string[] };
       status?: ExhibitStatus | { in: ExhibitStatus[] };
     };
 
@@ -257,22 +259,22 @@ export async function GET(request: Request) {
       { status: { in: publicListingStatuses } },
     ];
 
-    if (currentUserId) {
-      accessibleScopes.push({ sellerUserId: currentUserId });
+    if (currentUserIds.length) {
+      accessibleScopes.push({ sellerUserId: { in: currentUserIds } });
     }
 
     const andConditions: ExhibitVisibilityWhere[] = [];
 
     if (sellerUserIdParam) {
-      if (!currentUserId) {
+      if (!currentUserIds.length) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
 
-      if (sellerUserIdParam !== currentUserId) {
+      if (!currentUserIds.includes(sellerUserIdParam)) {
         return NextResponse.json({ error: "Forbidden" }, { status: 403 });
       }
 
-      andConditions.push({ sellerUserId: currentUserId });
+      andConditions.push({ sellerUserId: { in: currentUserIds } });
     }
 
     if (status) {
@@ -328,11 +330,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const sellerUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!sellerUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const sellerUserId = currentUser.id;
+  const sellerUserIds = getUserIdCandidates(currentUser);
 
   let body: unknown;
 
@@ -358,7 +363,7 @@ export async function POST(request: Request) {
 
   try {
     const storageLocation = await prisma.storageLocation.findFirst({
-      where: { id: data.storageLocationId, ownerUserId: sellerUserId, isActive: true },
+      where: { id: data.storageLocationId, ownerUserId: { in: sellerUserIds }, isActive: true },
     });
 
     if (!storageLocation) {

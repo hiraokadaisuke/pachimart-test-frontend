@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
+import { getUserIdCandidates } from "@/lib/server/users";
 
 const storageLocationClient = prisma.storageLocation;
 
@@ -16,16 +17,18 @@ const parseNumber = (value: unknown) => {
 };
 
 export async function PATCH(request: Request, context: { params: { id: string } }) {
-  const ownerUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
   const { id } = context.params;
 
-  if (!ownerUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ownerUserIds = getUserIdCandidates(currentUser);
+
   try {
     const existing = await storageLocationClient.findFirst({
-      where: { id, ownerUserId, isActive: true },
+      where: { id, ownerUserId: { in: ownerUserIds }, isActive: true },
       select: { id: true, ownerUserId: true, isActive: true },
     });
 
@@ -92,16 +95,18 @@ export async function PATCH(request: Request, context: { params: { id: string } 
 }
 
 export async function DELETE(request: Request, context: { params: { id: string } }) {
-  const ownerUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
   const { id } = context.params;
 
-  if (!ownerUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const ownerUserIds = getUserIdCandidates(currentUser);
+
   try {
     const existing = await storageLocationClient.findFirst({
-      where: { id, ownerUserId, isActive: true },
+      where: { id, ownerUserId: { in: ownerUserIds }, isActive: true },
       select: { id: true, ownerUserId: true, isActive: true },
     });
 

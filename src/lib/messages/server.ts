@@ -3,7 +3,8 @@ import { z } from "zod";
 
 import { normalizeMessageRecord, toMessageDto } from "@/lib/messages/transform";
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
+import { getUserIdCandidates } from "@/lib/server/users";
 
 const messageInputSchema = z.object({
   naviId: z.number().int().positive(),
@@ -32,7 +33,7 @@ const normalizeNaviRecord = (navi: unknown) => {
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-const authorizeNaviAccess = async (naviId: number, currentUserId: string) => {
+const authorizeNaviAccess = async (naviId: number, currentUserIds: string[]) => {
   const navi = await prisma.navi.findUnique({ where: { id: naviId } });
   const normalized = normalizeNaviRecord(navi);
 
@@ -40,20 +41,21 @@ const authorizeNaviAccess = async (naviId: number, currentUserId: string) => {
     return { error: NextResponse.json({ error: "Navi not found" }, { status: 404 }) } as const;
   }
 
-  if (normalized.ownerUserId !== currentUserId && normalized.buyerUserId !== currentUserId) {
+  if (!currentUserIds.includes(normalized.ownerUserId) && !currentUserIds.includes(normalized.buyerUserId ?? "")) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) } as const;
   }
 
-  const senderRole = normalized.ownerUserId === currentUserId ? "seller" : "buyer";
+  const senderRole = currentUserIds.includes(normalized.ownerUserId) ? "seller" : "buyer";
   return { senderRole } as const;
 };
 
 export async function handleGetMessages(request: Request, naviIdOverride?: string | number | null) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   const searchParams = new URL(request.url).searchParams;
   const naviId = parseNaviId(
@@ -64,7 +66,7 @@ export async function handleGetMessages(request: Request, naviIdOverride?: strin
     return NextResponse.json({ error: "Invalid naviId parameter" }, { status: 400 });
   }
 
-  const authorization = await authorizeNaviAccess(naviId, currentUserId);
+  const authorization = await authorizeNaviAccess(naviId, currentUserIds);
   if ("error" in authorization) return authorization.error;
 
   try {
@@ -86,11 +88,12 @@ export async function handleGetMessages(request: Request, naviIdOverride?: strin
 }
 
 export async function handlePostMessage(request: Request, naviIdOverride?: string | number | null) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   let payload: unknown;
   try {
@@ -112,14 +115,14 @@ export async function handlePostMessage(request: Request, naviIdOverride?: strin
     return NextResponse.json({ error: parsed.error.message }, { status: 400 });
   }
 
-  const authorization = await authorizeNaviAccess(parsed.data.naviId, currentUserId);
+  const authorization = await authorizeNaviAccess(parsed.data.naviId, currentUserIds);
   if ("error" in authorization) return authorization.error;
 
   try {
     const created = await prisma.message.create({
       data: {
         naviId: parsed.data.naviId,
-        senderUserId: currentUserId,
+        senderUserId: currentUser.id,
         senderRole: authorization.senderRole,
         body: parsed.data.body,
       },

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
-import { findDevUserById } from "@/lib/dev-user/users";
+import { getCurrentUser } from "@/lib/server/currentUser";
+import { resolveUserId } from "@/lib/server/users";
 
 const storageLocationClient = prisma.storageLocation;
 
@@ -16,40 +16,22 @@ const parseNumber = (value: unknown) => {
   return NaN;
 };
 
-const ensureUserExists = async (ownerUserId: string) => {
-  const devUser = findDevUserById(ownerUserId);
-
-  const existing = await prisma.user.findUnique({
-    where: { id: ownerUserId },
-    select: { id: true },
-  });
-
-  if (existing) return;
-
-  await prisma.user.create({
-    data: {
-      id: ownerUserId,
-      companyName: devUser?.companyName ?? "開発ユーザー",
-      contactName: devUser?.contactName ?? undefined,
-      address: devUser?.address ?? undefined,
-      tel: devUser?.tel ?? undefined,
-    },
-  });
-};
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const ownerUserId = searchParams.get("devUserId");
+  const ownerDevUserId = searchParams.get("devUserId");
   const includeDetails = searchParams.get("detail") === "true";
 
-  if (!ownerUserId) {
+  if (!ownerDevUserId) {
     return NextResponse.json({ error: "devUserId is required" }, { status: 400 });
   }
+
+  const resolvedOwnerUserId = await resolveUserId(ownerDevUserId);
+  const ownerUserIds = Array.from(new Set([resolvedOwnerUserId, ownerDevUserId]));
 
   try {
     if (includeDetails) {
       const locations = await storageLocationClient.findMany({
-        where: { ownerUserId, isActive: true },
+        where: { ownerUserId: { in: ownerUserIds }, isActive: true },
         orderBy: { createdAt: "asc" },
         select: {
           id: true,
@@ -87,7 +69,7 @@ export async function GET(request: Request) {
     }
 
     const locations = await storageLocationClient.findMany({
-      where: { ownerUserId },
+      where: { ownerUserId: { in: ownerUserIds } },
       orderBy: { createdAt: "asc" },
       select: {
         id: true,
@@ -129,11 +111,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const ownerUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!ownerUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const ownerUserId = currentUser.id;
 
   try {
     const body = await request.json();
@@ -150,8 +134,6 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
-
-    await ensureUserExists(ownerUserId);
 
     const created = await storageLocationClient.create({
       data: {

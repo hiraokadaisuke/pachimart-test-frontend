@@ -9,9 +9,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
+import { getUserIdCandidates, resolveUserId } from "@/lib/server/users";
 
 const naviClient = prisma.navi;
 
@@ -143,14 +144,10 @@ const extractShippingInfo = (payload: Prisma.JsonValue | null) => {
   };
 };
 
-const resolveBuyerUserId = (trade: NaviRecord): string | null => {
+const extractBuyerIdentifier = (trade: NaviRecord): string | null => {
   if (trade.buyerUserId) return trade.buyerUserId;
 
-  if (
-    trade.payload &&
-    typeof trade.payload === "object" &&
-    !Array.isArray(trade.payload)
-  ) {
+  if (trade.payload && typeof trade.payload === "object" && !Array.isArray(trade.payload)) {
     const buyerId = (trade.payload as Record<string, unknown>).buyerId;
     if (typeof buyerId === "string" && buyerId.trim().length > 0) {
       return buyerId;
@@ -158,6 +155,12 @@ const resolveBuyerUserId = (trade: NaviRecord): string | null => {
   }
 
   return null;
+};
+
+const resolveBuyerUserId = async (trade: NaviRecord, client: typeof prisma = prisma): Promise<string | null> => {
+  const buyerIdentifier = extractBuyerIdentifier(trade);
+  if (!buyerIdentifier) return null;
+  return resolveUserId(buyerIdentifier, client);
 };
 
 const isJsonObject = (value: unknown): value is Record<string, unknown> =>
@@ -179,11 +182,12 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
     return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
   }
 
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   try {
     // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
@@ -194,9 +198,14 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
     }
 
     const dealingRecord = toRecord(dealing);
-    const buyerUserId = resolveBuyerUserId(dealingRecord);
+    const buyerIdentifier = extractBuyerIdentifier(dealingRecord);
+    const resolvedBuyerId = buyerIdentifier ? await resolveUserId(buyerIdentifier) : null;
 
-    if (dealingRecord.ownerUserId !== currentUserId && buyerUserId !== currentUserId) {
+    if (
+      !currentUserIds.includes(dealingRecord.ownerUserId) &&
+      !(buyerIdentifier && currentUserIds.includes(buyerIdentifier)) &&
+      !(resolvedBuyerId && currentUserIds.includes(resolvedBuyerId))
+    ) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -213,11 +222,12 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
 export async function PATCH(request: Request, { params }: { params: { naviId: string } }) {
   const id = parseNaviId(params.naviId);
 
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const currentUserIds = getUserIdCandidates(currentUser);
 
   if (!id) {
     return NextResponse.json({ error: "Invalid id parameter" }, { status: 400 });
@@ -254,16 +264,20 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
     }
 
     const existingRecord = toRecord(existing);
-    const buyerUserId = resolveBuyerUserId(existingRecord);
-    const isOwner = existingRecord.ownerUserId === currentUserId;
+    const buyerIdentifier = extractBuyerIdentifier(existingRecord);
+    const resolvedBuyerId = buyerIdentifier ? await resolveUserId(buyerIdentifier) : null;
+    const isOwner = currentUserIds.includes(existingRecord.ownerUserId);
+    const isBuyer =
+      Boolean(buyerIdentifier && currentUserIds.includes(buyerIdentifier)) ||
+      Boolean(resolvedBuyerId && currentUserIds.includes(resolvedBuyerId));
 
-    if (!isOwner && buyerUserId !== currentUserId) {
+    if (!isOwner && !isBuyer) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const targetStatus = parsed.data.status;
 
-    if (targetStatus === NaviStatus.APPROVED && buyerUserId !== currentUserId) {
+    if (targetStatus === NaviStatus.APPROVED && !isBuyer) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -300,7 +314,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         ? ({ ...current.payload } as Record<string, unknown>)
         : ({} as Record<string, unknown>);
 
-      const resolvedBuyerId = resolveBuyerUserId(toRecord(current));
+      const resolvedBuyerId = await resolveBuyerUserId(toRecord(current), tx as any);
 
       if (isApproving && !resolvedBuyerId) {
         throw new BuyerRequiredError();

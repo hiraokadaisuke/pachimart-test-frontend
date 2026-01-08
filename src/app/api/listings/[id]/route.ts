@@ -3,7 +3,8 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
+import { getUserIdCandidates } from "@/lib/server/users";
 import {
   formatStorageLocationShort,
   resolveStorageLocationSnapshot,
@@ -123,10 +124,12 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
     return NextResponse.json({ error: "Listing id is required" }, { status: 400 });
   }
 
-  const sellerUserId = getCurrentUserId(request);
-  if (!sellerUserId) {
+  const currentUser = await getCurrentUser(request);
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const sellerUserIds = getUserIdCandidates(currentUser);
 
   let body: unknown;
 
@@ -151,7 +154,7 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    if (String(exhibit.sellerUserId) !== sellerUserId) {
+    if (!sellerUserIds.includes(String(exhibit.sellerUserId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 

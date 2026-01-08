@@ -3,9 +3,10 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
-import { getCurrentUserId } from "@/lib/server/currentUser";
+import { getCurrentUser } from "@/lib/server/currentUser";
 import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
+import { getUserIdCandidates, resolveUserId } from "@/lib/server/users";
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -41,13 +42,18 @@ const buildInquiryDetail = async (inquiry: {
   createdAt: Date;
   updatedAt: Date;
 }) => {
+  const [resolvedBuyerUserId, resolvedSellerUserId] = await Promise.all([
+    resolveUserId(inquiry.buyerUserId),
+    resolveUserId(inquiry.sellerUserId),
+  ]);
+
   const [listing, buyerUser, sellerUser] = await Promise.all([
     prisma.exhibit.findUnique({
       where: { id: inquiry.listingId },
       select: { maker: true, machineName: true },
     }),
-    prisma.user.findUnique({ where: { id: inquiry.buyerUserId }, select: { companyName: true, id: true } }),
-    prisma.user.findUnique({ where: { id: inquiry.sellerUserId }, select: { companyName: true, id: true } }),
+    prisma.user.findUnique({ where: { id: resolvedBuyerUserId }, select: { companyName: true, id: true } }),
+    prisma.user.findUnique({ where: { id: resolvedSellerUserId }, select: { companyName: true, id: true } }),
   ]);
 
   const makerName = inquiry.makerName ?? listing?.maker ?? null;
@@ -92,12 +98,13 @@ const buildInquiryDetail = async (inquiry: {
 };
 
 export async function GET(request: Request, { params }: { params: { inquiryId: string } }) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const currentUserIds = getUserIdCandidates(currentUser);
   const inquiryId = params.inquiryId;
 
   try {
@@ -107,7 +114,7 @@ export async function GET(request: Request, { params }: { params: { inquiryId: s
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    if (![inquiry.buyerUserId, inquiry.sellerUserId].includes(currentUserId)) {
+    if (![inquiry.buyerUserId, inquiry.sellerUserId].some((userId) => currentUserIds.includes(userId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -124,12 +131,13 @@ export async function GET(request: Request, { params }: { params: { inquiryId: s
 }
 
 export async function PATCH(request: Request, { params }: { params: { inquiryId: string } }) {
-  const currentUserId = getCurrentUserId(request);
+  const currentUser = await getCurrentUser(request);
 
-  if (!currentUserId) {
+  if (!currentUser) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const currentUserIds = getUserIdCandidates(currentUser);
   let body: unknown;
 
   try {
@@ -173,8 +181,8 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    const isBuyer = inquiry.buyerUserId === currentUserId;
-    const isSeller = inquiry.sellerUserId === currentUserId;
+    const isBuyer = currentUserIds.includes(inquiry.buyerUserId);
+    const isSeller = currentUserIds.includes(inquiry.sellerUserId);
 
     if (!isBuyer && !isSeller) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
