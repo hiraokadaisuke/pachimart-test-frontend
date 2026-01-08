@@ -22,7 +22,7 @@ export type StorageLocationDto = z.infer<typeof storageLocationSchema>;
 
 export async function fetchStorageLocations(ownerUserId: string): Promise<StorageLocationDto[]> {
   const response = await fetchWithDevHeader(
-    "/api/storage-locations",
+    `/api/storage-locations?devUserId=${ownerUserId}&detail=true`,
     {},
     ownerUserId
   );

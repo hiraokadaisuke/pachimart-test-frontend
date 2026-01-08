@@ -104,7 +104,7 @@ export default function MachineStorageLocationsPage() {
     setErrorMessage(null);
     try {
       const response = await fetchWithDevHeader(
-        "/api/storage-locations",
+        `/api/storage-locations?devUserId=${resolveDevUserId()}&detail=true`,
         {},
         resolveDevUserId()
       );
