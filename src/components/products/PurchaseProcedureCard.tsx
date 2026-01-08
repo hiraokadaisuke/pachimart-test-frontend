@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
+import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { resolveStorageLocationSnapshot } from "@/lib/exhibits/storageLocation";
 import type { Exhibit } from "@/lib/exhibits/types";
 import { formatCurrency } from "@/lib/useDummyNavi";
@@ -35,10 +36,11 @@ type RegionKey =
   | "minamikyushu"
   | "okinawa";
 
-type WarehouseResponse = {
+type StorageLocationDTO = {
   id: string;
   name: string;
   address?: string;
+  city?: string;
 };
 
 const REGION_PREFECTURE_MAP: Array<{ key: RegionKey; names: string[] }> = [
@@ -55,9 +57,9 @@ const REGION_PREFECTURE_MAP: Array<{ key: RegionKey; names: string[] }> = [
   { key: "okinawa", names: ["沖縄"] },
 ];
 
-const resolveRegionKey = (warehouse?: WarehouseResponse): RegionKey | null => {
+const resolveRegionKey = (warehouse?: StorageLocationDTO): RegionKey | null => {
   if (!warehouse) return null;
-  const source = `${warehouse.name ?? ""} ${warehouse.address ?? ""}`;
+  const source = `${warehouse.name ?? ""} ${warehouse.city ?? ""} ${warehouse.address ?? ""}`;
   for (const region of REGION_PREFECTURE_MAP) {
     if (region.names.some((name) => source.includes(name))) {
       return region.key;
@@ -79,7 +81,7 @@ const normalizeShippingFees = (value: unknown): Record<string, number> | null =>
 
 const resolveShippingFeePerUnit = (
   shippingFeesByRegion: Record<string, number> | null,
-  warehouse?: WarehouseResponse
+  warehouse?: StorageLocationDTO
 ): number => {
   if (!shippingFeesByRegion) return 0;
   const regionKey = resolveRegionKey(warehouse);
@@ -98,11 +100,12 @@ export function PurchaseProcedureCard({
   inquiryStatus: InquiryStatus;
 }) {
   const maxQuantity = Math.max(exhibit.quantity, 1);
+  const currentUser = useCurrentDevUser();
   const quantityOptions = useMemo(() => {
     if (!exhibit.allowPartial) return [maxQuantity];
     return Array.from({ length: maxQuantity }, (_, index) => index + 1);
   }, [exhibit.allowPartial, maxQuantity]);
-  const [warehouses, setWarehouses] = useState<WarehouseResponse[]>([]);
+  const [storageLocations, setStorageLocations] = useState<StorageLocationDTO[]>([]);
   const [quantity, setQuantity] = useState(quantityOptions[0] ?? 1);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [pickupRequested, setPickupRequested] = useState(false);
@@ -110,8 +113,8 @@ export function PurchaseProcedureCard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedWarehouse = useMemo(
-    () => warehouses.find((warehouse) => warehouse.id === selectedWarehouseId),
-    [selectedWarehouseId, warehouses]
+    () => storageLocations.find((warehouse) => warehouse.id === selectedWarehouseId),
+    [selectedWarehouseId, storageLocations]
   );
 
   const storageSnapshot = useMemo(
@@ -134,18 +137,20 @@ export function PurchaseProcedureCard({
 
     const fetchWarehouses = async () => {
       try {
-        const response = await fetchWithDevHeader("/api/warehouses");
+        const response = await fetchWithDevHeader(
+          `/api/storage-locations?devUserId=${currentUser.id}`
+        );
         if (!response.ok) {
-          throw new Error(`Failed to fetch warehouses: ${response.status}`);
+          throw new Error(`Failed to fetch storage locations: ${response.status}`);
         }
-        const data = (await response.json()) as WarehouseResponse[];
+        const data = (await response.json()) as StorageLocationDTO[];
         if (isMounted) {
-          setWarehouses(Array.isArray(data) ? data : []);
+          setStorageLocations(Array.isArray(data) ? data : []);
         }
       } catch (error) {
-        console.error("Failed to load warehouses", error);
+        console.error("Failed to load storage locations", error);
         if (isMounted) {
-          setWarehouses([]);
+          setStorageLocations([]);
         }
       }
     };
@@ -155,7 +160,7 @@ export function PurchaseProcedureCard({
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [currentUser.id]);
 
   const shippingHandlingFeePerUnit = storageSnapshot?.handlingFeePerUnit ?? 0;
   const unitPrice = exhibit.unitPriceExclTax ?? 0;
@@ -296,7 +301,7 @@ export function PurchaseProcedureCard({
                 onChange={(event) => setSelectedWarehouseId(event.target.value)}
               >
                 <option value="">倉庫を選択</option>
-                {warehouses.map((warehouse) => (
+                {storageLocations.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
                     {warehouse.name}
                   </option>
@@ -307,7 +312,10 @@ export function PurchaseProcedureCard({
             <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-[12px]">
               <p className="text-xs text-neutral-600">倉庫住所</p>
               <p className="text-neutral-900">
-                {selectedWarehouse ? selectedWarehouse.address || selectedWarehouse.name : "-"}
+                {selectedWarehouse
+                  ? `${selectedWarehouse.city ?? ""}${selectedWarehouse.address ?? ""}` ||
+                    selectedWarehouse.name
+                  : "-"}
               </p>
             </div>
           </>

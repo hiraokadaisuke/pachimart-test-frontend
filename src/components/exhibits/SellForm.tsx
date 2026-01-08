@@ -117,7 +117,7 @@ export function SellForm({ showHeader = true, exhibitType }: SellFormProps) {
     const fetchLocations = async () => {
       try {
         const response = await fetchWithDevHeader(
-          "/api/storage-locations",
+          `/api/storage-locations?devUserId=${currentUser.id}&detail=true`,
           {},
           currentUser.id
         );

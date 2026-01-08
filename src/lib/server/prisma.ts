@@ -119,16 +119,6 @@ type InMemoryStorageLocation = {
   updatedAt: Date;
 };
 
-type InMemoryWarehouse = {
-  id: string;
-  ownerUserId: string;
-  name: string;
-  address: string | null;
-  category: "self" | "other";
-  createdAt: Date;
-  updatedAt: Date;
-};
-
 type InMemoryBuyerShippingAddress = {
   id: string;
   ownerUserId: string;
@@ -318,16 +308,6 @@ type InMemoryPrisma = {
       update: Partial<InMemoryStorageLocation>;
     }) => Promise<InMemoryStorageLocation>;
   };
-  warehouse: {
-    findMany: ({
-      where,
-      orderBy,
-    }?: {
-      where?: { ownerUserId?: string };
-      orderBy?: { createdAt?: "asc" | "desc" } | { name?: "asc" | "desc" };
-    }) => Promise<InMemoryWarehouse[]>;
-    create: ({ data }: { data: Partial<InMemoryWarehouse> }) => Promise<InMemoryWarehouse>;
-  };
   buyerShippingAddress: {
     findMany: ({
       where,
@@ -395,35 +375,6 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
   const exhibits: InMemoryListing[] = [];
   const storageLocations: InMemoryStorageLocation[] = [];
   const now = () => new Date();
-  const warehouses: InMemoryWarehouse[] = [
-    {
-      id: "warehouse_dev_user_1_tokyo",
-      ownerUserId: DEV_USERS.A.id,
-      name: "東京第1倉庫",
-      address: "東京都千代田区丸の内1-1-1",
-      category: "self",
-      createdAt: now(),
-      updatedAt: now(),
-    },
-    {
-      id: "warehouse_dev_user_1_osaka",
-      ownerUserId: DEV_USERS.A.id,
-      name: "大阪倉庫",
-      address: "大阪府大阪市北区梅田1-2-3",
-      category: "self",
-      createdAt: now(),
-      updatedAt: now(),
-    },
-    {
-      id: "warehouse_dev_user_2_fukuoka",
-      ownerUserId: DEV_USERS.B.id,
-      name: "福岡倉庫",
-      address: "福岡県福岡市中央区天神2-4-5",
-      category: "self",
-      createdAt: now(),
-      updatedAt: now(),
-    },
-  ];
   const buyerShippingAddresses: InMemoryBuyerShippingAddress[] = [];
   const ledgerEntries: InMemoryLedgerEntry[] = [];
   const makers: InMemoryMaker[] = [
@@ -1104,39 +1055,6 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         };
 
         storageLocations.push(record);
-        return { ...record };
-      },
-    },
-    warehouse: {
-      findMany: async ({ where, orderBy } = {}) => {
-        const filtered = warehouses.filter((warehouse) =>
-          where?.ownerUserId ? warehouse.ownerUserId === where.ownerUserId : true
-        );
-        const sorted = [...filtered].sort((a, b) => {
-          if (orderBy && "name" in orderBy) {
-            const order = orderBy.name === "desc" ? -1 : 1;
-            return a.name.localeCompare(b.name, "ja") * order;
-          }
-          if (orderBy && "createdAt" in orderBy) {
-            const order = orderBy.createdAt === "desc" ? -1 : 1;
-            return (a.createdAt.getTime() - b.createdAt.getTime()) * order;
-          }
-          return a.createdAt.getTime() - b.createdAt.getTime();
-        });
-        return sorted.map((warehouse) => ({ ...warehouse }));
-      },
-      create: async ({ data }: { data: Partial<InMemoryWarehouse> }) => {
-        const nowDate = now();
-        const record: InMemoryWarehouse = {
-          id: String(data.id ?? `warehouse_${warehouses.length + 1}`),
-          ownerUserId: String(data.ownerUserId ?? ""),
-          name: String(data.name ?? ""),
-          address: (data.address as string | null | undefined) ?? null,
-          category: (data.category as "self" | "other" | undefined) ?? "self",
-          createdAt: nowDate,
-          updatedAt: nowDate,
-        };
-        warehouses.push(record);
         return { ...record };
       },
     },

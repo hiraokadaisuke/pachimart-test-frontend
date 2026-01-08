@@ -36,14 +36,6 @@ type StorageLocationSeed = {
   isActive?: boolean;
 };
 
-type WarehouseSeed = {
-  id: string;
-  ownerUserId: string;
-  name: string;
-  address?: string;
-  category?: "self" | "other";
-};
-
 type ListingSeed = {
   id: string;
   sellerUserId: string;
@@ -257,30 +249,6 @@ const STORAGE_LOCATIONS: StorageLocationSeed[] = [
       minamikyushu: 21000,
       okinawa: 24000,
     },
-  },
-];
-
-const WAREHOUSES: WarehouseSeed[] = [
-  {
-    id: "warehouse_dev_user_1_tokyo",
-    ownerUserId: "dev_user_1",
-    name: "東京第1倉庫",
-    address: "東京都千代田区丸の内1-1-1",
-    category: "self",
-  },
-  {
-    id: "warehouse_dev_user_1_osaka",
-    ownerUserId: "dev_user_1",
-    name: "大阪倉庫",
-    address: "大阪府大阪市北区梅田1-2-3",
-    category: "self",
-  },
-  {
-    id: "warehouse_dev_user_2_fukuoka",
-    ownerUserId: "dev_user_2",
-    name: "福岡倉庫",
-    address: "福岡県福岡市中央区天神2-4-5",
-    category: "self",
   },
 ];
 
@@ -743,7 +711,6 @@ async function clearExistingData() {
   });
   await prisma.navi.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   await prisma.exhibit.deleteMany({ where: { sellerUserId: { in: DEV_USER_IDS } } });
-  await prisma.warehouse.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   await prisma.storageLocation.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
   try {
     await prisma.buyerShippingAddress.deleteMany({ where: { ownerUserId: { in: DEV_USER_IDS } } });
@@ -780,17 +747,6 @@ async function seedStorageLocations() {
       },
     });
   }
-}
-
-async function seedWarehouses() {
-  if (WAREHOUSES.length === 0) return;
-
-  await prisma.warehouse.createMany({
-    data: WAREHOUSES.map((warehouse) => ({
-      ...warehouse,
-      category: warehouse.category ?? "self",
-    })),
-  });
 }
 
 async function seedMakersAndModels() {
@@ -1161,7 +1117,6 @@ async function main() {
   console.log(`Running seed for mode: ${seedMode ?? vercelEnv ?? "development"}`);
   await clearExistingData();
   await seedUsers();
-  await seedWarehouses();
   await seedStorageLocations();
   await seedMakersAndModels();
   await seedBuyerShippingAddresses();
