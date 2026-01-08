@@ -1,4 +1,4 @@
-import { DealingStatus, LedgerEntryCategory, LedgerEntryKind, LedgerEntrySource, Prisma } from "@prisma/client";
+import { DealingStatus, LedgerEntryCategory, LedgerEntryKind, LedgerEntrySource, Prisma, PrismaClient } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -85,9 +85,9 @@ export async function GET(request: Request) {
       );
 
     const tradeId = tradeIdParam ? Number(tradeIdParam) : null;
-    const where: Prisma.LedgerEntryWhereInput = {
-      userId: { in: currentUserIds },
-    };
+    const where = (prisma instanceof PrismaClient
+      ? ({ userId: { in: currentUserIds } } satisfies Prisma.LedgerEntryWhereInput)
+      : ({ userId: currentUserIds[0] ?? "" } as Prisma.LedgerEntryWhereInput));
 
     if (from || to) {
       where.occurredAt = {
