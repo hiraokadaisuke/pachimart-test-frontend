@@ -85,7 +85,7 @@ export async function GET(request: Request) {
       );
 
     const tradeId = tradeIdParam ? Number(tradeIdParam) : null;
-    const where: { userId?: string | { in: string[] } } & Prisma.LedgerEntryWhereInput = {
+    const where: Prisma.LedgerEntryWhereInput = {
       userId: { in: currentUserIds },
     };
 
