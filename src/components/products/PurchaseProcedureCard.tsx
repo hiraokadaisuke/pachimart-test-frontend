@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-import { loadMasterData, type Warehouse } from "@/lib/demo-data/demoMasterData";
+import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 import { resolveStorageLocationSnapshot } from "@/lib/exhibits/storageLocation";
 import type { Exhibit } from "@/lib/exhibits/types";
 import { formatCurrency } from "@/lib/useDummyNavi";
@@ -35,6 +35,12 @@ type RegionKey =
   | "minamikyushu"
   | "okinawa";
 
+type WarehouseResponse = {
+  id: string;
+  name: string;
+  address?: string;
+};
+
 const REGION_PREFECTURE_MAP: Array<{ key: RegionKey; names: string[] }> = [
   { key: "hokkaido", names: ["北海道"] },
   { key: "tohokuNorth", names: ["青森", "岩手", "秋田"] },
@@ -49,7 +55,7 @@ const REGION_PREFECTURE_MAP: Array<{ key: RegionKey; names: string[] }> = [
   { key: "okinawa", names: ["沖縄"] },
 ];
 
-const resolveRegionKey = (warehouse?: Warehouse): RegionKey | null => {
+const resolveRegionKey = (warehouse?: WarehouseResponse): RegionKey | null => {
   if (!warehouse) return null;
   const source = `${warehouse.name ?? ""} ${warehouse.address ?? ""}`;
   for (const region of REGION_PREFECTURE_MAP) {
@@ -73,7 +79,7 @@ const normalizeShippingFees = (value: unknown): Record<string, number> | null =>
 
 const resolveShippingFeePerUnit = (
   shippingFeesByRegion: Record<string, number> | null,
-  warehouse?: Warehouse
+  warehouse?: WarehouseResponse
 ): number => {
   if (!shippingFeesByRegion) return 0;
   const regionKey = resolveRegionKey(warehouse);
@@ -91,13 +97,12 @@ export function PurchaseProcedureCard({
   listing: Exhibit;
   inquiryStatus: InquiryStatus;
 }) {
-  const masterData = useMemo(() => loadMasterData(), []);
-  const warehouseDetails = useMemo(() => masterData.warehouseDetails ?? [], [masterData]);
   const maxQuantity = Math.max(exhibit.quantity, 1);
   const quantityOptions = useMemo(() => {
     if (!exhibit.allowPartial) return [maxQuantity];
     return Array.from({ length: maxQuantity }, (_, index) => index + 1);
   }, [exhibit.allowPartial, maxQuantity]);
+  const [warehouses, setWarehouses] = useState<WarehouseResponse[]>([]);
   const [quantity, setQuantity] = useState(quantityOptions[0] ?? 1);
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("");
   const [pickupRequested, setPickupRequested] = useState(false);
@@ -105,8 +110,8 @@ export function PurchaseProcedureCard({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const selectedWarehouse = useMemo(
-    () => warehouseDetails.find((warehouse) => warehouse.id === selectedWarehouseId),
-    [selectedWarehouseId, warehouseDetails]
+    () => warehouses.find((warehouse) => warehouse.id === selectedWarehouseId),
+    [selectedWarehouseId, warehouses]
   );
 
   const storageSnapshot = useMemo(
@@ -123,6 +128,34 @@ export function PurchaseProcedureCard({
     () => resolveShippingFeePerUnit(shippingFeesByRegion, selectedWarehouse),
     [shippingFeesByRegion, selectedWarehouse]
   );
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchWarehouses = async () => {
+      try {
+        const response = await fetchWithDevHeader("/api/warehouses");
+        if (!response.ok) {
+          throw new Error(`Failed to fetch warehouses: ${response.status}`);
+        }
+        const data = (await response.json()) as WarehouseResponse[];
+        if (isMounted) {
+          setWarehouses(Array.isArray(data) ? data : []);
+        }
+      } catch (error) {
+        console.error("Failed to load warehouses", error);
+        if (isMounted) {
+          setWarehouses([]);
+        }
+      }
+    };
+
+    fetchWarehouses();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const shippingHandlingFeePerUnit = storageSnapshot?.handlingFeePerUnit ?? 0;
   const unitPrice = exhibit.unitPriceExclTax ?? 0;
@@ -263,7 +296,7 @@ export function PurchaseProcedureCard({
                 onChange={(event) => setSelectedWarehouseId(event.target.value)}
               >
                 <option value="">倉庫を選択</option>
-                {warehouseDetails.map((warehouse) => (
+                {warehouses.map((warehouse) => (
                   <option key={warehouse.id} value={warehouse.id}>
                     {warehouse.name}
                   </option>
