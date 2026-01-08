@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
+import { resolveUserIdForWrite, resolveUserLookupIds } from "@/lib/server/users";
 
 const naviClient = prisma.navi;
 const exhibitClient = prisma.exhibit;
@@ -111,9 +112,10 @@ export async function GET(request: Request) {
   }
 
   try {
+    const lookupIds = await resolveUserLookupIds(currentUserId);
     const dealings = await naviClient.findMany({
       where: {
-        OR: [{ ownerUserId: currentUserId }, { buyerUserId: currentUserId }],
+        OR: [{ ownerUserId: { in: lookupIds } }, { buyerUserId: { in: lookupIds } }],
       },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,
@@ -162,11 +164,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const ownerLookupIds = await resolveUserLookupIds(currentUserId);
+  const resolvedOwnerId = await resolveUserIdForWrite(ownerUserId);
+  const resolvedBuyerId = buyerUserId ? await resolveUserIdForWrite(buyerUserId) : null;
+
   let exhibitSnapshot: Prisma.JsonValue | null = null;
 
   if (listingId) {
     const exhibit = await exhibitClient.findUnique({
-      where: { id: listingId, sellerUserId: currentUserId } as any,
+      where: { id: listingId, sellerUserId: { in: ownerLookupIds } } as any,
     });
 
     if (!exhibit) {
@@ -181,8 +187,8 @@ export async function POST(request: Request) {
   try {
     const created = await naviClient.create({
       data: {
-        ownerUserId: currentUserId,
-        buyerUserId: buyerUserId ?? null,
+        ownerUserId: resolvedOwnerId,
+        buyerUserId: resolvedBuyerId ?? null,
         listingId: listingId ?? null,
         listingSnapshot: listingSnapshotInput as any,
         status: status ?? NaviStatus.DRAFT,
