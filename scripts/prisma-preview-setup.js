@@ -41,6 +41,14 @@ try {
   throw error;
 }
 
+log("Running prisma generate");
+try {
+  execSync("npx prisma generate", { stdio: "inherit" });
+} catch (error) {
+  console.error("[prisma-preview-setup] prisma generate failed", error);
+  throw error;
+}
+
 log("Running prisma db seed");
 try {
   execSync("npx prisma db seed", { stdio: "inherit" });
