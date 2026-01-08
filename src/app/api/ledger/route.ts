@@ -85,35 +85,35 @@ export async function GET(request: Request) {
       );
 
     const tradeId = tradeIdParam ? Number(tradeIdParam) : null;
-    const where = (prisma instanceof PrismaClient
-      ? ({ userId: { in: currentUserIds } } satisfies Prisma.LedgerEntryWhereInput)
-      : ({ userId: currentUserIds[0] ?? "" } as Prisma.LedgerEntryWhereInput));
+    const baseWhere = {
+      userId: prisma instanceof PrismaClient ? { in: currentUserIds } : currentUserIds[0] ?? "",
+    } as Prisma.LedgerEntryWhereInput;
 
     if (from || to) {
-      where.occurredAt = {
+      baseWhere.occurredAt = {
         ...(from ? { gte: from } : {}),
         ...(to ? { lte: to } : {}),
       } as Prisma.DateTimeFilter;
     }
 
     if (kind && Object.values(LedgerEntryKind).includes(kind as LedgerEntryKind)) {
-      where.kind = kind as LedgerEntryKind;
+      baseWhere.kind = kind as LedgerEntryKind;
     }
 
     if (categories.length > 0) {
-      where.category = { in: categories } as any;
+      baseWhere.category = { in: categories } as any;
     }
 
     if (counterparty) {
-      where.counterpartyName = { contains: counterparty, mode: "insensitive" };
+      baseWhere.counterpartyName = { contains: counterparty, mode: "insensitive" };
     }
 
     if (Number.isInteger(tradeId)) {
-      where.tradeId = tradeId as number;
+      baseWhere.tradeId = tradeId as number;
     }
 
     const entries = await prisma.ledgerEntry.findMany({
-      where,
+      where: baseWhere as any,
       orderBy: { occurredAt: "desc" },
     });
 
