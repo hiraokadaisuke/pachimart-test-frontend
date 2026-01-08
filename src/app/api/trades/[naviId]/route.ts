@@ -12,6 +12,7 @@ import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
+import { resolveUserIdForWrite, resolveUserLookupIds } from "@/lib/server/users";
 
 const naviClient = prisma.navi;
 
@@ -186,6 +187,7 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
   }
 
   try {
+    const lookupIds = await resolveUserLookupIds(currentUserId);
     // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime numeric id
     const dealing = await naviClient.findUnique({ where: { id } as any });
 
@@ -196,7 +198,7 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
     const dealingRecord = toRecord(dealing);
     const buyerUserId = resolveBuyerUserId(dealingRecord);
 
-    if (dealingRecord.ownerUserId !== currentUserId && buyerUserId !== currentUserId) {
+    if (!lookupIds.includes(dealingRecord.ownerUserId) && (!buyerUserId || !lookupIds.includes(buyerUserId))) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -244,6 +246,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
   }
 
   try {
+    const lookupIds = await resolveUserLookupIds(currentUserId);
     const existing = await naviClient.findUnique({
       where: { id } as any,
       include: { trade: true } as any,
@@ -255,15 +258,16 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
 
     const existingRecord = toRecord(existing);
     const buyerUserId = resolveBuyerUserId(existingRecord);
-    const isOwner = existingRecord.ownerUserId === currentUserId;
+    const isOwner = lookupIds.includes(existingRecord.ownerUserId);
+    const isBuyer = buyerUserId ? lookupIds.includes(buyerUserId) : false;
 
-    if (!isOwner && buyerUserId !== currentUserId) {
+    if (!isOwner && !isBuyer) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
     const targetStatus = parsed.data.status;
 
-    if (targetStatus === NaviStatus.APPROVED && buyerUserId !== currentUserId) {
+    if (targetStatus === NaviStatus.APPROVED && !isBuyer) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
@@ -301,8 +305,9 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         : ({} as Record<string, unknown>);
 
       const resolvedBuyerId = resolveBuyerUserId(toRecord(current));
+      const resolvedBuyerDbId = resolvedBuyerId ? await resolveUserIdForWrite(resolvedBuyerId) : null;
 
-      if (isApproving && !resolvedBuyerId) {
+      if (isApproving && !resolvedBuyerDbId) {
         throw new BuyerRequiredError();
       }
 
@@ -366,9 +371,14 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       const { items, totals } = calculateOnlineInquiryTotals(amountInput);
       const memo = toString(conditionsCandidate.memo ?? (payload as Record<string, unknown>).memo ?? "");
 
+      const buyerUser =
+        resolvedBuyerDbId && (!current.buyerUser || current.buyerUser.id !== resolvedBuyerDbId)
+          ? await tx.user.findUnique({ where: { id: resolvedBuyerDbId } })
+          : current.buyerUser;
+
       const normalizedPayload: Prisma.InputJsonValue = {
         ...payload,
-        buyerCompanyName: current.buyerUser?.companyName ?? undefined,
+        buyerCompanyName: buyerUser?.companyName ?? undefined,
         sellerCompanyName: current.ownerUser?.companyName ?? undefined,
         listingSnapshot: listingSnapshot ?? null,
         conditions: {
@@ -391,6 +401,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
           status: parsed.data.status,
           payload: normalizedPayload,
           listingSnapshot: listingSnapshot ?? null,
+          buyerUserId: resolvedBuyerDbId ?? undefined,
         },
       });
 
@@ -404,7 +415,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
           where: { naviId: updatedNavi.id } as any,
           create: {
             sellerUserId: updatedNavi.ownerUserId,
-            buyerUserId: resolvedBuyerId!,
+            buyerUserId: resolvedBuyerDbId!,
             status: DealingStatus.PAYMENT_REQUIRED,
             payload: normalizedPayload ?? Prisma.JsonNull,
             naviId: updatedNavi.id,

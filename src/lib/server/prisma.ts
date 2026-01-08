@@ -261,18 +261,46 @@ type InMemoryPrisma = {
     findMany: ({
       where,
     }?: {
-      where?: { id?: { in?: string[] } };
-    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }[]>;
+      where?: { id?: { in?: string[] }; devUserId?: { in?: string[] } };
+    }) => Promise<{
+      id: string;
+      devUserId?: string | null;
+      companyName: string;
+      contactName?: string;
+      address?: string;
+      tel?: string;
+    }[]>;
     findUnique: ({
       where,
     }: {
-      where: { id?: string | null };
-    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string } | null>;
+      where: { id?: string | null; devUserId?: string | null };
+    }) => Promise<{
+      id: string;
+      devUserId?: string | null;
+      companyName: string;
+      contactName?: string;
+      address?: string;
+      tel?: string;
+    } | null>;
     create: ({
       data,
     }: {
-      data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
-    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
+      data: Partial<{
+        id: string;
+        devUserId?: string | null;
+        companyName: string;
+        contactName?: string;
+        address?: string;
+        tel?: string;
+      }>;
+    }) => Promise<{
+      id: string;
+      devUserId?: string | null;
+      companyName: string;
+      contactName?: string;
+      address?: string;
+      tel?: string;
+    }>;
   };
   message: {
     findMany: ({ where, orderBy }?: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
@@ -374,19 +402,21 @@ type InMemoryPrisma = {
 
 const buildInMemoryPrisma = (): InMemoryPrisma => {
   const userDirectory = Object.values(DEV_USERS).reduce<
-    Record<string, { id: string; companyName: string; contactName?: string; address?: string; tel?: string }>
+    Record<
+      string,
+      { id: string; devUserId?: string | null; companyName: string; contactName?: string; address?: string; tel?: string }
+    >
   >((acc, user) => {
-      acc[user.id] = {
-        id: user.id,
-        companyName: user.companyName,
-        contactName: user.contactName,
-        address: user.address,
-        tel: user.tel,
-      };
-      return acc;
-    },
-    {}
-  );
+    acc[user.id] = {
+      id: user.id,
+      devUserId: user.id,
+      companyName: user.companyName,
+      contactName: user.contactName,
+      address: user.address,
+      tel: user.tel,
+    };
+    return acc;
+  }, {});
 
   const navis: InMemoryNavi[] = [];
   const trades: InMemoryTrade[] = [];
@@ -738,18 +768,41 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
     user: {
       findMany: async ({ where } = {}) => {
         const ids = where?.id?.in ?? null;
-        const records = ids ? ids.map((id) => userDirectory[id]).filter(Boolean) : Object.values(userDirectory);
+        const devUserIds = where?.devUserId?.in ?? null;
+        const records = (() => {
+          if (ids) {
+            return ids.map((id) => userDirectory[id]).filter(Boolean);
+          }
+          if (devUserIds) {
+            return Object.values(userDirectory).filter((user) => user.devUserId && devUserIds.includes(user.devUserId));
+          }
+          return Object.values(userDirectory);
+        })();
         return records.map((user) => ({ ...user }));
       },
-      findUnique: async ({ where }: { where: { id?: string | null } }) => {
+      findUnique: async ({ where }: { where: { id?: string | null; devUserId?: string | null } }) => {
         const id = where.id ?? "";
-        const found = userDirectory[id];
+        if (id) {
+          const found = userDirectory[id];
+          if (found) return { ...found };
+        }
+
+        const devUserId = where.devUserId ?? "";
+        if (!devUserId) return null;
+        const found = Object.values(userDirectory).find((user) => user.devUserId === devUserId);
         return found ? { ...found } : null;
       },
       create: async ({
         data,
       }: {
-        data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
+        data: Partial<{
+          id: string;
+          devUserId?: string | null;
+          companyName: string;
+          contactName?: string;
+          address?: string;
+          tel?: string;
+        }>;
       }) => {
         const id = String(data.id ?? "");
         if (!id) {
@@ -758,6 +811,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
         const record = {
           id,
+          devUserId: data.devUserId ?? undefined,
           companyName: String(data.companyName ?? ""),
           contactName: data.contactName ?? undefined,
           address: data.address ?? undefined,

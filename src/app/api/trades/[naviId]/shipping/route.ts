@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
+import { resolveUserLookupIds } from "@/lib/server/users";
 
 const shippingInfoSchema = z.object({
   companyName: z.string().optional(),
@@ -123,6 +124,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
   }
 
   try {
+    const lookupIds = await resolveUserLookupIds(actorUserId);
     const result = await (prisma as any).$transaction(async (tx: any) => {
       const existing = await tx.navi.findUnique({ where: { id: naviId } as any });
 
@@ -133,7 +135,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       const dealing = toRecord(existing);
       const buyerUserId = resolveBuyerUserId(dealing);
 
-      if (!buyerUserId || buyerUserId !== actorUserId) {
+      if (!buyerUserId || !lookupIds.includes(buyerUserId)) {
         return { updated: null, status: 403 as const };
       }
 
