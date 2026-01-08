@@ -38,14 +38,6 @@ type StorageLocationSeed = {
   isActive?: boolean;
 };
 
-type WarehouseSeed = {
-  id: string;
-  ownerUserId: string;
-  name: string;
-  address?: string;
-  category?: "self" | "other";
-};
-
 type ListingSeed = {
   id: string;
   sellerUserId: string;
@@ -259,30 +251,6 @@ const STORAGE_LOCATIONS: StorageLocationSeed[] = [
       minamikyushu: 21000,
       okinawa: 24000,
     },
-  },
-];
-
-const WAREHOUSES: WarehouseSeed[] = [
-  {
-    id: "warehouse_dev_user_1_tokyo",
-    ownerUserId: "dev_user_1",
-    name: "東京第1倉庫",
-    address: "東京都千代田区丸の内1-1-1",
-    category: "self",
-  },
-  {
-    id: "warehouse_dev_user_1_osaka",
-    ownerUserId: "dev_user_1",
-    name: "大阪倉庫",
-    address: "大阪府大阪市北区梅田1-2-3",
-    category: "self",
-  },
-  {
-    id: "warehouse_dev_user_2_fukuoka",
-    ownerUserId: "dev_user_2",
-    name: "福岡倉庫",
-    address: "福岡県福岡市中央区天神2-4-5",
-    category: "self",
   },
 ];
 
@@ -738,25 +706,32 @@ const buildTradePayload = (
 
 async function clearExistingData() {
   console.log("Clearing existing dev data...");
+
   const devUsers = await prisma.user.findMany({
     where: { OR: [{ devUserId: { in: DEV_USER_IDS } }, { id: { in: DEV_USER_IDS } }] },
     select: { id: true },
   });
-  const resolvedUserIds = Array.from(new Set([...DEV_USER_IDS, ...devUsers.map((user) => user.id)]));
 
+  const resolvedUserIds = Array.from(
+    new Set([...DEV_USER_IDS, ...devUsers.map((user) => user.id)])
+  );
+
+  // 子 → 親 の順で消す（FK違反を避ける）
   await prisma.message.deleteMany({ where: { senderUserId: { in: resolvedUserIds } } });
+
   await prisma.onlineInquiry.deleteMany({
     where: { OR: [{ buyerUserId: { in: resolvedUserIds } }, { sellerUserId: { in: resolvedUserIds } }] },
   });
+
   await prisma.dealing.deleteMany({
     where: { OR: [{ sellerUserId: { in: resolvedUserIds } }, { buyerUserId: { in: resolvedUserIds } }] },
   });
-  await prisma.navi.deleteMany({ where: { ownerUserId: { in: resolvedUserIds } } });
-  await prisma.exhibit.deleteMany({ where: { sellerUserId: { in: resolvedUserIds } } });
-  await prisma.warehouse.deleteMany({ where: { ownerUserId: { in: resolvedUserIds } } });
-  await prisma.storageLocation.deleteMany({ where: { ownerUserId: { in: resolvedUserIds } } });
+
+  // optional table（存在しない環境がある）に備える
   try {
-    await prisma.buyerShippingAddress.deleteMany({ where: { ownerUserId: { in: resolvedUserIds } } });
+    await prisma.buyerShippingAddress.deleteMany({
+      where: { ownerUserId: { in: resolvedUserIds } },
+    });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2021") {
       console.warn("BuyerShippingAddress table not found. Skipping deleteMany.");
@@ -764,8 +739,14 @@ async function clearExistingData() {
       throw error;
     }
   }
-}
 
+  await prisma.navi.deleteMany({ where: { ownerUserId: { in: resolvedUserIds } } });
+  await prisma.exhibit.deleteMany({ where: { sellerUserId: { in: resolvedUserIds } } });
+
+  // storageLocation -> warehouse の順（FKがある想定）
+  await prisma.storageLocation.deleteMany({ where: { ownerUserId: { in: resolvedUserIds } } });
+  await prisma.warehouse.deleteMany({ where: { ownerUserId: { in: resolvedUserIds } } });
+}
 async function seedUsers() {
   console.log(`Seeding ${USERS.length} users...`);
   const userIdMap = new Map<string, string>();
@@ -828,7 +809,6 @@ async function seedStorageLocations(userIdMap: Map<string, string>) {
     });
   }
 }
-
 async function seedWarehouses(userIdMap: Map<string, string>) {
   if (WAREHOUSES.length === 0) return;
 
@@ -1213,20 +1193,22 @@ async function main() {
   }
 
   console.log(`Running seed for mode: ${seedMode ?? vercelEnv ?? "development"}`);
-  await clearExistingData();
-  const userIdMap = await seedUsers();
-  await seedWarehouses(userIdMap);
-  await seedStorageLocations(userIdMap);
-  await seedMakersAndModels();
-  await seedBuyerShippingAddresses(userIdMap);
-  const listings = await seedListings(userIdMap);
-  await seedOnlineInquiries(listings, userIdMap);
-  const { navis, trades } = await seedNavis(listings, userIdMap);
+await clearExistingData();
 
-  console.log(`Navi created: ${navis.length}`);
-  console.log(`Trades created: ${trades.length}`);
-}
+const userIdMap = await seedUsers();
+await seedWarehouses(userIdMap);
+await seedStorageLocations(userIdMap);
 
+await seedMakersAndModels();
+await seedBuyerShippingAddresses(userIdMap);
+
+const listings = await seedListings(userIdMap);
+await seedOnlineInquiries(listings, userIdMap);
+
+const { navis, trades } = await seedNavis(listings, userIdMap);
+
+console.log(`Navi created: ${navis.length}`);
+console.log(`Trades created: ${trades.length}`);
 main()
   .then(async () => {
     await prisma.$disconnect();

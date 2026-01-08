@@ -38,48 +38,85 @@ const ensureUserExists = async (ownerUserId: string) => {
 };
 
 export async function GET(request: Request) {
-  const ownerUserId = getCurrentUserId(request);
+  const { searchParams } = new URL(request.url);
+  const ownerUserId = searchParams.get("devUserId");
+  const includeDetails = searchParams.get("detail") === "true";
 
   if (!ownerUserId) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "devUserId is required" }, { status: 400 });
   }
 
   try {
+    if (includeDetails) {
+      const locations = await storageLocationClient.findMany({
+        where: { ownerUserId, isActive: true },
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          ownerUserId: true,
+          name: true,
+          postalCode: true,
+          prefecture: true,
+          city: true,
+          addressLine: true,
+          handlingFeePerUnit: true,
+          shippingFeesByRegion: true,
+          isActive: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      const response = locations.map((location: any) => ({
+        id: String(location.id),
+        ownerUserId: String(location.ownerUserId),
+        name: String(location.name),
+        address: (location.addressLine as string | null) ?? null,
+        postalCode: (location.postalCode as string | null) ?? null,
+        prefecture: (location.prefecture as string | null) ?? null,
+        city: (location.city as string | null) ?? null,
+        addressLine: (location.addressLine as string | null) ?? null,
+        handlingFeePerUnit:
+          location.handlingFeePerUnit === null ? null : Number(location.handlingFeePerUnit),
+        shippingFeesByRegion: location.shippingFeesByRegion ?? null,
+        createdAt: new Date(location.createdAt).toISOString(),
+        updatedAt: new Date(location.updatedAt).toISOString(),
+      }));
+
+      return NextResponse.json(response);
+    }
+
     const locations = await storageLocationClient.findMany({
-      where: { ownerUserId, isActive: true },
-      orderBy: { updatedAt: "desc" },
+      where: { ownerUserId },
+      orderBy: { createdAt: "asc" },
       select: {
         id: true,
-        ownerUserId: true,
         name: true,
-        postalCode: true,
+        addressLine: true,
         prefecture: true,
         city: true,
-        addressLine: true,
-        handlingFeePerUnit: true,
-        shippingFeesByRegion: true,
-        isActive: true,
-        createdAt: true,
-        updatedAt: true,
       },
     });
 
-    const response = locations.map((location: any) => ({
-      id: String(location.id),
-      ownerUserId: String(location.ownerUserId),
-      name: String(location.name),
-      address: (location.addressLine as string | null) ?? null,
-      postalCode: (location.postalCode as string | null) ?? null,
-      prefecture: (location.prefecture as string | null) ?? null,
-      city: (location.city as string | null) ?? null,
-      addressLine: (location.addressLine as string | null) ?? null,
-      handlingFeePerUnit: location.handlingFeePerUnit === null
-        ? null
-        : Number(location.handlingFeePerUnit),
-      shippingFeesByRegion: location.shippingFeesByRegion ?? null,
-      createdAt: new Date(location.createdAt).toISOString(),
-      updatedAt: new Date(location.updatedAt).toISOString(),
-    }));
+    const response = locations.map((location: any) => {
+      const name =
+        String(location.name ?? "").trim() ||
+        `${location.prefecture ?? ""}${location.city ?? ""}${location.addressLine ?? ""}`.trim() ||
+        String(location.addressLine ?? "").trim() ||
+        String(location.city ?? "").trim() ||
+        "倉庫";
+      const city =
+        location.prefecture || location.city
+          ? `${location.prefecture ?? ""}${location.city ?? ""}`.trim() || undefined
+          : undefined;
+
+      return {
+        id: String(location.id),
+        name,
+        address: (location.addressLine as string | null | undefined) ?? undefined,
+        city,
+      };
+    });
 
     return NextResponse.json(response);
   } catch (error) {
