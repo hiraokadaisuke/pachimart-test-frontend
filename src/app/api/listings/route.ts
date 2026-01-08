@@ -363,7 +363,14 @@ export async function POST(request: Request) {
 
   try {
     const storageLocation = await prisma.storageLocation.findFirst({
-      where: { id: data.storageLocationId, ownerUserId: { in: sellerUserIds }, isActive: true },
+      where: {
+        id: data.storageLocationId,
+        ownerUserId:
+          prisma instanceof PrismaClient
+            ? { in: sellerUserIds }
+            : sellerUserIds[0] ?? "",
+        isActive: true,
+      },
     });
 
     if (!storageLocation) {
