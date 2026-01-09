@@ -186,20 +186,44 @@ export async function POST(request: Request) {
   }
 
   try {
+    const buyerUser = await prisma.user.findUnique({
+      where: { devUserId: buyerUserId },
+    });
+
+    if (!buyerUser) {
+      return NextResponse.json(
+        { error: "Buyer user not found. Please confirm buyerUserId." },
+        { status: 400 }
+      );
+    }
+
+    const sellerUser = sellerUserId
+      ? await prisma.user.findUnique({
+          where: { devUserId: sellerUserId },
+        })
+      : null;
+
+    if (sellerUserId && !sellerUser) {
+      return NextResponse.json(
+        { error: "Seller user not found. Please confirm sellerUserId." },
+        { status: 400 }
+      );
+    }
+
     const exhibit = await prisma.exhibit.findUnique({ where: { id: listingId } });
 
     if (!exhibit) {
       return NextResponse.json({ error: "Listing not found" }, { status: 404 });
     }
 
-    if (exhibit.sellerUserId === buyerUserId) {
+    if (exhibit.sellerUserId === buyerUser.id) {
       return NextResponse.json(
         { error: "出品者は自分の出品に問い合わせできません" },
         { status: 403 }
       );
     }
 
-    if (sellerUserId && sellerUserId !== exhibit.sellerUserId) {
+    if (sellerUserId && sellerUser.id !== exhibit.sellerUserId) {
       return NextResponse.json(
         { error: "出品者が一致しません。最新の情報を確認してください。" },
         { status: 400 }
@@ -225,8 +249,8 @@ export async function POST(request: Request) {
       tx.onlineInquiry.create({
         data: {
           listingId: exhibit.id,
-          buyerUserId,
-          sellerUserId: exhibit.sellerUserId,
+          buyerUserId: buyerUser.id,
+          sellerUserId: sellerUser?.id ?? exhibit.sellerUserId,
           body: normalizedBody,
           buyerMemo: normalizedBody,
           makerName: normalizedMaker,
