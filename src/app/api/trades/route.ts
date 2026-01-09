@@ -162,6 +162,24 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const ownerUser = await prisma.user.findUnique({
+    where: { devUserId: ownerUserId },
+  });
+
+  if (!ownerUser) {
+    return NextResponse.json({ error: "Owner user not found" }, { status: 400 });
+  }
+
+  const buyerUser = buyerUserId
+    ? await prisma.user.findUnique({
+        where: { devUserId: buyerUserId },
+      })
+    : null;
+
+  if (buyerUserId && !buyerUser) {
+    return NextResponse.json({ error: "Buyer user not found" }, { status: 400 });
+  }
+
   let exhibitSnapshot: Prisma.JsonValue | null = null;
 
   if (listingId) {
@@ -181,8 +199,8 @@ export async function POST(request: Request) {
   try {
     const created = await naviClient.create({
       data: {
-        ownerUserId: currentUserId,
-        buyerUserId: buyerUserId ?? null,
+        ownerUserId: ownerUser.id,
+        buyerUserId: buyerUser?.id ?? null,
         listingId: listingId ?? null,
         listingSnapshot: listingSnapshotInput as any,
         status: status ?? NaviStatus.DRAFT,
@@ -191,7 +209,16 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json(toDto(toRecord(created)), { status: 201 });
+    return NextResponse.json(
+      toDto(
+        toRecord({
+          ...created,
+          ownerUserId,
+          buyerUserId: buyerUserId ?? null,
+        })
+      ),
+      { status: 201 }
+    );
   } catch (error) {
     console.error("Failed to create trade", error);
     return NextResponse.json(
