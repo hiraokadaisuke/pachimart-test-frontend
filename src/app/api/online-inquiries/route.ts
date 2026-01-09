@@ -223,7 +223,7 @@ export async function POST(request: Request) {
       );
     }
 
-    if (sellerUserId && sellerUser.id !== exhibit.sellerUserId) {
+    if (sellerUser && sellerUser.id !== exhibit.sellerUserId) {
       return NextResponse.json(
         { error: "出品者が一致しません。最新の情報を確認してください。" },
         { status: 400 }
