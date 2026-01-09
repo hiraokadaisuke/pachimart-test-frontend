@@ -34,6 +34,7 @@ jobs:
         env:
           APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
           SEED_MODE: masters
+          VERCEL_ENV: production
         run: |
           if [ "${{ inputs.confirm }}" != "RUN" ]; then
             echo "Confirmation mismatch. Aborting."
