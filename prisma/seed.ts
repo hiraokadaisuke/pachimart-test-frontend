@@ -16,6 +16,7 @@ const ALLOWED_SEED_MODES = ["preview", "development"] as const;
 
 type DevUser = {
   id: string;
+  devUserId: string;
   companyName: string;
   contactName: string;
   address: string;
@@ -90,6 +91,7 @@ type MachineModelSeed = {
 const USERS: DevUser[] = [
   {
     id: "dev_user_1",
+    devUserId: "dev_user_1",
     companyName: "株式会社あいおえお",
     contactName: "田中 太郎",
     address: "東京都千代田区丸の内1-1-1 パチマートビル 10F",
@@ -97,6 +99,7 @@ const USERS: DevUser[] = [
   },
   {
     id: "dev_user_2",
+    devUserId: "dev_user_2",
     companyName: "株式会社かきくけこ",
     contactName: "佐藤 花子",
     address: "大阪府大阪市北区梅田1-2-3 トレードタワー 15F",
@@ -104,6 +107,7 @@ const USERS: DevUser[] = [
   },
   {
     id: "dev_user_3",
+    devUserId: "dev_user_3",
     companyName: "株式会社さしすせそ",
     contactName: "鈴木 次郎",
     address: "福岡県福岡市中央区天神2-4-5 開発センター 3F",
@@ -111,6 +115,7 @@ const USERS: DevUser[] = [
   },
   {
     id: "dev_user_4",
+    devUserId: "dev_user_4",
     companyName: "株式会社たちつてと",
     contactName: "高橋 三郎",
     address: "愛知県名古屋市中村区名駅3-5-7 シードビル 8F",
@@ -118,6 +123,7 @@ const USERS: DevUser[] = [
   },
   {
     id: "dev_user_5",
+    devUserId: "dev_user_5",
     companyName: "株式会社なにぬねの",
     contactName: "山本 四季",
     address: "北海道札幌市中央区大通西1-1-1 プレビュータワー 12F",
@@ -725,9 +731,30 @@ async function clearExistingData() {
 
 async function seedUsers() {
   console.log(`Seeding ${USERS.length} users...`);
+  const userIdMap = new Map<string, string>();
   for (const user of USERS) {
-    await prisma.user.upsert({ where: { id: user.id }, update: user, create: user });
+    const { id, devUserId, companyName, contactName, address, tel } = user;
+    const upserted = await prisma.user.upsert({
+      where: { devUserId },
+      update: {
+        companyName,
+        contactName,
+        address,
+        tel,
+        devUserId,
+      },
+      create: {
+        id,
+        devUserId,
+        companyName,
+        contactName,
+        address,
+        tel,
+      },
+    });
+    userIdMap.set(devUserId, upserted.id);
   }
+  return userIdMap;
 }
 
 async function seedStorageLocations() {
