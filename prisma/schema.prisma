@@ -84,6 +84,7 @@ enum OnlineInquiryStatus {
 
 model User {
   id               String            @id
+  devUserId        String?           @unique
   companyName      String
   contactName      String?
   address          String?
