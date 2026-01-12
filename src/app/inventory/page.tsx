@@ -25,6 +25,7 @@ import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import { buildEditForm, buildPayload, PUBLISH_OPTIONS, resolvePublishStatus } from "@/lib/inventory/editUtils";
 import { loadSerialDraft, loadSerialInput, loadSerialRows, type SerialInputRow } from "@/lib/serialInputStorage";
 import { formatCompactId } from "@/lib/inventory/idDisplay";
+import { openAttachmentInNewTab } from "@/lib/attachments/attachmentStore";
 
 type Column = {
   key: keyof InventoryRecord | "status";
@@ -1521,16 +1522,18 @@ export default function InventoryPage() {
                       )}
                     </th>
                   ))}
-                  <th className="border border-gray-300 px-1 py-1 text-center">番号・編集</th>
-                  <th className="border border-gray-300 px-1 py-1 text-center">購伝票</th>
-                  <th className="border border-gray-300 px-1 py-1 text-center">販伝票</th>
+                  <th className="w-[96px] border border-gray-300 px-1 py-1 text-center">番号・編集</th>
+                  <th className="w-[64px] border border-gray-300 px-1 py-1 text-center">購伝票</th>
+                  <th className="w-[64px] border border-gray-300 px-1 py-1 text-center">販伝票</th>
+                  <th className="w-[56px] border border-gray-300 px-1 py-1 text-center">検通</th>
+                  <th className="w-[56px] border border-gray-300 px-1 py-1 text-center">撤明</th>
                 </tr>
               </thead>
               <tbody>
                 {displayRecords.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={visibleColumns.length + 4}
+                      colSpan={visibleColumns.length + 6}
                       className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600"
                     >
                       登録された在庫がありません。
@@ -1666,7 +1669,7 @@ export default function InventoryPage() {
                           </td>
                         );
                       })}
-                      <td className="border border-gray-300 px-1 py-0.5 text-center">
+                      <td className="w-[96px] border border-gray-300 px-1 py-0.5 text-center">
                         <div className="flex items-center justify-center gap-1">
                           <Link
                             href={`/inventory/${item.id}`}
@@ -1691,7 +1694,7 @@ export default function InventoryPage() {
                           </button>
                         </div>
                       </td>
-                      <td className="border border-gray-300 px-1 py-0.5 text-center">
+                      <td className="w-[64px] border border-gray-300 px-1 py-0.5 text-center">
                         {item.purchaseInvoiceId ? (
                           <button
                             type="button"
@@ -1709,7 +1712,7 @@ export default function InventoryPage() {
                           <span className="text-transparent">-</span>
                         )}
                       </td>
-                      <td className="border border-gray-300 px-1 py-0.5 text-center">
+                      <td className="w-[64px] border border-gray-300 px-1 py-0.5 text-center">
                         {salesInvoiceMap.has(item.id) ? (
                           <button
                             type="button"
@@ -1726,6 +1729,28 @@ export default function InventoryPage() {
                         ) : (
                           <span className="text-transparent">-</span>
                         )}
+                      </td>
+                      <td className="w-[56px] border border-gray-300 px-1 py-0.5 text-center">
+                        {item.attachments?.kentuuAttachmentId ? (
+                          <button
+                            type="button"
+                            onClick={() => void openAttachmentInNewTab(item.attachments?.kentuuAttachmentId)}
+                            className="w-full text-center text-[13px] font-semibold text-emerald-700 hover:text-emerald-800"
+                          >
+                            ●
+                          </button>
+                        ) : null}
+                      </td>
+                      <td className="w-[56px] border border-gray-300 px-1 py-0.5 text-center">
+                        {item.attachments?.tekkyoAttachmentId ? (
+                          <button
+                            type="button"
+                            onClick={() => void openAttachmentInNewTab(item.attachments?.tekkyoAttachmentId)}
+                            className="w-full text-center text-[13px] font-semibold text-emerald-700 hover:text-emerald-800"
+                          >
+                            ●
+                          </button>
+                        ) : null}
                       </td>
                     </tr>
                     );

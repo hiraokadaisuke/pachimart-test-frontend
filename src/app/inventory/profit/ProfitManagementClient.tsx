@@ -607,27 +607,27 @@ export default function ProfitManagementPage() {
 
           <div className="border border-gray-300 bg-slate-50 p-4">
             <div className="flex flex-wrap items-center gap-4 text-sm">
-              <div className="font-semibold text-slate-700">選択合計支払額</div>
-              <div className="text-lg font-semibold text-slate-900">{formatCurrency(selectedPayableTotal)}</div>
-              <div className="ml-auto flex flex-wrap items-center gap-3">
-                <label className="text-sm text-neutral-700">
-                  支払日
-                  <input
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    onClick={handleDateInputClick}
-                    className="ml-2 rounded-none border border-gray-300 bg-white px-2 py-1 text-sm"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={handlePaymentProcess}
-                  disabled={processingPayments}
-                  className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-none hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  支払処理
-                </button>
+              <label className="text-sm text-neutral-700">
+                支払日
+                <input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  onClick={handleDateInputClick}
+                  className="ml-2 rounded-none border border-gray-300 bg-white px-2 py-1 text-sm"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handlePaymentProcess}
+                disabled={processingPayments}
+                className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-none hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                支払処理
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="font-semibold text-slate-700">選択合計支払額</div>
+                <div className="text-lg font-semibold text-slate-900">{formatCurrency(selectedPayableTotal)}</div>
               </div>
             </div>
           </div>
@@ -699,6 +699,7 @@ export default function ProfitManagementPage() {
                     const stockInDate = primaryInventory?.stockInDate ?? primaryInventory?.arrivalDate;
                     const isPaid = isPaidInvoice(invoice);
                     const rowText = isPaid ? "text-slate-400" : "text-neutral-800";
+                    const expectedPaymentDate = invoice.formInput?.paymentDate ?? invoice.paymentDueDate;
                     return (
                       <tr key={invoice.invoiceId} className={isPaid ? "bg-slate-50" : "hover:bg-slate-50"}>
                         <td className="border border-gray-300 px-3 py-3 text-center">
@@ -733,7 +734,7 @@ export default function ProfitManagementPage() {
                           {formatDate(invoice.issuedDate || invoice.createdAt)}
                         </td>
                         <td className={`border border-gray-300 px-3 py-3 ${rowText}`}>
-                          {formatDate(invoice.paymentDueDate)}
+                          {formatDate(expectedPaymentDate)}
                         </td>
                         <td className={`border border-gray-300 px-3 py-3 ${rowText}`}>{warehouse || "-"}</td>
                         <td className={`border border-gray-300 px-3 py-3 ${rowText}`}>
@@ -905,37 +906,37 @@ export default function ProfitManagementPage() {
 
           <div className="border border-gray-300 bg-slate-50 p-4">
             <div className="flex flex-wrap items-center gap-4 text-sm">
-              <div className="font-semibold text-slate-700">選択合計入金額</div>
-              <div className="text-lg font-semibold text-slate-900">{formatCurrency(selectedReceivableTotal)}</div>
-              <div className="ml-auto flex flex-wrap items-center gap-3">
-                <label className="text-sm text-neutral-700">
-                  入金日
-                  <input
-                    type="date"
-                    value={receiptDate}
-                    onChange={(e) => setReceiptDate(e.target.value)}
-                    onClick={handleDateInputClick}
-                    className="ml-2 rounded-none border border-gray-300 bg-white px-2 py-1 text-sm"
-                  />
-                </label>
-                <label className="text-sm text-neutral-700">
-                  銀行
-                  <input
-                    type="text"
-                    value={receiptBank}
-                    onChange={(e) => setReceiptBank(e.target.value)}
-                    className="ml-2 w-40 rounded-none border border-gray-300 bg-white px-2 py-1 text-sm"
-                    placeholder="任意"
-                  />
-                </label>
-                <button
-                  type="button"
-                  onClick={handleReceiptProcess}
-                  disabled={processingReceipts}
-                  className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-none hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  入金確認処理
-                </button>
+              <label className="text-sm text-neutral-700">
+                入金日
+                <input
+                  type="date"
+                  value={receiptDate}
+                  onChange={(e) => setReceiptDate(e.target.value)}
+                  onClick={handleDateInputClick}
+                  className="ml-2 rounded-none border border-gray-300 bg-white px-2 py-1 text-sm"
+                />
+              </label>
+              <label className="text-sm text-neutral-700">
+                銀行
+                <input
+                  type="text"
+                  value={receiptBank}
+                  onChange={(e) => setReceiptBank(e.target.value)}
+                  className="ml-2 w-40 rounded-none border border-gray-300 bg-white px-2 py-1 text-sm"
+                  placeholder="任意"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={handleReceiptProcess}
+                disabled={processingReceipts}
+                className="rounded-none border border-gray-300 bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-800 shadow-none hover:bg-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                入金確認処理
+              </button>
+              <div className="flex items-center gap-3">
+                <div className="font-semibold text-slate-700">選択合計入金額</div>
+                <div className="text-lg font-semibold text-slate-900">{formatCurrency(selectedReceivableTotal)}</div>
               </div>
             </div>
           </div>
@@ -1005,7 +1006,7 @@ export default function ProfitManagementPage() {
                     const primaryInventory = inventoryRecords[0];
                     const warehouse = primaryInventory?.warehouse ?? primaryInventory?.storageLocation;
                     const stockInDate = primaryInventory?.stockInDate ?? primaryInventory?.arrivalDate;
-                    const expectedReceiptDate = invoice.paymentDueDate ?? invoice.transferDate;
+                    const expectedReceiptDate = invoice.paymentDueDate;
                     const isReceived = isReceivedInvoice(invoice);
                     const rowText = isReceived ? "text-slate-400" : "text-neutral-800";
                     return (
