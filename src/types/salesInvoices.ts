@@ -45,6 +45,9 @@ export type SalesInvoice = {
   documentArrivalDate?: string;
   storageLocation?: string;
   remarks?: string;
+  isReceived?: boolean;
+  receivedAt?: string;
+  receivedBank?: string;
 };
 
 export type SalesInvoiceGroup = {
