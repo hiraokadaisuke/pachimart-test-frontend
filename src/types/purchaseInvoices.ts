@@ -51,6 +51,7 @@ export type PurchaseInvoice = {
   extraCosts?: AdditionalCostItem[];
   formInput?: Record<string, string>;
   displayTitle?: string;
+  paymentDueDate?: string;
   isPaid?: boolean;
   paidAt?: string;
 };
