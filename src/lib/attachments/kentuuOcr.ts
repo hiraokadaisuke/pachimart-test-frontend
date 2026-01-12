@@ -1,6 +1,8 @@
+import type { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/api";
+
 import { getAttachment } from "./attachmentStore";
 
-const PDFJS_VERSION = "4.4.168";
+type PdfjsModule = typeof import("pdfjs-dist");
 const TESSERACT_VERSION = "5.1.0";
 
 const loadScript = (src: string) =>
@@ -27,16 +29,15 @@ const loadScript = (src: string) =>
     document.head.appendChild(script);
   });
 
-const loadPdfjs = async () => {
-  const existing = (window as typeof window & { pdfjsLib?: any }).pdfjsLib;
+const loadPdfjs = async (): Promise<PdfjsModule> => {
+  const existing = (window as typeof window & { pdfjsLib?: PdfjsModule }).pdfjsLib;
   if (existing) return existing;
-  const scriptUrl = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
-  await loadScript(scriptUrl);
-  const pdfjs = (window as typeof window & { pdfjsLib?: any }).pdfjsLib;
-  if (!pdfjs) {
-    throw new Error("pdf.js library failed to load.");
-  }
-  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+  const pdfjs = await import("pdfjs-dist");
+  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+    "pdfjs-dist/build/pdf.worker.min.mjs",
+    import.meta.url,
+  ).toString();
+  (window as typeof window & { pdfjsLib?: PdfjsModule }).pdfjsLib = pdfjs;
   return pdfjs;
 };
 
@@ -63,11 +64,9 @@ type OcrMode = "single" | "list";
 
 const buildCandidateId = (index: number) => `candidate-${index + 1}`;
 
-type PdfTextItem = { str: string };
-type PdfTextContentItem = PdfTextItem | { type?: string };
+type PdfTextContentItem = TextItem | TextMarkedContent;
 
-const hasStr = (item: unknown): item is PdfTextItem =>
-  typeof (item as { str?: unknown })?.str === "string";
+const hasStr = (item: PdfTextContentItem): item is TextItem => "str" in item;
 
 const normalizeText = (text: string) =>
   text
@@ -148,35 +147,68 @@ export const extractKentuuCandidates = async (attachmentId: string): Promise<Ken
   const record = await getAttachment(attachmentId);
   if (!record) return [];
 
-  const pdfjs = await loadPdfjs();
+  let pdfjs: PdfjsModule;
+  try {
+    pdfjs = await loadPdfjs();
+  } catch (error) {
+    console.error("Failed to load pdf.js", error);
+    throw new Error("PDFライブラリの読み込みに失敗しました。");
+  }
 
   const arrayBuffer = await record.blob.arrayBuffer();
-  const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+  let pdf: Awaited<ReturnType<typeof pdfjs.getDocument>["promise"]>;
+  try {
+    pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+  } catch (error) {
+    console.error("Failed to load PDF", error);
+    throw new Error("PDFの読み込みに失敗しました。");
+  }
 
-  const firstPage = await pdf.getPage(1);
-  const textContent = await firstPage.getTextContent();
-  const firstText = (textContent.items as PdfTextContentItem[])
-    .map((item) => (hasStr(item) ? item.str : ""))
-    .join(" ");
-  const hasListPageHint = /別紙|製造番号一覧|別途/.test(firstText);
+  let hasListPageHint = false;
+  try {
+    const firstPage = await pdf.getPage(1);
+    const textContent = await firstPage.getTextContent();
+    const firstText = (textContent.items as PdfTextContentItem[])
+      .map((item) => (hasStr(item) ? item.str : ""))
+      .join(" ");
+    hasListPageHint = /別紙|製造番号一覧|別途/.test(firstText);
+  } catch (error) {
+    console.error("Failed to extract text from PDF", error);
+    throw new Error("PDFからテキストを抽出できませんでした。");
+  }
 
   const useListPage = hasListPageHint && pdf.numPages > 1;
   const targetPageNumber = useListPage ? pdf.numPages : 1;
-  const page = await pdf.getPage(targetPageNumber);
+  let page: Awaited<ReturnType<typeof pdf.getPage>>;
+  try {
+    page = await pdf.getPage(targetPageNumber);
+  } catch (error) {
+    console.error("Failed to load target page", error);
+    throw new Error("対象ページの読み込みに失敗しました。");
+  }
 
   const viewport = page.getViewport({ scale: 2.0 });
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
-  if (!context) return [];
+  if (!context) {
+    throw new Error("描画用のキャンバスを生成できませんでした。");
+  }
 
   canvas.width = viewport.width;
   canvas.height = viewport.height;
-  await page.render({ canvasContext: context, viewport }).promise;
+  try {
+    await page.render({ canvasContext: context, viewport }).promise;
+  } catch (error) {
+    console.error("Failed to render PDF page", error);
+    throw new Error("PDFの描画に失敗しました。");
+  }
 
   const region = selectOcrRegion(viewport.width, viewport.height, useListPage ? "list" : "single");
   const cropCanvas = document.createElement("canvas");
   const cropContext = cropCanvas.getContext("2d");
-  if (!cropContext) return [];
+  if (!cropContext) {
+    throw new Error("OCR用のキャンバスを生成できませんでした。");
+  }
 
   cropCanvas.width = region.w;
   cropCanvas.height = region.h;
@@ -192,15 +224,26 @@ export const extractKentuuCandidates = async (attachmentId: string): Promise<Ken
     region.h,
   );
 
-  const tesseract = await loadTesseract();
-  const worker = await tesseract.createWorker("eng");
-  await worker.setParameters({
-    tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/",
-    preserve_interword_spaces: "1",
-  });
-  const result = await worker.recognize(cropCanvas);
-  await worker.terminate();
+  let recognizedText = "";
+  try {
+    const tesseract = await loadTesseract();
+    const worker = await tesseract.createWorker("eng");
+    await worker.setParameters({
+      tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/",
+      preserve_interword_spaces: "1",
+    });
+    const result = await worker.recognize(cropCanvas);
+    await worker.terminate();
+    recognizedText = result.data.text ?? "";
+  } catch (error) {
+    console.error("Failed to run OCR", error);
+    throw new Error("OCRエンジンの処理に失敗しました。");
+  }
 
-  const candidates = buildCandidatesFromText(result.data.text).slice(0, 10);
+  if (!recognizedText.trim()) {
+    throw new Error("画像からテキストを抽出できませんでした。");
+  }
+
+  const candidates = buildCandidatesFromText(recognizedText).slice(0, 10);
   return candidates;
 };

@@ -16,6 +16,7 @@ import {
 } from "@/lib/serialInputStorage";
 import {
   createAttachmentId,
+  deleteAttachment,
   openAttachmentInNewTab,
   saveAttachment,
   type AttachmentKind,
@@ -410,6 +411,31 @@ export default function SerialInputPanel({
     }
   };
 
+  const handleDeleteAttachment = async (kind: AttachmentKind) => {
+    if (!inventoryId) return;
+    const attachmentId = kind === "kentuu" ? attachments.kentuuAttachmentId : attachments.tekkyoAttachmentId;
+    if (!attachmentId) return;
+    const label = kind === "kentuu" ? "検通" : "撤明";
+    if (!confirm(`${label}PDFを削除します。よろしいですか？`)) return;
+    try {
+      await deleteAttachment(attachmentId);
+      const nextAttachments = { ...(inventory?.attachments ?? {}) };
+      if (kind === "kentuu") {
+        delete nextAttachments.kentuuAttachmentId;
+      } else {
+        delete nextAttachments.tekkyoAttachmentId;
+      }
+      const updated = updateInventoryRecord(inventoryId, {
+        attachments: Object.keys(nextAttachments).length > 0 ? nextAttachments : undefined,
+      });
+      const nextRecord = updated.find((item) => item.id === inventoryId) ?? inventory;
+      setInventory(nextRecord ?? null);
+    } catch (error) {
+      console.error("Failed to delete attachment", error);
+      alert("PDFの削除に失敗しました。もう一度お試しください。");
+    }
+  };
+
   const handleStartOcr = async () => {
     if (!attachments.kentuuAttachmentId || ocrLoading) return;
     setOcrModalOpen(true);
@@ -420,12 +446,16 @@ export default function SerialInputPanel({
     try {
       const candidates = await extractKentuuCandidates(attachments.kentuuAttachmentId);
       if (candidates.length === 0) {
-        setOcrMessage("番号を検出できませんでした。手入力してください。");
+        setOcrMessage("番号パターンに一致しませんでした。手入力してください。");
       }
       setOcrCandidates(candidates);
     } catch (error) {
       console.error("Failed to run OCR", error);
-      setOcrMessage("OCRに失敗しました。手入力で入力してください。");
+      const message =
+        error instanceof Error && error.message
+          ? `OCRに失敗しました: ${error.message}`
+          : "OCRに失敗しました。手入力で入力してください。";
+      setOcrMessage(message);
     } finally {
       setOcrLoading(false);
     }
@@ -517,27 +547,45 @@ export default function SerialInputPanel({
             <div className="flex items-center gap-2 text-neutral-700">
               <span>検通</span>
               {hasKentuu ? (
-                <button
-                  type="button"
-                  title="PDFを開く"
-                  onClick={() => handleOpenAttachment(attachments.kentuuAttachmentId)}
-                  className="cursor-pointer text-[12px] font-semibold text-emerald-700 hover:text-emerald-900"
-                >
-                  ●
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    title="PDFを開く"
+                    onClick={() => handleOpenAttachment(attachments.kentuuAttachmentId)}
+                    className="cursor-pointer text-[12px] font-semibold text-emerald-700 hover:text-emerald-900"
+                  >
+                    ●
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteAttachment("kentuu")}
+                    className="border border-black bg-white px-1 py-0.5 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100"
+                  >
+                    削除
+                  </button>
+                </div>
               ) : (
                 <span className="text-neutral-500">-</span>
               )}
               <span className="ml-2">撤明</span>
               {hasTekkyo ? (
-                <button
-                  type="button"
-                  title="PDFを開く"
-                  onClick={() => handleOpenAttachment(attachments.tekkyoAttachmentId)}
-                  className="cursor-pointer text-[12px] font-semibold text-emerald-700 hover:text-emerald-900"
-                >
-                  ●
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    title="PDFを開く"
+                    onClick={() => handleOpenAttachment(attachments.tekkyoAttachmentId)}
+                    className="cursor-pointer text-[12px] font-semibold text-emerald-700 hover:text-emerald-900"
+                  >
+                    ●
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteAttachment("tekkyo")}
+                    className="border border-black bg-white px-1 py-0.5 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100"
+                  >
+                    削除
+                  </button>
+                </div>
               ) : (
                 <span className="text-neutral-500">-</span>
               )}

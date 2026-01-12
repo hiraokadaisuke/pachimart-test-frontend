@@ -77,3 +77,16 @@ export const openAttachmentInNewTab = async (attachmentId?: string | null): Prom
   window.open(url, "_blank", "noopener,noreferrer");
   window.setTimeout(() => URL.revokeObjectURL(url), 60000);
 };
+
+export const deleteAttachment = async (attachmentId?: string | null): Promise<void> => {
+  if (!attachmentId) return;
+  const db = await openDb();
+  await new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    store.delete(attachmentId);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error ?? new Error("Failed to delete attachment."));
+  });
+  db.close();
+};

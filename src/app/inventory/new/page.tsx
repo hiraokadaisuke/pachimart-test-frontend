@@ -6,6 +6,13 @@ import { useRouter } from "next/navigation";
 
 import { addInventoryRecords, generateInventoryId, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 import {
+  createAttachmentId,
+  deleteAttachment,
+  openAttachmentInNewTab,
+  saveAttachment,
+  type AttachmentKind,
+} from "@/lib/attachments/attachmentStore";
+import {
   DEFAULT_MASTER_DATA,
   loadMasterData,
   type MasterData,
@@ -52,6 +59,8 @@ type InventoryFormRow = {
   isShippingTwoPackages: boolean;
   isHandlingFeeTwoPackages: boolean;
   isSeparateSaleProhibited: boolean;
+  kentuuAttachmentId?: string;
+  tekkyoAttachmentId?: string;
 };
 
 type PublishOptionsState = Pick<
@@ -179,7 +188,7 @@ export default function InventoryNewPage() {
   const excelBtn =
     "h-8 rounded-none border border-slate-600 bg-slate-200 px-4 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] transition hover:bg-slate-100";
   const machineTableColGroup =
-    "40px 55px 120px 240px 80px 70px 90px 90px 70px 110px 110px 70px 100px 90px";
+    "40px 55px 120px 240px 80px 70px 90px 90px 70px 110px 110px 70px 100px 90px 80px 80px";
   const machineOrder: MachineFieldOrder[] = [
     "kind",
     "maker",
@@ -368,14 +377,116 @@ export default function InventoryNewPage() {
     setRows((prev) => {
       if (prev.length === 0) return [createBlankRow(today)];
       const last = prev[prev.length - 1];
-      const next = [...prev, resetPublishOptions({ ...last, id: undefined, isPublished: false })];
+      const next = [
+        ...prev,
+        resetPublishOptions({
+          ...last,
+          id: undefined,
+          isPublished: false,
+          kentuuAttachmentId: undefined,
+          tekkyoAttachmentId: undefined,
+        }),
+      ];
       const key = focusKey(prev.length, machineOrder[0]);
       requestAnimationFrame(() => focusTo(key));
       return next;
     });
 
   const handleDeleteRow = (index: number) => {
-    setRows((prev) => (prev.length <= 1 ? prev : prev.filter((_, idx) => idx !== index)));
+    setRows((prev) => {
+      if (prev.length <= 1) return prev;
+      const target = prev[index];
+      if (target?.kentuuAttachmentId) {
+        void deleteAttachment(target.kentuuAttachmentId);
+      }
+      if (target?.tekkyoAttachmentId) {
+        void deleteAttachment(target.tekkyoAttachmentId);
+      }
+      return prev.filter((_, idx) => idx !== index);
+    });
+  };
+
+  const ensureRowId = (index: number) => {
+    let resolvedId = "";
+    setRows((prev) => {
+      const target = prev[index];
+      if (!target) return prev;
+      const nextId = target.id ?? generateInventoryId();
+      resolvedId = nextId;
+      if (target.id) return prev;
+      return prev.map((row, idx) => (idx === index ? { ...row, id: nextId } : row));
+    });
+    return resolvedId;
+  };
+
+  const handleRowAttachmentUpload = async (index: number, kind: AttachmentKind, file: File) => {
+    const rowId = ensureRowId(index);
+    if (!rowId) return;
+    const attachmentId = createAttachmentId();
+    try {
+      await saveAttachment({
+        attachmentId,
+        inventoryId: rowId,
+        kind,
+        filename: file.name,
+        mimeType: file.type,
+        blob: file,
+        createdAt: new Date().toISOString(),
+      });
+      setRows((prev) =>
+        prev.map((row, idx) =>
+          idx === index
+            ? {
+                ...row,
+                ...(kind === "kentuu"
+                  ? { kentuuAttachmentId: attachmentId }
+                  : { tekkyoAttachmentId: attachmentId }),
+              }
+            : row,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to upload attachment", error);
+      alert("PDFの保存に失敗しました。もう一度お試しください。");
+    }
+  };
+
+  const handleRowAttachmentFileChange = (
+    index: number,
+    kind: AttachmentKind,
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    void handleRowAttachmentUpload(index, kind, file);
+    event.target.value = "";
+  };
+
+  const handleRowAttachmentDelete = async (index: number, kind: AttachmentKind) => {
+    const row = rows[index];
+    if (!row) return;
+    const attachmentId = kind === "kentuu" ? row.kentuuAttachmentId : row.tekkyoAttachmentId;
+    if (!attachmentId) return;
+    const label = kind === "kentuu" ? "検通" : "撤明";
+    if (!confirm(`${label}PDFを削除します。よろしいですか？`)) return;
+    try {
+      await deleteAttachment(attachmentId);
+      setRows((prev) =>
+        prev.map((entry, idx) =>
+          idx === index
+            ? {
+                ...entry,
+                ...(kind === "kentuu"
+                  ? { kentuuAttachmentId: undefined }
+                  : { tekkyoAttachmentId: undefined }),
+              }
+            : entry,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to delete attachment", error);
+      alert("PDFの削除に失敗しました。もう一度お試しください。");
+    }
   };
 
   const handleAddRowWithFocus = () => {
@@ -483,6 +594,13 @@ export default function InventoryNewPage() {
         const listingStatus = row.isPublished ? "listing" : "not_listing";
         const status = mapListingStatusToStockStatus(listingStatus);
         const stockInDate = row.stockInDate || supplierInfo.inputDate || today;
+        const attachments =
+          row.kentuuAttachmentId || row.tekkyoAttachmentId
+            ? {
+                kentuuAttachmentId: row.kentuuAttachmentId,
+                tekkyoAttachmentId: row.tekkyoAttachmentId,
+              }
+            : undefined;
         return {
           id: row.id || generateInventoryId(),
           createdAt: supplierInfo.inputDate || today,
@@ -527,6 +645,7 @@ export default function InventoryNewPage() {
           isShippingTwoPackages: row.isShippingTwoPackages,
           isHandlingFeeTwoPackages: row.isHandlingFeeTwoPackages,
           isSeparateSaleProhibited: row.isSeparateSaleProhibited,
+          attachments,
         } satisfies InventoryRecord;
       });
 
@@ -750,6 +869,8 @@ export default function InventoryNewPage() {
                 <th className={excelTh}>柄</th>
                 <th className={excelTh}>保管先</th>
                 <th className={excelTh}>公開</th>
+                <th className={excelTh}>検通</th>
+                <th className={excelTh}>撤明</th>
               </tr>
             </thead>
             <tbody>
@@ -969,6 +1090,86 @@ export default function InventoryNewPage() {
                             確認
                           </button>
                         )}
+                      </div>
+                    </td>
+                    <td className={`${excelTd} text-center`}>
+                      <div className="flex flex-col items-center gap-1 text-[11px]">
+                        {row.kentuuAttachmentId ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void openAttachmentInNewTab(row.kentuuAttachmentId)}
+                              className="font-semibold text-emerald-700 hover:text-emerald-900"
+                            >
+                              ●
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleRowAttachmentDelete(index, "kentuu")}
+                              className="rounded-none border border-slate-500 bg-white px-1 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100"
+                            >
+                              削除
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-neutral-400">-</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            (document.getElementById(`kentuu-file-${index}`) as HTMLInputElement | null)?.click()
+                          }
+                          className="rounded-none border border-slate-500 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100"
+                        >
+                          ⬆
+                        </button>
+                        <input
+                          id={`kentuu-file-${index}`}
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          onChange={(event) => handleRowAttachmentFileChange(index, "kentuu", event)}
+                        />
+                      </div>
+                    </td>
+                    <td className={`${excelTd} text-center`}>
+                      <div className="flex flex-col items-center gap-1 text-[11px]">
+                        {row.tekkyoAttachmentId ? (
+                          <div className="flex items-center justify-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => void openAttachmentInNewTab(row.tekkyoAttachmentId)}
+                              className="font-semibold text-emerald-700 hover:text-emerald-900"
+                            >
+                              ●
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleRowAttachmentDelete(index, "tekkyo")}
+                              className="rounded-none border border-slate-500 bg-white px-1 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100"
+                            >
+                              削除
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-neutral-400">-</span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            (document.getElementById(`tekkyo-file-${index}`) as HTMLInputElement | null)?.click()
+                          }
+                          className="rounded-none border border-slate-500 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-700 hover:bg-slate-100"
+                        >
+                          ⬆
+                        </button>
+                        <input
+                          id={`tekkyo-file-${index}`}
+                          type="file"
+                          accept="application/pdf"
+                          className="hidden"
+                          onChange={(event) => handleRowAttachmentFileChange(index, "tekkyo", event)}
+                        />
                       </div>
                     </td>
                   </tr>
