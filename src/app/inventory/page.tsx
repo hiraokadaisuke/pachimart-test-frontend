@@ -1527,13 +1527,14 @@ export default function InventoryPage() {
                   <th className="w-[64px] border border-gray-300 px-1 py-1 text-center">販伝票</th>
                   <th className="w-[56px] border border-gray-300 px-1 py-1 text-center">検通</th>
                   <th className="w-[56px] border border-gray-300 px-1 py-1 text-center">撤明</th>
+                  <th className="w-[56px] border border-gray-300 px-1 py-1" />
                 </tr>
               </thead>
               <tbody>
                 {displayRecords.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={visibleColumns.length + 6}
+                      colSpan={visibleColumns.length + 7}
                       className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600"
                     >
                       登録された在庫がありません。
@@ -1670,7 +1671,7 @@ export default function InventoryPage() {
                         );
                       })}
                       <td className="w-[96px] border border-gray-300 px-1 py-0.5 text-center">
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center">
                           <Link
                             href={`/inventory/${item.id}`}
                             target="_blank"
@@ -1683,15 +1684,6 @@ export default function InventoryPage() {
                           >
                             ＋
                           </Link>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteRecord(item)}
-                            disabled={isDeletionBlocked}
-                            title={isDeletionBlocked ? "販売伝票作成済みのため削除できません。" : "在庫を削除"}
-                            className="border border-gray-300 bg-white px-1 py-1 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-neutral-400"
-                          >
-                            削除
-                          </button>
                         </div>
                       </td>
                       <td className="w-[64px] border border-gray-300 px-1 py-0.5 text-center">
@@ -1751,6 +1743,17 @@ export default function InventoryPage() {
                             ●
                           </button>
                         ) : null}
+                      </td>
+                      <td className="w-[56px] border border-gray-300 px-1 py-0.5 text-center">
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteRecord(item)}
+                          disabled={isDeletionBlocked}
+                          title={isDeletionBlocked ? "販売伝票作成済みのため削除できません。" : "在庫を削除"}
+                          className="border border-gray-300 bg-white px-1 py-1 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-neutral-400"
+                        >
+                          削除
+                        </button>
                       </td>
                     </tr>
                     );
