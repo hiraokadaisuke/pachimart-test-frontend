@@ -63,6 +63,12 @@ type OcrMode = "single" | "list";
 
 const buildCandidateId = (index: number) => `candidate-${index + 1}`;
 
+type PdfTextItem = { str: string };
+type PdfTextContentItem = PdfTextItem | { type?: string };
+
+const hasStr = (item: unknown): item is PdfTextItem =>
+  typeof (item as { str?: unknown })?.str === "string";
+
 const normalizeText = (text: string) =>
   text
     .replace(/\r/g, "\n")
@@ -149,7 +155,9 @@ export const extractKentuuCandidates = async (attachmentId: string): Promise<Ken
 
   const firstPage = await pdf.getPage(1);
   const textContent = await firstPage.getTextContent();
-  const firstText = textContent.items.map((item) => ("str" in item ? item.str : "")).join(" ");
+  const firstText = (textContent.items as PdfTextContentItem[])
+    .map((item) => (hasStr(item) ? item.str : ""))
+    .join(" ");
   const hasListPageHint = /別紙|製造番号一覧|別途/.test(firstText);
 
   const useListPage = hasListPageHint && pdf.numPages > 1;
