@@ -41,6 +41,7 @@ interface InventoryTableProps {
   sortKey?: InventorySortKey | null;
   sortOrder?: "asc" | "desc";
   onOpenDocuments?: (itemId: number) => void;
+  onOpenAttachment?: (attachmentId: string) => void;
   onToggleListingStatus?: (item: InventoryItem) => void;
 }
 
@@ -192,6 +193,14 @@ const columnDefinitions: InventoryColumnDefinition[] = [
         "max-w-[150px]",
       ),
   },
+  {
+    id: "kentuu",
+    render: (item) => item.attachments?.kentuuAttachmentId ?? "",
+  },
+  {
+    id: "tekkyo",
+    render: (item) => item.attachments?.tekkyoAttachmentId ?? "",
+  },
 ];
 
 const columnWidthClasses: Partial<Record<InventoryColumnId, string>> = {
@@ -229,6 +238,8 @@ const columnWidthClasses: Partial<Record<InventoryColumnId, string>> = {
   serialNumber: "min-w-[130px]",
   inspectionInfo: "min-w-[140px]",
   listingId: "min-w-[130px] whitespace-nowrap",
+  kentuu: "min-w-[60px] whitespace-nowrap text-center",
+  tekkyo: "min-w-[60px] whitespace-nowrap text-center",
 };
 
 const columnSortKeyMap: Partial<Record<InventoryColumnId, InventorySortKey>> = {
@@ -258,6 +269,7 @@ export function InventoryTable({
   sortKey,
   sortOrder,
   onOpenDocuments,
+  onOpenAttachment,
   onToggleListingStatus,
 }: InventoryTableProps) {
   const sensors = useSensors(useSensor(PointerSensor));
@@ -457,6 +469,24 @@ export function InventoryTable({
   ];
 
   const renderCell = (column: InventoryColumnDefinition, item: InventoryItem, isEditing: boolean) => {
+    if (column.id === "kentuu" || column.id === "tekkyo") {
+      const current = isEditing && editValues ? editValues : item;
+      const attachmentId =
+        column.id === "kentuu"
+          ? current.attachments?.kentuuAttachmentId
+          : current.attachments?.tekkyoAttachmentId;
+      if (!attachmentId) return null;
+      return (
+        <button
+          type="button"
+          title="PDFを開く"
+          onClick={() => onOpenAttachment?.(attachmentId)}
+          className="inline-flex cursor-pointer items-center justify-center text-[12px] font-semibold text-emerald-700 hover:text-emerald-900"
+        >
+          ●
+        </button>
+      );
+    }
     if (!isEditing || !editValues) return column.render(item);
 
     switch (column.id) {

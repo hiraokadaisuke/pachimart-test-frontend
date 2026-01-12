@@ -24,6 +24,7 @@ import {
   type InventorySortKey,
 } from "./columnSettings";
 import { loadAllInventory } from "@/lib/inventory/storage";
+import { openAttachmentInNewTab } from "@/lib/attachments/attachmentStore";
 
 const PAGE_SIZE = 20;
 const COLUMN_PREFS_KEY = "inventory_column_prefs_v1";
@@ -1074,6 +1075,15 @@ export function InventoryDashboard() {
     upsertInventoryDocument(itemId, kind, file);
   };
 
+  const handleOpenAttachment = async (attachmentId: string) => {
+    try {
+      await openAttachmentInNewTab(attachmentId);
+    } catch (error) {
+      console.error("Failed to open attachment", error);
+      alert("PDFが見つかりません。再アップロードしてください。");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <MainContainer fullWidth>
@@ -1194,6 +1204,7 @@ export function InventoryDashboard() {
           onHeaderReorder={handleHeaderReorder}
           onSortChange={handleSortChange}
           onOpenDocuments={openDocumentsModal}
+          onOpenAttachment={handleOpenAttachment}
           onToggleListingStatus={handleToggleListingStatus}
           sortKey={sortKey}
           sortOrder={sortOrder}

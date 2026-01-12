@@ -50,6 +50,10 @@ export type InventoryRecord = {
   isShippingTwoPackages?: boolean;
   isHandlingFeeTwoPackages?: boolean;
   isSeparateSaleProhibited?: boolean;
+  attachments?: {
+    kentuuAttachmentId?: string;
+    tekkyoAttachmentId?: string;
+  };
 };
 
 export type ColumnSetting = {
