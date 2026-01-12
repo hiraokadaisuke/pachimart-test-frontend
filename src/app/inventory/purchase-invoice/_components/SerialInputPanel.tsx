@@ -21,7 +21,7 @@ import {
   saveAttachment,
   type AttachmentKind,
 } from "@/lib/attachments/attachmentStore";
-import { extractKentuuCandidates, type KentuuCandidate } from "@/lib/attachments/kentuuOcr";
+import type { KentuuCandidate } from "@/lib/attachments/kentuuOcr";
 
 const COLUMN_KEYS = ["board", "frame", "main", "removalDate"] as const;
 type ColumnKey = (typeof COLUMN_KEYS)[number];
@@ -439,26 +439,10 @@ export default function SerialInputPanel({
   const handleStartOcr = async () => {
     if (!attachments.kentuuAttachmentId || ocrLoading) return;
     setOcrModalOpen(true);
-    setOcrLoading(true);
-    setOcrMessage(null);
+    setOcrLoading(false);
+    setOcrMessage("OCRは現在準備中です。手入力で入力してください。");
     setOcrCandidates([]);
     setSelectedCandidateIds(new Set());
-    try {
-      const candidates = await extractKentuuCandidates(attachments.kentuuAttachmentId);
-      if (candidates.length === 0) {
-        setOcrMessage("番号パターンに一致しませんでした。手入力してください。");
-      }
-      setOcrCandidates(candidates);
-    } catch (error) {
-      console.error("Failed to run OCR", error);
-      const message =
-        error instanceof Error && error.message
-          ? `OCRに失敗しました: ${error.message}`
-          : "OCRに失敗しました。手入力で入力してください。";
-      setOcrMessage(message);
-    } finally {
-      setOcrLoading(false);
-    }
   };
 
   const handleToggleCandidate = (candidateId: string) => {

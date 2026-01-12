@@ -5,10 +5,9 @@ export type KentuuCandidate = {
   main: string;
 };
 
-export const extractKentuuCandidates = async (attachmentId: string): Promise<KentuuCandidate[]> => {
+export const extractKentuuCandidates = async (): Promise<KentuuCandidate[]> => {
   if (typeof window === "undefined") {
     throw new Error("OCRはブラウザでのみ実行できます。");
   }
-  const module = await import("./kentuuOcr.client");
-  return module.extractKentuuCandidates(attachmentId);
+  throw new Error("OCRは現在準備中です。");
 };
