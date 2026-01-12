@@ -2,7 +2,7 @@ import type { TextItem, TextMarkedContent } from "pdfjs-dist/types/src/display/a
 
 import { getAttachment } from "./attachmentStore";
 
-type PdfjsModule = typeof import("pdfjs-dist");
+type PdfjsModule = typeof import("pdfjs-dist/legacy/build/pdf");
 const TESSERACT_VERSION = "5.1.0";
 
 const loadScript = (src: string) =>
@@ -30,13 +30,14 @@ const loadScript = (src: string) =>
   });
 
 const loadPdfjs = async (): Promise<PdfjsModule> => {
+  if (typeof window === "undefined") {
+    throw new Error("OCRはブラウザでのみ実行できます。");
+  }
   const existing = (window as typeof window & { pdfjsLib?: PdfjsModule }).pdfjsLib;
   if (existing) return existing;
-  const pdfjs = await import("pdfjs-dist");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/build/pdf.worker.min.mjs",
-    import.meta.url,
-  ).toString();
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf");
+  const workerSrc = (await import("pdfjs-dist/build/pdf.worker.min.js?url")).default;
+  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
   (window as typeof window & { pdfjsLib?: PdfjsModule }).pdfjsLib = pdfjs;
   return pdfjs;
 };
@@ -144,6 +145,9 @@ const selectOcrRegion = (width: number, height: number, mode: OcrMode) => {
 };
 
 export const extractKentuuCandidates = async (attachmentId: string): Promise<KentuuCandidate[]> => {
+  if (typeof window === "undefined") {
+    throw new Error("OCRはブラウザでのみ実行できます。");
+  }
   const record = await getAttachment(attachmentId);
   if (!record) return [];
 
