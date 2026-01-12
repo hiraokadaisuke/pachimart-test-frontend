@@ -1,5 +1,57 @@
 import { getAttachment } from "./attachmentStore";
 
+const PDFJS_VERSION = "4.4.168";
+const TESSERACT_VERSION = "5.1.0";
+
+const loadScript = (src: string) =>
+  new Promise<void>((resolve, reject) => {
+    const existing = document.querySelector<HTMLScriptElement>(`script[src="${src}"]`);
+    if (existing) {
+      if (existing.dataset.loaded === "true") {
+        resolve();
+        return;
+      }
+      existing.addEventListener("load", () => resolve(), { once: true });
+      existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.dataset.loaded = "false";
+    script.onload = () => {
+      script.dataset.loaded = "true";
+      resolve();
+    };
+    script.onerror = () => reject(new Error(`Failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+
+const loadPdfjs = async () => {
+  const existing = (window as typeof window & { pdfjsLib?: any }).pdfjsLib;
+  if (existing) return existing;
+  const scriptUrl = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
+  await loadScript(scriptUrl);
+  const pdfjs = (window as typeof window & { pdfjsLib?: any }).pdfjsLib;
+  if (!pdfjs) {
+    throw new Error("pdf.js library failed to load.");
+  }
+  pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
+  return pdfjs;
+};
+
+const loadTesseract = async () => {
+  const existing = (window as typeof window & { Tesseract?: any }).Tesseract;
+  if (existing) return existing;
+  const scriptUrl = `https://cdn.jsdelivr.net/npm/tesseract.js@${TESSERACT_VERSION}/dist/tesseract.min.js`;
+  await loadScript(scriptUrl);
+  const tesseract = (window as typeof window & { Tesseract?: any }).Tesseract;
+  if (!tesseract) {
+    throw new Error("tesseract.js library failed to load.");
+  }
+  return tesseract;
+};
+
 export type KentuuCandidate = {
   id: string;
   board: string;
@@ -90,9 +142,7 @@ export const extractKentuuCandidates = async (attachmentId: string): Promise<Ken
   const record = await getAttachment(attachmentId);
   if (!record) return [];
 
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf");
-  const workerSrc = new URL("pdfjs-dist/legacy/build/pdf.worker.min.mjs", import.meta.url).toString();
-  pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
+  const pdfjs = await loadPdfjs();
 
   const arrayBuffer = await record.blob.arrayBuffer();
   const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
@@ -134,8 +184,8 @@ export const extractKentuuCandidates = async (attachmentId: string): Promise<Ken
     region.h,
   );
 
-  const { createWorker } = await import("tesseract.js");
-  const worker = await createWorker("eng");
+  const tesseract = await loadTesseract();
+  const worker = await tesseract.createWorker("eng");
   await worker.setParameters({
     tessedit_char_whitelist: "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/",
     preserve_interword_spaces: "1",
