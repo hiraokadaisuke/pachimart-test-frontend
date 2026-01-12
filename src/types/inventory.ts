@@ -38,7 +38,13 @@ export interface InventoryItem {
   inspectionInfo?: string;
   listingId?: string;
   hasDocuments?: boolean;
+  attachments?: InventoryAttachmentRefs;
 }
+
+export type InventoryAttachmentRefs = {
+  kentuuAttachmentId?: string;
+  tekkyoAttachmentId?: string;
+};
 
 export type InventoryDocumentKind =
   | "kentei_notice"

@@ -42,6 +42,10 @@ export interface StoredInventoryItem {
   inspectionInfo?: string;
   listingId?: string;
   hasDocuments?: boolean;
+  attachments?: {
+    kentuuAttachmentId?: string;
+    tekkyoAttachmentId?: string;
+  };
   quantity?: number;
   unitPrice?: number;
   supplier?: string;

@@ -2,7 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { loadInventoryRecords, type InventoryRecord } from "@/lib/demo-data/demoInventory";
+import {
+  loadInventoryRecords,
+  updateInventoryRecord,
+  type InventoryRecord,
+} from "@/lib/demo-data/demoInventory";
 import {
   loadSerialDraft,
   loadSerialInput,
@@ -10,6 +14,13 @@ import {
   type SerialInputPayload,
   type SerialInputRow,
 } from "@/lib/serialInputStorage";
+import {
+  createAttachmentId,
+  openAttachmentInNewTab,
+  saveAttachment,
+  type AttachmentKind,
+} from "@/lib/attachments/attachmentStore";
+import { extractKentuuCandidates, type KentuuCandidate } from "@/lib/attachments/kentuuOcr";
 
 const COLUMN_KEYS = ["board", "frame", "main", "removalDate"] as const;
 type ColumnKey = (typeof COLUMN_KEYS)[number];
@@ -94,7 +105,15 @@ export default function SerialInputPanel({
   const [rangeStart, setRangeStart] = useState("");
   const [rangeEnd, setRangeEnd] = useState("");
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
+  const [uploadingKind, setUploadingKind] = useState<AttachmentKind | null>(null);
+  const [ocrModalOpen, setOcrModalOpen] = useState(false);
+  const [ocrCandidates, setOcrCandidates] = useState<KentuuCandidate[]>([]);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const [ocrMessage, setOcrMessage] = useState<string | null>(null);
+  const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set());
   const bulkInputRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const kentuuInputRef = useRef<HTMLInputElement | null>(null);
+  const tekkyoInputRef = useRef<HTMLInputElement | null>(null);
 
   const machineName = inventory?.machineName ?? "";
   const machineKind = useMemo(() => {
@@ -103,6 +122,10 @@ export default function SerialInputPanel({
   }, [inventory?.kind, inventory?.type]);
   const columnLabels = useMemo(() => getColumnLabels(machineKind), [machineKind]);
   const bulkInputCount = BULK_INPUT_KEYS.length * 2;
+  const attachments = inventory?.attachments ?? {};
+  const hasKentuu = Boolean(attachments.kentuuAttachmentId);
+  const hasTekkyo = Boolean(attachments.tekkyoAttachmentId);
+  const selectedCandidateCount = selectedCandidateIds.size;
 
   useEffect(() => {
     if (!inventoryId) return;
@@ -148,6 +171,11 @@ export default function SerialInputPanel({
         });
       }
       setSelectedRows(new Set());
+      setSelectedCandidateIds(new Set());
+      setOcrCandidates([]);
+      setOcrMessage(null);
+      setOcrModalOpen(false);
+      setOcrLoading(false);
     };
     void loadData();
     return () => {
@@ -336,6 +364,115 @@ export default function SerialInputPanel({
     onNext?.(buildPayload());
   };
 
+  const handleAttachmentUpload = async (kind: AttachmentKind, file: File) => {
+    if (!inventoryId) return;
+    setUploadingKind(kind);
+    try {
+      const attachmentId = createAttachmentId();
+      await saveAttachment({
+        attachmentId,
+        inventoryId,
+        kind,
+        filename: file.name,
+        mimeType: file.type || "application/pdf",
+        blob: file,
+        createdAt: new Date().toISOString(),
+      });
+      const updated = updateInventoryRecord(inventoryId, {
+        attachments: {
+          ...(inventory?.attachments ?? {}),
+          ...(kind === "kentuu" ? { kentuuAttachmentId: attachmentId } : { tekkyoAttachmentId: attachmentId }),
+        },
+      });
+      const nextRecord = updated.find((item) => item.id === inventoryId) ?? inventory;
+      setInventory(nextRecord ?? null);
+    } catch (error) {
+      console.error("Failed to save attachment", error);
+      alert("PDFの保存に失敗しました。もう一度お試しください。");
+    } finally {
+      setUploadingKind(null);
+    }
+  };
+
+  const handleAttachmentFileChange = (kind: AttachmentKind, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    void handleAttachmentUpload(kind, file);
+    event.target.value = "";
+  };
+
+  const handleOpenAttachment = async (attachmentId?: string) => {
+    try {
+      await openAttachmentInNewTab(attachmentId);
+    } catch (error) {
+      console.error("Failed to open attachment", error);
+      alert("PDFが見つかりません。再アップロードしてください。");
+    }
+  };
+
+  const handleStartOcr = async () => {
+    if (!attachments.kentuuAttachmentId || ocrLoading) return;
+    setOcrModalOpen(true);
+    setOcrLoading(true);
+    setOcrMessage(null);
+    setOcrCandidates([]);
+    setSelectedCandidateIds(new Set());
+    try {
+      const candidates = await extractKentuuCandidates(attachments.kentuuAttachmentId);
+      if (candidates.length === 0) {
+        setOcrMessage("番号を検出できませんでした。手入力してください。");
+      }
+      setOcrCandidates(candidates);
+    } catch (error) {
+      console.error("Failed to run OCR", error);
+      setOcrMessage("OCRに失敗しました。手入力で入力してください。");
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
+  const handleToggleCandidate = (candidateId: string) => {
+    setSelectedCandidateIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(candidateId)) {
+        next.delete(candidateId);
+        return next;
+      }
+      if (next.size >= units) return next;
+      next.add(candidateId);
+      return next;
+    });
+  };
+
+  const handleCandidateChange = (
+    candidateId: string,
+    key: "board" | "frame" | "main",
+    value: string,
+  ) => {
+    setOcrCandidates((prev) =>
+      prev.map((candidate) => (candidate.id === candidateId ? { ...candidate, [key]: value } : candidate)),
+    );
+  };
+
+  const handleApplyOcr = () => {
+    if (selectedCandidateIds.size !== units) return;
+    const selected = ocrCandidates.filter((candidate) => selectedCandidateIds.has(candidate.id));
+    if (selected.length === 0) return;
+    setRows((prev) =>
+      prev.map((row, index) => {
+        const candidate = selected[index];
+        if (!candidate) return row;
+        return {
+          ...row,
+          board: candidate.board,
+          frame: candidate.frame,
+          main: candidate.main,
+        };
+      }),
+    );
+    setOcrModalOpen(false);
+  };
+
   const rangeInfo = resolveRange();
   const hasRangeInput = rangeStart.trim() !== "" || rangeEnd.trim() !== "";
   const rangeLabel = hasRangeInput ? `${rangeInfo.start} ～ ${rangeInfo.end}` : `1 ～ ${units}`;
@@ -371,10 +508,80 @@ export default function SerialInputPanel({
           <p className="text-[12px] text-neutral-800">「＊」が表示されているものは分解した商品です。</p>
         </div>
 
-        <div className="flex items-center gap-2 border border-black bg-neutral-200 text-[13px] font-semibold">
-          <div className="h-7 w-1 bg-emerald-600" />
-          <div className="px-3">購入機械番号入力</div>
+        <div className="flex flex-wrap items-center justify-between gap-2 border border-black bg-neutral-200 text-[13px] font-semibold">
+          <div className="flex items-center gap-2">
+            <div className="h-7 w-1 bg-emerald-600" />
+            <div className="px-3">購入機械番号入力</div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 px-3 py-1 text-[11px] font-semibold">
+            <div className="flex items-center gap-2 text-neutral-700">
+              <span>検通</span>
+              {hasKentuu ? (
+                <button
+                  type="button"
+                  title="PDFを開く"
+                  onClick={() => handleOpenAttachment(attachments.kentuuAttachmentId)}
+                  className="cursor-pointer text-[12px] font-semibold text-emerald-700 hover:text-emerald-900"
+                >
+                  ●
+                </button>
+              ) : (
+                <span className="text-neutral-500">-</span>
+              )}
+              <span className="ml-2">撤明</span>
+              {hasTekkyo ? (
+                <button
+                  type="button"
+                  title="PDFを開く"
+                  onClick={() => handleOpenAttachment(attachments.tekkyoAttachmentId)}
+                  className="cursor-pointer text-[12px] font-semibold text-emerald-700 hover:text-emerald-900"
+                >
+                  ●
+                </button>
+              ) : (
+                <span className="text-neutral-500">-</span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => kentuuInputRef.current?.click()}
+              disabled={uploadingKind === "kentuu"}
+              className="border border-black bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {uploadingKind === "kentuu" ? "検通アップ中" : "検通 ⬆"}
+            </button>
+            <button
+              type="button"
+              onClick={() => tekkyoInputRef.current?.click()}
+              disabled={uploadingKind === "tekkyo"}
+              className="border border-black bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {uploadingKind === "tekkyo" ? "撤明アップ中" : "撤明 ⬆"}
+            </button>
+            <button
+              type="button"
+              onClick={handleStartOcr}
+              disabled={!hasKentuu || ocrLoading}
+              className="border border-black bg-neutral-100 px-2 py-1 text-[11px] font-semibold hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {ocrLoading ? "OCR中..." : "番号反映"}
+            </button>
+          </div>
         </div>
+        <input
+          ref={kentuuInputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(event) => handleAttachmentFileChange("kentuu", event)}
+        />
+        <input
+          ref={tekkyoInputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(event) => handleAttachmentFileChange("tekkyo", event)}
+        />
 
         <div className="border border-black bg-white">
           <div className="flex flex-wrap items-center justify-between border-b border-black px-3 py-2 text-[12px] font-semibold">
@@ -715,6 +922,120 @@ export default function SerialInputPanel({
             次へ
           </button>
         </div>
+
+        {ocrModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
+            <div className="w-full max-w-4xl border border-black bg-white text-[12px] shadow-lg">
+              <div className="flex items-center justify-between border-b border-black bg-neutral-100 px-4 py-3">
+                <div>
+                  <div className="text-sm font-semibold">番号候補の選択</div>
+                  <div className="mt-1 text-[11px] text-neutral-700">
+                    仕入数：{units}台 ／ 選択数：{selectedCandidateCount}/{units}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOcrModalOpen(false)}
+                  className="text-sm text-neutral-700 hover:text-neutral-900"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="max-h-[60vh] overflow-y-auto px-4 py-3">
+                {ocrLoading ? (
+                  <div className="py-8 text-center text-[12px] text-neutral-700">OCR処理中...</div>
+                ) : ocrCandidates.length === 0 ? (
+                  <div className="py-8 text-center text-[12px] text-neutral-700">
+                    {ocrMessage ?? "番号を検出できませんでした。手入力してください。"}
+                  </div>
+                ) : (
+                  <table className="w-full table-fixed border-collapse border border-black text-[12px]">
+                    <thead className="bg-neutral-100">
+                      <tr>
+                        <th className="w-10 border border-black px-2 py-2 text-center">選択</th>
+                        <th className="border border-black px-2 py-2 text-center">{columnLabels.board}</th>
+                        <th className="border border-black px-2 py-2 text-center">{columnLabels.frame}</th>
+                        <th className="border border-black px-2 py-2 text-center">{columnLabels.main}</th>
+                        <th className="w-48 border border-black px-2 py-2 text-center">編集</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {ocrCandidates.map((candidate) => {
+                        const isSelected = selectedCandidateIds.has(candidate.id);
+                        return (
+                          <tr key={candidate.id} className="odd:bg-white even:bg-neutral-50">
+                            <td className="border border-black px-2 py-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleToggleCandidate(candidate.id)}
+                                disabled={!isSelected && selectedCandidateCount >= units}
+                              />
+                            </td>
+                            <td className="border border-black px-2 py-2">{candidate.board || "-"}</td>
+                            <td className="border border-black px-2 py-2">{candidate.frame || "-"}</td>
+                            <td className="border border-black px-2 py-2">{candidate.main || "-"}</td>
+                            <td className="border border-black px-2 py-2">
+                              <div className="flex flex-col gap-1">
+                                <input
+                                  type="text"
+                                  value={candidate.board}
+                                  onChange={(event) =>
+                                    handleCandidateChange(candidate.id, "board", event.target.value)
+                                  }
+                                  className="w-full border border-black px-2 py-1 text-[11px]"
+                                  placeholder={columnLabels.board}
+                                />
+                                <input
+                                  type="text"
+                                  value={candidate.frame}
+                                  onChange={(event) =>
+                                    handleCandidateChange(candidate.id, "frame", event.target.value)
+                                  }
+                                  className="w-full border border-black px-2 py-1 text-[11px]"
+                                  placeholder={columnLabels.frame}
+                                />
+                                <input
+                                  type="text"
+                                  value={candidate.main}
+                                  onChange={(event) =>
+                                    handleCandidateChange(candidate.id, "main", event.target.value)
+                                  }
+                                  className="w-full border border-black px-2 py-1 text-[11px]"
+                                  placeholder={columnLabels.main}
+                                />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+              <div className="flex items-center justify-between border-t border-black bg-neutral-100 px-4 py-3">
+                <div className="text-[11px] text-neutral-700">候補は最大10件まで表示します。</div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setOcrModalOpen(false)}
+                    className="border border-black bg-white px-3 py-1 text-[12px] font-semibold hover:bg-neutral-100"
+                  >
+                    閉じる
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyOcr}
+                    disabled={selectedCandidateCount !== units}
+                    className="border border-black bg-emerald-600 px-4 py-1 text-[12px] font-semibold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    反映
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -32,7 +32,9 @@ export type InventoryColumnId =
   | "stockOutDestination"
   | "serialNumber"
   | "inspectionInfo"
-  | "listingId";
+  | "listingId"
+  | "kentuu"
+  | "tekkyo";
 
 export type InventoryColumnSetting = {
   id: InventoryColumnId;
@@ -94,4 +96,6 @@ export const DEFAULT_INVENTORY_COLUMNS: InventoryColumnSetting[] = [
   { id: "serialNumber", label: "シリアル番号", visible: true, width: 150 },
   { id: "inspectionInfo", label: "検査情報", visible: true, width: 180 },
   { id: "listingId", label: "出品ID", visible: true, width: 150 },
+  { id: "kentuu", label: "検通", visible: true, width: 60 },
+  { id: "tekkyo", label: "撤明", visible: true, width: 60 },
 ];
