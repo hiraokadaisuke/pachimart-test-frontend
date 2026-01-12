@@ -17,11 +17,11 @@ import {
 import {
   createAttachmentId,
   deleteAttachment,
+  getAttachment,
   openAttachmentInNewTab,
   saveAttachment,
   type AttachmentKind,
 } from "@/lib/attachments/attachmentStore";
-import type { KentuuCandidate } from "@/lib/attachments/kentuuOcr";
 
 const COLUMN_KEYS = ["board", "frame", "main", "removalDate"] as const;
 type ColumnKey = (typeof COLUMN_KEYS)[number];
@@ -108,7 +108,7 @@ export default function SerialInputPanel({
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
   const [uploadingKind, setUploadingKind] = useState<AttachmentKind | null>(null);
   const [ocrModalOpen, setOcrModalOpen] = useState(false);
-  const [ocrCandidates, setOcrCandidates] = useState<KentuuCandidate[]>([]);
+  const [ocrCandidates, setOcrCandidates] = useState<Array<{ id: string; value: string }>>([]);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrMessage, setOcrMessage] = useState<string | null>(null);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set());
@@ -436,13 +436,87 @@ export default function SerialInputPanel({
     }
   };
 
+  const applyParsedNumbers = (numbers: string[]) => {
+    if (numbers.length === 0) return;
+    setRows((prev) =>
+      prev.map((row, index) => {
+        if (index >= units) return row;
+        const value = numbers[index];
+        if (!value) return row;
+        return { ...row, board: value };
+      }),
+    );
+  };
+
+  const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+    const bytes = new Uint8Array(buffer);
+    const chunkSize = 0x8000;
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+    }
+    return window.btoa(binary);
+  };
+
   const handleStartOcr = async () => {
     if (!attachments.kentuuAttachmentId || ocrLoading) return;
     setOcrModalOpen(true);
-    setOcrLoading(false);
-    setOcrMessage("OCRは現在準備中です。手入力で入力してください。");
+    setOcrLoading(true);
+    setOcrMessage(null);
     setOcrCandidates([]);
     setSelectedCandidateIds(new Set());
+    try {
+      const attachment = await getAttachment(attachments.kentuuAttachmentId);
+      if (!attachment?.blob) {
+        throw new Error("PDFが見つかりません。");
+      }
+      const buffer = await attachment.blob.arrayBuffer();
+      const base64 = arrayBufferToBase64(buffer);
+      const response = await fetch("/api/attachments/kentuu/parse", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fileBase64: base64,
+          fileName: attachment.filename,
+        }),
+      });
+      const payload = (await response.json()) as
+        | { numbers: string[] }
+        | { errorCode: string; message?: string };
+      if (!response.ok || "errorCode" in payload) {
+        const errorCode = "errorCode" in payload ? payload.errorCode : "UNKNOWN";
+        if (errorCode === "NO_TEXT_LAYER") {
+          setOcrMessage("PDFに文字情報が無く、番号を抽出できませんでした。手入力してください。");
+        } else if (errorCode === "PARSE_FAILED") {
+          setOcrMessage("解析に失敗しました。別のPDFでお試しください。");
+        } else {
+          setOcrMessage("番号の抽出に失敗しました。手入力してください。");
+        }
+        return;
+      }
+      const numbers = payload.numbers ?? [];
+      if (numbers.length === 0) {
+        setOcrMessage("番号を検出できませんでした。手入力してください。");
+        return;
+      }
+      if (numbers.length <= units) {
+        applyParsedNumbers(numbers);
+        setOcrModalOpen(false);
+        return;
+      }
+      const candidates = numbers.map((value, index) => ({
+        id: `${index}-${value}`,
+        value,
+      }));
+      setOcrCandidates(candidates);
+      setSelectedCandidateIds(new Set());
+      setOcrMessage(null);
+    } catch (error) {
+      console.error("Failed to parse kentuu PDF", error);
+      setOcrMessage("番号の抽出に失敗しました。手入力してください。");
+    } finally {
+      setOcrLoading(false);
+    }
   };
 
   const handleToggleCandidate = (candidateId: string) => {
@@ -458,13 +532,9 @@ export default function SerialInputPanel({
     });
   };
 
-  const handleCandidateChange = (
-    candidateId: string,
-    key: "board" | "frame" | "main",
-    value: string,
-  ) => {
+  const handleCandidateChange = (candidateId: string, value: string) => {
     setOcrCandidates((prev) =>
-      prev.map((candidate) => (candidate.id === candidateId ? { ...candidate, [key]: value } : candidate)),
+      prev.map((candidate) => (candidate.id === candidateId ? { ...candidate, value } : candidate)),
     );
   };
 
@@ -472,18 +542,7 @@ export default function SerialInputPanel({
     if (selectedCandidateIds.size !== units) return;
     const selected = ocrCandidates.filter((candidate) => selectedCandidateIds.has(candidate.id));
     if (selected.length === 0) return;
-    setRows((prev) =>
-      prev.map((row, index) => {
-        const candidate = selected[index];
-        if (!candidate) return row;
-        return {
-          ...row,
-          board: candidate.board,
-          frame: candidate.frame,
-          main: candidate.main,
-        };
-      }),
-    );
+    applyParsedNumbers(selected.map((candidate) => candidate.value));
     setOcrModalOpen(false);
   };
 
@@ -596,7 +655,7 @@ export default function SerialInputPanel({
               disabled={!hasKentuu || ocrLoading}
               className="border border-black bg-neutral-100 px-2 py-1 text-[11px] font-semibold hover:bg-neutral-200 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {ocrLoading ? "OCR中..." : "番号反映"}
+              {ocrLoading ? "解析中..." : "番号反映"}
             </button>
           </div>
         </div>
@@ -975,7 +1034,7 @@ export default function SerialInputPanel({
               </div>
               <div className="max-h-[60vh] overflow-y-auto px-4 py-3">
                 {ocrLoading ? (
-                  <div className="py-8 text-center text-[12px] text-neutral-700">OCR処理中...</div>
+                  <div className="py-8 text-center text-[12px] text-neutral-700">番号解析中...</div>
                 ) : ocrCandidates.length === 0 ? (
                   <div className="py-8 text-center text-[12px] text-neutral-700">
                     {ocrMessage ?? "番号を検出できませんでした。手入力してください。"}
@@ -985,9 +1044,7 @@ export default function SerialInputPanel({
                     <thead className="bg-neutral-100">
                       <tr>
                         <th className="w-10 border border-black px-2 py-2 text-center">選択</th>
-                        <th className="border border-black px-2 py-2 text-center">{columnLabels.board}</th>
-                        <th className="border border-black px-2 py-2 text-center">{columnLabels.frame}</th>
-                        <th className="border border-black px-2 py-2 text-center">{columnLabels.main}</th>
+                        <th className="border border-black px-2 py-2 text-center">検通番号</th>
                         <th className="w-48 border border-black px-2 py-2 text-center">編集</th>
                       </tr>
                     </thead>
@@ -1004,39 +1061,15 @@ export default function SerialInputPanel({
                                 disabled={!isSelected && selectedCandidateCount >= units}
                               />
                             </td>
-                            <td className="border border-black px-2 py-2">{candidate.board || "-"}</td>
-                            <td className="border border-black px-2 py-2">{candidate.frame || "-"}</td>
-                            <td className="border border-black px-2 py-2">{candidate.main || "-"}</td>
+                            <td className="border border-black px-2 py-2">{candidate.value || "-"}</td>
                             <td className="border border-black px-2 py-2">
-                              <div className="flex flex-col gap-1">
-                                <input
-                                  type="text"
-                                  value={candidate.board}
-                                  onChange={(event) =>
-                                    handleCandidateChange(candidate.id, "board", event.target.value)
-                                  }
-                                  className="w-full border border-black px-2 py-1 text-[11px]"
-                                  placeholder={columnLabels.board}
-                                />
-                                <input
-                                  type="text"
-                                  value={candidate.frame}
-                                  onChange={(event) =>
-                                    handleCandidateChange(candidate.id, "frame", event.target.value)
-                                  }
-                                  className="w-full border border-black px-2 py-1 text-[11px]"
-                                  placeholder={columnLabels.frame}
-                                />
-                                <input
-                                  type="text"
-                                  value={candidate.main}
-                                  onChange={(event) =>
-                                    handleCandidateChange(candidate.id, "main", event.target.value)
-                                  }
-                                  className="w-full border border-black px-2 py-1 text-[11px]"
-                                  placeholder={columnLabels.main}
-                                />
-                              </div>
+                              <input
+                                type="text"
+                                value={candidate.value}
+                                onChange={(event) => handleCandidateChange(candidate.id, event.target.value)}
+                                className="w-full border border-black px-2 py-1 text-[11px]"
+                                placeholder="番号を編集"
+                              />
                             </td>
                           </tr>
                         );
@@ -1046,7 +1079,7 @@ export default function SerialInputPanel({
                 )}
               </div>
               <div className="flex items-center justify-between border-t border-black bg-neutral-100 px-4 py-3">
-                <div className="text-[11px] text-neutral-700">候補は最大10件まで表示します。</div>
+                <div className="text-[11px] text-neutral-700">候補が台数を超える場合は使用する番号を選択してください。</div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
