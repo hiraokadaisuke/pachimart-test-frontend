@@ -6,6 +6,7 @@ import type { KentuuCandidate } from "./kentuuOcr";
 type PdfjsModule = typeof import("pdfjs-dist/legacy/build/pdf.mjs");
 
 const TESSERACT_VERSION = "5.1.0";
+const PDFJS_WORKER_PATH = "/pdfjs/pdf.worker.min.mjs";
 
 const loadScript = (src: string) =>
   new Promise<void>((resolve, reject) => {
@@ -38,10 +39,9 @@ const loadPdfjs = async (): Promise<PdfjsModule> => {
   const existing = (window as typeof window & { pdfjsLib?: PdfjsModule }).pdfjsLib;
   if (existing) return existing;
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-    "pdfjs-dist/legacy/build/pdf.worker.min.mjs",
-    import.meta.url,
-  ).toString();
+  if (!pdfjs.GlobalWorkerOptions.workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = PDFJS_WORKER_PATH;
+  }
   (window as typeof window & { pdfjsLib?: PdfjsModule }).pdfjsLib = pdfjs;
   return pdfjs;
 };

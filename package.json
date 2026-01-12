@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "prebuild": "node scripts/prisma-preview-setup.js",
+    "prebuild": "node scripts/prisma-preview-setup.js && node scripts/copy-pdfjs-worker.mjs",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
