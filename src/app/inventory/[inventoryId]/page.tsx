@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import SerialInputPanel, {
@@ -36,13 +36,14 @@ const isRowComplete = (row: SerialInputRow) =>
 export default function InventoryDetailPage() {
   const params = useParams<{ inventoryId: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const inventoryId = params?.inventoryId ?? "";
 
   const [record, setRecord] = useState<InventoryRecord | null>(() => {
     const all = loadInventoryRecords();
     return all.find((item) => item.id === inventoryId) ?? null;
   });
-  const [activeTab, setActiveTab] = useState<"edit" | "serial">("edit");
+  const [activeTab, setActiveTab] = useState<"edit" | "serial">("serial");
   const [bulkEditForms, setBulkEditForms] = useState<Record<string, Partial<InventoryRecord>>>(() =>
     record ? { [record.id]: buildEditForm(record) } : {},
   );
@@ -65,6 +66,19 @@ export default function InventoryDetailPage() {
       }));
     }
   }, [inventoryId]);
+
+  useEffect(() => {
+    if (!searchParams) {
+      setActiveTab("serial");
+      return;
+    }
+    const tab = searchParams.get("tab");
+    if (tab === "edit" || tab === "serial") {
+      setActiveTab(tab);
+      return;
+    }
+    setActiveTab("serial");
+  }, [searchParams]);
 
   const groups = useMemo(() => {
     if (!record) return [] as Array<[string, InventoryRecord[]]>;
@@ -417,7 +431,7 @@ export default function InventoryDetailPage() {
         )}
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-300 pb-3">
           <div>
-            <h1 className="text-2xl font-semibold text-neutral-900">在庫編集 / 番号登録</h1>
+            <h1 className="text-2xl font-semibold text-neutral-900">在庫編集 / 機種番号</h1>
             <p className="text-xs text-neutral-600">ID: {record.id}</p>
           </div>
           <button
@@ -445,7 +459,7 @@ export default function InventoryDetailPage() {
           <div className="flex border-b border-gray-300 text-sm font-semibold">
             {[
               { key: "edit", label: "在庫編集" },
-              { key: "serial", label: "個体番号" },
+              { key: "serial", label: "機種番号" },
             ].map((tab) => (
               <button
                 key={tab.key}
