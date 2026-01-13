@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
@@ -128,6 +128,7 @@ export default function ProfitManagementPage() {
     endDate: "",
     displayCount: "50",
   });
+  const [profitView, setProfitView] = useState<"all" | "summary" | "processed">("all");
 
   const [selectedPayableIds, setSelectedPayableIds] = useState<Set<string>>(new Set());
   const [selectedReceivableIds, setSelectedReceivableIds] = useState<Set<string>>(new Set());
@@ -342,6 +343,27 @@ export default function ProfitManagementPage() {
     return map;
   }, [purchaseInvoices]);
 
+  const matchesText = useCallback((value: string, query: string) => value.toLowerCase().includes(query.toLowerCase()), []);
+
+  const isProcessingDateWithinRange = useCallback((dateKey: string) => {
+    if (!dateKey) return false;
+    const matchesStart = profitFilters.startDate ? dateKey >= profitFilters.startDate : true;
+    const matchesEnd = profitFilters.endDate ? dateKey <= profitFilters.endDate : true;
+    return matchesStart && matchesEnd;
+  }, [profitFilters.endDate, profitFilters.startDate]);
+
+  const resolveSalesPurchaseTotal = useCallback((invoice: SalesInvoice) => {
+    const inventoryIds = resolveInvoiceInventoryIds(invoice);
+    if (inventoryIds.length === 0) return null;
+    let total = 0;
+    for (const id of inventoryIds) {
+      const item = purchaseItemMap.get(id);
+      if (!item) return null;
+      total += item.amount;
+    }
+    return total;
+  }, [purchaseItemMap]);
+
   const profitRows = useMemo(() => {
     const rows = salesInvoices
       .filter((invoice) => isReceivedInvoice(invoice))
@@ -385,12 +407,169 @@ export default function ProfitManagementPage() {
     return filtered.slice(0, limit);
   }, [profitFilters, purchaseItemMap, salesInvoices]);
 
+  const processedPurchases = useMemo(() => {
+    return purchaseInvoices
+      .filter((invoice) => isPaidInvoice(invoice))
+      .filter((invoice) => {
+        const processedDateKey = getDateKey(invoice.paidAt);
+        if (!isProcessingDateWithinRange(processedDateKey)) return false;
+        const maker = invoice.items?.[0]?.maker ?? "";
+        const modelSummary = buildModelSummary(invoice.items ?? []);
+        const supplier = invoice.partnerName ?? "";
+        const staff = invoice.staff ?? "";
+        return (
+          matchesText(maker, profitFilters.maker) &&
+          matchesText(modelSummary, profitFilters.model) &&
+          matchesText(supplier, profitFilters.customer) &&
+          matchesText(staff, profitFilters.staff)
+        );
+      })
+      .map((invoice) => {
+        const processedDateKey = getDateKey(invoice.paidAt);
+        return {
+          kind: "purchase",
+          invoice,
+          processedDateKey,
+          processedDate: invoice.paidAt,
+          amount: resolvePurchaseTotal(invoice),
+        };
+      });
+  }, [isProcessingDateWithinRange, matchesText, profitFilters, purchaseInvoices]);
+
+  const processedSales = useMemo(() => {
+    return salesInvoices
+      .filter((invoice) => isReceivedInvoice(invoice))
+      .filter((invoice) => {
+        const processedDateKey = getDateKey(invoice.receivedAt);
+        if (!isProcessingDateWithinRange(processedDateKey)) return false;
+        const maker = invoice.items?.[0]?.maker ?? "";
+        const modelSummary = buildModelSummary(invoice.items ?? []);
+        const customer = invoice.vendorName || invoice.buyerName || "";
+        const staff = invoice.staff ?? "";
+        return (
+          matchesText(maker, profitFilters.maker) &&
+          matchesText(modelSummary, profitFilters.model) &&
+          matchesText(customer, profitFilters.customer) &&
+          matchesText(staff, profitFilters.staff)
+        );
+      })
+      .map((invoice) => {
+        const processedDateKey = getDateKey(invoice.receivedAt);
+        const purchaseTotal = resolveSalesPurchaseTotal(invoice);
+        const salesTotal = resolveSalesTotal(invoice);
+        return {
+          kind: "sales",
+          invoice,
+          processedDateKey,
+          processedDate: invoice.receivedAt,
+          amount: salesTotal,
+          profit: purchaseTotal == null ? null : salesTotal - purchaseTotal,
+        };
+      });
+  }, [isProcessingDateWithinRange, matchesText, profitFilters, resolveSalesPurchaseTotal, salesInvoices]);
+
+  const processedRows = useMemo(() => {
+    const combined = [
+      ...processedPurchases.map((row) => ({
+        kind: row.kind,
+        invoice: row.invoice,
+        processedDateKey: row.processedDateKey,
+        processedDate: row.processedDate,
+        amount: row.amount,
+        profit: null as number | null,
+      })),
+      ...processedSales.map((row) => ({
+        kind: row.kind,
+        invoice: row.invoice,
+        processedDateKey: row.processedDateKey,
+        processedDate: row.processedDate,
+        amount: row.amount,
+        profit: row.profit ?? null,
+      })),
+    ];
+
+    combined.sort((a, b) => b.processedDateKey.localeCompare(a.processedDateKey));
+    const limit = Number(profitFilters.displayCount) || combined.length;
+    return combined.slice(0, limit);
+  }, [processedPurchases, processedSales, profitFilters.displayCount]);
+
+  const processingSummary = useMemo(() => {
+    const salesTotal = processedSales.reduce((sum, row) => sum + row.amount, 0);
+    const purchaseTotal = processedPurchases.reduce((sum, row) => sum + row.amount, 0);
+    const profitTotal = processedSales.reduce((sum, row) => sum + (row.profit ?? 0), 0);
+    return { salesTotal, purchaseTotal, profitTotal };
+  }, [processedPurchases, processedSales]);
+
+  const staffSummaryRows = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        staff: string;
+        purchaseTotal: number;
+        purchaseQty: number;
+        salesTotal: number;
+        salesQty: number;
+        profitTotal: number;
+        suppliers: Set<string>;
+        customers: Set<string>;
+      }
+    >();
+
+    const ensure = (staff: string) => {
+      const key = staff || "未設定";
+      if (!map.has(key)) {
+        map.set(key, {
+          staff: key,
+          purchaseTotal: 0,
+          purchaseQty: 0,
+          salesTotal: 0,
+          salesQty: 0,
+          profitTotal: 0,
+          suppliers: new Set(),
+          customers: new Set(),
+        });
+      }
+      return map.get(key)!;
+    };
+
+    processedPurchases.forEach((row) => {
+      const invoice = row.invoice;
+      const staff = invoice.staff ?? "";
+      const entry = ensure(staff);
+      const quantity = (invoice.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+      entry.purchaseTotal += row.amount;
+      entry.purchaseQty += quantity;
+      if (invoice.partnerName) entry.suppliers.add(invoice.partnerName);
+    });
+
+    processedSales.forEach((row) => {
+      const invoice = row.invoice;
+      const staff = invoice.staff ?? "";
+      const entry = ensure(staff);
+      const quantity = (invoice.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+      entry.salesTotal += row.amount;
+      entry.salesQty += quantity;
+      entry.profitTotal += row.profit ?? 0;
+      const customer = invoice.vendorName || invoice.buyerName;
+      if (customer) entry.customers.add(customer);
+    });
+
+    return Array.from(map.values()).sort((a, b) => {
+      if (b.profitTotal !== a.profitTotal) return b.profitTotal - a.profitTotal;
+      return a.staff.localeCompare(b.staff);
+    });
+  }, [processedPurchases, processedSales]);
+
   const profitSummary = useMemo(() => {
     const salesTotal = profitRows.reduce((sum, row) => sum + row.salesTotal, 0);
     const purchaseTotal = profitRows.reduce((sum, row) => sum + row.purchaseTotal, 0);
     const profitTotal = profitRows.reduce((sum, row) => sum + row.profit, 0);
     return { salesTotal, purchaseTotal, profitTotal };
   }, [profitRows]);
+
+  const profitTargetCount =
+    profitView === "all" ? profitRows.length : profitView === "summary" ? staffSummaryRows.length : processedRows.length;
+  const summaryTotals = profitView === "all" ? profitSummary : processingSummary;
 
   const handlePaymentProcess = () => {
     if (selectedPayableIds.size === 0) {
@@ -1150,7 +1329,7 @@ export default function ProfitManagementPage() {
                     </td>
                     <th className={`${labelCellClass} ${borderCell} px-3 py-2`}>対象件数</th>
                     <td className={`${borderCell} px-3 py-2 text-right font-semibold text-slate-700`}>
-                      {profitRows.length} 件
+                      {profitTargetCount} 件
                     </td>
                   </tr>
                 </tbody>
@@ -1158,75 +1337,239 @@ export default function ProfitManagementPage() {
             </div>
           </div>
 
-          <div className="grid gap-3 border border-gray-300 bg-white p-4 text-sm text-neutral-800 md:grid-cols-3">
-            <div>
-              <div className="text-xs text-neutral-500">入金済み売上合計</div>
-              <div className="text-lg font-semibold text-slate-900">{formatCurrency(profitSummary.salesTotal)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-neutral-500">支払済み仕入合計</div>
-              <div className="text-lg font-semibold text-slate-900">{formatCurrency(profitSummary.purchaseTotal)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-neutral-500">粗利益合計</div>
-              <div className="text-lg font-semibold text-slate-900">{formatCurrency(profitSummary.profitTotal)}</div>
+          <div className="flex flex-wrap items-center gap-3 border border-gray-300 bg-white px-4 py-3 text-sm text-neutral-800">
+            <div className="font-semibold text-slate-700">表示切替</div>
+            <div className="flex overflow-hidden border border-gray-300">
+              {[
+                { key: "all", label: "全体" },
+                { key: "summary", label: "担当者別サマリー" },
+                { key: "processed", label: "処理済み一覧" },
+              ].map((tab) => {
+                const isActive = profitView === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    type="button"
+                    onClick={() => setProfitView(tab.key as "all" | "summary" | "processed")}
+                    className={`px-4 py-2 text-sm font-semibold ${
+                      isActive ? "bg-slate-600 text-white" : "bg-white text-slate-700 hover:bg-slate-100"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          <div className="overflow-x-auto border border-gray-300 bg-white">
-            <table className="min-w-full table-fixed border-collapse text-sm">
-              <thead className="bg-slate-600 text-left text-xs font-bold text-white">
-                <tr>
-                  <th className="w-[160px] border border-gray-300 px-3 py-3">販売伝票ID</th>
-                  <th className="w-[140px] border border-gray-300 px-3 py-3">発行日</th>
-                  <th className="w-[200px] border border-gray-300 px-3 py-3">販売先</th>
-                  <th className="w-[160px] border border-gray-300 px-3 py-3">メーカー</th>
-                  <th className="w-[200px] border border-gray-300 px-3 py-3">機種名</th>
-                  <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">売上高</th>
-                  <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">仕入合計</th>
-                  <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">粗利益</th>
-                  <th className="w-[140px] border border-gray-300 px-3 py-3">担当</th>
-                </tr>
-              </thead>
-              <tbody>
-                {profitRows.length === 0 ? (
+          <div className="grid gap-3 border border-gray-300 bg-white p-4 text-sm text-neutral-800 md:grid-cols-3">
+            <div>
+              <div className="text-xs text-neutral-500">入金済み売上合計</div>
+              <div className="text-lg font-semibold text-slate-900">{formatCurrency(summaryTotals.salesTotal)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-neutral-500">支払済み仕入合計</div>
+              <div className="text-lg font-semibold text-slate-900">{formatCurrency(summaryTotals.purchaseTotal)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-neutral-500">粗利益合計</div>
+              <div className="text-lg font-semibold text-slate-900">{formatCurrency(summaryTotals.profitTotal)}</div>
+            </div>
+          </div>
+
+          {profitView === "all" && (
+            <div className="overflow-x-auto border border-gray-300 bg-white">
+              <table className="min-w-full table-fixed border-collapse text-sm">
+                <thead className="bg-slate-600 text-left text-xs font-bold text-white">
                   <tr>
-                    <td colSpan={9} className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600">
-                      入金済み・支払済みが揃った伝票がありません。
-                    </td>
+                    <th className="w-[160px] border border-gray-300 px-3 py-3">販売伝票ID</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3">発行日</th>
+                    <th className="w-[200px] border border-gray-300 px-3 py-3">販売先</th>
+                    <th className="w-[160px] border border-gray-300 px-3 py-3">メーカー</th>
+                    <th className="w-[200px] border border-gray-300 px-3 py-3">機種名</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">売上高</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">仕入合計</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">粗利益</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3">担当</th>
                   </tr>
-                ) : (
-                  profitRows.map((row) => (
-                    <tr key={row.invoice.invoiceId} className="hover:bg-slate-50">
-                      <td className="border border-gray-300 px-3 py-3 font-mono text-sm text-neutral-900">
-                        {row.invoice.invoiceId}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-neutral-800">
-                        {formatDate(row.invoice.issuedDate || row.invoice.createdAt)}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-neutral-800">
-                        {row.invoice.vendorName || row.invoice.buyerName || "-"}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-neutral-800">{row.maker || "-"}</td>
-                      <td className="border border-gray-300 px-3 py-3 text-neutral-800">{row.modelSummary}</td>
-                      <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                        {formatCurrency(row.salesTotal)}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                        {formatCurrency(row.purchaseTotal)}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                        {formatCurrency(row.profit)}
-                      </td>
-                      <td className="border border-gray-300 px-3 py-3 text-neutral-800">
-                        {row.invoice.staff ?? "-"}
+                </thead>
+                <tbody>
+                  {profitRows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={9}
+                        className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600"
+                      >
+                        入金済み・支払済みが揃った伝票がありません。
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                  ) : (
+                    profitRows.map((row) => (
+                      <tr key={row.invoice.invoiceId} className="hover:bg-slate-50">
+                        <td className="border border-gray-300 px-3 py-3 font-mono text-sm text-neutral-900">
+                          {row.invoice.invoiceId}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">
+                          {formatDate(row.invoice.issuedDate || row.invoice.createdAt)}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">
+                          {row.invoice.vendorName || row.invoice.buyerName || "-"}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">{row.maker || "-"}</td>
+                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">{row.modelSummary}</td>
+                        <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                          {formatCurrency(row.salesTotal)}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                          {formatCurrency(row.purchaseTotal)}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                          {formatCurrency(row.profit)}
+                        </td>
+                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">
+                          {row.invoice.staff ?? "-"}
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {profitView === "summary" && (
+            <div className="overflow-x-auto border border-gray-300 bg-white">
+              <table className="min-w-full table-fixed border-collapse text-sm">
+                <thead className="bg-slate-600 text-left text-xs font-bold text-white">
+                  <tr>
+                    <th className="w-[160px] border border-gray-300 px-3 py-3">担当者名</th>
+                    <th className="w-[180px] border border-gray-300 px-3 py-3 text-right">1台あたり仕入平均</th>
+                    <th className="w-[180px] border border-gray-300 px-3 py-3 text-right">1台あたり販売平均</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">総台数</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">仕入先数</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">販売先数</th>
+                    <th className="w-[160px] border border-gray-300 px-3 py-3 text-right">仕入金額合計</th>
+                    <th className="w-[160px] border border-gray-300 px-3 py-3 text-right">販売金額合計</th>
+                    <th className="w-[160px] border border-gray-300 px-3 py-3 text-right">粗利金額合計</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {staffSummaryRows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={9}
+                        className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600"
+                      >
+                        期間内の担当者データがありません。
+                      </td>
+                    </tr>
+                  ) : (
+                    staffSummaryRows.map((row) => {
+                      const purchaseAverage = row.purchaseQty ? row.purchaseTotal / row.purchaseQty : 0;
+                      const salesAverage = row.salesQty ? row.salesTotal / row.salesQty : 0;
+                      return (
+                        <tr key={row.staff} className="hover:bg-slate-50">
+                          <td className="border border-gray-300 px-3 py-3 text-neutral-800">{row.staff}</td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {formatCurrency(purchaseAverage)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {formatCurrency(salesAverage)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {row.salesQty}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {row.suppliers.size}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {row.customers.size}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {formatCurrency(row.purchaseTotal)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {formatCurrency(row.salesTotal)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {formatCurrency(row.profitTotal)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {profitView === "processed" && (
+            <div className="overflow-x-auto border border-gray-300 bg-white">
+              <table className="min-w-full table-fixed border-collapse text-sm">
+                <thead className="bg-slate-600 text-left text-xs font-bold text-white">
+                  <tr>
+                    <th className="w-[120px] border border-gray-300 px-3 py-3">種別</th>
+                    <th className="w-[160px] border border-gray-300 px-3 py-3">伝票ID</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3">伝票発行日</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3">処理日</th>
+                    <th className="w-[220px] border border-gray-300 px-3 py-3">仕入先 / 販売先</th>
+                    <th className="w-[140px] border border-gray-300 px-3 py-3">担当</th>
+                    <th className="w-[160px] border border-gray-300 px-3 py-3 text-right">金額</th>
+                    <th className="w-[160px] border border-gray-300 px-3 py-3 text-right">粗利</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {processedRows.length === 0 ? (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600"
+                      >
+                        処理済み伝票がありません。
+                      </td>
+                    </tr>
+                  ) : (
+                    processedRows.map((row) => {
+                      const invoice = row.invoice;
+                      const partner =
+                        row.kind === "purchase"
+                          ? (invoice as PurchaseInvoice).partnerName
+                          : (invoice as SalesInvoice).vendorName || (invoice as SalesInvoice).buyerName;
+                      const issuedDate =
+                        row.kind === "purchase"
+                          ? (invoice as PurchaseInvoice).issuedDate || (invoice as PurchaseInvoice).createdAt
+                          : (invoice as SalesInvoice).issuedDate || (invoice as SalesInvoice).createdAt;
+                      const staff = (invoice as PurchaseInvoice).staff ?? (invoice as SalesInvoice).staff ?? "-";
+                      return (
+                        <tr key={`${row.kind}-${invoice.invoiceId}`} className="hover:bg-slate-50">
+                          <td className="border border-gray-300 px-3 py-3 text-neutral-800">
+                            {row.kind === "purchase" ? "購入" : "販売"}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 font-mono text-sm text-neutral-900">
+                            {invoice.invoiceId}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-neutral-800">
+                            {formatDate(issuedDate)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-neutral-800">
+                            {formatDate(row.processedDate)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-neutral-800">{partner || "-"}</td>
+                          <td className="border border-gray-300 px-3 py-3 text-neutral-800">{staff}</td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {formatCurrency(row.amount)}
+                          </td>
+                          <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
+                            {row.profit == null ? "-" : formatCurrency(row.profit)}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
