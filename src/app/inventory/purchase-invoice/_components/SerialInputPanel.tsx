@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Image from "next/image";
 
 import {
   loadInventoryRecords,
@@ -53,6 +54,24 @@ const showNativePicker = (input: HTMLInputElement) => {
     input.focus();
   }
 };
+
+const PRINT_MENU_ITEMS = [
+  {
+    key: "union-contract",
+    label: "組合売買契約書",
+    image: "/print-dummy/union-contract.png",
+  },
+  {
+    key: "union-move-consent",
+    label: "組合移動同意書",
+    image: "/print-dummy/union-move-consent.png",
+  },
+  {
+    key: "used-machine-check",
+    label: "中古遊技機確認書",
+    image: "/print-dummy/used-machine-check.png",
+  },
+] as const;
 
 type SerialInputPanelProps = {
   inventoryId: string;
@@ -112,6 +131,11 @@ export default function SerialInputPanel({
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrMessage, setOcrMessage] = useState<string | null>(null);
   const [selectedCandidateIds, setSelectedCandidateIds] = useState<Set<string>>(new Set());
+  const [printPreview, setPrintPreview] = useState<{
+    label: string;
+    image: string;
+  } | null>(null);
+  const [printPreviewError, setPrintPreviewError] = useState(false);
   const bulkInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const kentuuInputRef = useRef<HTMLInputElement | null>(null);
   const tekkyoInputRef = useRef<HTMLInputElement | null>(null);
@@ -569,9 +593,55 @@ export default function SerialInputPanel({
     });
   };
 
+  const handleOpenPrintPreview = (item: (typeof PRINT_MENU_ITEMS)[number]) => {
+    setPrintPreview({ label: item.label, image: item.image });
+    setPrintPreviewError(false);
+  };
+
   return (
     <div className="flex justify-center bg-neutral-100 py-4 text-[13px] text-neutral-900">
       <div className="w-full max-w-5xl space-y-3">
+        {printPreview && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4 py-6">
+            <div className="max-h-full w-full max-w-4xl overflow-auto rounded bg-white p-4 shadow-lg">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-semibold text-neutral-900">{printPreview.label}</h2>
+                <button
+                  type="button"
+                  onClick={() => setPrintPreview(null)}
+                  className="border border-neutral-300 bg-white px-3 py-1 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                >
+                  戻る
+                </button>
+              </div>
+              <div className="flex items-center justify-center">
+                {printPreviewError ? (
+                  <div className="flex h-[60vh] w-full items-center justify-center border border-dashed border-neutral-300 text-sm text-neutral-500">
+                    画像未設定
+                  </div>
+                ) : (
+                  <Image
+                    src={printPreview.image}
+                    alt={`${printPreview.label}のダミー表示`}
+                    width={1200}
+                    height={1700}
+                    className="h-auto max-h-[70vh] w-auto max-w-full border border-neutral-200"
+                    onError={() => setPrintPreviewError(true)}
+                  />
+                )}
+              </div>
+              <div className="mt-4 flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => setPrintPreview(null)}
+                  className="border border-neutral-300 bg-white px-4 py-2 text-xs font-semibold text-neutral-700 hover:bg-neutral-100"
+                >
+                  戻る
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-base font-semibold">
             <span className="text-lg leading-none text-emerald-600">●</span>
@@ -675,32 +745,21 @@ export default function SerialInputPanel({
         />
 
         <div className="border border-black bg-white">
-          <div className="flex flex-wrap items-center justify-between border-b border-black px-3 py-2 text-[12px] font-semibold">
+          <div className="flex flex-wrap items-center justify-between border-b border-black bg-[#e6edf4] px-3 py-2 text-[12px] font-semibold">
             <div className="flex items-center gap-2">
               <span>印刷メニュー</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => alert("確認書準備中")}
-                className="border border-black bg-white px-3 py-1 text-[12px] font-semibold text-neutral-900 hover:bg-neutral-100"
-              >
-                確認書(旧)
-              </button>
-              <button
-                type="button"
-                onClick={() => alert("確認書準備中")}
-                className="border border-black bg-white px-3 py-1 text-[12px] font-semibold text-neutral-900 hover:bg-neutral-100"
-              >
-                確認書(新)
-              </button>
-              <button
-                type="button"
-                onClick={() => alert("確認書準備中")}
-                className="border border-black bg-white px-3 py-1 text-[12px] font-semibold text-neutral-900 hover:bg-neutral-100"
-              >
-                確認書
-              </button>
+              {PRINT_MENU_ITEMS.map((item) => (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => handleOpenPrintPreview(item)}
+                  className="border border-black bg-white px-3 py-1 text-[12px] font-semibold text-neutral-900 hover:bg-neutral-100"
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
           </div>
           <div className="flex items-stretch text-[12px]">
