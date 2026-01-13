@@ -55,6 +55,10 @@ const showNativePicker = (input: HTMLInputElement) => {
   }
 };
 
+// NOTE: Place the following files under public/print-dummy/ to show real images:
+// - union-contract.<ext>
+// - union-move-consent.<ext>
+// - used-machine-check.<ext>
 const PRINT_MENU_ITEMS = [
   {
     key: "union-contract",
@@ -617,7 +621,7 @@ export default function SerialInputPanel({
               <div className="flex items-center justify-center">
                 {printPreviewError ? (
                   <div className="flex h-[60vh] w-full items-center justify-center border border-dashed border-neutral-300 text-sm text-neutral-500">
-                    画像未設定
+                    画像未設定（ファイルを配置してください）
                   </div>
                 ) : (
                   <Image
