@@ -7,7 +7,7 @@ jobs:
   repair-migrations:
     runs-on: ubuntu-latest
     env:
-      APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
+      APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
