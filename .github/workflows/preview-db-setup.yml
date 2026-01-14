@@ -23,7 +23,7 @@ jobs:
 
       - name: Reset Preview DB
         env:
-          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
+          APP_DATABASE_URL: ${{ secrets.PREVIEW_APP_DATABASE_URL }}
         run: |
           if [ -z "$APP_DATABASE_URL" ]; then
             echo "APP_DATABASE_URL is empty. Aborting."
@@ -35,7 +35,7 @@ jobs:
 
       - name: Apply schema to Preview DB
         env:
-          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
+          APP_DATABASE_URL: ${{ secrets.PREVIEW_APP_DATABASE_URL }}
         run: |
           if [ -z "$APP_DATABASE_URL" ]; then
             echo "APP_DATABASE_URL is empty. Aborting."
@@ -79,7 +79,7 @@ jobs:
 
       - name: Seed Preview DB (if configured)
         env:
-          APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
+          APP_DATABASE_URL: ${{ secrets.PREVIEW_APP_DATABASE_URL }}
         run: |
           node -e "const p=require('./package.json'); process.exit(p?.prisma?.seed?0:1)" \
             && npx prisma db seed --schema prisma/schema.prisma \
