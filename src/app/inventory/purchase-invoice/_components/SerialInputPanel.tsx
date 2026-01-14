@@ -648,18 +648,20 @@ export default function SerialInputPanel({
                   </button>
                 </div>
               </div>
-              <div className="flex items-center justify-center">
+              <div className="flex w-full items-center justify-center">
                 {printPreviewError ? (
                   <div className="flex h-[60vh] w-full items-center justify-center border border-dashed border-neutral-300 text-sm text-neutral-500">
                     画像未設定（ファイルを配置してください）
                   </div>
                 ) : (
-                  <img
-                    src={printPreview.image}
-                    alt={printPreview.label}
-                    className="w-full max-h-[80vh] object-contain border border-neutral-200"
-                    onError={() => setPrintPreviewError(true)}
-                  />
+                  <div className="w-full max-h-[80vh] aspect-[297/210] border border-neutral-200">
+                    <img
+                      src={printPreview.image}
+                      alt={printPreview.label}
+                      className="h-full w-full object-contain"
+                      onError={() => setPrintPreviewError(true)}
+                    />
+                  </div>
                 )}
               </div>
               <div className="mt-4 flex justify-end">
