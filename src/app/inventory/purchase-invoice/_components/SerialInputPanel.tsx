@@ -63,7 +63,7 @@ const PRINT_MENU_ITEMS = [
   {
     key: "union-contract",
     label: "組合売買契約書",
-    image: ensureAbsolutePath("print-samples/kumiai-baibai-keiyakusho.png"),
+    image: ensureAbsolutePath("print-samples/kumia-babai-keiyakusho.png"),
   },
   {
     key: "union-move-consent",
