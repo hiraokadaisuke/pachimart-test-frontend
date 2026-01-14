@@ -54,6 +54,8 @@ const showNativePicker = (input: HTMLInputElement) => {
   }
 };
 
+const ensureAbsolutePath = (path: string) => (path.startsWith("/") ? path : `/${path}`);
+
 // NOTE: Place the following files under public/print-dummy/ to show real images:
 // - union-move-consent.<ext>
 // - used-machine-check.<ext>
@@ -61,17 +63,17 @@ const PRINT_MENU_ITEMS = [
   {
     key: "union-contract",
     label: "組合売買契約書",
-    image: "/print-samples/kumiai-baibai-keiyakusho.png",
+    image: ensureAbsolutePath("print-samples/kumiai-baibai-keiyakusho.png"),
   },
   {
     key: "union-move-consent",
     label: "組合移動同意書",
-    image: "/print-dummy/union-move-consent.png",
+    image: ensureAbsolutePath("print-dummy/union-move-consent.png"),
   },
   {
     key: "used-machine-check",
     label: "中古遊技機確認書",
-    image: "/print-dummy/used-machine-check.png",
+    image: ensureAbsolutePath("print-dummy/used-machine-check.png"),
   },
 ] as const;
 
