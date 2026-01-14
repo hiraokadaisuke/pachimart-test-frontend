@@ -56,7 +56,7 @@ const showNativePicker = (input: HTMLInputElement) => {
 
 const ensureAbsolutePath = (path: string) => (path.startsWith("/") ? path : `/${path}`);
 
-// NOTE: Place the following files under public/print-dummy/ to show real images:
+// NOTE: Place the following files under public/print-samples/ to show real images:
 // - union-move-consent.<ext>
 // - used-machine-check.<ext>
 const PRINT_MENU_ITEMS = [
@@ -68,12 +68,12 @@ const PRINT_MENU_ITEMS = [
   {
     key: "union-move-consent",
     label: "組合移動同意書",
-    image: ensureAbsolutePath("print-dummy/union-move-consent.png"),
+    image: ensureAbsolutePath("print-samples/union-move-consent.png"),
   },
   {
     key: "used-machine-check",
     label: "中古遊技機確認書",
-    image: ensureAbsolutePath("print-dummy/used-machine-check.png"),
+    image: ensureAbsolutePath("print-samples/used-machine-check.png"),
   },
 ] as const;
 
