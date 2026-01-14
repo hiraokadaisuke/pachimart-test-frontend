@@ -61,7 +61,7 @@ const PRINT_MENU_ITEMS = [
   {
     key: "union-contract",
     label: "組合売買契約書",
-    image: "/print-samples/kumiai-baibai-keiyakusho.svg",
+    image: "/print-samples/kumiai-baibai-keiyakusho.png",
   },
   {
     key: "union-move-consent",
@@ -650,15 +650,16 @@ export default function SerialInputPanel({
               </div>
               <div className="flex w-full items-center justify-center">
                 {printPreviewError ? (
-                  <div className="flex h-[60vh] w-full items-center justify-center border border-dashed border-neutral-300 text-sm text-neutral-500">
-                    画像未設定（ファイルを配置してください）
+                  <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-2 border border-dashed border-neutral-300 text-sm text-neutral-500">
+                    <span>画像未設定（ファイルを配置してください）</span>
+                    <span className="break-all text-[11px] text-neutral-400">{printPreview.image}</span>
                   </div>
                 ) : (
-                  <div className="w-full max-h-[80vh] aspect-[297/210] border border-neutral-200">
+                  <div className="flex w-full justify-center">
                     <img
                       src={printPreview.image}
                       alt={printPreview.label}
-                      className="h-full w-full object-contain"
+                      className="w-full max-w-5xl max-h-[80vh] object-contain"
                       onError={() => setPrintPreviewError(true)}
                     />
                   </div>
