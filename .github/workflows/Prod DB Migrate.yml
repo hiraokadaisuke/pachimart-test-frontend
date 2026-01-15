@@ -44,8 +44,13 @@ jobs:
       - name: Prisma generate
         run: npx prisma generate --schema prisma/schema.prisma
 
+      # NOTE: `prisma migrate status` exits with code 1 when there are pending migrations.
+      # We want to *see* that information but still proceed to deploy.
       - name: Prisma migrate status (before)
-        run: npx prisma migrate status --schema prisma/schema.prisma
+        run: |
+          npx prisma migrate status --schema prisma/schema.prisma \
+            || echo "Pending migrations detected (expected). Proceeding to deploy..."
+        continue-on-error: true
 
       - name: WIPE public schema (DANGER)
         if: inputs.mode == 'wipe-and-deploy'
@@ -58,6 +63,7 @@ jobs:
       - name: Deploy pending migrations
         run: npx prisma migrate deploy --schema prisma/schema.prisma
 
+      # Post-check should fail the workflow if something is still pending
       - name: Prisma migrate status (after)
         run: npx prisma migrate status --schema prisma/schema.prisma
 
