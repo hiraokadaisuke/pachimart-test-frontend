@@ -285,31 +285,6 @@ export default function VendorInvoiceClient() {
 
         {/* ===== Detail Section (below seller/buyer) START ===== */}
         <div className="space-y-3">
-          <div className="grid gap-2 rounded-lg border border-slate-200 bg-white p-3 text-xs text-neutral-800 md:grid-cols-3">
-            <div className="flex items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2">
-              <span className="text-[11px] font-semibold text-slate-600">合計金額</span>
-              <span className="text-sm font-bold text-neutral-900">{totalAmount.toLocaleString()}円</span>
-            </div>
-            <label className="flex items-center justify-between gap-2 rounded border border-slate-200 bg-white px-3 py-2">
-              <span className="text-[11px] font-semibold text-slate-600">支払日</span>
-              <input
-                type="date"
-                value={form.paymentDate}
-                onChange={(event) => setForm({ ...form, paymentDate: event.target.value })}
-                className="h-7 w-[140px] rounded border border-slate-300 px-2 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
-              />
-            </label>
-            <label className="flex items-center justify-between gap-2 rounded border border-slate-200 bg-white px-3 py-2">
-              <span className="text-[11px] font-semibold text-slate-600">入庫日</span>
-              <input
-                type="date"
-                value={form.arrivalDate}
-                onChange={(event) => setForm({ ...form, arrivalDate: event.target.value })}
-                className="h-7 w-[140px] rounded border border-slate-300 px-2 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
-              />
-            </label>
-          </div>
-
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 text-sm font-semibold text-neutral-700">
               <span>行を追加します</span>
@@ -320,20 +295,6 @@ export default function VendorInvoiceClient() {
               >
                 行追加
               </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                type="submit"
-                className="rounded border border-sky-600 bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-sky-500"
-              >
-                確認
-              </button>
-              <Link
-                href="/purchase-invoices/create"
-                className="rounded border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 shadow-sm"
-              >
-                戻る
-              </Link>
             </div>
           </div>
 
@@ -541,36 +502,39 @@ export default function VendorInvoiceClient() {
               />
             </label>
 
-            <div className="space-y-2 rounded border border-slate-200 bg-white p-3 text-xs text-neutral-800">
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2 text-[11px] font-semibold text-slate-600">
-                <span>計算枠</span>
-                <span>税込</span>
+            <div className="space-y-3">
+              <div className="space-y-2 rounded border border-slate-200 bg-white p-3 text-xs text-neutral-800">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2 text-[11px] font-semibold text-slate-600">
+                  <span>計算枠</span>
+                  <span>税込</span>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span>小計</span>
+                    <span className="font-semibold">{subtotal.toLocaleString()}円</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>消費税（10%）</span>
+                    <span className="font-semibold">{tax.toLocaleString()}円</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>運送保険（税込）</span>
+                    <input
+                      type="number"
+                      min={0}
+                      value={form.shippingInsurance}
+                      onChange={(event) => setForm({ ...form, shippingInsurance: event.target.value })}
+                      className="h-7 w-24 rounded border border-slate-300 bg-yellow-100 px-2 text-right text-xs shadow-sm focus:border-sky-500 focus:outline-none"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-sm font-bold">
+                    <span>合計金額</span>
+                    <span>{totalAmount.toLocaleString()}円</span>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <span>小計</span>
-                  <span className="font-semibold">{subtotal.toLocaleString()}円</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>消費税（10%）</span>
-                  <span className="font-semibold">{tax.toLocaleString()}円</span>
-                </div>
-                <div className="flex items-center justify-between gap-2">
-                  <span>運送保険（税込）</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.shippingInsurance}
-                    onChange={(event) => setForm({ ...form, shippingInsurance: event.target.value })}
-                    className="h-7 w-24 rounded border border-slate-300 bg-yellow-100 px-2 text-right text-xs shadow-sm focus:border-sky-500 focus:outline-none"
-                  />
-                </div>
-                <div className="flex items-center justify-between border-t border-slate-200 pt-2 text-sm font-bold">
-                  <span>合計金額</span>
-                  <span>{totalAmount.toLocaleString()}円</span>
-                </div>
-              </div>
-              <div className="space-y-2 pt-2 text-xs">
+
+              <div className="space-y-2 rounded border border-slate-200 bg-white p-3 text-xs text-neutral-800">
                 <label className="flex items-center gap-2">
                   <span className="w-14 text-[11px] font-semibold text-slate-600">販売先</span>
                   <input
@@ -585,6 +549,24 @@ export default function VendorInvoiceClient() {
                   >
                     販売先検索
                   </button>
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="w-14 text-[11px] font-semibold text-slate-600">支払日</span>
+                  <input
+                    type="date"
+                    value={form.paymentDate}
+                    onChange={(event) => setForm({ ...form, paymentDate: event.target.value })}
+                    className="h-7 w-[140px] rounded border border-slate-300 px-2 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
+                  />
+                </label>
+                <label className="flex items-center gap-2">
+                  <span className="w-14 text-[11px] font-semibold text-slate-600">入庫日</span>
+                  <input
+                    type="date"
+                    value={form.arrivalDate}
+                    onChange={(event) => setForm({ ...form, arrivalDate: event.target.value })}
+                    className="h-7 w-[140px] rounded border border-slate-300 px-2 text-xs shadow-sm focus:border-sky-500 focus:outline-none"
+                  />
                 </label>
                 <label className="flex items-center gap-2">
                   <span className="w-14 text-[11px] font-semibold text-slate-600">請求書原本</span>
@@ -605,6 +587,21 @@ export default function VendorInvoiceClient() {
           </div>
         </div>
         {/* ===== Detail Section (below seller/buyer) END ===== */}
+
+        <div className="flex justify-end gap-2">
+          <button
+            type="submit"
+            className="rounded border border-sky-600 bg-sky-600 px-4 py-2 text-xs font-semibold text-white shadow hover:bg-sky-500"
+          >
+            確認
+          </button>
+          <Link
+            href="/purchase-invoices/create"
+            className="rounded border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-neutral-800 shadow-sm"
+          >
+            戻る
+          </Link>
+        </div>
       </form>
     </div>
   );
