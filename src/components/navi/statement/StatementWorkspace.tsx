@@ -59,6 +59,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
   const searchParams = useSearchParams();
   const currentUser = useCurrentDevUser();
   const [dealing, setDealing] = useState<Dealing | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [shipping, setShipping] = useState<ShippingInfo>({});
   const [contacts, setContacts] = useState<BuyerContact[]>([]);
   const [shippingAddresses, setShippingAddresses] = useState<ShippingAddressDto[]>([]);
@@ -76,6 +77,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     let canceled = false;
 
     const loadDealing = async () => {
+      setIsLoading(true);
       try {
         const remote = await fetchTradeRecordById(tradeId);
 
@@ -126,6 +128,10 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
         setDealing(null);
         setShipping({});
         setContacts([]);
+      } finally {
+        if (!canceled) {
+          setIsLoading(false);
+        }
       }
     };
 
@@ -369,6 +375,33 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       router.back();
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col gap-2 border-b border-slate-200 pb-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-slate-900">{pageTitle ?? "ナビ確認"}</h1>
+            <p className="text-sm text-neutral-800">{description ?? "ナビ作成と同じ順序で明細書を確認できます。"}</p>
+          </div>
+          <button
+            type="button"
+            onClick={handleBack}
+            className="rounded border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-neutral-900 shadow-sm hover:bg-slate-50"
+          >
+            戻る
+          </button>
+        </div>
+
+        <section className="rounded-lg border border-slate-200 bg-white px-6 py-8 text-center shadow-sm">
+          <div className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-900" role="status">
+            <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" />
+            読み込み中...
+          </div>
+        </section>
+      </div>
+    );
+  }
 
   if (!dealing) {
     return (
