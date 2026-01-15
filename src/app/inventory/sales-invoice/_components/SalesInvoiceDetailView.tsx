@@ -367,7 +367,7 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
     }
     const path = action.path;
     const url = `/inventory/sales-invoice/print/vendor/${path}/${invoice.invoiceId}?sellerId=${encodeURIComponent(seller.id)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    router.push(url);
     setIsPrintModalOpen(false);
   };
 

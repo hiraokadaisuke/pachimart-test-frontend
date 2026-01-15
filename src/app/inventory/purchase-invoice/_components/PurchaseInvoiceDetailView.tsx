@@ -161,7 +161,7 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
     if (!target?.path) return;
     const path = target.path;
     const url = `/inventory/purchase-invoice/print/${path}/${invoice.invoiceId}?buyerId=${encodeURIComponent(buyer.id)}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    router.push(url);
     setIsPrintModalOpen(false);
   };
 

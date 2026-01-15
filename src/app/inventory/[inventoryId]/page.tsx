@@ -364,7 +364,7 @@ export default function InventoryDetailPage() {
         buyerType: type,
       });
       const url = `/inventory/sales-invoice/${type}/create?${params.toString()}`;
-      window.open(url, "_blank", "noopener,noreferrer");
+      router.push(url);
       setSalePayload(null);
       setSaleModalOpen(false);
     } finally {

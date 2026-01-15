@@ -58,7 +58,7 @@ export default function PurchaseInvoiceCreatePage() {
         const shouldOpen = window.confirm("既に作成済みの伝票があります。開きますか？");
         if (shouldOpen) {
           const url = `/inventory/purchase-invoice/${invoice.invoiceType}/${invoice.invoiceId}`;
-          window.open(url, "_blank", "noopener,noreferrer");
+          router.push(url);
         }
       } else {
         alert("既に作成済みの伝票があります。");
