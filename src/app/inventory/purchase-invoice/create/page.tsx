@@ -46,6 +46,37 @@ export default function PurchaseInvoiceCreatePage() {
     });
   }, [search, unassigned]);
 
+  const sorted = useMemo(() => {
+    const parseDate = (value?: string) => {
+      if (!value) return null;
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) return null;
+      return parsed.getTime();
+    };
+
+    const items = [...filtered];
+    items.sort((a, b) => {
+      const createdA = parseDate(a.createdAt);
+      const createdB = parseDate(b.createdAt);
+      if (createdA !== null || createdB !== null) {
+        if (createdA === null) return 1;
+        if (createdB === null) return -1;
+        if (createdA !== createdB) return createdB - createdA;
+      }
+
+      const stockA = parseDate(a.stockInDate ?? a.arrivalDate);
+      const stockB = parseDate(b.stockInDate ?? b.arrivalDate);
+      if (stockA !== null || stockB !== null) {
+        if (stockA === null) return 1;
+        if (stockB === null) return -1;
+        if (stockA !== stockB) return stockB - stockA;
+      }
+
+      return String(b.id).localeCompare(String(a.id), "ja");
+    });
+    return items;
+  }, [filtered]);
+
   const toggleSelect = (id: string) => {
     setSelected((prev) => ({ ...prev, [id]: !prev[id] }));
   };
@@ -96,7 +127,7 @@ export default function PurchaseInvoiceCreatePage() {
 
   const handleSerialInput = (id: string) => {
     if (typeof window !== "undefined") {
-      saveSerialOrder(filtered.map((item) => item.id));
+      saveSerialOrder(sorted.map((item) => item.id));
     }
     router.push(`/inventory/purchase-invoice/serial-input/${id}`);
   };
@@ -158,14 +189,14 @@ export default function PurchaseInvoiceCreatePage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {sorted.length === 0 ? (
               <tr>
                 <td colSpan={12} className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600">
                   未作成の在庫がありません。
                 </td>
               </tr>
             ) : (
-              filtered.map((item) => (
+              sorted.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="border border-gray-300 px-3 py-3">
                     <input

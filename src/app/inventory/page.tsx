@@ -162,6 +162,15 @@ const computePurchaseInvoiceTotal = (invoice: PurchaseInvoice): number => {
 
 const formatInventoryShortId = (value: string) => formatCompactId(value, 6);
 
+const parseNonNegativeInteger = (value: string) => {
+  const normalized = value.replace(/,/g, "").trim();
+  if (!normalized) return { normalized: "", parsed: undefined, error: "" };
+  if (!/^\d+$/.test(normalized)) {
+    return { normalized, parsed: undefined, error: "0以上の整数で入力してください。" };
+  }
+  return { normalized, parsed: Number(normalized), error: "" };
+};
+
 export default function InventoryPage() {
   const router = useRouter();
   const [records, setRecords] = useState<InventoryRecord[]>([]);
@@ -176,10 +185,15 @@ export default function InventoryPage() {
   const [searchFilters, setSearchFilters] = useState<SearchFilters>(defaultFilters);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [bulkEditForms, setBulkEditForms] = useState<Record<string, Partial<InventoryRecord>>>({});
-  const [editingSaleId, setEditingSaleId] = useState<string | null>(null);
+  const [saleModalRecord, setSaleModalRecord] = useState<InventoryRecord | null>(null);
   const [saleDraft, setSaleDraft] = useState<string>("");
-  const [saleSavingId, setSaleSavingId] = useState<string | null>(null);
-  const [saleErrors, setSaleErrors] = useState<Record<string, string>>({});
+  const [saleSaving, setSaleSaving] = useState(false);
+  const [saleError, setSaleError] = useState("");
+  const [decomposeTarget, setDecomposeTarget] = useState<InventoryRecord | null>(null);
+  const [decomposeCellDraft, setDecomposeCellDraft] = useState("");
+  const [decomposeFrameDraft, setDecomposeFrameDraft] = useState("");
+  const [decomposeError, setDecomposeError] = useState("");
+  const [decomposeSaving, setDecomposeSaving] = useState(false);
   const [showMakerSuggestions, setShowMakerSuggestions] = useState(false);
   const [showModelSuggestions, setShowModelSuggestions] = useState(false);
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
@@ -677,35 +691,7 @@ export default function InventoryPage() {
       return;
     }
 
-    const confirmed = window.confirm(
-      "選択した在庫（本体）をセル/枠に分解します。元の本体在庫は削除されます。よろしいですか？",
-    );
-    if (!confirmed) return;
-
-    const cellId = generateInventoryId();
-    const frameId = generateInventoryId();
-    const baseRecord: InventoryRecord = {
-      ...target,
-      quantity: 1,
-    };
-    const cellRecord: InventoryRecord = {
-      ...baseRecord,
-      id: cellId,
-      type: "セル",
-    };
-    const frameRecord: InventoryRecord = {
-      ...baseRecord,
-      id: frameId,
-      type: "枠",
-    };
-    const updatedRecords = records.flatMap((record) => {
-      if (record.id !== target.id) return [record];
-      return [cellRecord, frameRecord];
-    });
-    saveInventoryRecords(updatedRecords);
-    setRecords(updatedRecords);
-    updatePurchaseInvoicesForInventorySplit(target.id, [cellId, frameId]);
-    setSelectedIds(new Set());
+    openDecomposeModal(target);
   };
 
   const handleSalesCreate = () => {
@@ -880,6 +866,73 @@ export default function InventoryPage() {
     setSelectedIds(new Set());
   };
 
+  const openDecomposeModal = (record: InventoryRecord) => {
+    setDecomposeTarget(record);
+    const basePrice = record.unitPrice ?? 0;
+    setDecomposeCellDraft(basePrice.toLocaleString());
+    setDecomposeFrameDraft("0");
+    setDecomposeError("");
+  };
+
+  const closeDecomposeModal = () => {
+    setDecomposeTarget(null);
+    setDecomposeCellDraft("");
+    setDecomposeFrameDraft("");
+    setDecomposeError("");
+    setDecomposeSaving(false);
+  };
+
+  const saveDecompose = () => {
+    if (!decomposeTarget) return;
+    const cellResult = parseNonNegativeInteger(decomposeCellDraft);
+    const frameResult = parseNonNegativeInteger(decomposeFrameDraft);
+    if (cellResult.error) {
+      setDecomposeError(cellResult.error);
+      return;
+    }
+    if (frameResult.error) {
+      setDecomposeError(frameResult.error);
+      return;
+    }
+
+    const basePrice = decomposeTarget.unitPrice ?? 0;
+    const cellPrice = cellResult.parsed ?? 0;
+    const framePrice = frameResult.parsed ?? 0;
+    if (cellPrice + framePrice !== basePrice) {
+      setDecomposeError("セル単価と枠単価の合計を本体単価に合わせてください。");
+      return;
+    }
+
+    setDecomposeSaving(true);
+    const cellId = generateInventoryId();
+    const frameId = generateInventoryId();
+    const baseRecord: InventoryRecord = {
+      ...decomposeTarget,
+      quantity: 1,
+    };
+    const cellRecord: InventoryRecord = {
+      ...baseRecord,
+      id: cellId,
+      type: "セル",
+      unitPrice: cellPrice,
+    };
+    const frameRecord: InventoryRecord = {
+      ...baseRecord,
+      id: frameId,
+      type: "枠",
+      unitPrice: framePrice,
+    };
+    const updatedRecords = records.flatMap((record) => {
+      if (record.id !== decomposeTarget.id) return [record];
+      return [cellRecord, frameRecord];
+    });
+    saveInventoryRecords(updatedRecords);
+    setRecords(updatedRecords);
+    updatePurchaseInvoicesForInventorySplit(decomposeTarget.id, [cellId, frameId]);
+    setSelectedIds(new Set());
+    closeDecomposeModal();
+  };
+
   const handleCsvDownload = () => {
     const headers = visibleColumns.map((col) => col.label);
     const rows = displayRecords.map((record) =>
@@ -904,29 +957,61 @@ export default function InventoryPage() {
   };
 
   const startSaleEdit = (record: InventoryRecord) => {
-    setEditingSaleId(record.id);
-    setSaleDraft(record.saleUnitPrice != null ? String(record.saleUnitPrice) : "");
-    setSaleErrors((prev) => ({ ...prev, [record.id]: "" }));
+    setSaleModalRecord(record);
+    setSaleDraft(record.saleUnitPrice != null ? record.saleUnitPrice.toLocaleString() : "");
+    setSaleError("");
   };
 
-  const cancelSaleEdit = () => {
-    setEditingSaleId(null);
+  const closeSaleModal = () => {
+    setSaleModalRecord(null);
     setSaleDraft("");
+    setSaleError("");
+    setSaleSaving(false);
   };
 
-  const saveSaleEdit = (record: InventoryRecord) => {
-    const normalized = saleDraft.replace(/,/g, "").trim();
-    if (normalized && Number.isNaN(Number(normalized))) {
-      setSaleErrors((prev) => ({ ...prev, [record.id]: "数値で入力してください。" }));
+  const saveSaleEdit = () => {
+    if (!saleModalRecord) return;
+    const { parsed, error } = parseNonNegativeInteger(saleDraft);
+    if (error) {
+      setSaleError(error);
       return;
     }
-    setSaleSavingId(record.id);
-    const nextValue = normalized === "" ? undefined : Number(normalized);
-    handleUpdateRecord(record.id, { saleUnitPrice: nextValue });
-    setSaleSavingId(null);
-    setEditingSaleId(null);
-    setSaleDraft("");
+    setSaleSaving(true);
+    handleUpdateRecord(saleModalRecord.id, { saleUnitPrice: parsed });
+    closeSaleModal();
   };
+
+  useEffect(() => {
+    if (!saleModalRecord) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeSaleModal();
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveSaleEdit();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeSaleModal, saleModalRecord, saveSaleEdit]);
+
+  useEffect(() => {
+    if (!decomposeTarget) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDecomposeModal();
+      }
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveDecompose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [closeDecomposeModal, decomposeTarget, saveDecompose]);
 
   const handleBulkCreatePurchaseInvoice = () => {
     if (selectedRecords.length === 0) {
@@ -1011,6 +1096,28 @@ export default function InventoryPage() {
   const totalPageCount = 1;
   const currentPage = 1;
   const columnHeaderHoverClass = "shadow-[inset_0_-2px_0_rgba(255,255,255,0.7)]";
+  const saleDraftParsed = saleModalRecord ? parseNonNegativeInteger(saleDraft) : null;
+  const saleValidationMessage = saleError || saleDraftParsed?.error || "";
+  const canSaveSale = Boolean(saleModalRecord) && !saleSaving && !saleDraftParsed?.error;
+  const decomposeCellParsed = decomposeTarget ? parseNonNegativeInteger(decomposeCellDraft) : null;
+  const decomposeFrameParsed = decomposeTarget ? parseNonNegativeInteger(decomposeFrameDraft) : null;
+  const decomposeBasePrice = decomposeTarget?.unitPrice ?? 0;
+  const decomposeInputsFilled = Boolean(
+    decomposeCellParsed?.normalized && decomposeFrameParsed?.normalized,
+  );
+  const decomposeCurrentSum = (decomposeCellParsed?.parsed ?? 0) + (decomposeFrameParsed?.parsed ?? 0);
+  const decomposeSumMatches =
+    decomposeInputsFilled &&
+    decomposeCurrentSum === decomposeBasePrice;
+  const decomposeValidationMessage =
+    decomposeError || decomposeCellParsed?.error || decomposeFrameParsed?.error || "";
+  const canSaveDecompose =
+    Boolean(decomposeTarget) &&
+    !decomposeSaving &&
+    !decomposeCellParsed?.error &&
+    !decomposeFrameParsed?.error &&
+    decomposeInputsFilled &&
+    decomposeSumMatches;
 
   return (
     <div className="min-h-screen bg-white py-4">
@@ -1580,45 +1687,13 @@ export default function InventoryPage() {
                             {col.key === "isVisible" ? (
                               <span className="block text-center">{displayText}</span>
                             ) : col.key === "saleUnitPrice" ? (
-                              <div className="space-y-1">
-                                {editingSaleId === item.id ? (
-                                  <div className="flex items-center gap-1">
-                                    <input
-                                      value={saleDraft}
-                                      onChange={(event) => setSaleDraft(event.target.value)}
-                                      className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-right text-xs"
-                                      disabled={saleSavingId === item.id}
-                                    />
-                                    <button
-                                      type="button"
-                                      onClick={() => saveSaleEdit(item)}
-                                      disabled={saleSavingId === item.id}
-                                      className="border border-gray-300 bg-[#f7f3e9] px-1 text-xs"
-                                    >
-                                      ✓
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={cancelSaleEdit}
-                                      disabled={saleSavingId === item.id}
-                                      className="border border-gray-300 bg-[#f7f3e9] px-1 text-xs"
-                                    >
-                                      ×
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => startSaleEdit(item)}
-                                    className="w-full text-right hover:bg-[#fff4d6]"
-                                  >
-                                    {displayText}
-                                  </button>
-                                )}
-                                {saleErrors[item.id] && (
-                                  <p className="text-[10px] text-red-600">{saleErrors[item.id]}</p>
-                                )}
-                              </div>
+                              <button
+                                type="button"
+                                onClick={() => startSaleEdit(item)}
+                                className="w-full text-right hover:bg-[#fff4d6]"
+                              >
+                                {displayText}
+                              </button>
                             ) : col.key === "warehouse" ? (
                               <select
                                 value={item.warehouse ?? item.storageLocation ?? ""}
@@ -1766,6 +1841,159 @@ export default function InventoryPage() {
           </div>
         </div>
       </div>
+
+      {saleModalRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md border-2 border-gray-300 bg-white shadow-lg">
+            <div className="bg-slate-600 px-4 py-3 text-sm font-semibold text-white">販売単価を編集</div>
+            <div className="space-y-3 px-4 py-4 text-sm text-neutral-800">
+              <div className="space-y-1 text-xs text-neutral-600">
+                <p>管理ID: {saleModalRecord.id}</p>
+                <p>機種名: {saleModalRecord.model ?? saleModalRecord.machineName ?? "-"}</p>
+                <p>
+                  現在値:{" "}
+                  {saleModalRecord.saleUnitPrice == null || saleModalRecord.saleUnitPrice === 0
+                    ? "応相談"
+                    : `${saleModalRecord.saleUnitPrice.toLocaleString()} 円`}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-neutral-700" htmlFor="sale-unit-price-input">
+                  販売単価（円）
+                </label>
+                <input
+                  id="sale-unit-price-input"
+                  autoFocus
+                  inputMode="numeric"
+                  value={saleDraft}
+                  onChange={(event) => {
+                    setSaleDraft(event.target.value);
+                    setSaleError("");
+                  }}
+                  className="w-full rounded border border-[#c98200] bg-[#fff4d6] px-3 py-2 text-right text-2xl font-semibold tracking-wide"
+                  placeholder="0"
+                  disabled={saleSaving}
+                />
+                {saleValidationMessage && (
+                  <p className="text-xs text-red-600">{saleValidationMessage}</p>
+                )}
+                <p className="text-[11px] text-neutral-500">Enterで保存 / Escでキャンセル</p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-300 px-4 py-3">
+              <button
+                type="button"
+                onClick={closeSaleModal}
+                className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+                disabled={saleSaving}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={saveSaleEdit}
+                disabled={!canSaveSale}
+                className="border border-gray-300 bg-[#1E3A8A] px-4 py-1 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              >
+                保存
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {decomposeTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-lg border-2 border-gray-300 bg-white shadow-lg">
+            <div className="bg-slate-600 px-4 py-3 text-sm font-semibold text-white">分解確認</div>
+            <div className="space-y-4 px-4 py-4 text-sm text-neutral-800">
+              <div className="grid grid-cols-2 gap-3 text-xs text-neutral-600">
+                <div>
+                  <p className="font-semibold text-neutral-700">管理ID</p>
+                  <p>{decomposeTarget.id}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-neutral-700">機種名</p>
+                  <p>{decomposeTarget.model ?? decomposeTarget.machineName ?? "-"}</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-neutral-700">本体単価</p>
+                  <p>{decomposeBasePrice.toLocaleString()} 円</p>
+                </div>
+                <div>
+                  <p className="font-semibold text-neutral-700">仕入数</p>
+                  <p>{decomposeTarget.quantity ?? 1}</p>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-neutral-700" htmlFor="decompose-cell-price">
+                    セル単価（円）
+                  </label>
+                  <input
+                    id="decompose-cell-price"
+                    inputMode="numeric"
+                    value={decomposeCellDraft}
+                    onChange={(event) => {
+                      setDecomposeCellDraft(event.target.value);
+                      setDecomposeError("");
+                    }}
+                    className="w-full rounded border border-[#c98200] bg-[#fff4d6] px-3 py-2 text-right text-xl font-semibold"
+                    placeholder="0"
+                    disabled={decomposeSaving}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-neutral-700" htmlFor="decompose-frame-price">
+                    枠単価（円）
+                  </label>
+                  <input
+                    id="decompose-frame-price"
+                    inputMode="numeric"
+                    value={decomposeFrameDraft}
+                    onChange={(event) => {
+                      setDecomposeFrameDraft(event.target.value);
+                      setDecomposeError("");
+                    }}
+                    className="w-full rounded border border-[#c98200] bg-[#fff4d6] px-3 py-2 text-right text-xl font-semibold"
+                    placeholder="0"
+                    disabled={decomposeSaving}
+                  />
+                </div>
+              </div>
+              <div className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-neutral-600">
+                合計: {decomposeCurrentSum.toLocaleString()} 円 / 本体単価: {decomposeBasePrice.toLocaleString()} 円
+                {!decomposeSumMatches && decomposeInputsFilled && (
+                  <span className="ml-2 text-red-600">合計が一致していません。</span>
+                )}
+              </div>
+              {decomposeValidationMessage && (
+                <p className="text-xs text-red-600">{decomposeValidationMessage}</p>
+              )}
+              <p className="text-[11px] text-neutral-500">Enterで実行 / Escでキャンセル</p>
+            </div>
+            <div className="flex justify-end gap-2 border-t border-gray-300 px-4 py-3">
+              <button
+                type="button"
+                onClick={closeDecomposeModal}
+                className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
+                disabled={decomposeSaving}
+              >
+                キャンセル
+              </button>
+              <button
+                type="button"
+                onClick={saveDecompose}
+                disabled={!canSaveDecompose}
+                className="border border-gray-300 bg-[#1E3A8A] px-4 py-1 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400"
+              >
+                保存して分解
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {columnEditorOpen && (
         <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
