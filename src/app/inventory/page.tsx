@@ -58,6 +58,12 @@ const RESERVED_SELECTION_WIDTH = 48;
 const COLUMN_SETTINGS_KEY = "inventory_table_columns_v1";
 const SALES_INVOICE_CREATE_SELECTED_IDS_KEY = "sales_invoice_create_selected_ids";
 
+const normalizeAttachmentId = (value?: string | null): string | undefined => {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
 const NUMERIC_COLUMNS: Array<Column["key"]> = ["quantity", "unitPrice", "saleUnitPrice"];
 const DATE_COLUMNS: Array<Column["key"]> = ["createdAt", "stockInDate", "removeDate"];
 const WRAP_COLUMNS: Array<Column["key"]> = ["maker", "model", "warehouse", "supplier", "staff", "note"];
@@ -735,6 +741,11 @@ export default function InventoryPage() {
     }
     const params = new URLSearchParams({ ids: ids.join(",") });
     router.push(`/inventory/sales-invoice/create?${params.toString()}`);
+  };
+
+  const openInventoryDetail = (inventoryId: string) => {
+    const url = `/inventory/${inventoryId}`;
+    window.open(url, "_blank", "noopener,noreferrer");
   };
 
   const getCellText = (record: InventoryRecord, key: string) => {
@@ -1545,6 +1556,8 @@ export default function InventoryPage() {
                     const isSalesInvoiced = salesInvoiceMap.has(item.id);
                     const isDeletionBlocked = isSalesInvoiced;
                     const publishOptionsLabel = buildPublishOptionsLabel(item);
+                    const kentuuAttachmentId = normalizeAttachmentId(item.attachments?.kentuuAttachmentId);
+                    const tekkyoAttachmentId = normalizeAttachmentId(item.attachments?.tekkyoAttachmentId);
                     const rowClass = isSalesInvoiced
                       ? "border-t border-gray-300 bg-gray-50 text-[11px] hover:bg-gray-100"
                       : "border-t border-gray-300 text-[11px] hover:bg-[#fffbe6]";
@@ -1672,10 +1685,9 @@ export default function InventoryPage() {
                       })}
                       <td className="w-[96px] border border-gray-300 px-1 py-0.5 text-center">
                         <div className="flex items-center justify-center">
-                          <Link
-                            href={`/inventory/${item.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() => openInventoryDetail(item.id)}
                             className={`block w-full border border-gray-300 px-1 py-1 text-[11px] font-semibold shadow-[inset_0_1px_0_#fff] ${
                               serialCompletionMap[item.id]
                                 ? "bg-emerald-100 text-emerald-800"
@@ -1683,7 +1695,7 @@ export default function InventoryPage() {
                             }`}
                           >
                             ＋
-                          </Link>
+                          </button>
                         </div>
                       </td>
                       <td className="w-[64px] border border-gray-300 px-1 py-0.5 text-center">
@@ -1723,26 +1735,42 @@ export default function InventoryPage() {
                         )}
                       </td>
                       <td className="w-[56px] border border-gray-300 px-1 py-0.5 text-center">
-                        {item.attachments?.kentuuAttachmentId ? (
+                        {kentuuAttachmentId ? (
                           <button
                             type="button"
-                            onClick={() => void openAttachmentInNewTab(item.attachments?.kentuuAttachmentId)}
+                            onClick={() => void openAttachmentInNewTab(kentuuAttachmentId)}
                             className="w-full text-center text-[13px] font-semibold text-emerald-700 hover:text-emerald-800"
                           >
                             ●
                           </button>
-                        ) : null}
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openInventoryDetail(item.id)}
+                            className="w-full text-center text-[11px] font-semibold text-neutral-500 hover:text-neutral-700"
+                          >
+                            未
+                          </button>
+                        )}
                       </td>
                       <td className="w-[56px] border border-gray-300 px-1 py-0.5 text-center">
-                        {item.attachments?.tekkyoAttachmentId ? (
+                        {tekkyoAttachmentId ? (
                           <button
                             type="button"
-                            onClick={() => void openAttachmentInNewTab(item.attachments?.tekkyoAttachmentId)}
+                            onClick={() => void openAttachmentInNewTab(tekkyoAttachmentId)}
                             className="w-full text-center text-[13px] font-semibold text-emerald-700 hover:text-emerald-800"
                           >
                             ●
                           </button>
-                        ) : null}
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openInventoryDetail(item.id)}
+                            className="w-full text-center text-[11px] font-semibold text-neutral-500 hover:text-neutral-700"
+                          >
+                            未
+                          </button>
+                        )}
                       </td>
                       <td className="w-[56px] border border-gray-300 px-1 py-0.5 text-center">
                         <button
