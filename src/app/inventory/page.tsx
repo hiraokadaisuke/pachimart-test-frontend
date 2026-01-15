@@ -1541,9 +1541,9 @@ export default function InventoryPage() {
                     const tekkyoAttachmentId = normalizeAttachmentId(item.attachments?.tekkyoAttachmentId);
                     const isSelected = selectedIds.has(item.id);
                     const baseRowClass = isSalesInvoiced ? "bg-gray-100" : "bg-white";
-                    const hoverClass = isSalesInvoiced ? "group-hover:bg-gray-200" : "group-hover:bg-[#fffbe6]";
+                    const hoverClass = "group-hover:bg-[#fffbe6]";
                     const rowBgClass = isSelected ? "bg-[#fff2c7]" : baseRowClass;
-                    const columnHoverClass = isSelected ? "" : hoverClass.replace("group-hover:", "");
+                    const columnHoverClass = hoverClass.replace("group-hover:", "!");
                     return (
                       <tr key={item.id} className="group border-t border-gray-300 text-[11px]">
                       <td
