@@ -197,6 +197,7 @@ export default function InventoryPage() {
   const [salesCandidateIds, setSalesCandidateIds] = useState<string[]>([]);
   const [serialCompletionMap, setSerialCompletionMap] = useState<Record<string, boolean>>({});
   const [warehouseOptions, setWarehouseOptions] = useState<string[]>([]);
+  const [selectedColumnKey, setSelectedColumnKey] = useState<Column["key"] | null>(null);
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
@@ -1009,6 +1010,7 @@ export default function InventoryPage() {
 
   const totalPageCount = 1;
   const currentPage = 1;
+  const columnHighlightClass = "bg-[#fff2c7]";
 
   return (
     <div className="min-h-screen bg-white py-4">
@@ -1488,8 +1490,11 @@ export default function InventoryPage() {
                       onDragStart={() => handleDragStart(String(col.key))}
                       onDragOver={(event) => handleDragOver(event, String(col.key))}
                       onDrop={() => handleDrop(String(col.key))}
-                      className="relative select-none border border-gray-300 px-1 py-1"
+                      className={`relative select-none border border-gray-300 px-1 py-1 ${
+                        selectedColumnKey === col.key ? columnHighlightClass : ""
+                      }`}
                       style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
+                      data-col={col.key}
                     >
                       <span
                         className={`block px-0.5 py-0.5 ${dragOver?.key === col.key ? "bg-white/20" : ""}`}
@@ -1552,6 +1557,7 @@ export default function InventoryPage() {
                         const numeric = NUMERIC_COLUMNS.includes(col.key);
                         const isDate = DATE_COLUMNS.includes(col.key);
                         const shouldWrap = WRAP_COLUMNS.includes(col.key);
+                        const isColumnSelected = selectedColumnKey === col.key;
 
                         return (
                           <td
@@ -1560,9 +1566,12 @@ export default function InventoryPage() {
                               numeric ? "text-right" : ""
                             } ${isDate || numeric ? "whitespace-nowrap" : ""} ${
                               shouldWrap ? "whitespace-normal break-words" : ""
-                            }`}
+                            } ${isColumnSelected ? columnHighlightClass : ""}`}
                             style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                             title={col.key === "id" ? item.id : undefined}
+                            data-col={col.key}
+                            onClick={() => setSelectedColumnKey(col.key)}
+                            onFocusCapture={() => setSelectedColumnKey(col.key)}
                           >
                             {col.key === "isVisible" ? (
                               <span className="block text-center">{displayText}</span>
