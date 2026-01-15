@@ -187,10 +187,10 @@ function buildInquiryRowFromDto(dto: OnlineInquiryListItem, viewerId: string): I
 
 export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
-  const [dealings, setDealings] = useState<TradeRecord[]>([]);
-  const [onlineInquiryRows, setOnlineInquiryRows] = useState<InquiryRow[]>([]);
-  const [sellerApprovalRows, setSellerApprovalRows] = useState<DealingRow[]>([]);
-  const [buyerNaviApprovalRows, setBuyerNaviApprovalRows] = useState<DealingRow[]>([]);
+  const [dealings, setDealings] = useState<TradeRecord[] | undefined>(undefined);
+  const [onlineInquiryRows, setOnlineInquiryRows] = useState<InquiryRow[] | undefined>(undefined);
+  const [sellerApprovalRows, setSellerApprovalRows] = useState<DealingRow[] | undefined>(undefined);
+  const [buyerNaviApprovalRows, setBuyerNaviApprovalRows] = useState<DealingRow[] | undefined>(undefined);
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -201,7 +201,12 @@ export function InProgressTabContent() {
   const keywordLower = keyword.toLowerCase();
 
   useEffect(() => {
-    loadAllTradesWithApi().then(setDealings).catch((error) => console.error(error));
+    loadAllTradesWithApi()
+      .then(setDealings)
+      .catch((error) => {
+        console.error(error);
+        setDealings([]);
+      });
   }, []);
 
   const fetchApprovalRows = useCallback(async () => {
@@ -257,7 +262,7 @@ export function InProgressTabContent() {
   }, [loadInquiries]);
 
   const mappedDealingRows = useMemo(
-    () => dealings.map((dealing) => buildDealingRow(dealing, currentUser.id)),
+    () => (dealings ?? []).map((dealing) => buildDealingRow(dealing, currentUser.id)),
     [currentUser.id, dealings]
   );
 
@@ -294,7 +299,7 @@ export function InProgressTabContent() {
 
   const filteredSellerApprovalRows = useMemo(
     () =>
-      sellerApprovalRows.filter((dealing) => {
+      (sellerApprovalRows ?? []).filter((dealing) => {
         if (!keywordLower) return true;
         return (
           dealing.itemName.toLowerCase().includes(keywordLower) ||
@@ -306,7 +311,7 @@ export function InProgressTabContent() {
 
   const filteredBuyerNaviApprovalRows = useMemo(
     () =>
-      buyerNaviApprovalRows.filter((dealing) => {
+      (buyerNaviApprovalRows ?? []).filter((dealing) => {
         if (!keywordLower) return true;
         return (
           dealing.itemName.toLowerCase().includes(keywordLower) ||
@@ -347,7 +352,7 @@ export function InProgressTabContent() {
 
   const mappedInquiryRows = useMemo(
     () =>
-      onlineInquiryRows.filter((inquiry) => {
+      (onlineInquiryRows ?? []).filter((inquiry) => {
         const naviId = toNumericNaviId(inquiry.naviId ?? inquiry.id);
         if (naviId === null) return true;
         return !naviIds.has(naviId);
@@ -703,6 +708,9 @@ export function InProgressTabContent() {
   };
 
   const messageThread = messages;
+  const dealingLoading = dealings === undefined;
+  const approvalLoading = sellerApprovalRows === undefined || buyerNaviApprovalRows === undefined;
+  const inquiryLoading = onlineInquiryRows === undefined;
 
   return (
     <section className="relative left-1/2 right-1/2 ml-[-50vw] mr-[-50vw] w-screen space-y-8 px-4 md:px-6 xl:px-8">
@@ -726,6 +734,7 @@ export function InProgressTabContent() {
           <NaviTable
             columns={buyerApprovalColumns}
             rows={buyerApprovalRows}
+            loading={dealingLoading || buyerNaviApprovalRows === undefined}
             emptyMessage="現在承認待ちの取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
           />
@@ -737,6 +746,7 @@ export function InProgressTabContent() {
           <NaviTable
             columns={buyerInquiryColumns}
             rows={buyerInquiryRows}
+            loading={dealingLoading || inquiryLoading}
             emptyMessage="現在オンライン問い合わせはありません。"
             onRowClick={(row) => row.id && router.push(`/navi/inquiries/${(row as InquiryRow).id}`)}
           />
@@ -757,6 +767,7 @@ export function InProgressTabContent() {
           <NaviTable
             columns={dealingColumnsWithoutAction}
             rows={filteredSellerApprovalRows}
+            loading={approvalLoading}
             emptyMessage="現在承認待ちの送信済み取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
           />
@@ -768,6 +779,7 @@ export function InProgressTabContent() {
           <NaviTable
             columns={sellerInquiryColumns}
             rows={sellerInquiryRows}
+            loading={dealingLoading || inquiryLoading}
             emptyMessage="現在オンライン問い合わせはありません。"
             onRowClick={(row) => row.id && router.push(`/navi/inquiries/${(row as InquiryRow).id}`)}
           />
