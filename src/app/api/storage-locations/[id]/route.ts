@@ -77,7 +77,7 @@ export async function PATCH(request: Request, context: { params: { id: string } 
 
     await prisma.exhibit.updateMany({
       where: { storageLocationId: id },
-      data: { storageLocationSnapshot },
+      data: { storageLocationSnapshot: storageLocationSnapshot as Prisma.JsonValue },
     });
 
     return NextResponse.json({
