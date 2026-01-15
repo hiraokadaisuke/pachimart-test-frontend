@@ -664,7 +664,7 @@ function StandardNaviRequestEditor({
             ownerUserId: currentUser.id,
             buyerUserId: updatedDraft.buyerId ?? undefined,
             listingId: exhibitId ?? linkedExhibit?.id ?? undefined,
-            status: "SENT",
+            status: updatedDraft.status,
             payload: updatedDraft,
           }),
         },
