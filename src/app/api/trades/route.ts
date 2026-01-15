@@ -49,7 +49,7 @@ const jsonValueSchema: z.ZodType<Prisma.JsonValue> = z.lazy(() =>
 const createDealingSchema = z.object({
   ownerUserId: z.string().min(1, "ownerUserId is required"),
   buyerUserId: z.string().min(1).optional(),
-  status: z.nativeEnum(NaviStatus).optional(),
+  status: z.union([z.nativeEnum(NaviStatus), z.string()]).optional(),
   naviType: z.nativeEnum(NaviType).optional(),
   payload: jsonValueSchema.optional(),
   listingId: z.string().min(1).optional(),
@@ -102,6 +102,28 @@ const toRecord = (dealing: unknown): NaviRecord => {
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
+
+const statusMap: Record<string, NaviStatus> = {
+  draft: NaviStatus.DRAFT,
+  sent: NaviStatus.SENT,
+  sent_to_buyer: NaviStatus.SENT,
+  approved: NaviStatus.APPROVED,
+  buyer_approved: NaviStatus.APPROVED,
+  rejected: NaviStatus.REJECTED,
+  buyer_rejected: NaviStatus.REJECTED,
+};
+
+const normalizeNaviStatus = (input: unknown): NaviStatus | null => {
+  if (typeof input !== "string") return null;
+  const normalized = input.trim().toLowerCase();
+  return statusMap[normalized] ?? null;
+};
+
+const resolvePayloadStatus = (payload: Prisma.JsonValue | undefined): string | undefined => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return undefined;
+  const candidate = payload as { status?: unknown };
+  return typeof candidate.status === "string" ? candidate.status : undefined;
+};
 
 export async function GET(request: Request) {
   const currentUserId = getCurrentUserId(request);
@@ -157,6 +179,12 @@ export async function POST(request: Request) {
   }
 
   const { ownerUserId, buyerUserId, status, payload, listingId, naviType } = parsed.data;
+  const payloadStatus = resolvePayloadStatus(payload);
+  const resolvedStatus = normalizeNaviStatus(payloadStatus ?? status ?? "draft");
+
+  if (!resolvedStatus) {
+    return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+  }
 
   if (ownerUserId !== currentUserId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
@@ -203,7 +231,7 @@ export async function POST(request: Request) {
         buyerUserId: buyerUser?.id ?? null,
         listingId: listingId ?? null,
         listingSnapshot: listingSnapshotInput as any,
-        status: status ?? NaviStatus.DRAFT,
+        status: resolvedStatus,
         naviType: naviType ?? NaviType.PHONE_AGREEMENT,
         payload: (payload ?? null) as any,
       },
