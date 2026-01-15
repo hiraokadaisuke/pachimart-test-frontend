@@ -563,8 +563,15 @@ export default function InventoryNewPage() {
     }).slice(0, 8);
   };
 
+  const handleModelSelect = (rowIndex: number, machine: (typeof MACHINE_CATALOG)[number]) => {
+    handleRowChange(rowIndex, "model", machine.title);
+    handleRowChange(rowIndex, "maker", machine.maker);
+    handleRowChange(rowIndex, "kind", machine.kind);
+    setOpenModelIndex(null);
+  };
+
   const handleModelBlur = () => {
-    window.setTimeout(() => setOpenModelIndex(null), 150);
+    window.setTimeout(() => setOpenModelIndex(null), 0);
   };
 
   return (
@@ -819,12 +826,11 @@ export default function InventoryNewPage() {
                             <button
                               key={`${machine.maker}-${machine.title}`}
                               type="button"
-                              onClick={() => {
-                                handleRowChange(index, "model", machine.title);
-                                handleRowChange(index, "maker", machine.maker);
-                                handleRowChange(index, "kind", machine.kind);
-                                setOpenModelIndex(null);
+                              onMouseDown={(event) => {
+                                event.preventDefault();
+                                handleModelSelect(index, machine);
                               }}
+                              onClick={() => handleModelSelect(index, machine)}
                               className="flex w-full items-center justify-between px-2 py-1 text-left text-[12px] hover:bg-slate-100"
                             >
                               <span>{machine.title}</span>
