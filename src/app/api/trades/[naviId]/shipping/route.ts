@@ -157,14 +157,17 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         data: { payload: updatedPayload as Prisma.JsonValue, updatedAt: new Date() },
       });
 
-      await tx.trade
-        .updateMany({
+      const existingDealing = await tx.dealing.findUnique({
+        where: { naviId },
+        select: { id: true },
+      });
+
+      if (existingDealing) {
+        await tx.dealing.update({
           where: { naviId },
           data: { payload: updatedPayload as Prisma.JsonValue },
-        })
-        .catch((error: unknown) => {
-          console.warn("Failed to sync shipping info to trade payload", { error, naviId });
         });
+      }
 
       return { updated: toRecord(updatedNavi) };
     });
@@ -179,7 +182,10 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
       updatedAt: result.updated.updatedAt.toISOString(),
     });
   } catch (error) {
-    console.error("Failed to update shipping info", error);
+    console.error("Failed to update shipping info for navi/dealing payloads", {
+      error,
+      naviId,
+    });
     return NextResponse.json(
       { error: "Failed to update shipping info", detail: handleUnknownError(error) },
       { status: 500 }
