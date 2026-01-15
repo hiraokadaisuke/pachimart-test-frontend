@@ -74,6 +74,7 @@ export const openAttachmentInNewTab = async (attachmentId?: string | null): Prom
     return;
   }
   const url = URL.createObjectURL(record.blob);
+  // PDFプレビューはダウンロード/閲覧用途のため別タブで開く。
   window.open(url, "_blank", "noopener,noreferrer");
   window.setTimeout(() => URL.revokeObjectURL(url), 60000);
 };

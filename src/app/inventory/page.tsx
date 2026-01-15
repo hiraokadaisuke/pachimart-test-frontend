@@ -10,10 +10,7 @@ import {
   saveDraft,
   saveInventoryRecords,
   updateInventoryRecord,
-  updateInventoryStatuses,
-  updateInventoryStatus,
   generateInventoryId,
-  type ListingStatusOption,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
 import { DEFAULT_MASTER_DATA, loadMasterData, type MasterData } from "@/lib/demo-data/demoMasterData";
@@ -22,13 +19,13 @@ import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import type { InventoryStatusOption, PurchaseInvoice } from "@/types/purchaseInvoices";
 import type { SalesInvoice } from "@/types/salesInvoices";
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
-import { buildEditForm, buildPayload, PUBLISH_OPTIONS, resolvePublishStatus } from "@/lib/inventory/editUtils";
+import { buildEditForm, buildPayload } from "@/lib/inventory/editUtils";
 import { loadSerialDraft, loadSerialInput, loadSerialRows, type SerialInputRow } from "@/lib/serialInputStorage";
 import { formatCompactId } from "@/lib/inventory/idDisplay";
 import { openAttachmentInNewTab } from "@/lib/attachments/attachmentStore";
 
 type Column = {
-  key: keyof InventoryRecord | "status";
+  key: keyof InventoryRecord;
   label: string;
   width: number;
   minWidth: number;
@@ -85,7 +82,6 @@ const INITIAL_COLUMNS: Column[] = [
   { key: "warehouse", label: "保管先", width: 108, minWidth: 88, visible: true },
   { key: "supplier", label: "仕入先", width: 108, minWidth: 88, visible: true },
   { key: "staff", label: "担当", width: 72, minWidth: 64, visible: true },
-  { key: "status", label: "公開", width: 76, minWidth: 64, visible: true },
   { key: "isConsignment", label: "委託", width: 52, minWidth: 48, visible: true },
   { key: "isVisible", label: "表示", width: 52, minWidth: 48, visible: true },
   { key: "note", label: "備考", width: 120, minWidth: 96, visible: true },
@@ -131,23 +127,6 @@ const matchesDateRange = (value: string | undefined, range: DateRange) => {
   if (fromDate && target < fromDate) return false;
   if (toDate && target > toDate) return false;
   return true;
-};
-
-const statusLabelMap = new Map(PUBLISH_OPTIONS.map((option) => [option.value, option.label]));
-const PUBLISH_OPTION_LABELS = [
-  { key: "isPickupAvailable", label: "引取可" },
-  { key: "hasNailSheet", label: "釘シートあり" },
-  { key: "hasManual", label: "遊技機説明書あり" },
-  { key: "isShippingTwoPackages", label: "送料2個口" },
-  { key: "isHandlingFeeTwoPackages", label: "出庫手数料2個口" },
-  { key: "isSeparateSaleProhibited", label: "ばら売り不可" },
-] as const satisfies ReadonlyArray<{ key: keyof InventoryRecord; label: string }>;
-
-const buildPublishOptionsLabel = (record: InventoryRecord): string => {
-  const activeLabels = PUBLISH_OPTION_LABELS.filter((option) => record[option.key]).map(
-    (option) => option.label,
-  );
-  return activeLabels.length > 0 ? activeLabels.join(" / ") : "出品オプションなし";
 };
 
 const isSerialRowComplete = (row: SerialInputRow) =>
@@ -505,11 +484,6 @@ export default function InventoryPage() {
     return "vendor";
   };
 
-  const handleStatusChange = (id: string, status: ListingStatusOption) => {
-    const updated = updateInventoryStatus(id, status);
-    setRecords(updated);
-  };
-
   const handleSelectRow = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -520,22 +494,6 @@ export default function InventoryPage() {
       }
       return next;
     });
-  };
-
-  const handleBulkUpdate = (status: ListingStatusOption) => {
-    if (selectedIds.size === 0) {
-      alert("行を選択してください");
-      return;
-    }
-
-    const statusLabel = statusLabelMap.get(status) ?? status;
-    const message = `${selectedIds.size}件の公開状態を「${statusLabel}」に変更します。よろしいですか？`;
-    const confirmed = window.confirm(message);
-    if (!confirmed) return;
-
-    const updated = updateInventoryStatuses([...selectedIds], status);
-    setRecords(updated);
-    setSelectedIds(new Set());
   };
 
   const handleUpdateRecord = (id: string, payload: Partial<InventoryRecord>) => {
@@ -744,8 +702,7 @@ export default function InventoryPage() {
   };
 
   const openInventoryDetail = (inventoryId: string) => {
-    const url = `/inventory/${inventoryId}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    router.push(`/inventory/${inventoryId}`);
   };
 
   const getCellText = (record: InventoryRecord, key: string) => {
@@ -784,8 +741,6 @@ export default function InventoryPage() {
         return record.supplier ?? "-";
       case "staff":
         return record.staff ?? record.buyerStaff ?? "-";
-      case "status":
-        return statusLabelMap.get(resolvePublishStatus(record)) ?? "非公開";
       case "isConsignment":
         return record.isConsignment ?? record.consignment ? "○" : "-";
       case "isVisible":
@@ -990,13 +945,16 @@ export default function InventoryPage() {
     const confirmed = window.confirm(`購入伝票を仕入先ごとに作成します。\n${summary}`);
     if (!confirmed) return;
 
-    Array.from(grouped.entries()).forEach(([supplier, items], index) => {
+    let nextUrl: string | null = null;
+    Array.from(grouped.entries()).forEach(([, items], index) => {
       const invoiceType = resolveSupplierCategory(items[0]);
       const draftId = `${Date.now()}-${Math.floor(Math.random() * 1000)}-${index}`;
       saveDraft({ id: draftId, inventoryIds: items.map((item) => item.id) });
-      const url = `/inventory/purchase-invoice/${invoiceType}/${draftId}`;
-      window.open(url, "_blank", "noopener,noreferrer");
+      nextUrl = `/inventory/purchase-invoice/${invoiceType}/${draftId}`;
     });
+    if (nextUrl) {
+      router.push(nextUrl);
+    }
   };
 
   const handleBulkCreateSalesInvoice = () => {
@@ -1025,7 +983,7 @@ export default function InventoryPage() {
       sellToType: type,
     });
     const url = `/inventory/sales-invoice/${type}/create?${params.toString()}`;
-    window.open(url, "_blank", "noopener,noreferrer");
+    router.push(url);
     setSalesModalOpen(false);
     setSalesCandidateIds([]);
   };
@@ -1429,22 +1387,6 @@ export default function InventoryPage() {
             <div className="ml-auto flex flex-wrap items-center gap-2">
               <button
                 type="button"
-                onClick={() => handleBulkUpdate("listing")}
-                disabled={selectedIds.size === 0}
-                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                一括：公開中
-              </button>
-              <button
-                type="button"
-                onClick={() => handleBulkUpdate("not_listing")}
-                disabled={selectedIds.size === 0}
-                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                一括：非公開
-              </button>
-              <button
-                type="button"
                 onClick={handleBulkEditOpen}
                 disabled={selectedIds.size === 0}
                 className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff] disabled:cursor-not-allowed disabled:opacity-40"
@@ -1555,7 +1497,6 @@ export default function InventoryPage() {
                   displayRecords.map((item) => {
                     const isSalesInvoiced = salesInvoiceMap.has(item.id);
                     const isDeletionBlocked = isSalesInvoiced;
-                    const publishOptionsLabel = buildPublishOptionsLabel(item);
                     const kentuuAttachmentId = normalizeAttachmentId(item.attachments?.kentuuAttachmentId);
                     const tekkyoAttachmentId = normalizeAttachmentId(item.attachments?.tekkyoAttachmentId);
                     const rowClass = isSalesInvoiced
@@ -1573,7 +1514,6 @@ export default function InventoryPage() {
                       </td>
                       {visibleColumns.map((col) => {
                         const fullText = getCellText(item, String(col.key));
-                        const statusValue = resolvePublishStatus(item);
                         const displayText = col.key === "id" ? formatInventoryShortId(item.id) : fullText;
                         const numeric = NUMERIC_COLUMNS.includes(col.key);
                         const isDate = DATE_COLUMNS.includes(col.key);
@@ -1590,23 +1530,7 @@ export default function InventoryPage() {
                             style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                             title={col.key === "id" ? item.id : undefined}
                           >
-                            {col.key === "status" ? (
-                              <select
-                                value={statusValue}
-                                onChange={(event) =>
-                                  handleStatusChange(item.id, event.target.value as ListingStatusOption)
-                                }
-                                disabled={isSalesInvoiced}
-                                title={publishOptionsLabel}
-                                className="w-full border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-xs disabled:bg-gray-100 disabled:text-neutral-500"
-                              >
-                                {PUBLISH_OPTIONS.map((option) => (
-                                  <option key={option.value} value={option.value}>
-                                    {option.label}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : col.key === "isVisible" ? (
+                            {col.key === "isVisible" ? (
                               <div className="flex items-center justify-center">
                                 <select
                                   value={item.isVisible === false ? "0" : "1"}
@@ -1706,7 +1630,7 @@ export default function InventoryPage() {
                               const invoice = purchaseInvoiceMap.get(item.purchaseInvoiceId ?? "");
                               const invoiceType = invoice?.invoiceType ?? "vendor";
                               const url = `/inventory/purchase-invoice/${invoiceType}/${item.purchaseInvoiceId}`;
-                              window.open(url, "_blank", "noopener,noreferrer");
+                              router.push(url);
                             }}
                             className="w-full border border-gray-300 bg-[#fff4d6] px-1 py-1 text-[11px] font-semibold text-emerald-700"
                           >
@@ -1724,7 +1648,7 @@ export default function InventoryPage() {
                               const invoice = salesInvoiceMap.get(item.id);
                               if (!invoice) return;
                               const url = `/inventory/sales-invoice/${invoice.invoiceType}/${invoice.invoiceId}`;
-                              window.open(url, "_blank", "noopener,noreferrer");
+                              router.push(url);
                             }}
                             className="w-full border border-gray-300 bg-[#fff4d6] px-1 py-1 text-[11px] font-semibold text-emerald-700"
                           >
@@ -1853,7 +1777,7 @@ export default function InventoryPage() {
                 type="button"
                 onClick={() => {
                   const url = `/inventory/purchase-invoice/${existingInvoicePrompt.invoiceType}/${existingInvoicePrompt.invoiceId}`;
-                  window.open(url, "_blank", "noopener,noreferrer");
+                  router.push(url);
                   setExistingInvoicePrompt(null);
                 }}
                 className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"
@@ -1921,7 +1845,7 @@ export default function InventoryPage() {
                 type="button"
                 onClick={() => {
                   const url = `/inventory/sales-invoice/${existingSalesInvoicePrompt.invoiceType}/${existingSalesInvoicePrompt.invoiceId}`;
-                  window.open(url, "_blank", "noopener,noreferrer");
+                  router.push(url);
                   setExistingSalesInvoicePrompt(null);
                 }}
                 className="border border-gray-300 bg-[#f7f3e9] px-4 py-1 text-sm font-semibold"

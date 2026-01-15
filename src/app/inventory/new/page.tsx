@@ -54,16 +54,6 @@ type InventoryFormRow = {
   isSeparateSaleProhibited: boolean;
 };
 
-type PublishOptionsState = Pick<
-  InventoryFormRow,
-  | "isPickupAvailable"
-  | "hasNailSheet"
-  | "hasManual"
-  | "isShippingTwoPackages"
-  | "isHandlingFeeTwoPackages"
-  | "isSeparateSaleProhibited"
->;
-
 const DEVICE_TYPES: InventoryFormRow["type"][] = ["本体", "枠", "セル"];
 
 const createBlankRow = (today: string): InventoryFormRow => ({
@@ -111,19 +101,9 @@ type MachineFieldOrder =
   | "stockInDate"
   | "removeDate"
   | "pattern"
-  | "warehouse"
-  | "isPublished";
+  | "warehouse";
 
 type SupplierFieldOrder = "supplier" | "inputDate" | "buyerStaff";
-
-const PUBLISH_OPTIONS = [
-  { key: "isPickupAvailable", label: "引取可" },
-  { key: "hasNailSheet", label: "釘シートあり" },
-  { key: "hasManual", label: "遊技機説明書あり" },
-  { key: "isShippingTwoPackages", label: "送料2個口" },
-  { key: "isHandlingFeeTwoPackages", label: "出庫手数料2個口" },
-  { key: "isSeparateSaleProhibited", label: "ばら売り不可" },
-] as const satisfies ReadonlyArray<{ key: keyof InventoryFormRow; label: string }>;
 
 export default function InventoryNewPage() {
   const router = useRouter();
@@ -143,24 +123,6 @@ export default function InventoryNewPage() {
   const [selectedBranchId, setSelectedBranchId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [openModelIndex, setOpenModelIndex] = useState<number | null>(null);
-  const [publishModalState, setPublishModalState] = useState<{
-    open: boolean;
-    rowIndex: number | null;
-    mode: "publish" | "edit";
-    draft: PublishOptionsState;
-  }>({
-    open: false,
-    rowIndex: null,
-    mode: "publish",
-    draft: {
-      isPickupAvailable: false,
-      hasNailSheet: false,
-      hasManual: false,
-      isShippingTwoPackages: false,
-      isHandlingFeeTwoPackages: false,
-      isSeparateSaleProhibited: false,
-    },
-  });
   const makerOptions = useMemo(() => getMakerOptions(MACHINE_CATALOG), []);
   const makerOptionsByKind = useMemo(
     () => ({
@@ -179,7 +141,7 @@ export default function InventoryNewPage() {
   const excelBtn =
     "h-8 rounded-none border border-slate-600 bg-slate-200 px-4 text-sm font-semibold text-slate-800 shadow-[inset_1px_1px_0px_0px_#ffffff] transition hover:bg-slate-100";
   const machineTableColGroup =
-    "40px 55px 120px 240px 80px 70px 90px 90px 70px 110px 110px 70px 100px 90px";
+    "40px 55px 120px 240px 80px 70px 90px 90px 70px 110px 110px 70px 100px";
   const machineOrder: MachineFieldOrder[] = [
     "kind",
     "maker",
@@ -193,7 +155,6 @@ export default function InventoryNewPage() {
     "removeDate",
     "pattern",
     "warehouse",
-    "isPublished",
   ];
   const supplierOrder: SupplierFieldOrder[] = ["supplier", "inputDate", "buyerStaff"];
 
@@ -265,90 +226,13 @@ export default function InventoryNewPage() {
     isSeparateSaleProhibited: false,
   });
 
-  const extractPublishOptions = (row: InventoryFormRow): PublishOptionsState => ({
-    isPickupAvailable: row.isPickupAvailable,
-    hasNailSheet: row.hasNailSheet,
-    hasManual: row.hasManual,
-    isShippingTwoPackages: row.isShippingTwoPackages,
-    isHandlingFeeTwoPackages: row.isHandlingFeeTwoPackages,
-    isSeparateSaleProhibited: row.isSeparateSaleProhibited,
-  });
-
-  const openPublishModal = (index: number, mode: "publish" | "edit") => {
-    const row = rows[index];
-    if (!row) return;
-    setPublishModalState({
-      open: true,
-      rowIndex: index,
-      mode,
-      draft: extractPublishOptions(row),
-    });
-  };
-
-  const closePublishModal = () =>
-    setPublishModalState((prev) => ({
-      ...prev,
-      open: false,
-      rowIndex: null,
-    }));
-
   const handleRowChange = <K extends keyof InventoryFormRow>(index: number, key: K, value: InventoryFormRow[K]) => {
     setRows((prev) =>
       prev.map((row, idx) => {
         if (idx !== index) return row;
-        if (key === "isPublished") {
-          const next = { ...row, isPublished: value as InventoryFormRow["isPublished"] };
-          if (!value) {
-            return resetPublishOptions(next);
-          }
-          return next;
-        }
         return { ...row, [key]: value };
       }),
     );
-  };
-
-  const handlePublishToggle = (index: number, nextValue: boolean) => {
-    if (nextValue) {
-      setRows((prev) =>
-        prev.map((row, idx) => (idx === index ? { ...row, isPublished: true } : row)),
-      );
-      openPublishModal(index, "publish");
-      return;
-    }
-    handleRowChange(index, "isPublished", false);
-  };
-
-  const handlePublishConfirm = () => {
-    if (publishModalState.rowIndex == null) {
-      closePublishModal();
-      return;
-    }
-    setRows((prev) =>
-      prev.map((row, idx) =>
-        idx === publishModalState.rowIndex
-          ? { ...row, isPublished: true, ...publishModalState.draft }
-          : row,
-      ),
-    );
-    closePublishModal();
-  };
-
-  const handlePublishCancel = () => {
-    if (publishModalState.rowIndex == null) {
-      closePublishModal();
-      return;
-    }
-    if (publishModalState.mode === "publish") {
-      setRows((prev) =>
-        prev.map((row, idx) =>
-          idx === publishModalState.rowIndex
-            ? resetPublishOptions({ ...row, isPublished: false })
-            : row,
-        ),
-      );
-    }
-    closePublishModal();
   };
 
   const handleSupplierChange = <K extends keyof SupplierInfo>(key: K, value: SupplierInfo[K]) => {
@@ -756,7 +640,6 @@ export default function InventoryNewPage() {
                 <th className={excelTh}>撤去日</th>
                 <th className={excelTh}>柄</th>
                 <th className={excelTh}>保管先</th>
-                <th className={excelTh}>公開</th>
               </tr>
             </thead>
             <tbody>
@@ -953,30 +836,6 @@ export default function InventoryNewPage() {
                         ))}
                       </select>
                     </td>
-                    <td className={`${excelTd} text-center`}>
-                      <div className="flex flex-col items-center gap-1">
-                        <label className="flex items-center justify-center gap-1 text-[11px] text-neutral-700">
-                          <input
-                            type="checkbox"
-                            checked={row.isPublished}
-                            onChange={(event) => handlePublishToggle(index, event.target.checked)}
-                            onKeyDown={(event) => handleMachineEnter(event, index, "isPublished")}
-                            ref={registerFocus(focusKey(index, "isPublished"))}
-                            className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
-                          />
-                          公開
-                        </label>
-                        {row.isPublished && (
-                          <button
-                            type="button"
-                            onClick={() => openPublishModal(index, "edit")}
-                            className="rounded-none border border-slate-500 bg-white px-2 py-0.5 text-[10px] font-semibold text-slate-700"
-                          >
-                            確認
-                          </button>
-                        )}
-                      </div>
-                    </td>
                   </tr>
                 );
               })}
@@ -1019,51 +878,6 @@ export default function InventoryNewPage() {
             </button>
           </div>
       </div>
-      {publishModalState.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4">
-          <div className="w-full max-w-2xl border border-slate-600 bg-white">
-            <div className="border-b border-slate-600 bg-slate-100 px-6 py-3 text-base font-semibold text-slate-800">
-              出品オプション設定
-            </div>
-            <div className="max-h-[70vh] space-y-4 overflow-y-auto px-6 py-4">
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm text-slate-800">
-                {PUBLISH_OPTIONS.map((option) => (
-                  <label key={option.key} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={publishModalState.draft[option.key]}
-                      onChange={(event) =>
-                        setPublishModalState((prev) => ({
-                          ...prev,
-                          draft: { ...prev.draft, [option.key]: event.target.checked },
-                        }))
-                      }
-                      className="h-4 w-4 rounded-none border border-slate-600 text-emerald-700 focus:ring-0"
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                ))}
-              </div>
-              <div className="flex justify-end gap-2 border-t border-slate-200 pt-3">
-                <button
-                  type="button"
-                  onClick={handlePublishCancel}
-                  className="h-9 rounded-none border border-slate-500 bg-slate-100 px-5 text-sm font-semibold text-slate-700"
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="button"
-                  onClick={handlePublishConfirm}
-                  className="h-9 rounded-none border border-emerald-700 bg-emerald-200 px-5 text-sm font-semibold text-emerald-900"
-                >
-                  完了
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
