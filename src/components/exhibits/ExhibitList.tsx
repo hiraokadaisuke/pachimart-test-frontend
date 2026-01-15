@@ -77,8 +77,16 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
   const fetchExhibits = useCallback(async () => {
     setLoading(true);
     try {
+      const params = new URLSearchParams({
+        sellerUserId: currentUser.id,
+      });
+      if (status === "出品中") {
+        params.set("status", "PUBLISHED");
+      } else if (status === "下書き") {
+        params.set("status", "DRAFT");
+      }
       const response = await fetchWithDevHeader(
-        `/api/listings?sellerUserId=${encodeURIComponent(currentUser.id)}`,
+        `/api/listings?${params.toString()}`,
         { cache: "no-store" },
         currentUser.id
       );
@@ -93,7 +101,7 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
     } finally {
       setLoading(false);
     }
-  }, [currentUser.id]);
+  }, [currentUser.id, status]);
 
   useEffect(() => {
     fetchExhibits();
@@ -157,7 +165,7 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
     if (status === "下書き") {
       return exhibits.filter((exhibit) => exhibit.status === "DRAFT");
     }
-    return exhibits.filter((exhibit) => exhibit.status !== "DRAFT");
+    return exhibits.filter((exhibit) => exhibit.status === "PUBLISHED");
   }, [exhibits, status]);
 
   const listedProducts = useMemo(() => {
@@ -526,7 +534,7 @@ function ActionMenu({ onCreateNavi, onEdit, onDelete, statusActionLabel, onStatu
               setOpen(false);
             }}
           >
-            取引Navi
+            ナビ作成
           </button>
           <button
             type="button"
