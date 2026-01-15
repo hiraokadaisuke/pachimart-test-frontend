@@ -147,15 +147,15 @@ const resolvePayloadStatus = (payload: Prisma.JsonValue | undefined): string | u
 };
 
 export async function GET(request: Request) {
-  const currentDevUserId = getCurrentUserId(request);
+  const currentUserId = getCurrentUserId(request);
 
-  if (!currentDevUserId) {
+  if (!currentUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const currentUser = await prisma.user.findUnique({
-      where: { devUserId: currentDevUserId },
+      where: { id: currentUserId },
     });
 
     if (!currentUser) {
@@ -178,9 +178,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const currentDevUserId = getCurrentUserId(request);
+  const currentUserId = getCurrentUserId(request);
 
-  if (!currentDevUserId) {
+  if (!currentUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -212,13 +212,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  if (ownerUserId !== currentDevUserId) {
+  if (ownerUserId !== currentUserId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
   try {
     const ownerUser = await prisma.user.findUnique({
-      where: { devUserId: ownerUserId },
+      where: { id: ownerUserId },
     });
 
     if (!ownerUser) {
@@ -227,7 +227,7 @@ export async function POST(request: Request) {
 
     const buyerUser = buyerUserId
       ? await prisma.user.findUnique({
-          where: { devUserId: buyerUserId },
+          where: { id: buyerUserId },
         })
       : null;
 
