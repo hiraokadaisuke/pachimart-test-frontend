@@ -14,8 +14,9 @@ export type SortState = { key: string; direction: "asc" | "desc" } | null;
 
 type Props = {
   columns: NaviTableColumn[];
-  rows: any[];
+  rows?: any[];
   emptyMessage?: string;
+  loading?: boolean;
   getRowKey?: (row: any, index: number) => string | number;
   getRowClassName?: (row: any) => string | undefined;
   onRowClick?: (row: any) => void;
@@ -27,6 +28,7 @@ export function NaviTable({
   columns,
   rows,
   emptyMessage,
+  loading,
   getRowKey,
   getRowClassName,
   onRowClick,
@@ -34,6 +36,9 @@ export function NaviTable({
   onSortChange,
 }: Props) {
   const colSpan = columns.length;
+  const safeRows = rows ?? [];
+  const isLoading = loading ?? rows === undefined;
+  const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
   return (
     <div className="mt-4 overflow-x-auto rounded-lg border border-slate-200">
@@ -70,7 +75,21 @@ export function NaviTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-200 text-slate-800">
-          {rows.length === 0 ? (
+          {isLoading ? (
+            skeletonRows.map((rowIndex) => (
+              <tr key={`skeleton-${rowIndex}`} className="divide-x divide-slate-200">
+                {columns.map((column, columnIndex) => (
+                  <td
+                    key={`${column.key}-${columnIndex}`}
+                    className="px-2 py-2 align-top"
+                    style={column.width ? { width: column.width } : undefined}
+                  >
+                    <div className="h-3 w-full animate-pulse rounded bg-slate-200" />
+                  </td>
+                ))}
+              </tr>
+            ))
+          ) : safeRows.length === 0 ? (
             <tr>
               <td colSpan={colSpan} className="px-2 py-3">
                 <EmptyState
@@ -79,7 +98,7 @@ export function NaviTable({
               </td>
             </tr>
           ) : (
-            rows.map((row, index) => (
+            safeRows.map((row, index) => (
               <tr
                 key={getRowKey?.(row, index) ?? row.id ?? index}
                 className={`divide-x divide-slate-200 transition hover:bg-slate-50 ${
