@@ -283,6 +283,13 @@ type InMemoryPrisma = {
     }) => Promise<InMemoryListing | null>;
     create: ({ data }: { data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
     update: ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
+    updateMany: ({
+      where,
+      data,
+    }: {
+      where?: { storageLocationId?: string };
+      data: Partial<InMemoryListing>;
+    }) => Promise<{ count: number }>;
   };
   storageLocation: {
     findMany: ({
@@ -891,6 +898,39 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
         exhibits[idx] = updated;
         return { ...updated };
+      },
+      updateMany: async ({
+        where,
+        data,
+      }: {
+        where?: { storageLocationId?: string };
+        data: Partial<InMemoryListing>;
+      }) => {
+        let count = 0;
+        const nowDate = now();
+        exhibits.forEach((exhibit, index) => {
+          const matchesStorageLocation = where?.storageLocationId
+            ? exhibit.storageLocationId === where.storageLocationId
+            : true;
+          if (!matchesStorageLocation) return;
+
+          const updated: InMemoryListing = {
+            ...exhibit,
+            ...data,
+            storageLocation: (data.storageLocation as string | undefined) ?? exhibit.storageLocation,
+            storageLocationId: String(
+              data.storageLocationId === undefined ? exhibit.storageLocationId : data.storageLocationId
+            ),
+            storageLocationSnapshot:
+              (data.storageLocationSnapshot as Prisma.JsonValue | null | undefined) ?? exhibit.storageLocationSnapshot,
+            updatedAt: nowDate,
+          };
+
+          exhibits[index] = updated;
+          count += 1;
+        });
+
+        return { count };
       },
     },
     storageLocation: {
