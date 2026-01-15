@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
+import { buildStorageLocationSnapshot } from "@/lib/exhibits/storageLocation";
 
 const storageLocationClient = prisma.storageLocation;
 
@@ -59,6 +60,24 @@ export async function PATCH(request: Request, context: { params: { id: string } 
         handlingFeePerUnit,
         shippingFeesByRegion: body.shippingFeesByRegion,
       },
+    });
+
+    const storageLocationSnapshot = buildStorageLocationSnapshot({
+      id: String(updated.id),
+      name: String(updated.name),
+      address: updated.addressLine ?? undefined,
+      postalCode: updated.postalCode ?? undefined,
+      prefecture: updated.prefecture ?? undefined,
+      city: updated.city ?? undefined,
+      addressLine: updated.addressLine ?? undefined,
+      handlingFeePerUnit:
+        updated.handlingFeePerUnit === null ? undefined : Number(updated.handlingFeePerUnit),
+      shippingFeesByRegion: updated.shippingFeesByRegion ?? undefined,
+    });
+
+    await prisma.exhibit.updateMany({
+      where: { storageLocationId: id },
+      data: { storageLocationSnapshot },
     });
 
     return NextResponse.json({
