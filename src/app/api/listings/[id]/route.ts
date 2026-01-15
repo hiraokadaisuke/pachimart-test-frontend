@@ -1,10 +1,11 @@
-import { ExhibitStatus, RemovalStatus } from "@prisma/client";
+import { ExhibitStatus, ExhibitType, RemovalStatus } from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import {
+  buildStorageLocationSnapshot,
   formatStorageLocationShort,
   resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
@@ -12,11 +13,48 @@ import {
 
 const exhibitClient = prisma.exhibit;
 
-const updateListingSchema = z.object({
-  status: z.nativeEnum(ExhibitStatus).optional(),
-  isVisible: z.boolean().optional(),
-  note: z.string().optional().nullable(),
-});
+const updateListingSchema = z
+  .object({
+    status: z.nativeEnum(ExhibitStatus).optional(),
+    isVisible: z.boolean().optional(),
+    type: z.nativeEnum(ExhibitType).optional(),
+    kind: z.string().min(1, "kind is required").optional(),
+    maker: z.string().trim().min(1).optional().nullable(),
+    machineName: z.string().trim().min(1).optional().nullable(),
+    quantity: z.number().int().positive("quantity must be a positive integer").optional(),
+    unitPriceExclTax: z.number().int().nonnegative().optional().nullable(),
+    isNegotiable: z.boolean().optional(),
+    storageLocationId: z.string().min(1, "storageLocationId is required").optional(),
+    shippingFeeCount: z.number().int().nonnegative().optional(),
+    handlingFeeCount: z.number().int().nonnegative().optional(),
+    allowPartial: z.boolean().optional(),
+    note: z.string().optional().nullable(),
+    removalStatus: z.nativeEnum(RemovalStatus).optional(),
+    removalDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "removalDate must be in YYYY-MM-DD format")
+      .optional()
+      .nullable(),
+    hasNailSheet: z.boolean().optional(),
+    hasManual: z.boolean().optional(),
+    pickupAvailable: z.boolean().optional(),
+  })
+  .superRefine((data, context) => {
+    if (data.isNegotiable === false && data.unitPriceExclTax === null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "unitPriceExclTax is required when not negotiable",
+        path: ["unitPriceExclTax"],
+      });
+    }
+    if (data.removalStatus === RemovalStatus.SCHEDULED && data.removalDate === null) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "removalDate is required when removalStatus is scheduled",
+        path: ["removalDate"],
+      });
+    }
+  });
 
 type StorageLocationSnapshotLike = Partial<StorageLocationSnapshot> & { address?: string };
 
@@ -155,18 +193,110 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const updateData: Record<string, unknown> = {
+      status: parsed.data.status,
+      isVisible: parsed.data.isVisible,
+      type: parsed.data.type,
+      kind: parsed.data.kind,
+      maker: parsed.data.maker ?? undefined,
+      machineName: parsed.data.machineName ?? undefined,
+      quantity: parsed.data.quantity,
+      unitPriceExclTax: parsed.data.isNegotiable
+        ? null
+        : parsed.data.unitPriceExclTax ?? undefined,
+      isNegotiable: parsed.data.isNegotiable,
+      shippingFeeCount: parsed.data.shippingFeeCount,
+      handlingFeeCount: parsed.data.handlingFeeCount,
+      allowPartial: parsed.data.allowPartial,
+      note: parsed.data.note ?? undefined,
+      removalStatus: parsed.data.removalStatus,
+      removalDate:
+        parsed.data.removalStatus === RemovalStatus.SCHEDULED && parsed.data.removalDate
+          ? new Date(parsed.data.removalDate)
+          : parsed.data.removalStatus === RemovalStatus.REMOVED
+            ? null
+            : parsed.data.removalDate === null
+              ? null
+              : undefined,
+      hasNailSheet: parsed.data.hasNailSheet,
+      hasManual: parsed.data.hasManual,
+      pickupAvailable: parsed.data.pickupAvailable,
+    };
+
+    if (parsed.data.storageLocationId) {
+      const storageLocation = await prisma.storageLocation.findFirst({
+        where: { id: parsed.data.storageLocationId, ownerUserId: sellerUserId, isActive: true },
+      });
+
+      if (!storageLocation) {
+        return NextResponse.json(
+          { error: "保管場所が見つかりません。倉庫設定を確認してください。" },
+          { status: 400 }
+        );
+      }
+
+      const storageLocationSnapshot = buildStorageLocationSnapshot({
+        id: String(storageLocation.id),
+        name: String(storageLocation.name),
+        address: storageLocation.addressLine ?? undefined,
+        postalCode: storageLocation.postalCode ?? undefined,
+        prefecture: storageLocation.prefecture ?? undefined,
+        city: storageLocation.city ?? undefined,
+        addressLine: storageLocation.addressLine ?? undefined,
+        handlingFeePerUnit:
+          storageLocation.handlingFeePerUnit !== null && storageLocation.handlingFeePerUnit !== undefined
+            ? Number(storageLocation.handlingFeePerUnit)
+            : undefined,
+        shippingFeesByRegion: storageLocation.shippingFeesByRegion ?? undefined,
+      });
+      const storageLocationLabel = formatStorageLocationShort(
+        storageLocationSnapshot,
+        storageLocation.addressLine ?? ""
+      );
+
+      updateData.storageLocationId = storageLocationSnapshot.id;
+      updateData.storageLocationSnapshot = storageLocationSnapshot;
+      updateData.storageLocation = storageLocationLabel;
+    }
+
     const updated = await exhibitClient.update({
       where: { id },
-      data: {
-        status: parsed.data.status,
-        isVisible: parsed.data.isVisible,
-        note: parsed.data.note ?? undefined,
-      } as any,
+      data: updateData as any,
     });
 
     return NextResponse.json(toDto(updated));
   } catch (error) {
     console.error("Failed to update listing", error);
     return NextResponse.json({ error: "Failed to update listing" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request, { params }: { params: { id?: string } }) {
+  const id = params?.id;
+
+  if (!id) {
+    return NextResponse.json({ error: "Listing id is required" }, { status: 400 });
+  }
+
+  const sellerUserId = getCurrentUserId(request);
+  if (!sellerUserId) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const exhibit = await exhibitClient.findUnique({ where: { id } });
+    if (!exhibit) {
+      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+    }
+
+    if (String(exhibit.sellerUserId) !== sellerUserId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    await exhibitClient.delete({ where: { id } });
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Failed to delete listing", error);
+    return NextResponse.json({ error: "Failed to delete listing" }, { status: 500 });
   }
 }

@@ -102,14 +102,17 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
   const updateExhibit = useCallback(
     async (exhibitId: string, payload: { status?: string; isVisible?: boolean }) => {
       try {
-        const response = await fetch(`/api/listings/${exhibitId}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            "x-dev-user-id": currentUser.id,
+        const response = await fetchWithDevHeader(
+          `/api/listings/${exhibitId}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
           },
-          body: JSON.stringify(payload),
-        });
+          currentUser.id
+        );
 
         if (!response.ok) {
           throw new Error(`Failed to update listing: ${response.status}`);
@@ -118,6 +121,33 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
         await fetchExhibits();
       } catch (error) {
         console.error("Failed to update listing", error);
+      }
+    },
+    [currentUser.id, fetchExhibits]
+  );
+
+  const handleDeleteExhibit = useCallback(
+    async (exhibitId: string) => {
+      const confirmed = window.confirm("この出品を削除しますか？");
+      if (!confirmed) return;
+
+      try {
+        const response = await fetchWithDevHeader(
+          `/api/listings/${exhibitId}`,
+          {
+            method: "DELETE",
+          },
+          currentUser.id
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to delete listing: ${response.status}`);
+        }
+
+        await fetchExhibits();
+      } catch (error) {
+        console.error("Failed to delete listing", error);
+        window.alert("出品の削除に失敗しました。");
       }
     },
     [currentUser.id, fetchExhibits]
@@ -415,7 +445,8 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
                         ) : canOperate ? (
                           <ActionMenu
                             onCreateNavi={() => handleCreateNaviFromExhibit(exhibit)}
-                            onEdit={() => {}}
+                            onEdit={() => router.push(`/mypage/exhibits/${exhibit.id}/edit`)}
+                            onDelete={() => handleDeleteExhibit(exhibit.id)}
                             statusActionLabel={statusActionLabel ?? undefined}
                             onStatusAction={
                               statusActionPayload
@@ -442,11 +473,12 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
 type ActionMenuProps = {
   onCreateNavi: () => void;
   onEdit?: () => void;
+  onDelete?: () => void;
   statusActionLabel?: string;
   onStatusAction?: () => void;
 };
 
-function ActionMenu({ onCreateNavi, onEdit, statusActionLabel, onStatusAction }: ActionMenuProps) {
+function ActionMenu({ onCreateNavi, onEdit, onDelete, statusActionLabel, onStatusAction }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
@@ -506,6 +538,18 @@ function ActionMenu({ onCreateNavi, onEdit, statusActionLabel, onStatusAction }:
           >
             編集
           </button>
+          {onDelete && (
+            <button
+              type="button"
+              className="block w-full px-3 py-1.5 text-left text-[13px] text-neutral-800 hover:bg-slate-50"
+              onClick={() => {
+                onDelete();
+                setOpen(false);
+              }}
+            >
+              削除
+            </button>
+          )}
           {statusActionLabel && onStatusAction && (
             <button
               type="button"

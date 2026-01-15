@@ -1,15 +1,18 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useCurrentDevUser } from "@/lib/dev-user/DevUserContext";
 import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
+import type { Exhibit } from "@/lib/exhibits/types";
 
 type SellFormProps = {
   showHeader?: boolean;
   exhibitType: ExhibitType;
+  mode?: "create" | "edit";
+  initialExhibit?: Exhibit | null;
 };
 
 type ExhibitType = "PACHINKO" | "SLOT";
@@ -69,9 +72,29 @@ const exhibitTypeLabels: Record<ExhibitType, string> = {
   SLOT: "スロット",
 };
 
-export function SellForm({ showHeader = true, exhibitType }: SellFormProps) {
+const parseNote = (value: string | null) => {
+  if (!value) {
+    return { frameColor: "", note: "" };
+  }
+
+  const parts = value.split(" / ").map((part) => part.trim());
+  const framePartIndex = parts.findIndex((part) => part.startsWith("枠色:"));
+
+  if (framePartIndex === -1) {
+    return { frameColor: "", note: value };
+  }
+
+  const frameColor = parts[framePartIndex]?.replace("枠色:", "").trim() ?? "";
+  const note = parts.filter((_, index) => index !== framePartIndex).join(" / ");
+
+  return { frameColor, note };
+};
+
+export function SellForm({ showHeader = true, exhibitType, mode = "create", initialExhibit }: SellFormProps) {
   const router = useRouter();
   const currentUser = useCurrentDevUser();
+  const hasInitialized = useRef(false);
+  const hasInitializedMaker = useRef(false);
 
   const [kind, setKind] = useState("本体");
   const [makerId, setMakerId] = useState("");
@@ -101,6 +124,42 @@ export function SellForm({ showHeader = true, exhibitType }: SellFormProps) {
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!initialExhibit || hasInitialized.current) return;
+
+    const parsedNote = parseNote(initialExhibit.note ?? null);
+
+    setKind(initialExhibit.kind ?? "本体");
+    setMachineName(initialExhibit.machineName ?? "");
+    setFrameColor(parsedNote.frameColor);
+    setQuantity(initialExhibit.quantity ?? 1);
+    setPrice(initialExhibit.unitPriceExclTax ?? "");
+    setIsNegotiable(initialExhibit.isNegotiable ?? false);
+    setSelectedStorageLocationId(initialExhibit.storageLocationId ?? "");
+    setRemovalStatus(initialExhibit.removalStatus === "REMOVED" ? "REMOVED" : "SCHEDULED");
+    setRemovalDate(initialExhibit.removalDate ? initialExhibit.removalDate.slice(0, 10) : "");
+    setHasNailSheet(initialExhibit.hasNailSheet ?? false);
+    setHasManual(initialExhibit.hasManual ?? false);
+    setPickupAvailable(initialExhibit.pickupAvailable ?? false);
+    setShippingFeeCount(initialExhibit.shippingFeeCount ?? 1);
+    setHandlingFeeCount(initialExhibit.handlingFeeCount ?? 1);
+    setAllowPartial(initialExhibit.allowPartial ?? true);
+    setNote(parsedNote.note);
+
+    hasInitialized.current = true;
+  }, [initialExhibit]);
+
+  useEffect(() => {
+    if (!initialExhibit || hasInitializedMaker.current) return;
+    if (makers.length === 0) return;
+
+    const matchedMaker = makers.find((makerOption) => makerOption.name === initialExhibit.maker) ?? null;
+    if (matchedMaker) {
+      setMakerId(matchedMaker.id);
+    }
+    hasInitializedMaker.current = true;
+  }, [initialExhibit, makers]);
 
   const totals = useMemo(() => {
     const qty = typeof quantity === "number" ? quantity : 0;
@@ -175,10 +234,10 @@ export function SellForm({ showHeader = true, exhibitType }: SellFormProps) {
   }, [exhibitType]);
 
   useEffect(() => {
-    if (!makerId && makers.length > 0) {
+    if (!makerId && makers.length > 0 && mode === "create") {
       setMakerId(makers[0].id);
     }
-  }, [makerId, makers]);
+  }, [makerId, makers, mode]);
 
   const selectedStorageLocation = useMemo(
     () => storageLocations.find((location) => location.id === selectedStorageLocationId) ?? null,
@@ -268,32 +327,51 @@ export function SellForm({ showHeader = true, exhibitType }: SellFormProps) {
       handlingFeeCount,
       allowPartial,
       note: noteParts.length > 0 ? noteParts.join(" / ") : null,
-      status: "PUBLISHED",
-      isVisible: true,
     };
 
     setIsSubmitting(true);
     try {
-      const response = await fetchWithDevHeader(
-        "/api/listings",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        },
-        currentUser.id
-      );
+      const response =
+        mode === "edit" && initialExhibit
+          ? await fetchWithDevHeader(
+              `/api/listings/${initialExhibit.id}`,
+              {
+                method: "PATCH",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify(payload),
+              },
+              currentUser.id
+            )
+          : await fetchWithDevHeader(
+              "/api/listings",
+              {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  ...payload,
+                  status: "PUBLISHED",
+                  isVisible: true,
+                }),
+              },
+              currentUser.id
+            );
 
       if (!response.ok) {
-        throw new Error(`Failed to create listing: ${response.status}`);
+        throw new Error(`Failed to ${mode === "edit" ? "update" : "create"} listing: ${response.status}`);
       }
 
       router.push("/mypage/exhibits");
     } catch (error) {
-      console.error("Failed to create listing", error);
-      setSubmitError("出品の登録に失敗しました。入力内容を確認してください。");
+      console.error(`Failed to ${mode === "edit" ? "update" : "create"} listing`, error);
+      setSubmitError(
+        mode === "edit"
+          ? "出品の更新に失敗しました。入力内容を確認してください。"
+          : "出品の登録に失敗しました。入力内容を確認してください。"
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -303,9 +381,11 @@ export function SellForm({ showHeader = true, exhibitType }: SellFormProps) {
     <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 text-neutral-900">
       {showHeader && (
         <div>
-          <h1 className="text-xl font-bold text-slate-900">新規出品</h1>
+          <h1 className="text-xl font-bold text-slate-900">{mode === "edit" ? "出品編集" : "新規出品"}</h1>
           <p className="mt-2 text-sm text-neutral-900">
-            出品内容を入力して登録すると、出品一覧と商品一覧に反映されます。
+            {mode === "edit"
+              ? "出品内容を編集して保存すると、出品一覧に反映されます。"
+              : "出品内容を入力して登録すると、出品一覧と商品一覧に反映されます。"}
           </p>
         </div>
       )}
@@ -747,7 +827,13 @@ export function SellForm({ showHeader = true, exhibitType }: SellFormProps) {
                     className="rounded bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
                     disabled={isSubmitting}
                   >
-                    {isSubmitting ? "登録中..." : "この内容で出品する"}
+                    {isSubmitting
+                      ? mode === "edit"
+                        ? "保存中..."
+                        : "登録中..."
+                      : mode === "edit"
+                        ? "この内容で保存する"
+                        : "この内容で出品する"}
                   </button>
                 </div>
               </div>
