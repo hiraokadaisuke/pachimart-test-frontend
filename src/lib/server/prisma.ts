@@ -283,6 +283,7 @@ type InMemoryPrisma = {
     }) => Promise<InMemoryListing | null>;
     create: ({ data }: { data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
     update: ({ where, data }: { where: { id?: string | null }; data: Partial<InMemoryListing> }) => Promise<InMemoryListing>;
+    delete: ({ where }: { where: { id?: string | null } }) => Promise<InMemoryListing>;
   };
   storageLocation: {
     findMany: ({
@@ -891,6 +892,20 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
 
         exhibits[idx] = updated;
         return { ...updated };
+      },
+      delete: async ({ where }: { where: { id?: string | null } }) => {
+        const id = where.id ?? null;
+        if (!id) {
+          throw new Error("Listing id is required");
+        }
+
+        const idx = exhibits.findIndex((exhibit) => exhibit.id === id);
+        if (idx < 0) {
+          throw new Error("Listing not found");
+        }
+
+        const [removed] = exhibits.splice(idx, 1);
+        return { ...removed };
       },
     },
     storageLocation: {
