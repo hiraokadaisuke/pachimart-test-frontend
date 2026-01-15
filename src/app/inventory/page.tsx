@@ -38,6 +38,8 @@ type DateRange = {
   to: string;
 };
 
+type TriStateFilter = "all" | "only" | "exclude";
+
 type SearchFilters = {
   kind: "all" | "P" | "S";
   createdAt: DateRange;
@@ -47,8 +49,8 @@ type SearchFilters = {
   supplier: string;
   staff: string;
   warehouse: string;
-  showHidden: "show" | "hide";
-  showCompleted: "show" | "hide";
+  showHidden: TriStateFilter;
+  showCompleted: TriStateFilter;
 };
 
 const RESERVED_SELECTION_WIDTH = 48;
@@ -96,8 +98,8 @@ const defaultFilters: SearchFilters = {
   supplier: "",
   staff: "",
   warehouse: "",
-  showHidden: "hide",
-  showCompleted: "show",
+  showHidden: "exclude",
+  showCompleted: "all",
 };
 
 const formatDate = (value?: string) => {
@@ -127,6 +129,12 @@ const matchesDateRange = (value: string | undefined, range: DateRange) => {
   if (fromDate && target < fromDate) return false;
   if (toDate && target > toDate) return false;
   return true;
+};
+
+const matchesTriState = (value: boolean, filter: TriStateFilter) => {
+  if (filter === "all") return true;
+  if (filter === "only") return value;
+  return !value;
 };
 
 const isSerialRowComplete = (row: SerialInputRow) =>
@@ -335,8 +343,8 @@ export default function InventoryPage() {
     const keywordModel = searchFilters.model.trim().toLowerCase();
     const keywordSupplier = searchFilters.supplier.trim().toLowerCase();
     const keywordStaff = searchFilters.staff.trim().toLowerCase();
-    const showHidden = searchFilters.showHidden === "show";
-    const showCompleted = searchFilters.showCompleted === "show";
+    const hiddenFilter = searchFilters.showHidden;
+    const completedFilter = searchFilters.showCompleted;
 
     const sorted = [...records].sort(
       (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -347,14 +355,15 @@ export default function InventoryPage() {
         return false;
       }
 
-      if (!showHidden && item.isVisible === false) {
+      const isHidden = item.isVisible === false;
+      if (!matchesTriState(isHidden, hiddenFilter)) {
         return false;
       }
 
       const statusValue = (item.status ?? item.stockStatus ?? "倉庫") as InventoryStatusOption;
       const isCompleted = statusValue === "売却済";
 
-      if (!showCompleted && isCompleted) return false;
+      if (!matchesTriState(isCompleted, completedFilter)) return false;
 
       if (keywordMaker && !(item.maker ?? "").toLowerCase().includes(keywordMaker)) {
         return false;
@@ -1247,8 +1256,9 @@ export default function InventoryPage() {
                     <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-3 text-xs">
                         {[
-                          { value: "hide", label: "表示しない" },
-                          { value: "show", label: "表示する" },
+                          { value: "all", label: "すべて" },
+                          { value: "only", label: "非表示のみ" },
+                          { value: "exclude", label: "非表示以外" },
                         ].map((option) => (
                           <label key={option.value} className="flex items-center gap-1">
                             <input
@@ -1295,8 +1305,9 @@ export default function InventoryPage() {
                     <td className="border border-gray-300 px-2 py-1">
                       <div className="flex items-center gap-3 text-xs">
                         {[
-                          { value: "show", label: "表示する" },
-                          { value: "hide", label: "表示しない" },
+                          { value: "all", label: "すべて" },
+                          { value: "only", label: "販売済みのみ" },
+                          { value: "exclude", label: "販売済み以外" },
                         ].map((option) => (
                           <label key={option.value} className="flex items-center gap-1">
                             <input

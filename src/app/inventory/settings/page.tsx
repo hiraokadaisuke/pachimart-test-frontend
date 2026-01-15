@@ -4,6 +4,7 @@ import type React from "react";
 import { Fragment, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import PageTitleBand from "@/components/common/PageTitleBand";
 import {
   DEFAULT_MASTER_DATA,
   createMasterId,
@@ -999,6 +1000,11 @@ function InventorySettingsContent() {
     "rounded-none border border-red-400 bg-red-100 px-3 py-1 text-sm font-semibold text-red-700";
   const mutedText = "text-sm text-slate-600";
   const compactContainer = "mx-auto w-full max-w-[1200px]";
+  const pageTitle = mode === "customer" ? "取引先管理" : "自社設定";
+  const pageDescription =
+    mode === "customer"
+      ? "取引先情報の登録・更新・非表示設定を行います。"
+      : "自社情報の登録・更新・管理を行います。";
 
   const renderConfirmModal = () => {
     if (!confirmModal) return null;
@@ -1058,6 +1064,7 @@ function InventorySettingsContent() {
 
   return (
     <div className="space-y-6">
+      <PageTitleBand title={pageTitle} description={pageDescription} />
       {mode === "customer" ? (
         <div className={compactContainer}>
           <section className="border border-gray-400 bg-white">
