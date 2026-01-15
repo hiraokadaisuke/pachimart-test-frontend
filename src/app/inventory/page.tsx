@@ -510,8 +510,18 @@ export default function InventoryPage() {
     setRecords(updated);
   };
 
-  const handleVisibilityChange = (id: string, visible: boolean) => {
-    handleUpdateRecord(id, { isVisible: visible });
+  const handleBulkToggleVisibility = () => {
+    if (selectedIds.size === 0) {
+      alert("在庫を選択してください。");
+      return;
+    }
+
+    let updatedRecords = records;
+    selectedRecords.forEach((record) => {
+      const nextVisible = record.isVisible === false;
+      updatedRecords = updateInventoryRecord(record.id, { isVisible: nextVisible });
+    });
+    setRecords(updatedRecords);
   };
 
   const handleWarehouseChange = (id: string, warehouse: string) => {
@@ -1387,14 +1397,21 @@ export default function InventoryPage() {
               >
                 販売
               </button>
-              <button
-                type="button"
-                onClick={handleDecomposeInventory}
-                className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff]"
-              >
-                分解
-              </button>
-            </div>
+                <button
+                  type="button"
+                  onClick={handleDecomposeInventory}
+                  className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff]"
+                >
+                  分解
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBulkToggleVisibility}
+                  className="border border-gray-300 bg-[#f7f3e9] px-3 py-1 text-xs font-semibold shadow-[inset_0_1px_0_#fff]"
+                >
+                  表示変更
+                </button>
+              </div>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               <button
                 type="button"
@@ -1486,7 +1503,10 @@ export default function InventoryPage() {
                       )}
                     </th>
                   ))}
-                  <th className="w-[96px] border border-gray-300 px-1 py-1 text-center">番号・編集</th>
+                  <th className="w-[96px] border border-gray-300 px-1 py-1 text-center leading-tight">
+                    <span className="block">番号</span>
+                    <span className="block">編集</span>
+                  </th>
                   <th className="w-[64px] border border-gray-300 px-1 py-1 text-center">購伝票</th>
                   <th className="w-[64px] border border-gray-300 px-1 py-1 text-center">販伝票</th>
                   <th className="w-[56px] border border-gray-300 px-1 py-1 text-center">検通</th>
@@ -1510,12 +1530,15 @@ export default function InventoryPage() {
                     const isDeletionBlocked = isSalesInvoiced;
                     const kentuuAttachmentId = normalizeAttachmentId(item.attachments?.kentuuAttachmentId);
                     const tekkyoAttachmentId = normalizeAttachmentId(item.attachments?.tekkyoAttachmentId);
-                    const rowClass = isSalesInvoiced
-                      ? "border-t border-gray-300 bg-gray-50 text-[11px] hover:bg-gray-100"
-                      : "border-t border-gray-300 text-[11px] hover:bg-[#fffbe6]";
+                    const isSelected = selectedIds.has(item.id);
+                    const baseRowClass = isSalesInvoiced ? "bg-gray-100" : "bg-white";
+                    const hoverClass = isSalesInvoiced ? "group-hover:bg-gray-200" : "group-hover:bg-[#fffbe6]";
+                    const rowBgClass = isSelected ? "bg-[#fff2c7]" : baseRowClass;
                     return (
-                      <tr key={item.id} className={rowClass}>
-                      <td className="w-10 border border-gray-300 px-1 py-0.5 align-middle">
+                      <tr key={item.id} className="group border-t border-gray-300 text-[11px]">
+                      <td
+                        className={`w-10 border border-gray-300 px-1 py-0.5 align-middle ${rowBgClass} ${hoverClass}`}
+                      >
                         <input
                           type="checkbox"
                           checked={selectedIds.has(item.id)}
@@ -1533,7 +1556,7 @@ export default function InventoryPage() {
                         return (
                           <td
                             key={col.key}
-                            className={`border border-gray-300 px-1 py-0.5 align-middle text-neutral-800 ${
+                            className={`border border-gray-300 px-1 py-0.5 align-middle text-neutral-800 ${rowBgClass} ${hoverClass} ${
                               numeric ? "text-right" : ""
                             } ${isDate || numeric ? "whitespace-nowrap" : ""} ${
                               shouldWrap ? "whitespace-normal break-words" : ""
@@ -1542,16 +1565,7 @@ export default function InventoryPage() {
                             title={col.key === "id" ? item.id : undefined}
                           >
                             {col.key === "isVisible" ? (
-                              <div className="flex items-center justify-center">
-                                <select
-                                  value={item.isVisible === false ? "0" : "1"}
-                                  onChange={(event) => handleVisibilityChange(item.id, event.target.value === "1")}
-                                  className="w-[70px] border border-[#c98200] bg-[#fff4d6] px-1 py-0.5 text-xs"
-                                >
-                                  <option value="1">する</option>
-                                  <option value="0">しない</option>
-                                </select>
-                              </div>
+                              <span className="block text-center">{displayText}</span>
                             ) : col.key === "saleUnitPrice" ? (
                               <div className="space-y-1">
                                 {editingSaleId === item.id ? (
@@ -1618,7 +1632,9 @@ export default function InventoryPage() {
                           </td>
                         );
                       })}
-                      <td className="w-[96px] border border-gray-300 px-1 py-0.5 text-center">
+                      <td
+                        className={`w-[96px] border border-gray-300 px-1 py-0.5 text-center ${rowBgClass} ${hoverClass}`}
+                      >
                         <div className="flex items-center justify-center">
                           <button
                             type="button"
@@ -1633,7 +1649,9 @@ export default function InventoryPage() {
                           </button>
                         </div>
                       </td>
-                      <td className="w-[64px] border border-gray-300 px-1 py-0.5 text-center">
+                      <td
+                        className={`w-[64px] border border-gray-300 px-1 py-0.5 text-center ${rowBgClass} ${hoverClass}`}
+                      >
                         {item.purchaseInvoiceId ? (
                           <button
                             type="button"
@@ -1651,7 +1669,9 @@ export default function InventoryPage() {
                           <span className="text-transparent">-</span>
                         )}
                       </td>
-                      <td className="w-[64px] border border-gray-300 px-1 py-0.5 text-center">
+                      <td
+                        className={`w-[64px] border border-gray-300 px-1 py-0.5 text-center ${rowBgClass} ${hoverClass}`}
+                      >
                         {salesInvoiceMap.has(item.id) ? (
                           <button
                             type="button"
@@ -1669,7 +1689,9 @@ export default function InventoryPage() {
                           <span className="text-transparent">-</span>
                         )}
                       </td>
-                      <td className="w-[56px] border border-gray-300 px-1 py-0.5 text-center">
+                      <td
+                        className={`w-[56px] border border-gray-300 px-1 py-0.5 text-center ${rowBgClass} ${hoverClass}`}
+                      >
                         {kentuuAttachmentId ? (
                           <button
                             type="button"
@@ -1688,7 +1710,9 @@ export default function InventoryPage() {
                           </button>
                         )}
                       </td>
-                      <td className="w-[56px] border border-gray-300 px-1 py-0.5 text-center">
+                      <td
+                        className={`w-[56px] border border-gray-300 px-1 py-0.5 text-center ${rowBgClass} ${hoverClass}`}
+                      >
                         {tekkyoAttachmentId ? (
                           <button
                             type="button"
@@ -1707,7 +1731,9 @@ export default function InventoryPage() {
                           </button>
                         )}
                       </td>
-                      <td className="w-[56px] border border-gray-300 px-1 py-0.5 text-center">
+                      <td
+                        className={`w-[56px] border border-gray-300 px-1 py-0.5 text-center ${rowBgClass} ${hoverClass}`}
+                      >
                         <button
                           type="button"
                           onClick={() => handleDeleteRecord(item)}
