@@ -44,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
     items: [
       { kind: "link", href: "/inventory/settings?mode=customer&tab=corp", label: "取引先管理" },
       { kind: "link", href: "/inventory/settings?mode=self&tab=corp", label: "自社設定" },
+      { kind: "link", href: "/inventory/settings?mode=purchase-terms", label: "購入規約" },
     ],
   },
 ];

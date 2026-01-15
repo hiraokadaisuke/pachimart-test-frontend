@@ -91,6 +91,7 @@ export type MasterData = {
   companyProfiles: CompanyProfileEntry[];
   companyBranches: CompanyBranch[];
   companyStaffs: CompanyStaff[];
+  purchaseTermsText?: string;
 };
 
 const MASTER_KEY = "demo_inventory_master_v2";
@@ -165,6 +166,7 @@ export const DEFAULT_MASTER_DATA: MasterData = {
   companyProfiles: [],
   companyBranches: [],
   companyStaffs: [],
+  purchaseTermsText: "",
 };
 
 const readLocalStorage = <T,>(key: string): T | null => {
@@ -277,6 +279,7 @@ export const loadMasterData = (): MasterData => {
       },
       companyBranches: stored.companyBranches ?? [],
       companyStaffs: stored.companyStaffs ?? [],
+      purchaseTermsText: stored.purchaseTermsText ?? DEFAULT_MASTER_DATA.purchaseTermsText,
     };
     writeLocalStorage(MASTER_KEY, migrated);
     return migrated;
