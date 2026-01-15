@@ -87,9 +87,42 @@ const handleDateInputClick = (event: React.MouseEvent<HTMLInputElement>) => {
   target.showPicker?.();
 };
 
+const padDateUnit = (value: number) => value.toString().padStart(2, "0");
+
+const getCurrentMonthValue = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${padDateUnit(now.getMonth() + 1)}`;
+};
+
+const getMonthRange = (monthValue: string) => {
+  if (!monthValue) return { startDate: "", endDate: "" };
+  const [yearText, monthText] = monthValue.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  if (!year || !month) return { startDate: "", endDate: "" };
+  const lastDay = new Date(year, month, 0).getDate();
+  return {
+    startDate: `${year}-${padDateUnit(month)}-01`,
+    endDate: `${year}-${padDateUnit(month)}-${padDateUnit(lastDay)}`,
+  };
+};
+
+const shiftMonth = (monthValue: string, offset: number) => {
+  if (!monthValue) return "";
+  const [yearText, monthText] = monthValue.split("-");
+  const year = Number(yearText);
+  const month = Number(monthText);
+  if (!year || !month) return "";
+  const adjusted = new Date(year, month - 1 + offset, 1);
+  return `${adjusted.getFullYear()}-${padDateUnit(adjusted.getMonth() + 1)}`;
+};
+
 export default function ProfitManagementPage() {
   const searchParams = useSearchParams();
   const currentTab = searchParams?.get("tab") ?? "payables";
+
+  const initialProfitMonth = getCurrentMonthValue();
+  const initialProfitRange = getMonthRange(initialProfitMonth);
 
   const [purchaseInvoices, setPurchaseInvoices] = useState<PurchaseInvoice[]>([]);
   const [salesInvoices, setSalesInvoices] = useState<SalesInvoice[]>([]);
@@ -124,10 +157,12 @@ export default function ProfitManagementPage() {
     model: "",
     customer: "",
     staff: "",
-    startDate: "",
-    endDate: "",
+    startDate: initialProfitRange.startDate,
+    endDate: initialProfitRange.endDate,
     displayCount: "50",
   });
+  const [profitSearchMode, setProfitSearchMode] = useState<"month" | "range">("month");
+  const [profitMonth, setProfitMonth] = useState(initialProfitMonth);
   const [profitView, setProfitView] = useState<"all" | "summary" | "processed">("all");
 
   const [selectedPayableIds, setSelectedPayableIds] = useState<Set<string>>(new Set());
@@ -331,13 +366,17 @@ export default function ProfitManagementPage() {
   }, [salesInvoices, selectedReceivableIds]);
 
   const purchaseItemMap = useMemo(() => {
-    const map = new Map<string, { amount: number; invoiceId: string }>();
+    const map = new Map<string, { amount: number; quantity: number; invoiceId: string }>();
     purchaseInvoices.forEach((invoice) => {
       if (!isPaidInvoice(invoice)) return;
       invoice.items?.forEach((item) => {
         if (!item.inventoryId) return;
         const amount = item.amount ?? (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
-        map.set(item.inventoryId, { amount: Number.isNaN(amount) ? 0 : amount, invoiceId: invoice.invoiceId });
+        map.set(item.inventoryId, {
+          amount: Number.isNaN(amount) ? 0 : amount,
+          quantity: Number(item.quantity) || 0,
+          invoiceId: invoice.invoiceId,
+        });
       });
     });
     return map;
@@ -345,12 +384,22 @@ export default function ProfitManagementPage() {
 
   const matchesText = useCallback((value: string, query: string) => value.toLowerCase().includes(query.toLowerCase()), []);
 
-  const isProcessingDateWithinRange = useCallback((dateKey: string) => {
+  useEffect(() => {
+    if (profitSearchMode !== "month") return;
+    const range = getMonthRange(profitMonth);
+    setProfitFilters((prev) => ({
+      ...prev,
+      startDate: range.startDate,
+      endDate: range.endDate,
+    }));
+  }, [profitMonth, profitSearchMode]);
+
+  const isDateWithinRange = useCallback((dateKey: string, startDate: string, endDate: string) => {
     if (!dateKey) return false;
-    const matchesStart = profitFilters.startDate ? dateKey >= profitFilters.startDate : true;
-    const matchesEnd = profitFilters.endDate ? dateKey <= profitFilters.endDate : true;
+    const matchesStart = startDate ? dateKey >= startDate : true;
+    const matchesEnd = endDate ? dateKey <= endDate : true;
     return matchesStart && matchesEnd;
-  }, [profitFilters.endDate, profitFilters.startDate]);
+  }, []);
 
   const resolveSalesPurchaseTotal = useCallback((invoice: SalesInvoice) => {
     const inventoryIds = resolveInvoiceInventoryIds(invoice);
@@ -371,22 +420,31 @@ export default function ProfitManagementPage() {
         const inventoryIds = resolveInvoiceInventoryIds(invoice);
         if (inventoryIds.length === 0) return null;
         let purchaseTotal = 0;
+        let purchaseQty = 0;
         for (const id of inventoryIds) {
           const item = purchaseItemMap.get(id);
           if (!item) return null;
           purchaseTotal += item.amount;
+          purchaseQty += item.quantity;
         }
         const salesTotal = resolveSalesTotal(invoice);
+        const salesQty = (invoice.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
         const maker = invoice.items?.[0]?.maker ?? "";
         const modelSummary = buildModelSummary(invoice.items ?? []);
+        const customerName = invoice.vendorName || invoice.buyerName || "";
+        const branchName = invoice.introductionStore ?? "";
         return {
           invoice,
           inventoryIds,
           salesTotal,
           purchaseTotal,
+          salesQty,
+          purchaseQty,
           profit: salesTotal - purchaseTotal,
           maker,
           modelSummary,
+          customerName,
+          branchName,
         };
       })
       .filter((row): row is NonNullable<typeof row> => Boolean(row));
@@ -407,66 +465,80 @@ export default function ProfitManagementPage() {
     return filtered.slice(0, limit);
   }, [profitFilters, purchaseItemMap, salesInvoices]);
 
-  const processedPurchases = useMemo(() => {
-    return purchaseInvoices
-      .filter((invoice) => isPaidInvoice(invoice))
-      .filter((invoice) => {
-        const processedDateKey = getDateKey(invoice.paidAt);
-        if (!isProcessingDateWithinRange(processedDateKey)) return false;
-        const maker = invoice.items?.[0]?.maker ?? "";
-        const modelSummary = buildModelSummary(invoice.items ?? []);
-        const supplier = invoice.partnerName ?? "";
-        const staff = invoice.staff ?? "";
-        return (
-          matchesText(maker, profitFilters.maker) &&
-          matchesText(modelSummary, profitFilters.model) &&
-          matchesText(supplier, profitFilters.customer) &&
-          matchesText(staff, profitFilters.staff)
-        );
-      })
-      .map((invoice) => {
-        const processedDateKey = getDateKey(invoice.paidAt);
-        return {
-          kind: "purchase",
-          invoice,
-          processedDateKey,
-          processedDate: invoice.paidAt,
-          amount: resolvePurchaseTotal(invoice),
-        };
-      });
-  }, [isProcessingDateWithinRange, matchesText, profitFilters, purchaseInvoices]);
+  const buildProcessedPurchases = useCallback(
+    (startDate: string, endDate: string) =>
+      purchaseInvoices
+        .filter((invoice) => isPaidInvoice(invoice))
+        .filter((invoice) => {
+          const processedDateKey = getDateKey(invoice.paidAt);
+          if (!isDateWithinRange(processedDateKey, startDate, endDate)) return false;
+          const maker = invoice.items?.[0]?.maker ?? "";
+          const modelSummary = buildModelSummary(invoice.items ?? []);
+          const supplier = invoice.partnerName ?? "";
+          const staff = invoice.staff ?? "";
+          return (
+            matchesText(maker, profitFilters.maker) &&
+            matchesText(modelSummary, profitFilters.model) &&
+            matchesText(supplier, profitFilters.customer) &&
+            matchesText(staff, profitFilters.staff)
+          );
+        })
+        .map((invoice) => {
+          const processedDateKey = getDateKey(invoice.paidAt);
+          return {
+            kind: "purchase",
+            invoice,
+            processedDateKey,
+            processedDate: invoice.paidAt,
+            amount: resolvePurchaseTotal(invoice),
+          };
+        }),
+    [isDateWithinRange, matchesText, profitFilters, purchaseInvoices],
+  );
 
-  const processedSales = useMemo(() => {
-    return salesInvoices
-      .filter((invoice) => isReceivedInvoice(invoice))
-      .filter((invoice) => {
-        const processedDateKey = getDateKey(invoice.receivedAt);
-        if (!isProcessingDateWithinRange(processedDateKey)) return false;
-        const maker = invoice.items?.[0]?.maker ?? "";
-        const modelSummary = buildModelSummary(invoice.items ?? []);
-        const customer = invoice.vendorName || invoice.buyerName || "";
-        const staff = invoice.staff ?? "";
-        return (
-          matchesText(maker, profitFilters.maker) &&
-          matchesText(modelSummary, profitFilters.model) &&
-          matchesText(customer, profitFilters.customer) &&
-          matchesText(staff, profitFilters.staff)
-        );
-      })
-      .map((invoice) => {
-        const processedDateKey = getDateKey(invoice.receivedAt);
-        const purchaseTotal = resolveSalesPurchaseTotal(invoice);
-        const salesTotal = resolveSalesTotal(invoice);
-        return {
-          kind: "sales",
-          invoice,
-          processedDateKey,
-          processedDate: invoice.receivedAt,
-          amount: salesTotal,
-          profit: purchaseTotal == null ? null : salesTotal - purchaseTotal,
-        };
-      });
-  }, [isProcessingDateWithinRange, matchesText, profitFilters, resolveSalesPurchaseTotal, salesInvoices]);
+  const buildProcessedSales = useCallback(
+    (startDate: string, endDate: string) =>
+      salesInvoices
+        .filter((invoice) => isReceivedInvoice(invoice))
+        .filter((invoice) => {
+          const processedDateKey = getDateKey(invoice.receivedAt);
+          if (!isDateWithinRange(processedDateKey, startDate, endDate)) return false;
+          const maker = invoice.items?.[0]?.maker ?? "";
+          const modelSummary = buildModelSummary(invoice.items ?? []);
+          const customer = invoice.vendorName || invoice.buyerName || "";
+          const staff = invoice.staff ?? "";
+          return (
+            matchesText(maker, profitFilters.maker) &&
+            matchesText(modelSummary, profitFilters.model) &&
+            matchesText(customer, profitFilters.customer) &&
+            matchesText(staff, profitFilters.staff)
+          );
+        })
+        .map((invoice) => {
+          const processedDateKey = getDateKey(invoice.receivedAt);
+          const purchaseTotal = resolveSalesPurchaseTotal(invoice);
+          const salesTotal = resolveSalesTotal(invoice);
+          return {
+            kind: "sales",
+            invoice,
+            processedDateKey,
+            processedDate: invoice.receivedAt,
+            amount: salesTotal,
+            profit: purchaseTotal == null ? null : salesTotal - purchaseTotal,
+          };
+        }),
+    [isDateWithinRange, matchesText, profitFilters, resolveSalesPurchaseTotal, salesInvoices],
+  );
+
+  const processedPurchases = useMemo(
+    () => buildProcessedPurchases(profitFilters.startDate, profitFilters.endDate),
+    [buildProcessedPurchases, profitFilters.endDate, profitFilters.startDate],
+  );
+
+  const processedSales = useMemo(
+    () => buildProcessedSales(profitFilters.startDate, profitFilters.endDate),
+    [buildProcessedSales, profitFilters.endDate, profitFilters.startDate],
+  );
 
   const processedRows = useMemo(() => {
     const combined = [
@@ -500,65 +572,102 @@ export default function ProfitManagementPage() {
     return { salesTotal, purchaseTotal, profitTotal };
   }, [processedPurchases, processedSales]);
 
-  const staffSummaryRows = useMemo(() => {
-    const map = new Map<
-      string,
-      {
-        staff: string;
-        purchaseTotal: number;
-        purchaseQty: number;
-        salesTotal: number;
-        salesQty: number;
-        profitTotal: number;
-        suppliers: Set<string>;
-        customers: Set<string>;
-      }
-    >();
+  const buildStaffSummaryRows = useCallback(
+    (purchaseRows: typeof processedPurchases, salesRows: typeof processedSales) => {
+      const map = new Map<
+        string,
+        {
+          staff: string;
+          purchaseTotal: number;
+          purchaseQty: number;
+          salesTotal: number;
+          salesQty: number;
+          profitTotal: number;
+          suppliers: Set<string>;
+          customers: Set<string>;
+        }
+      >();
 
-    const ensure = (staff: string) => {
-      const key = staff || "未設定";
-      if (!map.has(key)) {
-        map.set(key, {
-          staff: key,
-          purchaseTotal: 0,
-          purchaseQty: 0,
-          salesTotal: 0,
-          salesQty: 0,
-          profitTotal: 0,
-          suppliers: new Set(),
-          customers: new Set(),
-        });
-      }
-      return map.get(key)!;
-    };
+      const ensure = (staff: string) => {
+        const key = staff || "未設定";
+        if (!map.has(key)) {
+          map.set(key, {
+            staff: key,
+            purchaseTotal: 0,
+            purchaseQty: 0,
+            salesTotal: 0,
+            salesQty: 0,
+            profitTotal: 0,
+            suppliers: new Set(),
+            customers: new Set(),
+          });
+        }
+        return map.get(key)!;
+      };
 
-    processedPurchases.forEach((row) => {
-      const invoice = row.invoice;
-      const staff = invoice.staff ?? "";
-      const entry = ensure(staff);
-      const quantity = (invoice.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
-      entry.purchaseTotal += row.amount;
-      entry.purchaseQty += quantity;
-      if (invoice.partnerName) entry.suppliers.add(invoice.partnerName);
-    });
+      purchaseRows.forEach((row) => {
+        const invoice = row.invoice;
+        const staff = invoice.staff ?? "";
+        const entry = ensure(staff);
+        const quantity = (invoice.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+        entry.purchaseTotal += row.amount;
+        entry.purchaseQty += quantity;
+        if (invoice.partnerName) entry.suppliers.add(invoice.partnerName);
+      });
 
-    processedSales.forEach((row) => {
-      const invoice = row.invoice;
-      const staff = invoice.staff ?? "";
-      const entry = ensure(staff);
-      const quantity = (invoice.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
-      entry.salesTotal += row.amount;
-      entry.salesQty += quantity;
-      entry.profitTotal += row.profit ?? 0;
-      const customer = invoice.vendorName || invoice.buyerName;
-      if (customer) entry.customers.add(customer);
-    });
+      salesRows.forEach((row) => {
+        const invoice = row.invoice;
+        const staff = invoice.staff ?? "";
+        const entry = ensure(staff);
+        const quantity = (invoice.items ?? []).reduce((sum, item) => sum + (Number(item.quantity) || 0), 0);
+        entry.salesTotal += row.amount;
+        entry.salesQty += quantity;
+        entry.profitTotal += row.profit ?? 0;
+        const customer = invoice.vendorName || invoice.buyerName;
+        if (customer) entry.customers.add(customer);
+      });
 
-    return Array.from(map.values()).sort((a, b) => {
-      if (b.profitTotal !== a.profitTotal) return b.profitTotal - a.profitTotal;
-      return a.staff.localeCompare(b.staff);
-    });
-  }, [processedPurchases, processedSales]);
+      return Array.from(map.values()).sort((a, b) => {
+        if (b.profitTotal !== a.profitTotal) return b.profitTotal - a.profitTotal;
+        return a.staff.localeCompare(b.staff);
+      });
+    },
+    [],
+  );
+
+  const staffSummaryRows = useMemo(
+    () => buildStaffSummaryRows(processedPurchases, processedSales),
+    [buildStaffSummaryRows, processedPurchases, processedSales],
+  );
+
+  const comparisonBaseMonth = useMemo(() => {
+    if (profitSearchMode === "month") return profitMonth;
+    if (profitFilters.startDate) return profitFilters.startDate.slice(0, 7);
+    return getCurrentMonthValue();
+  }, [profitFilters.startDate, profitMonth, profitSearchMode]);
+
+  const previousMonth = useMemo(() => shiftMonth(comparisonBaseMonth, -1), [comparisonBaseMonth]);
+  const previousMonthRange = useMemo(() => getMonthRange(previousMonth), [previousMonth]);
+
+  const previousProcessedPurchases = useMemo(
+    () => buildProcessedPurchases(previousMonthRange.startDate, previousMonthRange.endDate),
+    [buildProcessedPurchases, previousMonthRange.endDate, previousMonthRange.startDate],
+  );
+
+  const previousProcessedSales = useMemo(
+    () => buildProcessedSales(previousMonthRange.startDate, previousMonthRange.endDate),
+    [buildProcessedSales, previousMonthRange.endDate, previousMonthRange.startDate],
+  );
+
+  const previousStaffSummaryRows = useMemo(
+    () => buildStaffSummaryRows(previousProcessedPurchases, previousProcessedSales),
+    [buildStaffSummaryRows, previousProcessedPurchases, previousProcessedSales],
+  );
+
+  const previousStaffSummaryMap = useMemo(
+    () => new Map(previousStaffSummaryRows.map((row) => [row.staff, row] as const)),
+    [previousStaffSummaryRows],
+  );
 
   const profitSummary = useMemo(() => {
     const salesTotal = profitRows.reduce((sum, row) => sum + row.salesTotal, 0);
@@ -567,8 +676,136 @@ export default function ProfitManagementPage() {
     return { salesTotal, purchaseTotal, profitTotal };
   }, [profitRows]);
 
+  const aggregatedProfitRows = useMemo(() => {
+    const map = new Map<
+      string,
+      {
+        customerName: string;
+        branchName: string;
+        purchaseTotal: number;
+        purchaseQty: number;
+        salesTotal: number;
+        salesQty: number;
+      }
+    >();
+
+    profitRows.forEach((row) => {
+      const customerName = row.customerName || "-";
+      const branchName = row.branchName || "-";
+      const key = `${customerName}__${branchName}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          customerName,
+          branchName,
+          purchaseTotal: 0,
+          purchaseQty: 0,
+          salesTotal: 0,
+          salesQty: 0,
+        });
+      }
+      const entry = map.get(key)!;
+      entry.purchaseTotal += row.purchaseTotal;
+      entry.purchaseQty += row.purchaseQty;
+      entry.salesTotal += row.salesTotal;
+      entry.salesQty += row.salesQty;
+    });
+
+    return Array.from(map.values());
+  }, [profitRows]);
+
+  const [profitColumns, setProfitColumns] = useState(() => [
+    { key: "customer", label: "取引先", align: "left", width: "w-[200px]" },
+    { key: "branch", label: "支店", align: "left", width: "w-[160px]" },
+    { key: "purchaseTotal", label: "仕入合計金額", align: "right", width: "w-[170px]" },
+    { key: "purchaseQty", label: "仕入合計台数", align: "right", width: "w-[140px]" },
+    { key: "purchaseAverage", label: "1台あたり仕入平均", align: "right", width: "w-[180px]" },
+    { key: "salesTotal", label: "販売合計金額", align: "right", width: "w-[170px]" },
+    { key: "salesQty", label: "販売合計台数", align: "right", width: "w-[140px]" },
+    { key: "salesAverage", label: "1台あたり販売平均", align: "right", width: "w-[180px]" },
+  ]);
+  const [draggingProfitColumn, setDraggingProfitColumn] = useState<string | null>(null);
+  const [profitDragOver, setProfitDragOver] = useState<{ key: string; position: "left" | "right" } | null>(null);
+
+  const handleProfitDragStart = (key: string) => setDraggingProfitColumn(key);
+
+  const handleProfitDragOver = (event: React.DragEvent<HTMLTableCellElement>, key: string) => {
+    event.preventDefault();
+    if (!draggingProfitColumn || draggingProfitColumn === key) return;
+    const target = event.currentTarget;
+    const { offsetX } = event.nativeEvent as DragEvent;
+    if (!target) return;
+    const position = offsetX < target.clientWidth / 2 ? "left" : "right";
+    setProfitDragOver({ key, position });
+  };
+
+  const handleProfitDrop = (key: string) => {
+    if (!draggingProfitColumn || draggingProfitColumn === key || !profitDragOver) {
+      setProfitDragOver(null);
+      setDraggingProfitColumn(null);
+      return;
+    }
+    setProfitColumns((prev) => {
+      const currentIndex = prev.findIndex((col) => col.key === draggingProfitColumn);
+      const targetIndex = prev.findIndex((col) => col.key === key);
+      if (currentIndex === -1 || targetIndex === -1) return prev;
+      const next = [...prev];
+      const [removed] = next.splice(currentIndex, 1);
+      const insertIndex = profitDragOver.position === "left" ? targetIndex : targetIndex + 1;
+      next.splice(insertIndex > currentIndex ? insertIndex - 1 : insertIndex, 0, removed);
+      return next;
+    });
+    setProfitDragOver(null);
+    setDraggingProfitColumn(null);
+  };
+
+  const formatComparison = (current: number, previous?: number) => {
+    if (previous == null || previous === 0) return "-";
+    const diff = ((current - previous) / previous) * 100;
+    if (!Number.isFinite(diff)) return "-";
+    const arrow = diff >= 0 ? "↑" : "↓";
+    const sign = diff >= 0 ? "+" : "-";
+    return `${arrow} ${sign}${Math.abs(diff).toFixed(1)}%`;
+  };
+
+  const renderProfitAggregateCell = (
+    columnKey: string,
+    row: {
+      customerName: string;
+      branchName: string;
+      purchaseTotal: number;
+      purchaseQty: number;
+      salesTotal: number;
+      salesQty: number;
+    },
+  ) => {
+    switch (columnKey) {
+      case "customer":
+        return row.customerName || "-";
+      case "branch":
+        return row.branchName || "-";
+      case "purchaseTotal":
+        return formatCurrency(row.purchaseTotal);
+      case "purchaseQty":
+        return row.purchaseQty.toLocaleString("ja-JP");
+      case "purchaseAverage":
+        return row.purchaseQty ? formatCurrency(row.purchaseTotal / row.purchaseQty) : "-";
+      case "salesTotal":
+        return formatCurrency(row.salesTotal);
+      case "salesQty":
+        return row.salesQty.toLocaleString("ja-JP");
+      case "salesAverage":
+        return row.salesQty ? formatCurrency(row.salesTotal / row.salesQty) : "-";
+      default:
+        return "-";
+    }
+  };
+
   const profitTargetCount =
-    profitView === "all" ? profitRows.length : profitView === "summary" ? staffSummaryRows.length : processedRows.length;
+    profitView === "all"
+      ? aggregatedProfitRows.length
+      : profitView === "summary"
+        ? staffSummaryRows.length
+        : processedRows.length;
   const summaryTotals = profitView === "all" ? profitSummary : processingSummary;
 
   const handlePaymentProcess = () => {
@@ -1295,6 +1532,28 @@ export default function ProfitManagementPage() {
                     </td>
                   </tr>
                   <tr className="divide-x divide-gray-300">
+                    <th className={`${labelCellClass} ${borderCell} px-3 py-2`}>検索モード</th>
+                    <td className={`${borderCell} px-3 py-2`}>
+                      <select
+                        value={profitSearchMode}
+                        onChange={(e) => setProfitSearchMode(e.target.value as "month" | "range")}
+                        className={inputCellStyles}
+                      >
+                        <option value="month">月</option>
+                        <option value="range">期間</option>
+                      </select>
+                    </td>
+                    <th className={`${labelCellClass} ${borderCell} px-3 py-2`}>月検索</th>
+                    <td className={`${borderCell} px-3 py-2`}>
+                      <input
+                        type="month"
+                        value={profitMonth}
+                        onChange={(e) => setProfitMonth(e.target.value)}
+                        onClick={handleDateInputClick}
+                        disabled={profitSearchMode !== "month"}
+                        className={`${inputCellStyles} ${profitSearchMode !== "month" ? "bg-slate-100" : ""}`}
+                      />
+                    </td>
                     <th className={`${labelCellClass} ${borderCell} px-3 py-2`}>開始日</th>
                     <td className={`${borderCell} px-3 py-2`}>
                       <input
@@ -1302,7 +1561,8 @@ export default function ProfitManagementPage() {
                         value={profitFilters.startDate}
                         onChange={(e) => setProfitFilters((prev) => ({ ...prev, startDate: e.target.value }))}
                         onClick={handleDateInputClick}
-                        className={inputCellStyles}
+                        disabled={profitSearchMode !== "range"}
+                        className={`${inputCellStyles} ${profitSearchMode !== "range" ? "bg-slate-100" : ""}`}
                       />
                     </td>
                     <th className={`${labelCellClass} ${borderCell} px-3 py-2`}>終了日</th>
@@ -1312,9 +1572,12 @@ export default function ProfitManagementPage() {
                         value={profitFilters.endDate}
                         onChange={(e) => setProfitFilters((prev) => ({ ...prev, endDate: e.target.value }))}
                         onClick={handleDateInputClick}
-                        className={inputCellStyles}
+                        disabled={profitSearchMode !== "range"}
+                        className={`${inputCellStyles} ${profitSearchMode !== "range" ? "bg-slate-100" : ""}`}
                       />
                     </td>
+                  </tr>
+                  <tr className="divide-x divide-gray-300">
                     <th className={`${labelCellClass} ${borderCell} px-3 py-2`}>表示数</th>
                     <td className={`${borderCell} px-3 py-2`}>
                       <select
@@ -1328,7 +1591,7 @@ export default function ProfitManagementPage() {
                       </select>
                     </td>
                     <th className={`${labelCellClass} ${borderCell} px-3 py-2`}>対象件数</th>
-                    <td className={`${borderCell} px-3 py-2 text-right font-semibold text-slate-700`}>
+                    <td className={`${borderCell} px-3 py-2 text-right font-semibold text-slate-700`} colSpan={5}>
                       {profitTargetCount} 件
                     </td>
                   </tr>
@@ -1379,56 +1642,64 @@ export default function ProfitManagementPage() {
 
           {profitView === "all" && (
             <div className="overflow-x-auto border border-gray-300 bg-white">
+              <div className="border-b border-gray-300 bg-slate-50 px-3 py-2 text-xs text-neutral-600">
+                列ヘッダーをドラッグして並び替えできます。
+              </div>
               <table className="min-w-full table-fixed border-collapse text-sm">
                 <thead className="bg-slate-600 text-left text-xs font-bold text-white">
                   <tr>
-                    <th className="w-[160px] border border-gray-300 px-3 py-3">販売伝票ID</th>
-                    <th className="w-[140px] border border-gray-300 px-3 py-3">発行日</th>
-                    <th className="w-[200px] border border-gray-300 px-3 py-3">販売先</th>
-                    <th className="w-[160px] border border-gray-300 px-3 py-3">メーカー</th>
-                    <th className="w-[200px] border border-gray-300 px-3 py-3">機種名</th>
-                    <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">売上高</th>
-                    <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">仕入合計</th>
-                    <th className="w-[140px] border border-gray-300 px-3 py-3 text-right">粗利益</th>
-                    <th className="w-[140px] border border-gray-300 px-3 py-3">担当</th>
+                    {profitColumns.map((column) => (
+                      <th
+                        key={column.key}
+                        draggable
+                        onDragStart={() => handleProfitDragStart(column.key)}
+                        onDragOver={(event) => handleProfitDragOver(event, column.key)}
+                        onDrop={() => handleProfitDrop(column.key)}
+                        onDragEnd={() => {
+                          setProfitDragOver(null);
+                          setDraggingProfitColumn(null);
+                        }}
+                        className={`relative border border-gray-300 px-3 py-3 ${
+                          column.align === "right" ? "text-right" : "text-left"
+                        } ${column.width}`}
+                      >
+                        <span className={`${profitDragOver?.key === column.key ? "bg-white/20" : ""}`}>
+                          {column.label}
+                        </span>
+                        {profitDragOver && profitDragOver.key === column.key && (
+                          <div
+                            className={`absolute inset-y-1 ${
+                              profitDragOver.position === "left" ? "left-1" : "right-1"
+                            } w-0.5 bg-white`}
+                          />
+                        )}
+                      </th>
+                    ))}
                   </tr>
                 </thead>
                 <tbody>
-                  {profitRows.length === 0 ? (
+                  {aggregatedProfitRows.length === 0 ? (
                     <tr>
                       <td
-                        colSpan={9}
+                        colSpan={profitColumns.length}
                         className="border border-gray-300 px-3 py-6 text-center text-sm text-neutral-600"
                       >
                         入金済み・支払済みが揃った伝票がありません。
                       </td>
                     </tr>
                   ) : (
-                    profitRows.map((row) => (
-                      <tr key={row.invoice.invoiceId} className="hover:bg-slate-50">
-                        <td className="border border-gray-300 px-3 py-3 font-mono text-sm text-neutral-900">
-                          {row.invoice.invoiceId}
-                        </td>
-                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">
-                          {formatDate(row.invoice.issuedDate || row.invoice.createdAt)}
-                        </td>
-                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">
-                          {row.invoice.vendorName || row.invoice.buyerName || "-"}
-                        </td>
-                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">{row.maker || "-"}</td>
-                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">{row.modelSummary}</td>
-                        <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                          {formatCurrency(row.salesTotal)}
-                        </td>
-                        <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                          {formatCurrency(row.purchaseTotal)}
-                        </td>
-                        <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                          {formatCurrency(row.profit)}
-                        </td>
-                        <td className="border border-gray-300 px-3 py-3 text-neutral-800">
-                          {row.invoice.staff ?? "-"}
-                        </td>
+                    aggregatedProfitRows.map((row) => (
+                      <tr key={`${row.customerName}-${row.branchName}`} className="hover:bg-slate-50">
+                        {profitColumns.map((column) => (
+                          <td
+                            key={column.key}
+                            className={`border border-gray-300 px-3 py-3 ${
+                              column.align === "right" ? "text-right" : "text-left"
+                            } text-neutral-800`}
+                          >
+                            {renderProfitAggregateCell(column.key, row)}
+                          </td>
+                        ))}
                       </tr>
                     ))
                   )}
@@ -1467,32 +1738,77 @@ export default function ProfitManagementPage() {
                     staffSummaryRows.map((row) => {
                       const purchaseAverage = row.purchaseQty ? row.purchaseTotal / row.purchaseQty : 0;
                       const salesAverage = row.salesQty ? row.salesTotal / row.salesQty : 0;
+                      const previous = previousStaffSummaryMap.get(row.staff);
+                      const previousPurchaseAverage =
+                        previous && previous.purchaseQty ? previous.purchaseTotal / previous.purchaseQty : undefined;
+                      const previousSalesAverage =
+                        previous && previous.salesQty ? previous.salesTotal / previous.salesQty : undefined;
                       return (
                         <tr key={row.staff} className="hover:bg-slate-50">
                           <td className="border border-gray-300 px-3 py-3 text-neutral-800">{row.staff}</td>
                           <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                            {formatCurrency(purchaseAverage)}
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{formatCurrency(purchaseAverage)}</span>
+                              <span className="text-xs text-slate-500">
+                                {formatComparison(purchaseAverage, previousPurchaseAverage)}
+                              </span>
+                            </div>
                           </td>
                           <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                            {formatCurrency(salesAverage)}
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{formatCurrency(salesAverage)}</span>
+                              <span className="text-xs text-slate-500">
+                                {formatComparison(salesAverage, previousSalesAverage)}
+                              </span>
+                            </div>
                           </td>
                           <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                            {row.salesQty}
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{row.salesQty.toLocaleString("ja-JP")}</span>
+                              <span className="text-xs text-slate-500">
+                                {formatComparison(row.salesQty, previous?.salesQty)}
+                              </span>
+                            </div>
                           </td>
                           <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                            {row.suppliers.size}
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{row.suppliers.size}</span>
+                              <span className="text-xs text-slate-500">
+                                {formatComparison(row.suppliers.size, previous?.suppliers.size)}
+                              </span>
+                            </div>
                           </td>
                           <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                            {row.customers.size}
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{row.customers.size}</span>
+                              <span className="text-xs text-slate-500">
+                                {formatComparison(row.customers.size, previous?.customers.size)}
+                              </span>
+                            </div>
                           </td>
                           <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                            {formatCurrency(row.purchaseTotal)}
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{formatCurrency(row.purchaseTotal)}</span>
+                              <span className="text-xs text-slate-500">
+                                {formatComparison(row.purchaseTotal, previous?.purchaseTotal)}
+                              </span>
+                            </div>
                           </td>
                           <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                            {formatCurrency(row.salesTotal)}
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{formatCurrency(row.salesTotal)}</span>
+                              <span className="text-xs text-slate-500">
+                                {formatComparison(row.salesTotal, previous?.salesTotal)}
+                              </span>
+                            </div>
                           </td>
                           <td className="border border-gray-300 px-3 py-3 text-right text-neutral-800">
-                            {formatCurrency(row.profitTotal)}
+                            <div className="flex items-center justify-end gap-2">
+                              <span>{formatCurrency(row.profitTotal)}</span>
+                              <span className="text-xs text-slate-500">
+                                {formatComparison(row.profitTotal, previous?.profitTotal)}
+                              </span>
+                            </div>
                           </td>
                         </tr>
                       );
