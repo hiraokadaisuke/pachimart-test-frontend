@@ -197,7 +197,7 @@ export default function InventoryPage() {
   const [salesCandidateIds, setSalesCandidateIds] = useState<string[]>([]);
   const [serialCompletionMap, setSerialCompletionMap] = useState<Record<string, boolean>>({});
   const [warehouseOptions, setWarehouseOptions] = useState<string[]>([]);
-  const [selectedColumnKey, setSelectedColumnKey] = useState<Column["key"] | null>(null);
+  const [hoveredColumnKey, setHoveredColumnKey] = useState<Column["key"] | null>(null);
 
   useEffect(() => {
     setRecords(loadInventoryRecords());
@@ -1010,7 +1010,7 @@ export default function InventoryPage() {
 
   const totalPageCount = 1;
   const currentPage = 1;
-  const columnHighlightClass = "bg-[#fff2c7]";
+  const columnHeaderHoverClass = "shadow-[inset_0_-2px_0_rgba(255,255,255,0.7)]";
 
   return (
     <div className="min-h-screen bg-white py-4">
@@ -1479,7 +1479,10 @@ export default function InventoryPage() {
                 総{filteredRecords.length}件 / {displayRecords.length}件表示 / {currentPage}/{totalPageCount}ページ
               </span>
             </div>
-            <table className="min-w-full table-fixed border-collapse border-2 border-gray-300 text-[11px]">
+            <table
+              className="min-w-full table-fixed border-collapse border-2 border-gray-300 text-[11px]"
+              onMouseLeave={() => setHoveredColumnKey(null)}
+            >
               <thead className="bg-slate-600 text-left font-semibold text-white">
                 <tr>
                   <th className="w-10 border border-gray-300 px-1 py-1" />
@@ -1490,8 +1493,9 @@ export default function InventoryPage() {
                       onDragStart={() => handleDragStart(String(col.key))}
                       onDragOver={(event) => handleDragOver(event, String(col.key))}
                       onDrop={() => handleDrop(String(col.key))}
+                      onMouseEnter={() => setHoveredColumnKey(col.key)}
                       className={`relative select-none border border-gray-300 px-1 py-1 ${
-                        selectedColumnKey === col.key ? columnHighlightClass : ""
+                        hoveredColumnKey === col.key ? columnHeaderHoverClass : ""
                       }`}
                       style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                       data-col={col.key}
@@ -1539,6 +1543,7 @@ export default function InventoryPage() {
                     const baseRowClass = isSalesInvoiced ? "bg-gray-100" : "bg-white";
                     const hoverClass = isSalesInvoiced ? "group-hover:bg-gray-200" : "group-hover:bg-[#fffbe6]";
                     const rowBgClass = isSelected ? "bg-[#fff2c7]" : baseRowClass;
+                    const columnHoverClass = isSelected ? "" : hoverClass.replace("group-hover:", "");
                     return (
                       <tr key={item.id} className="group border-t border-gray-300 text-[11px]">
                       <td
@@ -1557,7 +1562,7 @@ export default function InventoryPage() {
                         const numeric = NUMERIC_COLUMNS.includes(col.key);
                         const isDate = DATE_COLUMNS.includes(col.key);
                         const shouldWrap = WRAP_COLUMNS.includes(col.key);
-                        const isColumnSelected = selectedColumnKey === col.key;
+                        const isColumnHovered = hoveredColumnKey === col.key;
 
                         return (
                           <td
@@ -1566,12 +1571,11 @@ export default function InventoryPage() {
                               numeric ? "text-right" : ""
                             } ${isDate || numeric ? "whitespace-nowrap" : ""} ${
                               shouldWrap ? "whitespace-normal break-words" : ""
-                            } ${isColumnSelected ? columnHighlightClass : ""}`}
+                            } ${isColumnHovered ? columnHoverClass : ""}`}
                             style={{ width: `${col.width}px`, minWidth: `${col.minWidth}px` }}
                             title={col.key === "id" ? item.id : undefined}
                             data-col={col.key}
-                            onClick={() => setSelectedColumnKey(col.key)}
-                            onFocusCapture={() => setSelectedColumnKey(col.key)}
+                            onMouseEnter={() => setHoveredColumnKey(col.key)}
                           >
                             {col.key === "isVisible" ? (
                               <span className="block text-center">{displayText}</span>
