@@ -475,7 +475,18 @@ export function InventoryTable({
         column.id === "kentuu"
           ? current.attachments?.kentuuAttachmentId
           : current.attachments?.tekkyoAttachmentId;
-      if (!attachmentId) return null;
+      if (!attachmentId) {
+        return (
+          <button
+            type="button"
+            title="書類をアップロード"
+            onClick={() => onOpenDocuments?.(item.id)}
+            className="inline-flex cursor-pointer items-center justify-center text-[11px] font-semibold text-slate-600 hover:text-slate-800"
+          >
+            未
+          </button>
+        );
+      }
       return (
         <button
           type="button"
