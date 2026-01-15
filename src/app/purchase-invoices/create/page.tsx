@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { loadSimpleInventory, updateInventoryStatus } from "@/lib/demo-data/inventory";
+import PageTitleBand from "@/components/common/PageTitleBand";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
 import type { InventoryStatusOption, SimpleInventory } from "@/types/purchaseInvoices";
 
@@ -69,10 +70,7 @@ export default function PurchaseInvoiceCreatePage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold text-neutral-900">購入伝票作成</h1>
-        <p className="text-sm text-neutral-600">未作成の在庫から、登録したい伝票を選択してください。</p>
-      </div>
+      <PageTitleBand title="購入伝票作成" description="未作成の在庫から、登録したい伝票を選択してください。" />
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <div className="flex items-center gap-4 text-sm text-neutral-800">
