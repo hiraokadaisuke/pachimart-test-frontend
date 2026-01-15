@@ -113,15 +113,15 @@ const toDto = (dealing: ReturnType<typeof toRecord>) => ({
 });
 
 export async function GET(request: Request) {
-  const currentDevUserId = getCurrentUserId(request);
+  const currentUserId = getCurrentUserId(request);
 
-  if (!currentDevUserId) {
+  if (!currentUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
     const currentUser = await prisma.user.findUnique({
-      where: { devUserId: currentDevUserId },
+      where: { id: currentUserId },
     });
 
     if (!currentUser) {

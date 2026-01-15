@@ -187,7 +187,7 @@ export async function POST(request: Request) {
 
   try {
     const buyerUser = await prisma.user.findUnique({
-      where: { devUserId: buyerUserId },
+      where: { id: buyerUserId },
     });
 
     if (!buyerUser) {
@@ -199,7 +199,7 @@ export async function POST(request: Request) {
 
     const sellerUser = sellerUserId
       ? await prisma.user.findUnique({
-          where: { devUserId: sellerUserId },
+          where: { id: sellerUserId },
         })
       : null;
 
