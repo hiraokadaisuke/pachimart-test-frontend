@@ -199,6 +199,7 @@ function InventorySettingsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
+  const [purchaseTermsText, setPurchaseTermsText] = useState<string>("");
   const [corporateForm, setCorporateForm] = useState<CorporateFormState>(createEmptyCorporateForm());
   const [branchForm, setBranchForm] = useState<BranchFormState>(createEmptyBranchForm());
   const [editingCorporateId, setEditingCorporateId] = useState<string | null>(null);
@@ -257,6 +258,7 @@ function InventorySettingsContent() {
 
   const mode = useMemo(() => {
     const value = searchParams?.get("mode");
+    if (value === "purchase-terms") return "purchase-terms";
     if (value === "self" || value === "company") return "self";
     return "customer";
   }, [searchParams]);
@@ -269,6 +271,7 @@ function InventorySettingsContent() {
   useEffect(() => {
     const loaded = loadMasterData();
     setMasterData(loaded);
+    setPurchaseTermsText(loaded.purchaseTermsText ?? "");
     const firstCorporateId = loaded.suppliers[0]?.id ?? "";
     setBranchForm((prev) => ({
       ...prev,
@@ -317,6 +320,10 @@ function InventorySettingsContent() {
   const updateStorage = (next: MasterData) => {
     setMasterData(next);
     saveMasterData(next);
+  };
+
+  const handlePurchaseTermsSave = () => {
+    updateStorage({ ...masterData, purchaseTermsText });
   };
 
   const companyProfiles = useMemo(() => {
@@ -1000,11 +1007,13 @@ function InventorySettingsContent() {
     "rounded-none border border-red-400 bg-red-100 px-3 py-1 text-sm font-semibold text-red-700";
   const mutedText = "text-sm text-slate-600";
   const compactContainer = "mx-auto w-full max-w-[1200px]";
-  const pageTitle = mode === "customer" ? "取引先管理" : "自社設定";
+  const pageTitle = mode === "customer" ? "取引先管理" : mode === "purchase-terms" ? "購入規約" : "自社設定";
   const pageDescription =
     mode === "customer"
       ? "取引先情報の登録・更新・非表示設定を行います。"
-      : "自社情報の登録・更新・管理を行います。";
+      : mode === "purchase-terms"
+        ? "購入伝票に表示する規約文を登録・更新します。"
+        : "自社情報の登録・更新・管理を行います。";
 
   const renderConfirmModal = () => {
     if (!confirmModal) return null;
@@ -1065,7 +1074,27 @@ function InventorySettingsContent() {
   return (
     <div className="space-y-6">
       <PageTitleBand title={pageTitle} description={pageDescription} />
-      {mode === "customer" ? (
+      {mode === "purchase-terms" ? (
+        <div className={compactContainer}>
+          <section className="border border-gray-400 bg-white">
+            <div className={sectionHeader}>購入規約</div>
+            <div className="space-y-4 border-t border-gray-400 p-4">
+              <div className={mutedText}>購入伝票の売主欄に表示する規約文を登録します。</div>
+              <textarea
+                value={purchaseTermsText}
+                onChange={(event) => setPurchaseTermsText(event.target.value)}
+                placeholder="例：当社の規約に基づき下記の通り購入いたします。"
+                className="min-h-[160px] w-full border border-gray-400 bg-white p-3 text-sm leading-relaxed focus:border-gray-700 focus:outline-none"
+              />
+              <div className="flex justify-end">
+                <button type="button" onClick={handlePurchaseTermsSave} className={buttonBase}>
+                  保存
+                </button>
+              </div>
+            </div>
+          </section>
+        </div>
+      ) : mode === "customer" ? (
         <div className={compactContainer}>
           <section className="border border-gray-400 bg-white">
             <div className="flex flex-wrap gap-2 border-b border-gray-400 bg-gray-200 px-3 py-3">

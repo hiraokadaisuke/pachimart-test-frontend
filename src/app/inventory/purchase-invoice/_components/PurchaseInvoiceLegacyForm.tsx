@@ -8,11 +8,19 @@ import {
   markInventoriesWithInvoice,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
+import { loadMasterData, type CompanyProfile } from "@/lib/demo-data/demoMasterData";
 import { addPurchaseInvoice, generateInvoiceId } from "@/lib/demo-data/purchaseInvoices";
 import ExtraCostEditor from "@/components/invoices/ExtraCostEditor";
 import type { AdditionalCostItem, PurchaseInvoice, PurchaseInvoiceItem } from "@/types/purchaseInvoices";
 
 const toDateInputValue = (date: Date) => date.toISOString().slice(0, 10);
+
+const formatPostalCode = (value?: string) => {
+  if (!value) return "";
+  const digits = value.replace(/\D/g, "");
+  if (digits.length === 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return value;
+};
 
 type BaseRow = {
   inventoryId: string;
@@ -47,6 +55,10 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const router = useRouter();
   const [rows, setRows] = useState<BaseRow[]>([]);
   const [staff, setStaff] = useState("担当A");
+  const [staffOptions, setStaffOptions] = useState<string[]>([]);
+  const [hasInitializedStaff, setHasInitializedStaff] = useState(false);
+  const [purchaseTermsText, setPurchaseTermsText] = useState("");
+  const [buyerProfile, setBuyerProfile] = useState<CompanyProfile | null>(null);
   const [issuedDate, setIssuedDate] = useState(toDateInputValue(new Date()));
   const [paymentDate, setPaymentDate] = useState("");
   const [warehousingDate, setWarehousingDate] = useState("");
@@ -81,6 +93,23 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     }]);
   }, [inventories]);
 
+  useEffect(() => {
+    const data = loadMasterData();
+    setPurchaseTermsText(data.purchaseTermsText ?? "");
+    setStaffOptions(data.buyerStaffs ?? []);
+    const primaryProfile =
+      data.companyProfiles?.find((profile) => profile.isPrimary) ?? data.companyProfiles?.[0] ?? data.companyProfile;
+    setBuyerProfile(primaryProfile ?? null);
+  }, []);
+
+  useEffect(() => {
+    if (hasInitializedStaff) return;
+    if (inventories.length === 0) return;
+    const defaultStaff = inventories[0]?.buyerStaff ?? staffOptions[0] ?? "担当A";
+    setStaff(defaultStaff);
+    setHasInitializedStaff(true);
+  }, [hasInitializedStaff, inventories, staffOptions]);
+
   const totalAmount = useMemo(
     () => rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0),
     [rows],
@@ -89,6 +118,26 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     () => extraCosts.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
     [extraCosts],
   );
+  const selectableStaffOptions = useMemo(() => {
+    const baseOptions = staffOptions.length > 0 ? staffOptions : ["担当A", "担当B", "担当C"];
+    return Array.from(new Set([...baseOptions, staff].filter(Boolean)));
+  }, [staffOptions, staff]);
+
+  const buyerDisplay = useMemo(() => {
+    const profile = buyerProfile;
+    const postalCode = formatPostalCode(profile?.postalCode) || "334-0073";
+    const addressLine = [profile?.prefecture, profile?.city, profile?.addressLine2 ?? profile?.addressLine]
+      .filter(Boolean)
+      .join("");
+    return {
+      postal: postalCode ? `〒${postalCode}` : "〒334-0073",
+      address: addressLine || "埼玉県川口市赤井1-28-33 ○○ビル",
+      companyName: profile?.corporateName || "p-kanriclub",
+      representative: profile?.representative ? `代表者 ${profile.representative}` : "代表者 代表 取締役 デモ",
+      tel: profile?.phone ? `TEL ${profile.phone}` : "TEL 012-1234-5678",
+      fax: profile?.fax ? `FAX ${profile.fax}` : "FAX 012-1234-5679",
+    };
+  }, [buyerProfile]);
 
   const handleChange = (index: number, key: keyof BaseRow, value: string) => {
     setRows((prev) =>
@@ -148,6 +197,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       issuedDate,
       partnerName: inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? "",
       staff,
+      purchaseTermsText,
       inventoryIds: inventories.map((item) => item.id),
       items,
       totalAmount: totalAmount + taxAmount + transportInsurance + extraCostTotal,
@@ -176,6 +226,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const taxAmount = Math.floor(totalAmount * 0.1);
   const grandTotal = totalAmount + taxAmount + transportInsurance + extraCostTotal;
   const supplierName = inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? "";
+  const supplierPhone = inventories[0]?.supplierPhone ?? "―";
+  const supplierFax = inventories[0]?.supplierFax ?? "―";
 
   if (type === "hall") {
     return (
@@ -239,7 +291,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                         onChange={(e) => setStaff(e.target.value)}
                         className={`${yellowInput} w-36 rounded-none border border-orange-500 text-center font-semibold text-orange-900`}
                       >
-                        {["担当A", "担当B", "担当C"].map((name) => (
+                        {selectableStaffOptions.map((name) => (
                           <option key={name} value={name}>
                             {name}
                           </option>
@@ -489,12 +541,6 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                 <span>{headerTitle}</span>
               </div>
               <div className="border-b border-dashed border-neutral-400" />
-              <div className="flex items-center gap-3 text-sm font-semibold">
-                <div className="flex items-center gap-2">
-                  <span className="text-orange-700">宛先</span>
-                  <span className="border border-black px-2 py-1 text-[13px] leading-tight text-orange-800">{supplierName || ""} 御中</span>
-                </div>
-              </div>
             </div>
             <div className="flex flex-col items-end gap-3 text-sm font-semibold">
               <div className="flex items-center gap-2">
@@ -509,14 +555,43 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                   <span className="border border-black bg-neutral-100 px-2 py-1 text-[12px]">▼</span>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <div className="mb-3 grid gap-4 md:grid-cols-[1.5fr_1.2fr]">
+            <div className="space-y-1 text-[12px] leading-snug text-neutral-900">
+              <div className="text-sm font-semibold">
+                <span className="bg-orange-200 px-2 text-orange-900">
+                  {supplierName || "○○ホール○○店 株式会社○○○○"}
+                </span>
+                <span className="ml-2">御中</span>
+              </div>
+              <div className="space-y-0.5 text-[11px] text-neutral-800">
+                <div>TEL {supplierPhone}</div>
+                <div>FAX {supplierFax}</div>
+              </div>
+              <div className="text-[11px] text-neutral-800">当社の規約に基づき下記の通り購入いたします。</div>
+              <div className="whitespace-pre-line text-[11px] text-neutral-800">
+                {purchaseTermsText || "（購入規約は詳細設定から登録してください）"}
+              </div>
+            </div>
+            <div className="pt-5 text-[11px] leading-snug text-neutral-900">
+              <div className="font-semibold">【買主】{buyerDisplay.postal}</div>
+              <div>{buyerDisplay.address}</div>
+              <div>{buyerDisplay.companyName}</div>
+              <div>{buyerDisplay.representative}</div>
+              <div className="flex flex-wrap gap-x-3">
+                <span>{buyerDisplay.tel}</span>
+                <span>{buyerDisplay.fax}</span>
+              </div>
               <div className="flex items-center gap-2">
-                <span className="border border-orange-500 bg-orange-100 px-2 py-1 text-xs text-orange-900">担当</span>
+                <span>担当</span>
                 <select
                   value={staff}
                   onChange={(e) => setStaff(e.target.value)}
                   className={`${yellowInput} w-32 rounded-none`}
                 >
-                  {["担当A", "担当B", "担当C"].map((name) => (
+                  {selectableStaffOptions.map((name) => (
                     <option key={name} value={name}>
                       {name}
                     </option>

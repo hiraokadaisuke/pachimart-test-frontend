@@ -45,6 +45,7 @@ export type PurchaseInvoice = {
   issuedDate?: string;
   partnerName?: string;
   staff?: string;
+  purchaseTermsText?: string;
   inventoryIds: string[];
   items: PurchaseInvoiceItem[];
   totalAmount?: number;
