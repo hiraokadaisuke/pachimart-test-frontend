@@ -107,6 +107,18 @@ const getMonthRange = (monthValue: string) => {
   };
 };
 
+const resolveProfitRange = (params: {
+  mode: "month" | "range";
+  month: string;
+  startDate: string;
+  endDate: string;
+}) => {
+  if (params.mode === "month") {
+    return getMonthRange(params.month);
+  }
+  return { startDate: params.startDate, endDate: params.endDate };
+};
+
 const shiftMonth = (monthValue: string, offset: number) => {
   if (!monthValue) return "";
   const [yearText, monthText] = monthValue.split("-");
@@ -119,7 +131,7 @@ const shiftMonth = (monthValue: string, offset: number) => {
 
 export default function ProfitManagementPage() {
   const searchParams = useSearchParams();
-  const currentTab = searchParams?.get("tab") ?? "payables";
+  const currentTab = searchParams?.get("tab") ?? "profit";
 
   const initialProfitMonth = getCurrentMonthValue();
   const initialProfitRange = getMonthRange(initialProfitMonth);
@@ -394,6 +406,17 @@ export default function ProfitManagementPage() {
     }));
   }, [profitMonth, profitSearchMode]);
 
+  const profitRange = useMemo(
+    () =>
+      resolveProfitRange({
+        mode: profitSearchMode,
+        month: profitMonth,
+        startDate: profitFilters.startDate,
+        endDate: profitFilters.endDate,
+      }),
+    [profitFilters.endDate, profitFilters.startDate, profitMonth, profitSearchMode],
+  );
+
   const isDateWithinRange = useCallback((dateKey: string, startDate: string, endDate: string) => {
     if (!dateKey) return false;
     const matchesStart = startDate ? dateKey >= startDate : true;
@@ -455,15 +478,17 @@ export default function ProfitManagementPage() {
       const customer = (row.invoice.vendorName || row.invoice.buyerName || "").toLowerCase();
       const matchesCustomer = customer.includes(profitFilters.customer.toLowerCase());
       const matchesStaff = (row.invoice.staff ?? "").toLowerCase().includes(profitFilters.staff.toLowerCase());
-      const issueDate = getDateKey(row.invoice.issuedDate || row.invoice.createdAt);
-      const matchesStart = profitFilters.startDate ? issueDate >= profitFilters.startDate : true;
-      const matchesEnd = profitFilters.endDate ? issueDate <= profitFilters.endDate : true;
+      const processedDate = getDateKey(
+        row.invoice.receivedAt || row.invoice.issuedDate || row.invoice.createdAt,
+      );
+      const matchesStart = profitRange.startDate ? processedDate >= profitRange.startDate : true;
+      const matchesEnd = profitRange.endDate ? processedDate <= profitRange.endDate : true;
       return matchesMaker && matchesModel && matchesCustomer && matchesStaff && matchesStart && matchesEnd;
     });
 
     const limit = Number(profitFilters.displayCount) || filtered.length;
     return filtered.slice(0, limit);
-  }, [profitFilters, purchaseItemMap, salesInvoices]);
+  }, [profitFilters, profitRange.endDate, profitRange.startDate, purchaseItemMap, salesInvoices]);
 
   const buildProcessedPurchases = useCallback(
     (startDate: string, endDate: string) =>
@@ -531,13 +556,13 @@ export default function ProfitManagementPage() {
   );
 
   const processedPurchases = useMemo(
-    () => buildProcessedPurchases(profitFilters.startDate, profitFilters.endDate),
-    [buildProcessedPurchases, profitFilters.endDate, profitFilters.startDate],
+    () => buildProcessedPurchases(profitRange.startDate, profitRange.endDate),
+    [buildProcessedPurchases, profitRange.endDate, profitRange.startDate],
   );
 
   const processedSales = useMemo(
-    () => buildProcessedSales(profitFilters.startDate, profitFilters.endDate),
-    [buildProcessedSales, profitFilters.endDate, profitFilters.startDate],
+    () => buildProcessedSales(profitRange.startDate, profitRange.endDate),
+    [buildProcessedSales, profitRange.endDate, profitRange.startDate],
   );
 
   const processedRows = useMemo(() => {
@@ -642,9 +667,9 @@ export default function ProfitManagementPage() {
 
   const comparisonBaseMonth = useMemo(() => {
     if (profitSearchMode === "month") return profitMonth;
-    if (profitFilters.startDate) return profitFilters.startDate.slice(0, 7);
+    if (profitRange.startDate) return profitRange.startDate.slice(0, 7);
     return getCurrentMonthValue();
-  }, [profitFilters.startDate, profitMonth, profitSearchMode]);
+  }, [profitMonth, profitRange.startDate, profitSearchMode]);
 
   const previousMonth = useMemo(() => shiftMonth(comparisonBaseMonth, -1), [comparisonBaseMonth]);
   const previousMonthRange = useMemo(() => getMonthRange(previousMonth), [previousMonth]);
@@ -857,9 +882,9 @@ export default function ProfitManagementPage() {
   };
 
   const tabs = [
+    { label: "利益一覧", href: "/inventory/profit?tab=profit" },
     { label: "買掛一覧", href: "/inventory/profit?tab=payables" },
     { label: "売掛一覧", href: "/inventory/profit?tab=receivables" },
-    { label: "利益一覧", href: "/inventory/profit?tab=profit" },
   ];
 
   return (
