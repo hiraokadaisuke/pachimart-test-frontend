@@ -184,7 +184,7 @@ export async function POST(request: Request) {
 
   if (listingId) {
     const exhibit = await exhibitClient.findUnique({
-      where: { id: listingId, sellerUserId: currentUserId } as any,
+      where: { id: listingId, sellerUserId: ownerUser.id } as any,
     });
 
     if (!exhibit) {
