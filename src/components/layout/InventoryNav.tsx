@@ -4,29 +4,46 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-const NAV_ITEMS = [
-  { href: "/inventory/new", label: "在庫登録" },
-  { href: "/inventory", label: "在庫一覧" },
+type NavLinkItem = {
+  kind: "link";
+  label: string;
+  href: string;
+};
+
+type NavMenuItem = {
+  kind: "menu";
+  label: string;
+  items: NavLinkItem[];
+};
+
+type NavItem = NavLinkItem | NavMenuItem;
+
+const NAV_ITEMS: NavItem[] = [
+  { kind: "link", href: "/inventory/new", label: "在庫登録" },
+  { kind: "link", href: "/inventory", label: "在庫一覧" },
   {
+    kind: "menu",
     label: "購入伝票",
     items: [
-      { href: "/inventory/purchase-invoice/create", label: "購入伝票作成" },
-      { href: "/inventory/purchase-invoice/list", label: "購入伝票一覧" },
+      { kind: "link", href: "/inventory/purchase-invoice/create", label: "購入伝票作成" },
+      { kind: "link", href: "/inventory/purchase-invoice/list", label: "購入伝票一覧" },
     ],
   },
   {
+    kind: "menu",
     label: "販売伝票",
     items: [
-      { href: "/inventory/sales-invoice/create", label: "販売伝票作成" },
-      { href: "/inventory/sales-invoice/list", label: "販売伝票一覧" },
+      { kind: "link", href: "/inventory/sales-invoice/create", label: "販売伝票作成" },
+      { kind: "link", href: "/inventory/sales-invoice/list", label: "販売伝票一覧" },
     ],
   },
-  { href: "/inventory/profit", label: "利益管理" },
+  { kind: "link", href: "/inventory/profit", label: "利益管理" },
   {
+    kind: "menu",
     label: "詳細設定",
     items: [
-      { href: "/inventory/settings?mode=customer&tab=corp", label: "取引先管理" },
-      { href: "/inventory/settings?mode=self&tab=corp", label: "自社設定" },
+      { kind: "link", href: "/inventory/settings?mode=customer&tab=corp", label: "取引先管理" },
+      { kind: "link", href: "/inventory/settings?mode=self&tab=corp", label: "自社設定" },
     ],
   },
 ];
@@ -83,7 +100,7 @@ export function InventoryNav() {
           </Link>
           <div className="flex flex-wrap items-center gap-2">
             {NAV_ITEMS.map((item) => {
-              if ("items" in item) {
+              if (item.kind === "menu") {
                 const isMenuOpen = openMenu === item.label;
                 const isParentActive = item.items.some((subItem) =>
                   isActive(pathname, searchParams, subItem.href),
