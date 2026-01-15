@@ -103,6 +103,27 @@ const toRecord = (dealing: unknown): NaviRecord => {
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
+const buildPrismaErrorResponse = (error: unknown) => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return NextResponse.json(
+      { error: "PrismaKnownError", code: error.code, meta: error.meta ?? null },
+      { status: 500 }
+    );
+  }
+
+  if (error instanceof Prisma.PrismaClientValidationError) {
+    return NextResponse.json(
+      { error: "PrismaValidationError", message: error.message },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(
+    { error: "InternalServerError", message: handleUnknownError(error) },
+    { status: 500 }
+  );
+};
+
 const statusMap: Record<string, NaviStatus> = {
   draft: NaviStatus.DRAFT,
   sent: NaviStatus.SENT,
@@ -126,16 +147,24 @@ const resolvePayloadStatus = (payload: Prisma.JsonValue | undefined): string | u
 };
 
 export async function GET(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentDevUserId = getCurrentUserId(request);
 
-  if (!currentUserId) {
+  if (!currentDevUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
+    const currentUser = await prisma.user.findUnique({
+      where: { devUserId: currentDevUserId },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     const dealings = await naviClient.findMany({
       where: {
-        OR: [{ ownerUserId: currentUserId }, { buyerUserId: currentUserId }],
+        OR: [{ ownerUserId: currentUser.id }, { buyerUserId: currentUser.id }],
       },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,
@@ -144,17 +173,14 @@ export async function GET(request: Request) {
     return NextResponse.json(dealings.map(toRecord).map(toDto));
   } catch (error) {
     console.error("Failed to fetch trades", error);
-    return NextResponse.json(
-      { error: "Failed to fetch trades", detail: handleUnknownError(error) },
-      { status: 500 }
-    );
+    return buildPrismaErrorResponse(error);
   }
 }
 
 export async function POST(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentDevUserId = getCurrentUserId(request);
 
-  if (!currentUserId) {
+  if (!currentDevUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -186,45 +212,44 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid status" }, { status: 400 });
   }
 
-  if (ownerUserId !== currentUserId) {
+  if (ownerUserId !== currentDevUserId) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const ownerUser = await prisma.user.findUnique({
-    where: { devUserId: ownerUserId },
-  });
-
-  if (!ownerUser) {
-    return NextResponse.json({ error: "Owner user not found" }, { status: 400 });
-  }
-
-  const buyerUser = buyerUserId
-    ? await prisma.user.findUnique({
-        where: { devUserId: buyerUserId },
-      })
-    : null;
-
-  if (buyerUserId && !buyerUser) {
-    return NextResponse.json({ error: "Buyer user not found" }, { status: 400 });
-  }
-
-  let exhibitSnapshot: Prisma.JsonValue | null = null;
-
-  if (listingId) {
-    const exhibit = await exhibitClient.findUnique({
-      where: { id: listingId, sellerUserId: ownerUser.id } as any,
+  try {
+    const ownerUser = await prisma.user.findUnique({
+      where: { devUserId: ownerUserId },
     });
 
-    if (!exhibit) {
-      return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+    if (!ownerUser) {
+      return NextResponse.json({ error: "Owner user not found" }, { status: 400 });
     }
 
-    exhibitSnapshot = buildListingSnapshot(exhibit as Record<string, unknown>);
-  }
+    const buyerUser = buyerUserId
+      ? await prisma.user.findUnique({
+          where: { devUserId: buyerUserId },
+        })
+      : null;
 
-  const listingSnapshotInput = exhibitSnapshot ?? undefined;
+    if (buyerUserId && !buyerUser) {
+      return NextResponse.json({ error: "Buyer user not found" }, { status: 400 });
+    }
 
-  try {
+    let exhibitSnapshot: Prisma.JsonValue | null = null;
+
+    if (listingId) {
+      const exhibit = await exhibitClient.findUnique({
+        where: { id: listingId, sellerUserId: ownerUser.id } as any,
+      });
+
+      if (!exhibit) {
+        return NextResponse.json({ error: "Listing not found" }, { status: 404 });
+      }
+
+      exhibitSnapshot = buildListingSnapshot(exhibit as Record<string, unknown>);
+    }
+
+    const listingSnapshotInput = exhibitSnapshot ?? undefined;
     const created = await naviClient.create({
       data: {
         ownerUserId: ownerUser.id,
@@ -249,9 +274,6 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error("Failed to create trade", error);
-    return NextResponse.json(
-      { error: "Failed to create trade", detail: handleUnknownError(error) },
-      { status: 500 }
-    );
+    return buildPrismaErrorResponse(error);
   }
 }

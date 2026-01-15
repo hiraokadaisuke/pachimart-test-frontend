@@ -8,6 +8,27 @@ import { validateTradeLedgerConsistency } from "@/lib/server/ledger";
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
+const buildPrismaErrorResponse = (error: unknown) => {
+  if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    return NextResponse.json(
+      { error: "PrismaKnownError", code: error.code, meta: error.meta ?? null },
+      { status: 500 }
+    );
+  }
+
+  if (error instanceof Prisma.PrismaClientValidationError) {
+    return NextResponse.json(
+      { error: "PrismaValidationError", message: error.message },
+      { status: 500 }
+    );
+  }
+
+  return NextResponse.json(
+    { error: "InternalServerError", message: handleUnknownError(error) },
+    { status: 500 }
+  );
+};
+
 const toDate = (value: unknown, fallback?: Date): Date => {
   if (value instanceof Date) return value;
   if (typeof value === "string" || typeof value === "number") {
@@ -92,20 +113,54 @@ const toDto = (dealing: ReturnType<typeof toRecord>) => ({
 });
 
 export async function GET(request: Request) {
-  const currentUserId = getCurrentUserId(request);
+  const currentDevUserId = getCurrentUserId(request);
 
-  if (!currentUserId) {
+  if (!currentDevUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
+    const currentUser = await prisma.user.findUnique({
+      where: { devUserId: currentDevUserId },
+    });
+
+    if (!currentUser) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
     const dealings = await prisma.dealing.findMany({
       where: {
-        OR: [{ sellerUserId: currentUserId }, { buyerUserId: currentUserId }],
+        OR: [{ sellerUserId: currentUser.id }, { buyerUserId: currentUser.id }],
       },
       // Cast to any to sidestep missing generated Prisma types in CI while keeping runtime sort order
       orderBy: { createdAt: "desc" } as any,
-      include: { navi: true, sellerUser: true, buyerUser: true } as any,
+      select: {
+        id: true,
+        sellerUserId: true,
+        buyerUserId: true,
+        status: true,
+        paymentAt: true,
+        completedAt: true,
+        canceledAt: true,
+        payload: true,
+        naviId: true,
+        createdAt: true,
+        updatedAt: true,
+        navi: {
+          select: {
+            id: true,
+            ownerUserId: true,
+            buyerUserId: true,
+            payload: true,
+            listingSnapshot: true,
+            naviType: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+        sellerUser: { select: { id: true, companyName: true } },
+        buyerUser: { select: { id: true, companyName: true } },
+      } as any,
     });
 
     const warnings = (
@@ -121,9 +176,6 @@ export async function GET(request: Request) {
     return response;
   } catch (error) {
     console.error("Failed to fetch trades", error);
-    return NextResponse.json(
-      { error: "Failed to fetch trades", detail: handleUnknownError(error) },
-      { status: 500 }
-    );
+    return buildPrismaErrorResponse(error);
   }
 }
