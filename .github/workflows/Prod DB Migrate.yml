@@ -19,6 +19,8 @@ jobs:
   migrate:
     runs-on: ubuntu-latest
     environment: production
+    env:
+      APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
     steps:
       - name: Guard - confirmation
         run: |
@@ -34,6 +36,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
@@ -41,10 +44,11 @@ jobs:
       - name: Prisma generate
         run: npx prisma generate --schema prisma/schema.prisma
 
+      - name: Prisma migrate status (before)
+        run: npx prisma migrate status --schema prisma/schema.prisma
+
       - name: WIPE public schema (DANGER)
         if: inputs.mode == 'wipe-and-deploy'
-        env:
-          APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
         run: |
           npx prisma db execute --schema prisma/schema.prisma --stdin <<'SQL'
           DROP SCHEMA IF EXISTS public CASCADE;
@@ -52,12 +56,11 @@ jobs:
           SQL
 
       - name: Deploy pending migrations
-        env:
-          APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
         run: npx prisma migrate deploy --schema prisma/schema.prisma
+
+      - name: Prisma migrate status (after)
+        run: npx prisma migrate status --schema prisma/schema.prisma
 
       - name: Seed (if configured)
         if: inputs.mode == 'wipe-and-deploy'
-        env:
-          APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
         run: npx prisma db seed --schema prisma/schema.prisma
