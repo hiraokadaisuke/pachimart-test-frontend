@@ -446,6 +446,9 @@ export function InProgressTabContent() {
     }
   };
 
+  const actionColumnWidth = "180px";
+  const messageColumnWidth = "110px";
+
   const dealingColumnBase: NaviTableColumn[] = [
     {
       key: "status",
@@ -492,32 +495,12 @@ export function InProgressTabContent() {
       label: "発送予定日",
       width: "140px",
     },
-    {
-      key: "document",
-      label: "明細書",
-      width: "110px",
-      render: (row: DealingRow) => {
-        const statementPath = getStatementDestination(row);
-        return (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              router.push(statementPath);
-            }}
-            className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-          >
-            PDF
-          </button>
-        );
-      },
-    },
   ];
 
   const messageColumn: NaviTableColumn = {
     key: "message",
     label: "メッセージ",
-    width: "110px",
+    width: messageColumnWidth,
     render: (row: DealingRow) => (
       <button
         type="button"
@@ -532,34 +515,59 @@ export function InProgressTabContent() {
     ),
   };
 
-  const dealingColumnsWithoutAction: NaviTableColumn[] = [
+  const buyerApprovalActionColumn: NaviTableColumn = {
+    key: "action",
+    label: "アクション",
+    width: actionColumnWidth,
+    render: (row: DealingRow) => {
+      const statementPath = getStatementDestination(row);
+      return (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(statementPath);
+          }}
+        >
+          発送先入力
+        </button>
+      );
+    },
+  };
+
+  const sellerApprovalActionColumn: NaviTableColumn = {
+    key: "action",
+    label: "アクション",
+    width: actionColumnWidth,
+    render: (row: DealingRow) => {
+      const statementPath = getStatementDestination(row);
+      return (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            router.push(statementPath);
+          }}
+          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+        >
+          PDF
+        </button>
+      );
+    },
+  };
+
+  const buyerApprovalColumns: NaviTableColumn[] = [
     ...dealingColumnBase,
+    buyerApprovalActionColumn,
     messageColumn,
   ];
 
-  const buyerApprovalColumns: NaviTableColumn[] = dealingColumnsWithoutAction.map((col) =>
-    col.key === "document"
-      ? {
-          ...col,
-          label: "発送先入力",
-          render: (row: DealingRow) => {
-            const statementPath = getStatementDestination(row);
-            return (
-              <button
-                type="button"
-                className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  router.push(statementPath);
-                }}
-              >
-                入力
-              </button>
-            );
-          },
-        }
-      : col
-  );
+  const sellerApprovalColumns: NaviTableColumn[] = [
+    ...dealingColumnBase,
+    sellerApprovalActionColumn,
+    messageColumn,
+  ];
 
   const inquiryColumnBase: NaviTableColumn[] = [
     {
@@ -600,14 +608,20 @@ export function InProgressTabContent() {
       width: "140px",
       render: (row: InquiryRow) => formatCurrency(row.totalAmount),
     },
+    {
+      key: "scheduledShipDate",
+      label: "発送予定日",
+      width: "140px",
+      render: () => "-",
+    },
   ];
 
   const buyerInquiryColumns: NaviTableColumn[] = [
     ...inquiryColumnBase,
     {
       key: "action",
-      label: "操作",
-      width: "120px",
+      label: "アクション",
+      width: actionColumnWidth,
       render: (row: InquiryRow) => {
         const targetId = resolveNaviId(row.naviId ?? row.id);
         const isPending = targetId ? pendingInquiryIds.has(targetId) : false;
@@ -627,14 +641,20 @@ export function InProgressTabContent() {
         );
       },
     },
+    {
+      key: "message",
+      label: "メッセージ",
+      width: messageColumnWidth,
+      render: () => "-",
+    },
   ];
 
   const sellerInquiryColumns: NaviTableColumn[] = [
     ...inquiryColumnBase,
     {
       key: "action",
-      label: "操作",
-      width: "180px",
+      label: "アクション",
+      width: actionColumnWidth,
       render: (row: InquiryRow) => {
         const targetId = resolveNaviId(row.naviId ?? row.id);
         const isPending = targetId ? pendingInquiryIds.has(targetId) : false;
@@ -666,6 +686,12 @@ export function InProgressTabContent() {
           </div>
         );
       },
+    },
+    {
+      key: "message",
+      label: "メッセージ",
+      width: messageColumnWidth,
+      render: () => "-",
     },
   ];
 
@@ -760,7 +786,7 @@ export function InProgressTabContent() {
             {APPROVAL_LABEL.title}
           </SectionHeader>
           <NaviTable
-            columns={dealingColumnsWithoutAction}
+            columns={sellerApprovalColumns}
             rows={filteredSellerApprovalRows}
             loading={approvalLoading}
             emptyMessage="現在承認待ちの送信済み取引はありません。"
