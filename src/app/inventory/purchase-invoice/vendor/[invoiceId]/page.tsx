@@ -41,11 +41,7 @@ export default function VendorInvoiceDetailPage() {
 
   if (invoice) {
     return (
-      <PurchaseInvoiceDetailView
-        invoiceId={invoiceId}
-        title="購入伝票発行（業者）"
-        expectedType="vendor"
-      />
+      <PurchaseInvoiceDetailView invoiceId={invoiceId} title="購入伝票発行（業者）" expectedType="vendor" />
     );
   }
 

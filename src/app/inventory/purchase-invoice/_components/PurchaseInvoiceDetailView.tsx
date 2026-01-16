@@ -121,8 +121,13 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
     [items],
   );
 
-  const tax = Math.floor(subtotal * 0.1);
-  const computedGrandTotal = subtotal + tax + shippingInsurance + extraCostTotal;
+  const itemTotal = subtotal;
+  const subTotalWithExtras = itemTotal + extraCostTotal;
+  const tax = invoice?.invoiceType === "hall" ? Math.floor(itemTotal * 0.1) : 0;
+  const computedGrandTotal =
+    invoice?.invoiceType === "hall"
+      ? itemTotal + tax + shippingInsurance + extraCostTotal
+      : subTotalWithExtras + shippingInsurance;
   const grandTotal =
     invoice?.totalAmount && invoice.totalAmount >= computedGrandTotal
       ? invoice.totalAmount
@@ -439,28 +444,63 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
                   )}
                 </tbody>
                 <tfoot className="text-sm font-semibold">
-                  <tr>
-                    <td colSpan={7} className="border border-black px-3 py-2 text-right">小計</td>
-                    <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(subtotal)}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={7} className="border border-black px-3 py-2 text-right">消費税（10%）</td>
-                    <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(tax)}</td>
-                  </tr>
-                  {extraCosts.length > 0 && (
-                    <tr>
-                      <td colSpan={7} className="border border-black px-3 py-2 text-right">別費用合計</td>
-                      <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(extraCostTotal)}</td>
-                    </tr>
+                  {invoice.invoiceType === "hall" ? (
+                    <>
+                      <tr>
+                        <td colSpan={7} className="border border-black px-3 py-2 text-right">小計</td>
+                        <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(itemTotal)}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={7} className="border border-black px-3 py-2 text-right">消費税（10%）</td>
+                        <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(tax)}</td>
+                      </tr>
+                      {extraCosts.length > 0 && (
+                        <tr>
+                          <td colSpan={7} className="border border-black px-3 py-2 text-right">別費用合計</td>
+                          <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(extraCostTotal)}</td>
+                        </tr>
+                      )}
+                      <tr>
+                        <td colSpan={7} className="border border-black px-3 py-2 text-right">運送保険（税込）</td>
+                        <td colSpan={3} className="border border-black px-3 py-2 text-right">
+                          {formatCurrency(shippingInsurance)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={7} className="border border-black px-3 py-2 text-right">合計金額</td>
+                        <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(grandTotal)}</td>
+                      </tr>
+                    </>
+                  ) : (
+                    <>
+                      <tr>
+                        <td colSpan={7} className="border border-black px-3 py-2 text-right">商品代金</td>
+                        <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(itemTotal)}</td>
+                      </tr>
+                      <tr>
+                        <td colSpan={7} className="border border-black px-3 py-2 text-right">別途費用</td>
+                        <td colSpan={3} className="border border-black px-3 py-2 text-right">
+                          {formatCurrency(extraCostTotal)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={7} className="border border-black px-3 py-2 text-right">小計</td>
+                        <td colSpan={3} className="border border-black px-3 py-2 text-right">
+                          {formatCurrency(subTotalWithExtras)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={7} className="border border-black px-3 py-2 text-right">運送費</td>
+                        <td colSpan={3} className="border border-black px-3 py-2 text-right">
+                          {formatCurrency(shippingInsurance)}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td colSpan={7} className="border border-black px-3 py-2 text-right">合計</td>
+                        <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(grandTotal)}</td>
+                      </tr>
+                    </>
                   )}
-                  <tr>
-                    <td colSpan={7} className="border border-black px-3 py-2 text-right">運送保険（税込）</td>
-                    <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(shippingInsurance)}</td>
-                  </tr>
-                  <tr>
-                    <td colSpan={7} className="border border-black px-3 py-2 text-right">合計金額</td>
-                    <td colSpan={3} className="border border-black px-3 py-2 text-right">{formatCurrency(grandTotal)}</td>
-                  </tr>
                 </tfoot>
               </table>
             </div>
