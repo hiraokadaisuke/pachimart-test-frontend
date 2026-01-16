@@ -1,4 +1,4 @@
-import { fetchTradeRecordsFromApi } from "./api";
+import { fetchNavis, fetchTradeDtos, fetchTradeRecordsFromApi } from "./api";
 import { type TradeRecord } from "./types";
 
 const sortTradesByDate = (trades: TradeRecord[]) =>
@@ -28,6 +28,15 @@ async function loadTradesFromApi(): Promise<TradeRecord[]> {
 
 export async function loadAllTradesWithApi(): Promise<TradeRecord[]> {
   return loadTradesFromApi();
+}
+
+export async function loadAllTradesWithApiAndNavis(): Promise<{
+  trades: TradeRecord[];
+  navis: Awaited<ReturnType<typeof fetchNavis>>;
+}> {
+  const [navis, tradeDtos] = await Promise.all([fetchNavis(), fetchTradeDtos()]);
+  const trades = await fetchTradeRecordsFromApi({ navis, tradeDtos });
+  return { trades, navis };
 }
 
 export async function loadTradesForUser(userId: string): Promise<TradeRecord[]> {
