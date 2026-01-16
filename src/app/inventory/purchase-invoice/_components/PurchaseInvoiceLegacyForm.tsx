@@ -8,7 +8,7 @@ import {
   markInventoriesWithInvoice,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
-import { loadMasterData, type CompanyProfile } from "@/lib/demo-data/demoMasterData";
+import { loadMasterData, type CompanyProfile, type Warehouse } from "@/lib/demo-data/demoMasterData";
 import { addPurchaseInvoice, generateInvoiceId } from "@/lib/demo-data/purchaseInvoices";
 import ExtraCostEditor from "@/components/invoices/ExtraCostEditor";
 import type { AdditionalCostItem, PurchaseInvoice, PurchaseInvoiceItem } from "@/types/purchaseInvoices";
@@ -59,6 +59,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const [hasInitializedStaff, setHasInitializedStaff] = useState(false);
   const [purchaseTermsText, setPurchaseTermsText] = useState("");
   const [buyerProfile, setBuyerProfile] = useState<CompanyProfile | null>(null);
+  const [warehouseDetails, setWarehouseDetails] = useState<Warehouse[]>([]);
   const [issuedDate, setIssuedDate] = useState(toDateInputValue(new Date()));
   const [paymentDate, setPaymentDate] = useState("");
   const [warehousingDate, setWarehousingDate] = useState("");
@@ -67,6 +68,10 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const [applicationFlag, setApplicationFlag] = useState("-");
   const [transportInsurance, setTransportInsurance] = useState(0);
   const [extraCosts, setExtraCosts] = useState<AdditionalCostItem[]>([]);
+  const [productAddressSource, setProductAddressSource] = useState<"warehouse" | "hq">("warehouse");
+  const [contractAddressSource, setContractAddressSource] = useState<"warehouse" | "hq">("warehouse");
+  const [salesDestination, setSalesDestination] = useState("");
+  const [invoiceOriginal, setInvoiceOriginal] = useState("要");
 
   useEffect(() => {
     const defaults = inventories.map<BaseRow>((item) => ({
@@ -97,6 +102,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     const data = loadMasterData();
     setPurchaseTermsText(data.purchaseTermsText ?? "");
     setStaffOptions(data.buyerStaffs ?? []);
+    setWarehouseDetails(data.warehouseDetails ?? []);
     const primaryProfile =
       data.companyProfiles?.find((profile) => profile.isPrimary) ?? data.companyProfiles?.[0] ?? data.companyProfile;
     setBuyerProfile(primaryProfile ?? null);
@@ -109,6 +115,14 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     setStaff(defaultStaff);
     setHasInitializedStaff(true);
   }, [hasInitializedStaff, inventories, staffOptions]);
+
+  useEffect(() => {
+    if (salesDestination) return;
+    const supplier = inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? "";
+    if (supplier) {
+      setSalesDestination(supplier);
+    }
+  }, [inventories, salesDestination]);
 
   const totalAmount = useMemo(
     () => rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0),
@@ -138,6 +152,30 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       fax: profile?.fax ? `FAX ${profile.fax}` : "FAX 012-1234-5679",
     };
   }, [buyerProfile]);
+
+  const warehouseName = inventories[0]?.warehouse ?? inventories[0]?.storageLocation ?? "倉庫";
+  const warehouseAddressText = useMemo(() => {
+    const detail = warehouseDetails.find((warehouse) => warehouse.name === warehouseName);
+    const addressLine = detail?.address?.trim();
+    return [warehouseName, addressLine].filter(Boolean).join("\n") || "倉庫住所未登録";
+  }, [warehouseDetails, warehouseName]);
+  const headquartersAddressText = useMemo(() => {
+    return [buyerDisplay.companyName, buyerDisplay.postal, buyerDisplay.address, buyerDisplay.tel]
+      .filter(Boolean)
+      .join("\n");
+  }, [buyerDisplay]);
+  const productAddressText = productAddressSource === "warehouse" ? warehouseAddressText : headquartersAddressText;
+  const contractAddressText = contractAddressSource === "warehouse" ? warehouseAddressText : headquartersAddressText;
+
+  const makerOptions = ["SANKYO", "SANYO", "Sammy", "UNIVERSAL", "大都技研", "その他"];
+  const machineOptions = ["機種A", "機種B", "機種C", "機種D"];
+  const typeOptions = ["本体", "枠", "セル", "その他"];
+  const applicationOptions = ["-", "対象", "対象外"];
+  const shippingMethodOptions = ["チャーター便", "路線便", "引取", "持込"];
+  const contractReceiveOptions = ["郵送", "メール", "FAX", "引取"];
+  const invoiceOriginalOptions = ["要", "不要"];
+  const buildSelectOptions = (current: string, options: string[]) =>
+    Array.from(new Set(["", current, ...options].filter((option) => option !== undefined)));
 
   const handleChange = (index: number, key: keyof BaseRow, value: string) => {
     setRows((prev) =>
@@ -601,160 +639,152 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
             </div>
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2 border border-black bg-cyan-50 px-3 py-2 text-sm font-semibold">
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={handleSubmit} className={primaryButton}>
-                確認（登録）
-              </button>
-              <button type="button" onClick={() => router.back()} className={secondaryButton}>
-                戻る
-              </button>
-            </div>
-            <div className="flex items-center gap-2 text-[12px] text-neutral-800">
-              <span>行を追加します</span>
-              <button
-                type="button"
-                onClick={handleAddRow}
-                className="rounded-none border-2 border-amber-600 bg-amber-200 px-3 py-1 text-sm font-semibold shadow-[2px_2px_0_rgba(0,0,0,0.35)]"
-              >
-                行追加
-              </button>
-            </div>
-          </div>
-
-          <div className="mb-4 flex flex-col gap-2 border border-black p-2">
-            <div className="flex flex-wrap items-center justify-between gap-3 text-sm font-semibold">
-              {type === "vendor" ? (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span>申請適用</span>
-                    <input
-                      type="text"
-                      value={applicationFlag}
-                      onChange={(e) => setApplicationFlag(e.target.value)}
-                      className={`${yellowInput} w-28 rounded-none text-center`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>申請日</span>
-                    <input
-                      type="date"
-                      value={applicationDate}
-                      onChange={(e) => setApplicationDate(e.target.value)}
-                      className={`${yellowInput} w-36 rounded-none text-center`}
-                    />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex items-center gap-2">
-                    <span>支払日</span>
-                    <input
-                      type="date"
-                      value={paymentDate}
-                      onChange={(e) => setPaymentDate(e.target.value)}
-                      className={`${yellowInput} w-36 rounded-none text-center`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span>入庫日</span>
-                    <input
-                      type="date"
-                      value={warehousingDate}
-                      onChange={(e) => setWarehousingDate(e.target.value)}
-                      className={`${yellowInput} w-36 rounded-none text-center`}
-                    />
-                  </div>
-                </>
-              )}
-              <div className="flex items-center gap-2">
-                <span>合計金額</span>
-                <span className="border border-black bg-white px-3 py-1 text-base font-bold">{totalLabel}</span>
+          {/* === ここから業者用レイアウト差し替え開始（売主／買主情報ブロック直後） === */}
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-2 text-sm font-semibold md:grid-cols-3">
+              <div className="border border-black bg-white px-4 py-2 text-center">
+                <div className="text-[12px]">合計額</div>
+                <div className="text-lg">{totalLabel}円</div>
+              </div>
+              <div className="border border-black bg-white px-4 py-2 text-center">
+                <div className="text-[12px]">支払日</div>
+                <input
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  className={`${yellowInput} mt-1 w-40 rounded-none text-center`}
+                />
+              </div>
+              <div className="border border-black bg-white px-4 py-2 text-center">
+                <div className="text-[12px]">入庫日</div>
+                <input
+                  type="date"
+                  value={warehousingDate}
+                  onChange={(e) => setWarehousingDate(e.target.value)}
+                  className={`${yellowInput} mt-1 w-40 rounded-none text-center`}
+                />
               </div>
             </div>
-          </div>
 
-          <div className="mb-3 overflow-x-auto">
-            <table className="min-w-full border border-black text-center text-[12px]" style={{ borderCollapse: "collapse" }}>
-              <thead className="bg-cyan-50 text-[12px] font-semibold">
-                <tr>
-                  <th className="border border-black px-2 py-2">メーカー名</th>
-                  <th className="border border-black px-2 py-2">商品名</th>
-                  <th className="border border-black px-2 py-2">タイプ</th>
-                  <th className="border border-black px-2 py-2">数量</th>
-                  <th className="border border-black px-2 py-2">単価</th>
-                  <th className="border border-black px-2 py-2">金額</th>
-                  <th className="border border-black px-2 py-2">残債</th>
-                  {type === "vendor" && <th className="border border-black px-2 py-2">申請適用</th>}
-                  {type === "vendor" && <th className="border border-black px-2 py-2">申請日</th>}
-                  <th className="border border-black px-2 py-2">商品補足</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={`${row.inventoryId}-${index}`} className="bg-white">
-                    <td className="border border-black px-1 py-1">
-                      <input
-                        type="text"
-                        value={row.maker}
-                        onChange={(e) => handleChange(index, "maker", e.target.value)}
-                        className={`${yellowInput} rounded-none`}
-                      />
-                    </td>
-                    <td className="border border-black px-1 py-1">
-                      <input
-                        type="text"
-                        value={row.machineName}
-                        onChange={(e) => handleChange(index, "machineName", e.target.value)}
-                        className={`${yellowInput} rounded-none`}
-                      />
-                    </td>
-                    <td className="border border-black px-1 py-1">
-                      <input
-                        type="text"
-                        value={row.type}
-                        onChange={(e) => handleChange(index, "type", e.target.value)}
-                        className={`${yellowInput} rounded-none`}
-                      />
-                    </td>
-                    <td className="border border-black px-1 py-1">
-                      <input
-                        type="number"
-                        value={row.quantity}
-                        onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                        className={`${yellowInput} rounded-none text-right`}
-                      />
-                    </td>
-                    <td className="border border-black px-1 py-1">
-                      <input
-                        type="number"
-                        value={row.unitPrice}
-                        onChange={(e) => handleChange(index, "unitPrice", e.target.value)}
-                        className={`${yellowInput} rounded-none text-right`}
-                      />
-                    </td>
-                    <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
-                      {row.amount.toLocaleString("ja-JP")}
-                    </td>
-                    <td className="border border-black px-1 py-1">
-                      <input
-                        type="number"
-                        value={row.remainingDebt ?? 0}
-                        onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
-                        className={`${yellowInput} rounded-none text-right`}
-                      />
-                    </td>
-                    {type === "vendor" && (
+            <div className="flex flex-wrap items-center justify-between gap-2 border border-black bg-cyan-50 px-3 py-2 text-sm font-semibold">
+              <div className="flex items-center gap-2 text-[12px] text-neutral-800">
+                <span>行を追加します</span>
+                <button
+                  type="button"
+                  onClick={handleAddRow}
+                  className="rounded-none border-2 border-amber-600 bg-amber-200 px-3 py-1 text-sm font-semibold shadow-[2px_2px_0_rgba(0,0,0,0.35)]"
+                >
+                  行追加
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={handleSubmit} className={primaryButton}>
+                  確認
+                </button>
+                <button type="button" onClick={() => router.back()} className={secondaryButton}>
+                  戻る
+                </button>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="min-w-full border border-black text-center text-[12px]" style={{ borderCollapse: "collapse" }}>
+                <thead className="bg-cyan-50 text-[12px] font-semibold">
+                  <tr>
+                    <th className="border border-black px-2 py-2">メーカー名</th>
+                    <th className="border border-black px-2 py-2">商品名</th>
+                    <th className="border border-black px-2 py-2">タイプ</th>
+                    <th className="border border-black px-2 py-2">数量</th>
+                    <th className="border border-black px-2 py-2">単価</th>
+                    <th className="border border-black px-2 py-2">金額</th>
+                    <th className="border border-black px-2 py-2">残債</th>
+                    <th className="border border-black px-2 py-2">申請遊商</th>
+                    <th className="border border-black px-2 py-2">申請日</th>
+                    <th className="border border-black px-2 py-2">商品補足</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, index) => (
+                    <tr key={`${row.inventoryId}-${index}`} className="bg-white">
+                      <td className="border border-black px-1 py-1">
+                        <select
+                          value={row.maker}
+                          onChange={(e) => handleChange(index, "maker", e.target.value)}
+                          className={`${yellowInput} rounded-none`}
+                        >
+                          {buildSelectOptions(row.maker, makerOptions).map((option) => (
+                            <option key={option || "placeholder"} value={option}>
+                              {option || "選択してください"}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="border border-black px-1 py-1">
+                        <select
+                          value={row.machineName}
+                          onChange={(e) => handleChange(index, "machineName", e.target.value)}
+                          className={`${yellowInput} rounded-none`}
+                        >
+                          {buildSelectOptions(row.machineName, machineOptions).map((option) => (
+                            <option key={option || "placeholder"} value={option}>
+                              {option || "選択してください"}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="border border-black px-1 py-1">
+                        <select
+                          value={row.type}
+                          onChange={(e) => handleChange(index, "type", e.target.value)}
+                          className={`${yellowInput} rounded-none`}
+                        >
+                          {buildSelectOptions(row.type, typeOptions).map((option) => (
+                            <option key={option || "placeholder"} value={option}>
+                              {option || "選択してください"}
+                            </option>
+                          ))}
+                        </select>
+                      </td>
                       <td className="border border-black px-1 py-1">
                         <input
-                          type="text"
+                          type="number"
+                          value={row.quantity}
+                          onChange={(e) => handleChange(index, "quantity", e.target.value)}
+                          className={`${yellowInput} rounded-none text-right`}
+                        />
+                      </td>
+                      <td className="border border-black px-1 py-1">
+                        <input
+                          type="number"
+                          value={row.unitPrice}
+                          onChange={(e) => handleChange(index, "unitPrice", e.target.value)}
+                          className={`${yellowInput} rounded-none text-right`}
+                        />
+                      </td>
+                      <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
+                        {row.amount.toLocaleString("ja-JP")}
+                      </td>
+                      <td className="border border-black px-1 py-1">
+                        <input
+                          type="number"
+                          value={row.remainingDebt ?? 0}
+                          onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
+                          className={`${yellowInput} rounded-none text-right`}
+                        />
+                      </td>
+                      <td className="border border-black px-1 py-1">
+                        <select
                           value={applicationFlag}
                           onChange={(e) => setApplicationFlag(e.target.value)}
                           className={`${yellowInput} rounded-none text-center`}
-                        />
+                        >
+                          {applicationOptions.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
                       </td>
-                    )}
-                    {type === "vendor" && (
                       <td className="border border-black px-1 py-1">
                         <input
                           type="date"
@@ -763,198 +793,228 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                           className={`${yellowInput} rounded-none text-center`}
                         />
                       </td>
-                    )}
-                    <td className="border border-black px-1 py-1">
+                      <td className="border border-black px-1 py-1">
+                        <input
+                          type="text"
+                          value={row.note ?? ""}
+                          onChange={(e) => handleChange(index, "note", e.target.value)}
+                          placeholder="(印刷時に表示されます)"
+                          className={`${yellowInput} rounded-none`}
+                        />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.4fr_1fr]">
+              <div className="border border-black bg-amber-50 p-3">
+                <div className="mb-2 text-sm font-semibold">備考（入庫検品依頼書に表示）</div>
+                <textarea
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  className="h-32 w-full border border-black bg-amber-100 p-2 text-[13px] leading-tight focus:outline-none"
+                />
+              </div>
+              <div className="space-y-2">
+                <ExtraCostEditor
+                  value={extraCosts}
+                  onChange={setExtraCosts}
+                  note="※税込保険料は下段の専用欄で入力してください。"
+                />
+                <div className="border border-black bg-cyan-50 p-3 text-sm font-semibold leading-6">
+                  <div className="grid gap-1 text-[12px]">
+                    <div className="flex items-center justify-between border border-black bg-white px-2 py-1">
+                      <span>販売先</span>
+                      <select
+                        value={salesDestination}
+                        onChange={(e) => setSalesDestination(e.target.value)}
+                        className={`${yellowInput} w-32 rounded-none`}
+                      >
+                        {Array.from(new Set(["", salesDestination, supplierName, "未定"])).map((option) => (
+                          <option key={option || "placeholder"} value={option}>
+                            {option || "選択してください"}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex items-center justify-between border border-black bg-white px-2 py-1">
+                      <span>支払日</span>
                       <input
-                        type="text"
-                        value={row.note ?? ""}
-                        onChange={(e) => handleChange(index, "note", e.target.value)}
-                        className={`${yellowInput} rounded-none`}
+                        type="date"
+                        value={paymentDate}
+                        onChange={(e) => setPaymentDate(e.target.value)}
+                        className={`${yellowInput} w-32 rounded-none text-center`}
                       />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="mb-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="border-2 border-black bg-amber-50 p-3">
-              <div className="mb-2 text-sm font-semibold">備考 / 依頼事項</div>
-              <textarea
-                value={remarks}
-                onChange={(e) => setRemarks(e.target.value)}
-                className="h-28 w-full border border-black bg-amber-100 p-2 text-[13px] leading-tight focus:outline-none"
-              />
-            </div>
-            <div className="border-2 border-black bg-amber-50 p-3">
-              <div className="mb-2 text-sm font-semibold">番号 / 補足</div>
-              <textarea
-                value={applicationFlag === "-" ? "" : applicationFlag}
-                onChange={(e) => setApplicationFlag(e.target.value)}
-                className="h-28 w-full border border-black bg-amber-100 p-2 text-[13px] leading-tight focus:outline-none"
-              />
-            </div>
-          </div>
-
-          <div className="mb-4 flex flex-col gap-3 md:flex-row">
-            <div className="flex-1 space-y-2 border-2 border-black p-2">
-              <div className={framedLabel}>商品→先</div>
-              <div className="grid grid-cols-3 gap-2 border border-black p-2 text-[12px]">
-                <div className="space-y-2">
-                  <div className="space-y-1">
-                    <div className="font-semibold">商品受取り方法</div>
-                    <select className={`${yellowInput} rounded-none`} defaultValue="">
-                      <option value="">選択してください</option>
-                      <option>配送</option>
-                      <option>引き取り</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="font-semibold">日付</div>
-                    <input type="date" className={`${yellowInput} rounded-none text-center`} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="space-y-1">
-                    <div className="font-semibold">入庫日</div>
-                    <div className="flex gap-1">
-                      <input type="date" className={`${yellowInput} rounded-none text-center`} />
-                      <select className={`${yellowInput} w-20 rounded-none`} defaultValue="">
-                        <option value="">指定なし</option>
-                        <option>午前</option>
-                        <option>午後</option>
+                    </div>
+                    <div className="flex items-center justify-between border border-black bg-white px-2 py-1">
+                      <span>請求書原本</span>
+                      <select
+                        value={invoiceOriginal}
+                        onChange={(e) => setInvoiceOriginal(e.target.value)}
+                        className={`${yellowInput} w-24 rounded-none`}
+                      >
+                        {invoiceOriginalOptions.map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
                       </select>
                     </div>
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="font-semibold">住所</div>
-                  <textarea
-                    className="h-28 w-full border border-black bg-orange-100 p-2 text-[12px] leading-tight focus:outline-none"
-                    defaultValue={[
-                      supplierName,
-                      inventories[0]?.supplierAddress ?? "",
-                      inventories[0]?.supplierPhone ? `TEL: ${inventories[0]?.supplierPhone}` : "",
-                    ]
-                      .filter(Boolean)
-                      .join("\n")}
-                  />
+                  <div className="mt-2 border border-black bg-white">
+                    <table className="w-full text-[12px]" style={{ borderCollapse: "collapse" }}>
+                      <tbody>
+                        <tr>
+                          <th className="w-32 border border-black bg-cyan-50 px-2 py-2 text-left">小計</th>
+                          <td className="border border-black px-2 py-2 text-right">¥{totalLabel}</td>
+                        </tr>
+                        <tr>
+                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">消費税（10%）</th>
+                          <td className="border border-black px-2 py-2 text-right">¥{taxAmount.toLocaleString("ja-JP")}</td>
+                        </tr>
+                        <tr>
+                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">別費用合計</th>
+                          <td className="border border-black px-2 py-2 text-right">¥{extraCostTotal.toLocaleString("ja-JP")}</td>
+                        </tr>
+                        <tr>
+                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送保険（税込）</th>
+                          <td className="border border-black px-2 py-2 text-right">
+                            <input
+                              type="number"
+                              value={transportInsurance}
+                              onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
+                              className={`${yellowInput} w-full rounded-none text-right`}
+                            />
+                          </td>
+                        </tr>
+                        <tr>
+                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">合計金額</th>
+                          <td className="border border-black px-2 py-2 text-right text-base font-bold">
+                            ¥{grandTotal.toLocaleString("ja-JP")}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="flex-1 space-y-2 border-2 border-black p-2">
-              <div className={framedLabel}>売契→先</div>
-              <div className="grid grid-cols-3 gap-2 border border-black p-2 text-[12px]">
-                <div className="space-y-2">
-                  <div className="space-y-1">
-                    <div className="font-semibold">売契受取り方法</div>
-                    <select className={`${yellowInput} rounded-none`} defaultValue="">
-                      <option value="">選択してください</option>
-                      <option>配送</option>
-                      <option>引き取り</option>
-                    </select>
-                  </div>
-                  <div className="space-y-1">
-                    <div className="font-semibold">日付</div>
-                    <input type="date" className={`${yellowInput} rounded-none text-center`} />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="space-y-1">
-                    <div className="font-semibold">到着日</div>
-                    <div className="flex gap-1">
-                      <input type="date" className={`${yellowInput} rounded-none text-center`} />
-                      <select className={`${yellowInput} w-20 rounded-none`} defaultValue="">
-                        <option value="">指定なし</option>
-                        <option>午前</option>
-                        <option>午後</option>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              <div className="space-y-2 border-2 border-black p-2">
+                <div className={framedLabel}>商品受取先</div>
+                <div className="grid grid-cols-3 gap-2 border border-black p-2 text-[12px]">
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <div className="font-semibold">発送方法</div>
+                      <select className={`${yellowInput} rounded-none`} defaultValue="">
+                        <option value="">選択してください</option>
+                        {shippingMethodOptions.map((option) => (
+                          <option key={option}>{option}</option>
+                        ))}
                       </select>
                     </div>
+                    <div className="space-y-1">
+                      <div className="font-semibold">発送日</div>
+                      <input type="date" className={`${yellowInput} rounded-none text-center`} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <div className="font-semibold">入庫予定日</div>
+                      <div className="flex gap-1">
+                        <input type="date" className={`${yellowInput} rounded-none text-center`} />
+                        <select className={`${yellowInput} w-20 rounded-none`} defaultValue="">
+                          <option value="">指定なし</option>
+                          <option>午前</option>
+                          <option>午後</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-semibold">住所</div>
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span>住所変更</span>
+                        <select
+                          value={productAddressSource}
+                          onChange={(e) => setProductAddressSource(e.target.value as "warehouse" | "hq")}
+                          className={`${yellowInput} w-20 rounded-none`}
+                        >
+                          <option value="hq">本社</option>
+                          <option value="warehouse">倉庫</option>
+                        </select>
+                      </div>
+                    </div>
+                    <textarea
+                      value={productAddressText}
+                      readOnly
+                      className="h-28 w-full border border-black bg-orange-100 p-2 text-[12px] leading-tight focus:outline-none"
+                    />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <div className="font-semibold">住所</div>
-                  <textarea
-                    className="h-28 w-full border border-black bg-orange-100 p-2 text-[12px] leading-tight focus:outline-none"
-                    defaultValue=""
-                  />
+              </div>
+
+              <div className="space-y-2 border-2 border-black p-2">
+                <div className={framedLabel}>売契送り先</div>
+                <div className="grid grid-cols-3 gap-2 border border-black p-2 text-[12px]">
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <div className="font-semibold">売契受取方法</div>
+                      <select className={`${yellowInput} rounded-none`} defaultValue="">
+                        <option value="">選択してください</option>
+                        {contractReceiveOptions.map((option) => (
+                          <option key={option}>{option}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="font-semibold">発送日</div>
+                      <input type="date" className={`${yellowInput} rounded-none text-center`} />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="space-y-1">
+                      <div className="font-semibold">到着予定日</div>
+                      <div className="flex gap-1">
+                        <input type="date" className={`${yellowInput} rounded-none text-center`} />
+                        <select className={`${yellowInput} w-20 rounded-none`} defaultValue="">
+                          <option value="">指定なし</option>
+                          <option>午前</option>
+                          <option>午後</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-semibold">住所</div>
+                      <div className="flex items-center gap-2 text-[11px]">
+                        <span>住所変更</span>
+                        <select
+                          value={contractAddressSource}
+                          onChange={(e) => setContractAddressSource(e.target.value as "warehouse" | "hq")}
+                          className={`${yellowInput} w-20 rounded-none`}
+                        >
+                          <option value="hq">本社</option>
+                          <option value="warehouse">倉庫</option>
+                        </select>
+                      </div>
+                    </div>
+                    <textarea
+                      value={contractAddressText}
+                      readOnly
+                      className="h-28 w-full border border-black bg-orange-100 p-2 text-[12px] leading-tight focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-
-          <div className="mb-4 flex flex-col gap-3 md:flex-row">
-            <div className="flex-1 space-y-2 border-2 border-black p-2">
-              <div className={framedLabel}>売主様捺印欄</div>
-              <div className="grid grid-cols-[1fr_1fr] gap-2 border border-black p-3 text-[12px]">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-20 font-semibold">住所</span>
-                    <span className="flex-1 border-b border-black" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-20 font-semibold">会社名</span>
-                    <span className="flex-1 border-b border-black" />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="w-20 font-semibold">電話番号</span>
-                    <span className="flex-1 border-b border-black" />
-                  </div>
-                </div>
-                <div className="flex items-center justify-center border border-black bg-amber-50 text-lg font-bold">印</div>
-              </div>
-            </div>
-
-            <div className="w-full md:w-96 space-y-3">
-              <ExtraCostEditor
-                value={extraCosts}
-                onChange={setExtraCosts}
-                note="※税込保険料は下段の専用欄で入力してください。"
-              />
-              <div className="border-2 border-black bg-cyan-50 p-3 text-center text-sm font-semibold leading-6">
-                <div>小計　¥{totalLabel}</div>
-                <div>消費税（10%）　¥{taxAmount.toLocaleString("ja-JP")}</div>
-                <div>別費用合計　¥{extraCostTotal.toLocaleString("ja-JP")}</div>
-                <div className="flex items-center justify-between border border-black bg-white px-2 py-1 text-[12px]">
-                  <span>運送保険（税込）</span>
-                  <input
-                    type="number"
-                    value={transportInsurance}
-                    onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
-                    className={`${yellowInput} w-28 rounded-none text-right`}
-                  />
-                </div>
-                <div className="border-t border-black pt-2 text-base font-bold">
-                  合計金額　¥{grandTotal.toLocaleString("ja-JP")}
-                </div>
-                <div className="mt-3 flex items-center justify-between border border-black bg-white px-2 py-1 text-[12px]">
-                  <span>支払日</span>
-                  <input
-                    type="date"
-                    value={paymentDate}
-                    onChange={(e) => setPaymentDate(e.target.value)}
-                    className={`${yellowInput} w-36 rounded-none text-center`}
-                  />
-                </div>
-                <div className="mt-2 flex items-center justify-between border border-black bg-white px-2 py-1 text-[12px]">
-                  <span>請求書原本</span>
-                  <select className={`${yellowInput} w-28 rounded-none`} defaultValue="要">
-                    <option>要</option>
-                    <option>不要</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-6 border-2 border-black bg-amber-50 p-4 text-center text-sm font-semibold leading-6">
-            <div>リアルタイムの在庫確認ができます</div>
-            <div>www.pachimart.jp</div>
-            <div>E-mail: sales@pachimart.jp</div>
-            <div>FAX 06-4708-8286 →</div>
-          </div>
+          {/* === ここまで業者用レイアウト差し替え === */}
 
           <div className="flex items-center justify-center gap-4">
             <button type="button" onClick={handleSubmit} className={primaryButton}>
