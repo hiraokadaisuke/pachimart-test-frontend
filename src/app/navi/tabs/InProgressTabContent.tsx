@@ -85,6 +85,14 @@ function formatCurrency(amount: number) {
   return formatter.format(amount);
 }
 
+function formatShortDate(value?: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
+}
+
 const toNumericNaviId = (value: string | number | undefined): number | null => {
   if (typeof value === "number" && Number.isInteger(value)) return value;
   const parsed = Number(value);
@@ -147,7 +155,7 @@ function buildDealingRow(dealing: TradeRecord, viewerId: string): DealingRow {
     itemName: primaryItem?.itemName ?? "商品",
     quantity: totalQty,
     totalAmount: totals.total,
-    scheduledShipDate: dealing.contractDate ?? "-",
+    scheduledShipDate: formatShortDate(dealing.shipmentDate ?? dealing.contractDate ?? dealing.removalDate),
     kind,
     sellerUserId: sellerId,
     buyerUserId: buyerId,

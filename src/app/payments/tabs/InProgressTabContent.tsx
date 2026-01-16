@@ -65,6 +65,14 @@ function formatDateTime(iso?: string) {
   )}`;
 }
 
+function formatShortDate(value?: string) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
+}
+
 function buildDealingRow(dealing: TradeRecord, viewerId: string): DealingRow {
   const totals = calculateStatementTotals(dealing.items, dealing.taxRate ?? 0.1);
   const primaryItem = dealing.items[0];
@@ -72,7 +80,7 @@ function buildDealingRow(dealing: TradeRecord, viewerId: string): DealingRow {
   const sellerUserId = dealing.sellerUserId ?? dealing.seller.userId ?? "seller";
   const buyerUserId = dealing.buyerUserId ?? dealing.buyer.userId ?? "buyer";
   const updatedAtLabel = formatDateTime(dealing.updatedAt ?? dealing.createdAt ?? new Date().toISOString());
-  const scheduledShipDate = dealing.contractDate ? dealing.contractDate.slice(0, 10) : "-";
+  const scheduledShipDate = formatShortDate(dealing.shipmentDate ?? dealing.contractDate ?? dealing.removalDate);
   const isSeller = sellerUserId === viewerId;
   const kind = isSeller ? ("sell" as const) : ("buy" as const);
   const todo = getTodoPresentation(dealing, kind === "buy" ? "buyer" : "seller");

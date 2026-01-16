@@ -192,6 +192,7 @@ export function transformTrade(dto: TradeDto): TradeRecord {
   const contractDate = toString(conditions.machineShipmentDate || conditions.removalDate);
   const shipmentDate = toString(conditions.machineShipmentDate || conditions.removalDate);
   const documentShipmentDate = toString(conditions.documentShipmentDate);
+  const removalDate = toString(conditions.removalDate);
 
   const buyer: TradeRecord["buyer"] = {
     companyName: buyerCompanyName || dto.buyerUser?.companyName || "",
@@ -221,6 +222,7 @@ export function transformTrade(dto: TradeDto): TradeRecord {
     completedAt: dto.completedAt ?? undefined,
     canceledAt: dto.canceledAt ?? undefined,
     contractDate: contractDate || undefined,
+    removalDate: removalDate || undefined,
     shipmentDate: shipmentDate || undefined,
     receiveMethod: toString(conditions.machineShipmentType),
     shippingMethod: toString(conditions.machineShipmentType || conditions.documentShipmentType),
