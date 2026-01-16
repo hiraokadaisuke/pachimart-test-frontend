@@ -22,7 +22,7 @@ const formatPostalCode = (value?: string) => {
   return value;
 };
 
-const EXTRA_COST_LABELS = ["手数料", "保険料", "その他", "電話代"] as const;
+const EXTRA_COST_LABELS = ["-", "手数料", "保険料", "その他", "電話代"] as const;
 type ExtraCostLabel = (typeof EXTRA_COST_LABELS)[number];
 type ExtraCost = {
   id: string;
@@ -30,14 +30,25 @@ type ExtraCost = {
   amount: number;
 };
 
+const INVOICE_ORIGINAL_OPTIONS = ["-", "要", "不要"] as const;
+type InvoiceOriginalLabel = (typeof INVOICE_ORIGINAL_OPTIONS)[number];
+
 // Normalize label values coming from UI or stored data.
 const normalizeExtraCostLabel = (value: string): ExtraCostLabel =>
-  (EXTRA_COST_LABELS as readonly string[]).includes(value) ? (value as ExtraCostLabel) : "その他";
+  (EXTRA_COST_LABELS as readonly string[]).includes(value) ? (value as ExtraCostLabel) : "-";
 
 const buildExtraCostId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
     ? crypto.randomUUID()
     : `extra-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const createEmptyExtraCost = (): ExtraCost => ({
+  id: buildExtraCostId(),
+  label: "-",
+  amount: 0,
+});
+
+const isExtraCostPayloadItem = (item: ExtraCost): item is AdditionalCostItem => item.label !== "-";
 
 type BaseRow = {
   inventoryId: string;
@@ -84,11 +95,12 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const [applicationDate, setApplicationDate] = useState("");
   const [applicationFlag, setApplicationFlag] = useState("-");
   const [transportInsurance, setTransportInsurance] = useState(0);
-  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([]);
+  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>(() =>
+    type === "vendor" ? [createEmptyExtraCost()] : [],
+  );
   const [productAddressSource, setProductAddressSource] = useState<"warehouse" | "hq">("warehouse");
   const [contractAddressSource, setContractAddressSource] = useState<"warehouse" | "hq">("warehouse");
-  const [salesDestination, setSalesDestination] = useState("");
-  const [invoiceOriginal, setInvoiceOriginal] = useState("要");
+  const [invoiceOriginal, setInvoiceOriginal] = useState<InvoiceOriginalLabel>("-");
 
   useEffect(() => {
     const defaults = inventories.map<BaseRow>((item) => ({
@@ -133,20 +145,13 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     setHasInitializedStaff(true);
   }, [hasInitializedStaff, inventories, staffOptions]);
 
-  useEffect(() => {
-    if (salesDestination) return;
-    const supplier = inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? "";
-    if (supplier) {
-      setSalesDestination(supplier);
-    }
-  }, [inventories, salesDestination]);
-
   const itemTotal = useMemo(
     () => rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0),
     [rows],
   );
   const extraCostTotal = useMemo(
-    () => extraCosts.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
+    () =>
+      extraCosts.reduce((sum, item) => (item.label === "-" ? sum : sum + (Number(item.amount) || 0)), 0),
     [extraCosts],
   );
   const subTotal = useMemo(() => itemTotal + extraCostTotal, [itemTotal, extraCostTotal]);
@@ -191,7 +196,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const applicationOptions = ["-", "対象", "対象外"];
   const shippingMethodOptions = ["チャーター便", "路線便", "引取", "持込"];
   const contractReceiveOptions = ["郵送", "メール", "FAX", "引取"];
-  const invoiceOriginalOptions = ["要", "不要"];
+  const invoiceOriginalOptions = INVOICE_ORIGINAL_OPTIONS;
   const buildSelectOptions = (current: string, options: string[]) =>
     Array.from(new Set(["", current, ...options].filter((option) => option !== undefined)));
 
@@ -226,15 +231,12 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     ]);
   };
 
-  const handleAddExtraCost = () => {
-    setExtraCosts((prev) => [
-      ...prev,
-      {
-        id: buildExtraCostId(),
-        label: "手数料",
-        amount: 0,
-      },
-    ]);
+  const handleAddExtraCostAfter = (index: number) => {
+    setExtraCosts((prev) => {
+      const next = [...prev];
+      next.splice(index + 1, 0, createEmptyExtraCost());
+      return next;
+    });
   };
 
   const upsertExtraCost = (id: string, next: Omit<ExtraCost, "id">) => {
@@ -263,7 +265,12 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   };
 
   const handleRemoveExtraCost = (id: string) => {
-    setExtraCosts((prev) => prev.filter((item) => item.id !== id));
+    setExtraCosts((prev) => {
+      if (prev.length <= 1) {
+        return [createEmptyExtraCost()];
+      }
+      return prev.filter((item) => item.id !== id);
+    });
   };
 
   const handleSubmit = () => {
@@ -286,6 +293,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       extra: type === "hall" ? { removalDate: row.removalDate, storeName: row.storeName } : { applicationDate },
     }));
 
+    const extraCostsPayload = extraCosts.filter(isExtraCostPayloadItem);
+
     const invoice: PurchaseInvoice = {
       invoiceId,
       invoiceType: type,
@@ -297,7 +306,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       inventoryIds: inventories.map((item) => item.id),
       items,
       totalAmount: grandTotal,
-      extraCosts,
+      extraCosts: extraCostsPayload,
       formInput: {
         paymentDate,
         warehousingDate,
@@ -329,16 +338,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const itemTotalLabel = itemTotal.toLocaleString("ja-JP");
   const subTotalLabel = subTotal.toLocaleString("ja-JP");
   const extraCostTotalLabel = extraCostTotal.toLocaleString("ja-JP");
-  const extraCostRows: ExtraCost[] =
-    extraCosts.length > 0
-      ? extraCosts
-      : [
-          {
-            id: "__draft_extra_cost__",
-            label: normalizeExtraCostLabel("手数料"),
-            amount: 0,
-          },
-        ];
+  const extraCostRows: ExtraCost[] = extraCosts;
+  const hallExtraCosts = useMemo(() => extraCosts.filter(isExtraCostPayloadItem), [extraCosts]);
 
   if (type === "hall") {
     return (
@@ -584,8 +585,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                 </div>
                 <div className="space-y-2">
                   <ExtraCostEditor
-                    value={extraCosts}
-                    onChange={setExtraCosts}
+                    value={hallExtraCosts}
+                    onChange={(next) => setExtraCosts(next)}
                     note="※税込保険料は下段の専用欄で入力してください。"
                   />
                   <div className="border border-black bg-white">
@@ -714,41 +715,6 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
 
           {/* === ここから業者用レイアウト差し替え開始（売主／買主情報ブロック直後） === */}
           <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-2 text-sm font-semibold md:grid-cols-3">
-              <div className="border border-black bg-white px-4 py-2 text-center">
-                <div className="text-[12px]">合計額</div>
-                <div className="text-lg">{totalLabel}円</div>
-              </div>
-              <div className="border border-black bg-white px-4 py-2 text-center">
-                <div className="text-[12px]">支払日</div>
-                <input
-                  type="date"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  className={`${yellowInput} mt-1 w-40 rounded-none text-center`}
-                />
-              </div>
-              <div className="border border-black bg-white px-4 py-2 text-center">
-                <div className="text-[12px]">入庫日</div>
-                <input
-                  type="date"
-                  value={warehousingDate}
-                  onChange={(e) => setWarehousingDate(e.target.value)}
-                  className={`${yellowInput} mt-1 w-40 rounded-none text-center`}
-                />
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end">
-              <button
-                type="button"
-                onClick={handleAddRow}
-                className="rounded-none border-2 border-amber-600 bg-amber-200 px-3 py-1 text-[12px] font-semibold shadow-[2px_2px_0_rgba(0,0,0,0.35)]"
-              >
-                行追加
-              </button>
-            </div>
-
             <div className="overflow-x-auto">
               <table className="min-w-full border border-black text-center text-[12px]" style={{ borderCollapse: "collapse" }}>
                 <thead className="bg-cyan-50 text-[12px] font-semibold">
@@ -870,163 +836,127 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               </table>
             </div>
 
-            <div className="mt-2 border border-black bg-white">
-              <div className="flex items-center justify-between border-b border-black bg-slate-700 px-3 py-2 text-xs font-bold text-white">
-                <span>別途費用</span>
-                <button
-                  type="button"
-                  onClick={handleAddExtraCost}
-                  className="border border-white bg-white px-3 py-1 text-xs font-semibold text-slate-900"
-                >
-                  ＋追加
-                </button>
+            <div className="mt-2 space-y-2 text-[12px] text-neutral-900">
+              {extraCostRows.map((item, index) => (
+                <div key={item.id} className="grid gap-2 md:grid-cols-[1fr_160px_80px]">
+                  <select
+                    value={item.label}
+                    onChange={(event) =>
+                      upsertExtraCost(item.id, {
+                        label: normalizeExtraCostLabel(event.target.value),
+                        amount: item.amount,
+                      })
+                    }
+                    className="w-full border border-black bg-amber-50 px-2 py-1 focus:outline-none"
+                  >
+                    {EXTRA_COST_LABELS.map((option) => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    value={item.amount}
+                    onChange={(event) =>
+                      upsertExtraCost(item.id, {
+                        label: normalizeExtraCostLabel(item.label),
+                        amount: Number(event.target.value) || 0,
+                      })
+                    }
+                    className="w-full border border-black bg-amber-50 px-2 py-1 text-right focus:outline-none"
+                  />
+                  <div className="flex items-center justify-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => handleAddExtraCostAfter(index)}
+                      className="border border-black bg-white px-2 py-0.5 text-[11px] font-semibold"
+                    >
+                      ＋
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveExtraCost(item.id)}
+                      className="border border-black bg-white px-2 py-0.5 text-[11px] font-semibold"
+                    >
+                      ×
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-[1.4fr_1fr]">
+              <div className="flex h-full flex-col border border-black bg-amber-50 p-3">
+                <div className="mb-2 text-sm font-semibold">備考（入庫検品依頼書に表示）</div>
+                <textarea
+                  value={remarks}
+                  onChange={(e) => setRemarks(e.target.value)}
+                  className="h-full min-h-[140px] w-full border border-black bg-amber-100 p-2 text-[13px] leading-tight focus:outline-none"
+                />
               </div>
-              <div className="p-3 text-[12px] text-neutral-900">
-                <div className="mb-2 text-[11px] text-neutral-600">※税込保険料は下段の専用欄で入力してください。</div>
-                <table className="w-full border-collapse text-[12px]">
-                  <thead className="bg-slate-100 text-left font-semibold text-neutral-800">
-                    <tr>
-                      <th className="border border-black px-2 py-1">別途費用</th>
-                      <th className="border border-black px-2 py-1 text-right">金額</th>
-                      <th className="border border-black px-2 py-1 text-center">削除</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {extraCostRows.map((item) => (
-                      <tr key={item.id}>
-                        <td className="border border-black px-2 py-1">
+              <div className="flex h-full flex-col">
+                <div className="flex-1 border border-black bg-cyan-50">
+                  <table className="w-full text-[12px]" style={{ borderCollapse: "collapse" }}>
+                    <tbody>
+                      <tr>
+                        <th className="w-40 border border-black bg-cyan-50 px-2 py-2 text-left">商品代金</th>
+                        <td className="border border-black bg-white px-2 py-2 text-right">¥{itemTotalLabel}</td>
+                      </tr>
+                      <tr>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">別途費用</th>
+                        <td className="border border-black bg-white px-2 py-2 text-right">¥{extraCostTotalLabel}</td>
+                      </tr>
+                      <tr>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">小計</th>
+                        <td className="border border-black bg-white px-2 py-2 text-right">¥{subTotalLabel}</td>
+                      </tr>
+                      <tr>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送費</th>
+                        <td className="border border-black bg-white px-2 py-2 text-right">
+                          <input
+                            type="number"
+                            value={transportInsurance}
+                            onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
+                            className={`${yellowInput} w-full rounded-none text-right`}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">合計</th>
+                        <td className="border border-black bg-white px-2 py-2 text-right text-base font-bold">
+                          ¥{totalLabel}
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">支払日</th>
+                        <td className="border border-black bg-white px-2 py-2 text-right">
+                          <input
+                            type="date"
+                            value={paymentDate}
+                            onChange={(e) => setPaymentDate(e.target.value)}
+                            className={`${yellowInput} w-full rounded-none text-center`}
+                          />
+                        </td>
+                      </tr>
+                      <tr>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">請求書原本</th>
+                        <td className="border border-black bg-white px-2 py-2 text-right">
                           <select
-                            value={item.label}
-                            onChange={(event) =>
-                              upsertExtraCost(item.id, {
-                                label: normalizeExtraCostLabel(event.target.value),
-                                amount: item.amount,
-                              })
-                            }
-                            className="w-full border border-black bg-amber-50 px-2 py-1 text-[12px] focus:outline-none"
+                            value={invoiceOriginal}
+                            onChange={(e) => setInvoiceOriginal(e.target.value as InvoiceOriginalLabel)}
+                            className={`${yellowInput} w-full rounded-none text-center`}
                           >
-                            {EXTRA_COST_LABELS.map((option) => (
+                            {invoiceOriginalOptions.map((option) => (
                               <option key={option} value={option}>
                                 {option}
                               </option>
                             ))}
                           </select>
                         </td>
-                        <td className="border border-black px-2 py-1 text-right">
-                          <input
-                            type="number"
-                            value={item.amount}
-                            onChange={(event) =>
-                              upsertExtraCost(item.id, {
-                                label: normalizeExtraCostLabel(item.label),
-                                amount: Number(event.target.value) || 0,
-                              })
-                            }
-                            className="w-full border border-black bg-amber-50 px-2 py-1 text-right text-[12px] focus:outline-none"
-                          />
-                        </td>
-                        <td className="border border-black px-2 py-1 text-center">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveExtraCost(item.id)}
-                            className="border border-black bg-white px-2 py-0.5 text-[11px] font-semibold"
-                          >
-                            ×
-                          </button>
-                        </td>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="mt-3 flex justify-end">
-              <table className="w-full max-w-sm border border-black bg-cyan-50 text-[12px]" style={{ borderCollapse: "collapse" }}>
-                <tbody>
-                  <tr>
-                    <th className="w-40 border border-black bg-cyan-50 px-2 py-2 text-left">商品代金</th>
-                    <td className="border border-black bg-white px-2 py-2 text-right">¥{itemTotalLabel}</td>
-                  </tr>
-                  <tr>
-                    <th className="border border-black bg-cyan-50 px-2 py-2 text-left">別途費用</th>
-                    <td className="border border-black bg-white px-2 py-2 text-right">¥{extraCostTotalLabel}</td>
-                  </tr>
-                  <tr>
-                    <th className="border border-black bg-cyan-50 px-2 py-2 text-left">小計</th>
-                    <td className="border border-black bg-white px-2 py-2 text-right">¥{subTotalLabel}</td>
-                  </tr>
-                  <tr>
-                    <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送費</th>
-                    <td className="border border-black bg-white px-2 py-2 text-right">
-                      <input
-                        type="number"
-                        value={transportInsurance}
-                        onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
-                        className={`${yellowInput} w-full rounded-none text-right`}
-                      />
-                    </td>
-                  </tr>
-                  <tr>
-                    <th className="border border-black bg-cyan-50 px-2 py-2 text-left">合計</th>
-                    <td className="border border-black bg-white px-2 py-2 text-right text-base font-bold">
-                      ¥{totalLabel}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.4fr_1fr]">
-              <div className="border border-black bg-amber-50 p-3">
-                <div className="mb-2 text-sm font-semibold">備考（入庫検品依頼書に表示）</div>
-                <textarea
-                  value={remarks}
-                  onChange={(e) => setRemarks(e.target.value)}
-                  className="h-32 w-full border border-black bg-amber-100 p-2 text-[13px] leading-tight focus:outline-none"
-                />
-              </div>
-              <div className="space-y-2">
-                <div className="border border-black bg-cyan-50 p-3 text-sm font-semibold leading-6">
-                  <div className="grid gap-1 text-[12px]">
-                    <div className="flex items-center justify-between border border-black bg-white px-2 py-1">
-                      <span>販売先</span>
-                      <select
-                        value={salesDestination}
-                        onChange={(e) => setSalesDestination(e.target.value)}
-                        className={`${yellowInput} w-32 rounded-none`}
-                      >
-                        {Array.from(new Set(["", salesDestination, supplierName, "未定"])).map((option) => (
-                          <option key={option || "placeholder"} value={option}>
-                            {option || "選択してください"}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="flex items-center justify-between border border-black bg-white px-2 py-1">
-                      <span>支払日</span>
-                      <input
-                        type="date"
-                        value={paymentDate}
-                        onChange={(e) => setPaymentDate(e.target.value)}
-                        className={`${yellowInput} w-32 rounded-none text-center`}
-                      />
-                    </div>
-                    <div className="flex items-center justify-between border border-black bg-white px-2 py-1">
-                      <span>請求書原本</span>
-                      <select
-                        value={invoiceOriginal}
-                        onChange={(e) => setInvoiceOriginal(e.target.value)}
-                        className={`${yellowInput} w-24 rounded-none`}
-                      >
-                        {invoiceOriginalOptions.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

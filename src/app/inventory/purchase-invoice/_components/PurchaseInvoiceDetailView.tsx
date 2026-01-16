@@ -41,15 +41,6 @@ const formatFullDate = (value?: string): string => {
   return `${year}年${month}月${day}日`;
 };
 
-const formatMonthDay = (value?: string): string => {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  const month = `${parsed.getMonth() + 1}`.padStart(2, "0");
-  const day = `${parsed.getDate()}`.padStart(2, "0");
-  return `${month}月${day}日`;
-};
-
 const formatNumber = (value?: number): string => {
   if (value == null || Number.isNaN(value)) return "―";
   return value.toLocaleString("ja-JP");
@@ -136,8 +127,6 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   const headerContractPartner = branchName ? `${supplierName} ${branchName}` : supplierName;
   const recipientLine = branchName ? `${supplierName} ${branchName} 御中` : `${supplierName} 御中`;
 
-  const paymentDateLabel = formatMonthDay(invoice?.formInput?.paymentDate);
-  const warehousingDateLabel = formatMonthDay(invoice?.formInput?.warehousingDate);
   const issuedDateLabel = formatFullDate(invoice?.issuedDate || invoice?.createdAt);
 
   const serialInputTarget = invoice?.inventoryIds?.[0];
@@ -376,27 +365,6 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
                 </div>
                 <div className="text-xs text-neutral-800">担当　{staffName}</div>
               </div>
-            </div>
-
-            <div className="mb-6">
-              <table className="w-full table-fixed border border-black text-center text-[13px]">
-                <thead className="bg-slate-100 text-sm font-semibold">
-                  <tr>
-                    <th className="w-1/3 border border-black px-2 py-2">合計金額</th>
-                    <th className="w-1/3 border border-black px-2 py-2">支払日</th>
-                    <th className="w-1/3 border border-black px-2 py-2">入庫日</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="text-base">
-                    <td className="border border-black px-3 py-3 font-bold">
-                      {formatNumber(grandTotal)}<span className="ml-1 text-xs font-semibold">円</span>
-                    </td>
-                    <td className="border border-black px-3 py-3 font-semibold">{paymentDateLabel}</td>
-                    <td className="border border-black px-3 py-3 font-semibold">{warehousingDateLabel}</td>
-                  </tr>
-                </tbody>
-              </table>
             </div>
 
             <div className="mb-6 overflow-x-auto">
