@@ -313,7 +313,7 @@ export function InProgressTabContent() {
     label: "操作",
     width: "120px",
     render: (row: DealingRow) =>
-      row.primaryActionLabel && row.isOpen ? (
+      row.kind === "buy" && row.primaryActionLabel && row.isOpen ? (
         <button
           type="button"
           className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
@@ -329,9 +329,7 @@ export function InProgressTabContent() {
       ),
   };
 
-  const dealingColumnsWithAction: NaviTableColumn[] = [...dealingColumnBase, actionColumn, messageColumn];
-
-  const dealingColumnsWithoutAction: NaviTableColumn[] = [...dealingColumnBase, messageColumn];
+  const dealingColumns: NaviTableColumn[] = [...dealingColumnBase, actionColumn, messageColumn];
 
   useEffect(() => {
     if (messageNaviId === null) {
@@ -391,7 +389,7 @@ export function InProgressTabContent() {
           </SectionHeader>
 
           <NaviTable
-            columns={dealingColumnsWithAction}
+            columns={dealingColumns}
             rows={buyPayment}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
@@ -404,7 +402,7 @@ export function InProgressTabContent() {
           </SectionHeader>
 
           <NaviTable
-            columns={dealingColumnsWithAction}
+            columns={dealingColumns}
             rows={buyConfirmation}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
@@ -421,7 +419,7 @@ export function InProgressTabContent() {
           </SectionHeader>
 
           <NaviTable
-            columns={dealingColumnsWithoutAction}
+            columns={dealingColumns}
             rows={sellPayment}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
@@ -434,7 +432,7 @@ export function InProgressTabContent() {
           </SectionHeader>
 
           <NaviTable
-            columns={dealingColumnsWithoutAction}
+            columns={dealingColumns}
             rows={sellConfirmation}
             emptyMessage="現在進行中の取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
