@@ -3,8 +3,6 @@ import { NextResponse } from "next/server";
 
 import { prisma } from "@/lib/server/prisma";
 import { getCurrentUserId } from "@/lib/server/currentUser";
-import { validateTradeLedgerConsistency } from "@/lib/server/ledger";
-
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
@@ -96,24 +94,25 @@ const toDto = (dealing: ReturnType<typeof toRecord>) => ({
   naviId: dealing.naviId,
   createdAt: dealing.createdAt.toISOString(),
   updatedAt: dealing.updatedAt.toISOString(),
-    navi: dealing.navi
-      ? {
-          id: dealing.navi.id,
-          ownerUserId: dealing.navi.ownerUserId,
-          buyerUserId: dealing.navi.buyerUserId,
-          payload: (dealing.navi.payload as Prisma.JsonValue | null) ?? null,
-          listingSnapshot: (dealing.navi.listingSnapshot as Prisma.JsonValue | null) ?? null,
-          naviType: dealing.navi.naviType,
-          createdAt: dealing.navi.createdAt.toISOString(),
-          updatedAt: dealing.navi.updatedAt.toISOString(),
-        }
-      : null,
+  navi: dealing.navi
+    ? {
+        id: dealing.navi.id,
+        ownerUserId: dealing.navi.ownerUserId,
+        buyerUserId: dealing.navi.buyerUserId,
+        payload: (dealing.navi.payload as Prisma.JsonValue | null) ?? null,
+        listingSnapshot: (dealing.navi.listingSnapshot as Prisma.JsonValue | null) ?? null,
+        naviType: dealing.navi.naviType,
+        createdAt: dealing.navi.createdAt.toISOString(),
+        updatedAt: dealing.navi.updatedAt.toISOString(),
+      }
+    : null,
   sellerUser: dealing.sellerUser,
   buyerUser: dealing.buyerUser,
 });
 
 export async function GET(request: Request) {
   const currentUserId = getCurrentUserId(request);
+  const shouldLog = process.env.NODE_ENV !== "production";
 
   if (!currentUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -128,6 +127,9 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    if (shouldLog) {
+      console.time("trades/records db");
+    }
     const dealings = await prisma.dealing.findMany({
       where: {
         OR: [{ sellerUserId: currentUser.id }, { buyerUserId: currentUser.id }],
@@ -163,14 +165,15 @@ export async function GET(request: Request) {
       } as any,
     });
 
-    const warnings = (
-      await Promise.all(dealings.map((dealing) => validateTradeLedgerConsistency(Number((dealing as any).id))))
-    ).flat();
+    if (shouldLog) {
+      console.timeEnd("trades/records db");
+      console.time("trades/records format");
+    }
 
     const response = NextResponse.json(dealings.map((dealing: unknown) => toDto(toRecord(dealing))));
 
-    if (warnings.length) {
-      response.headers.set("x-ledger-warnings", encodeURIComponent(JSON.stringify(warnings)));
+    if (shouldLog) {
+      console.timeEnd("trades/records format");
     }
 
     return response;

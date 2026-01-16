@@ -6,7 +6,7 @@ import { NaviStatus, NaviType } from "@prisma/client";
 
 import { TradeRecord } from "@/lib/dealings/types";
 import { calculateStatementTotals } from "@/lib/dealings/calcTotals";
-import { loadAllTradesWithApi } from "@/lib/dealings/dataSources";
+import { loadAllTradesWithApiAndNavis } from "@/lib/dealings/dataSources";
 import { NaviTable, NaviTableColumn } from "@/components/transactions/NaviTable";
 import { StatusBadge } from "@/components/transactions/StatusBadge";
 import { TransactionFilterBar } from "@/components/transactions/TransactionFilterBar";
@@ -20,7 +20,7 @@ import { getInProgressDescription } from "@/lib/dealings/copy";
 import { getStatementPath } from "@/lib/dealings/navigation";
 import { getTodoPresentation } from "@/lib/dealings/todo";
 import { todoUiMap, type TodoUiDef } from "@/lib/todo/todoUiMap";
-import { fetchNavis, mapNaviToTradeRecord } from "@/lib/dealings/api";
+import { mapNaviToTradeRecord, type NaviDto } from "@/lib/dealings/api";
 import {
   fetchOnlineInquiries,
   respondOnlineInquiry,
@@ -188,9 +188,8 @@ function buildInquiryRowFromDto(dto: OnlineInquiryListItem, viewerId: string): I
 export function InProgressTabContent() {
   const currentUser = useCurrentDevUser();
   const [dealings, setDealings] = useState<TradeRecord[] | undefined>(undefined);
+  const [navis, setNavis] = useState<NaviDto[] | undefined>(undefined);
   const [onlineInquiryRows, setOnlineInquiryRows] = useState<InquiryRow[] | undefined>(undefined);
-  const [sellerApprovalRows, setSellerApprovalRows] = useState<DealingRow[] | undefined>(undefined);
-  const [buyerNaviApprovalRows, setBuyerNaviApprovalRows] = useState<DealingRow[] | undefined>(undefined);
   const router = useRouter();
   const [keyword, setKeyword] = useState("");
   const [messageTarget, setMessageTarget] = useState<string | null>(null);
@@ -201,38 +200,17 @@ export function InProgressTabContent() {
   const keywordLower = keyword.toLowerCase();
 
   useEffect(() => {
-    loadAllTradesWithApi()
-      .then(setDealings)
+    loadAllTradesWithApiAndNavis()
+      .then(({ trades, navis }) => {
+        setDealings(trades);
+        setNavis(navis);
+      })
       .catch((error) => {
         console.error(error);
         setDealings([]);
+        setNavis([]);
       });
   }, []);
-
-  const fetchApprovalRows = useCallback(async () => {
-    try {
-      const apiDealings = await fetchNavis();
-      const mappedDealings = apiDealings
-        .filter(
-          (dealing) =>
-            dealing.status === NaviStatus.SENT &&
-            (dealing.ownerUserId === currentUser.id || dealing.buyerUserId === currentUser.id)
-        )
-        .map((dealing) => mapNaviToTradeRecord(dealing))
-        .filter((dealing): dealing is TradeRecord => Boolean(dealing));
-
-      const rows = mappedDealings
-        .map((dealing) => buildDealingRow(dealing, currentUser.id))
-        .filter((row) => row.section === "approval" && row.isOpen);
-
-      setSellerApprovalRows(rows.filter((row) => row.kind === "sell"));
-      setBuyerNaviApprovalRows(rows.filter((row) => row.kind === "buy"));
-    } catch (error) {
-      console.error(error);
-      setSellerApprovalRows([]);
-      setBuyerNaviApprovalRows([]);
-    }
-  }, [currentUser.id]);
 
   const loadInquiries = useCallback(async () => {
     try {
@@ -254,12 +232,29 @@ export function InProgressTabContent() {
   }, [currentUser.id]);
 
   useEffect(() => {
-    fetchApprovalRows();
-  }, [fetchApprovalRows]);
-
-  useEffect(() => {
     loadInquiries();
   }, [loadInquiries]);
+
+  const { sellerApprovalRows, buyerNaviApprovalRows } = useMemo(() => {
+    const mappedDealings =
+      (navis ?? [])
+        .filter(
+          (dealing) =>
+            dealing.status === NaviStatus.SENT &&
+            (dealing.ownerUserId === currentUser.id || dealing.buyerUserId === currentUser.id)
+        )
+        .map((dealing) => mapNaviToTradeRecord(dealing))
+        .filter((dealing): dealing is TradeRecord => Boolean(dealing)) ?? [];
+
+    const rows = mappedDealings
+      .map((dealing) => buildDealingRow(dealing, currentUser.id))
+      .filter((row) => row.section === "approval" && row.isOpen);
+
+    return {
+      sellerApprovalRows: rows.filter((row) => row.kind === "sell"),
+      buyerNaviApprovalRows: rows.filter((row) => row.kind === "buy"),
+    };
+  }, [currentUser.id, navis]);
 
   const mappedDealingRows = useMemo(
     () => (dealings ?? []).map((dealing) => buildDealingRow(dealing, currentUser.id)),
@@ -708,8 +703,8 @@ export function InProgressTabContent() {
   };
 
   const messageThread = messages;
-  const dealingLoading = dealings === undefined;
-  const approvalLoading = sellerApprovalRows === undefined || buyerNaviApprovalRows === undefined;
+  const dealingLoading = dealings === undefined || navis === undefined;
+  const approvalLoading = navis === undefined;
   const inquiryLoading = onlineInquiryRows === undefined;
 
   return (
@@ -734,7 +729,7 @@ export function InProgressTabContent() {
           <NaviTable
             columns={buyerApprovalColumns}
             rows={buyerApprovalRows}
-            loading={dealingLoading || buyerNaviApprovalRows === undefined}
+            loading={dealingLoading}
             emptyMessage="現在承認待ちの取引はありません。"
             onRowClick={(row) => row.id && router.push(getStatementDestination(row as DealingRow))}
           />

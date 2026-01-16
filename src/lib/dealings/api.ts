@@ -276,7 +276,7 @@ const normalizeDealingRecord = (dealing: TradeRecord): TradeRecord => {
   };
 };
 
-async function fetchTradeDtos() {
+export async function fetchTradeDtos() {
   const response = await fetchWithDevHeader("/api/trades/records");
 
   if (!response.ok) {
@@ -322,8 +322,14 @@ export async function fetchNavis(): Promise<NaviDto[]> {
   }));
 }
 
-export async function fetchTradeRecordsFromApi(): Promise<TradeRecord[]> {
-  const [dealings, tradeDtos] = await Promise.all([fetchNavis(), fetchTradeDtos()]);
+export async function fetchTradeRecordsFromApi(options?: {
+  navis?: NaviDto[];
+  tradeDtos?: TradeDto[];
+}): Promise<TradeRecord[]> {
+  const [dealings, tradeDtos] = await Promise.all([
+    options?.navis ?? fetchNavis(),
+    options?.tradeDtos ?? fetchTradeDtos(),
+  ]);
 
   const naviTrades = dealings
     .map((dealing) => mapNaviToTradeRecord(dealing))
