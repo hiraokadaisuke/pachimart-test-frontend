@@ -676,11 +676,11 @@ export function InProgressTabContent() {
         const isPending = targetId ? pendingInquiryIds.has(targetId) : false;
 
         return (
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-row items-center gap-2 whitespace-nowrap">
             <button
               type="button"
               disabled={isPending}
-              className={primaryActionButtonClass}
+              className={`${primaryActionButtonClass} min-w-0 w-16`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleAcceptInquiry(row.naviId ?? row.id);
@@ -691,7 +691,7 @@ export function InProgressTabContent() {
             <button
               type="button"
               disabled={isPending}
-              className={declineButtonClass}
+              className={`${declineButtonClass} min-w-0 w-16`}
               onClick={(e) => {
                 e.stopPropagation();
                 handleDeclineInquiry(row.naviId ?? row.id);
