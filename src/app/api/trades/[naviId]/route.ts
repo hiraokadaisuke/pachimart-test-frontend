@@ -372,6 +372,7 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         sellerCompanyName: current.ownerUser?.companyName ?? undefined,
         listingSnapshot: listingSnapshot ?? null,
         conditions: {
+          ...conditionsCandidate,
           unitPrice,
           quantity,
           shippingFee,

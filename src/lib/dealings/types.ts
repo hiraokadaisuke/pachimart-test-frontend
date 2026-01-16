@@ -54,6 +54,7 @@ export type TradeRecord = {
   createdAt?: string;
   updatedAt?: string;
   contractDate?: string;
+  removalDate?: string;
   paymentDate?: string;
   paymentMethod?: string;
   paymentAmount?: number;

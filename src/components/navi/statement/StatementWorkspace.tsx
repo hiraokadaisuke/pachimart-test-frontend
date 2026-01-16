@@ -718,7 +718,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
                       <tbody className="text-neutral-900">
                         <NaviSectionRow label="単価" value={unitPrice ? formatYen(unitPrice) : "-"} note={diffNotes.unitPriceNote} />
                         <NaviSectionRow label="台数" value={`${quantity}台`} note={diffNotes.quantityNote} />
-                        <NaviSectionRow label="撤去日" value="-" />
+                        <NaviSectionRow label="撤去日" value={formatDateLabel(dealing.removalDate)} />
                         <NaviSectionRow label="機械発送日" value={machineShipmentLabel} />
                         <NaviSectionRow label="書類発送予定日" value={documentShipmentLabel} />
                         <NaviSectionRow label="支払日" value={formatDateLabel(dealing.paymentDate)} />
