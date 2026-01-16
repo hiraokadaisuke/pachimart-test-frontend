@@ -22,7 +22,17 @@ const formatPostalCode = (value?: string) => {
   return value;
 };
 
-const EXTRA_COST_OPTIONS: AdditionalCostItem["label"][] = ["手数料", "保険料", "その他", "書類代"];
+const EXTRA_COST_LABELS = ["手数料", "保険料", "その他", "電話代"] as const;
+type ExtraCostLabel = (typeof EXTRA_COST_LABELS)[number];
+type ExtraCost = {
+  id: string;
+  label: ExtraCostLabel;
+  amount: number;
+};
+
+// Normalize label values coming from UI or stored data.
+const normalizeExtraCostLabel = (value: string): ExtraCostLabel =>
+  (EXTRA_COST_LABELS as readonly string[]).includes(value) ? (value as ExtraCostLabel) : "その他";
 
 const buildExtraCostId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -74,7 +84,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const [applicationDate, setApplicationDate] = useState("");
   const [applicationFlag, setApplicationFlag] = useState("-");
   const [transportInsurance, setTransportInsurance] = useState(0);
-  const [extraCosts, setExtraCosts] = useState<AdditionalCostItem[]>([]);
+  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([]);
   const [productAddressSource, setProductAddressSource] = useState<"warehouse" | "hq">("warehouse");
   const [contractAddressSource, setContractAddressSource] = useState<"warehouse" | "hq">("warehouse");
   const [salesDestination, setSalesDestination] = useState("");
@@ -227,7 +237,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     ]);
   };
 
-  const upsertExtraCost = (id: string, next: Omit<AdditionalCostItem, "id">) => {
+  const upsertExtraCost = (id: string, next: Omit<ExtraCost, "id">) => {
     setExtraCosts((prev) => {
       const existingIndex = prev.findIndex((item) => item.id === id);
       if (existingIndex === -1) {
@@ -235,11 +245,20 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
           ...prev,
           {
             id: buildExtraCostId(),
-            ...next,
+            label: normalizeExtraCostLabel(next.label),
+            amount: next.amount,
           },
         ];
       }
-      return prev.map((item) => (item.id === id ? { ...item, ...next } : item));
+      return prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              label: normalizeExtraCostLabel(next.label),
+              amount: next.amount,
+            }
+          : item,
+      );
     });
   };
 
@@ -310,13 +329,13 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const itemTotalLabel = itemTotal.toLocaleString("ja-JP");
   const subTotalLabel = subTotal.toLocaleString("ja-JP");
   const extraCostTotalLabel = extraCostTotal.toLocaleString("ja-JP");
-  const extraCostRows =
+  const extraCostRows: ExtraCost[] =
     extraCosts.length > 0
       ? extraCosts
       : [
           {
             id: "__draft_extra_cost__",
-            label: "手数料",
+            label: normalizeExtraCostLabel("手数料"),
             amount: 0,
           },
         ];
@@ -880,13 +899,13 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                             value={item.label}
                             onChange={(event) =>
                               upsertExtraCost(item.id, {
-                                label: event.target.value as AdditionalCostItem["label"],
+                                label: normalizeExtraCostLabel(event.target.value),
                                 amount: item.amount,
                               })
                             }
                             className="w-full border border-black bg-amber-50 px-2 py-1 text-[12px] focus:outline-none"
                           >
-                            {EXTRA_COST_OPTIONS.map((option) => (
+                            {EXTRA_COST_LABELS.map((option) => (
                               <option key={option} value={option}>
                                 {option}
                               </option>
@@ -899,7 +918,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                             value={item.amount}
                             onChange={(event) =>
                               upsertExtraCost(item.id, {
-                                label: item.label,
+                                label: normalizeExtraCostLabel(item.label),
                                 amount: Number(event.target.value) || 0,
                               })
                             }
