@@ -163,7 +163,7 @@ function buildInquiryRowFromDto(dto: OnlineInquiryListItem, viewerId: string): I
 
   return {
     id: dto.id,
-    naviId: undefined,
+    naviId: dto.naviId,
     status: dto.status,
     partnerName: resolveCounterpartyName(
       {
@@ -448,6 +448,11 @@ export function InProgressTabContent() {
 
   const actionColumnWidth = "180px";
   const messageColumnWidth = "110px";
+  const actionButtonBaseClass =
+    "inline-flex min-w-[120px] items-center justify-center rounded px-3 py-1 text-xs font-semibold shadow-sm";
+  const cancelButtonClass = `${actionButtonBaseClass} border border-red-300 bg-red-50 text-red-700 hover:bg-red-100`;
+  const declineButtonClass = `${actionButtonBaseClass} border border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100`;
+  const primaryActionButtonClass = `${actionButtonBaseClass} bg-indigo-700 text-white hover:bg-indigo-800`;
 
   const dealingColumnBase: NaviTableColumn[] = [
     {
@@ -524,7 +529,7 @@ export function InProgressTabContent() {
       return (
         <button
           type="button"
-          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+          className={`${primaryActionButtonClass} mx-auto`}
           onClick={(e) => {
             e.stopPropagation();
             router.push(statementPath);
@@ -549,7 +554,7 @@ export function InProgressTabContent() {
             e.stopPropagation();
             router.push(statementPath);
           }}
-          className="inline-flex items-center justify-center rounded px-3 py-1 text-xs font-semibold bg-indigo-700 text-white hover:bg-indigo-800 shadow-sm"
+          className={`${primaryActionButtonClass} mx-auto`}
         >
           PDF
         </button>
@@ -630,7 +635,7 @@ export function InProgressTabContent() {
           <button
             type="button"
             disabled={isPending}
-            className="inline-flex w-full justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+            className={`${cancelButtonClass} mx-auto`}
             onClick={(e) => {
               e.stopPropagation();
               handleCancelInquiry(row.naviId ?? row.id);
@@ -645,7 +650,18 @@ export function InProgressTabContent() {
       key: "message",
       label: "メッセージ",
       width: messageColumnWidth,
-      render: () => "-",
+      render: (row: InquiryRow) => (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenMessage(row);
+          }}
+        >
+          メッセージ
+        </button>
+      ),
     },
   ];
 
@@ -660,11 +676,11 @@ export function InProgressTabContent() {
         const isPending = targetId ? pendingInquiryIds.has(targetId) : false;
 
         return (
-          <div className="flex gap-2">
+          <div className="flex flex-col items-center gap-2">
             <button
               type="button"
               disabled={isPending}
-              className="inline-flex flex-1 justify-center rounded bg-indigo-700 px-3 py-1 text-xs font-semibold text-white shadow-sm hover:bg-indigo-800"
+              className={primaryActionButtonClass}
               onClick={(e) => {
                 e.stopPropagation();
                 handleAcceptInquiry(row.naviId ?? row.id);
@@ -675,7 +691,7 @@ export function InProgressTabContent() {
             <button
               type="button"
               disabled={isPending}
-              className="inline-flex flex-1 justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+              className={declineButtonClass}
               onClick={(e) => {
                 e.stopPropagation();
                 handleDeclineInquiry(row.naviId ?? row.id);
@@ -691,7 +707,18 @@ export function InProgressTabContent() {
       key: "message",
       label: "メッセージ",
       width: messageColumnWidth,
-      render: () => "-",
+      render: (row: InquiryRow) => (
+        <button
+          type="button"
+          className="inline-flex items-center justify-center rounded border border-slate-300 px-3 py-1 text-xs font-semibold text-[#142B5E] hover:bg-slate-100"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleOpenMessage(row);
+          }}
+        >
+          メッセージ
+        </button>
+      ),
     },
   ];
 
@@ -715,7 +742,7 @@ export function InProgressTabContent() {
       });
   }, [messageNaviId, messageTarget]);
 
-  const handleOpenMessage = (row: DealingRow) => {
+  const handleOpenMessage = (row: { id: string; naviId?: number }) => {
     setMessageTarget(row.id);
 
     const naviId = toNumericNaviId(row.naviId ?? row.id);
