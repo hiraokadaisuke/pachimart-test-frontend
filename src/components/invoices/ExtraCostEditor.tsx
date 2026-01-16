@@ -4,7 +4,7 @@ import type { ChangeEvent } from "react";
 
 import type { AdditionalCostItem } from "@/types/purchaseInvoices";
 
-const COST_OPTIONS: AdditionalCostItem["label"][] = ["手数料", "保険料", "その他", "書類代"];
+const COST_OPTIONS: AdditionalCostItem["label"][] = ["手数料", "保険料", "その他", "電話代"];
 
 const buildId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto

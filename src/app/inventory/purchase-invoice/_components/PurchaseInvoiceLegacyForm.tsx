@@ -22,6 +22,23 @@ const formatPostalCode = (value?: string) => {
   return value;
 };
 
+const EXTRA_COST_LABELS = ["手数料", "保険料", "その他", "電話代"] as const;
+type ExtraCostLabel = (typeof EXTRA_COST_LABELS)[number];
+type ExtraCost = {
+  id: string;
+  label: ExtraCostLabel;
+  amount: number;
+};
+
+// Normalize label values coming from UI or stored data.
+const normalizeExtraCostLabel = (value: string): ExtraCostLabel =>
+  (EXTRA_COST_LABELS as readonly string[]).includes(value) ? (value as ExtraCostLabel) : "その他";
+
+const buildExtraCostId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `extra-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 type BaseRow = {
   inventoryId: string;
   maker: string;
@@ -67,7 +84,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const [applicationDate, setApplicationDate] = useState("");
   const [applicationFlag, setApplicationFlag] = useState("-");
   const [transportInsurance, setTransportInsurance] = useState(0);
-  const [extraCosts, setExtraCosts] = useState<AdditionalCostItem[]>([]);
+  const [extraCosts, setExtraCosts] = useState<ExtraCost[]>([]);
   const [productAddressSource, setProductAddressSource] = useState<"warehouse" | "hq">("warehouse");
   const [contractAddressSource, setContractAddressSource] = useState<"warehouse" | "hq">("warehouse");
   const [salesDestination, setSalesDestination] = useState("");
@@ -124,7 +141,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     }
   }, [inventories, salesDestination]);
 
-  const totalAmount = useMemo(
+  const itemTotal = useMemo(
     () => rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0),
     [rows],
   );
@@ -132,6 +149,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     () => extraCosts.reduce((sum, item) => sum + (Number(item.amount) || 0), 0),
     [extraCosts],
   );
+  const subTotal = useMemo(() => itemTotal + extraCostTotal, [itemTotal, extraCostTotal]);
   const selectableStaffOptions = useMemo(() => {
     const baseOptions = staffOptions.length > 0 ? staffOptions : ["担当A", "担当B", "担当C"];
     return Array.from(new Set([...baseOptions, staff].filter(Boolean)));
@@ -208,6 +226,46 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     ]);
   };
 
+  const handleAddExtraCost = () => {
+    setExtraCosts((prev) => [
+      ...prev,
+      {
+        id: buildExtraCostId(),
+        label: "手数料",
+        amount: 0,
+      },
+    ]);
+  };
+
+  const upsertExtraCost = (id: string, next: Omit<ExtraCost, "id">) => {
+    setExtraCosts((prev) => {
+      const existingIndex = prev.findIndex((item) => item.id === id);
+      if (existingIndex === -1) {
+        return [
+          ...prev,
+          {
+            id: buildExtraCostId(),
+            label: normalizeExtraCostLabel(next.label),
+            amount: next.amount,
+          },
+        ];
+      }
+      return prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              label: normalizeExtraCostLabel(next.label),
+              amount: next.amount,
+            }
+          : item,
+      );
+    });
+  };
+
+  const handleRemoveExtraCost = (id: string) => {
+    setExtraCosts((prev) => prev.filter((item) => item.id !== id));
+  };
+
   const handleSubmit = () => {
     if (!window.confirm("よろしいですか？")) return;
 
@@ -238,7 +296,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       purchaseTermsText,
       inventoryIds: inventories.map((item) => item.id),
       items,
-      totalAmount: totalAmount + taxAmount + transportInsurance + extraCostTotal,
+      totalAmount: grandTotal,
       extraCosts,
       formInput: {
         paymentDate,
@@ -260,12 +318,27 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   };
 
   const headerTitle = type === "vendor" ? "購入伝票登録（業者）" : "購入伝票登録（ホール）";
-  const totalLabel = totalAmount.toLocaleString("ja-JP");
-  const taxAmount = Math.floor(totalAmount * 0.1);
-  const grandTotal = totalAmount + taxAmount + transportInsurance + extraCostTotal;
+  const taxAmount = Math.floor(itemTotal * 0.1);
+  const hallGrandTotal = itemTotal + taxAmount + transportInsurance + extraCostTotal;
+  const vendorGrandTotal = subTotal + transportInsurance;
+  const grandTotal = type === "hall" ? hallGrandTotal : vendorGrandTotal;
+  const totalLabel = grandTotal.toLocaleString("ja-JP");
   const supplierName = inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? "";
   const supplierPhone = inventories[0]?.supplierPhone ?? "―";
   const supplierFax = inventories[0]?.supplierFax ?? "―";
+  const itemTotalLabel = itemTotal.toLocaleString("ja-JP");
+  const subTotalLabel = subTotal.toLocaleString("ja-JP");
+  const extraCostTotalLabel = extraCostTotal.toLocaleString("ja-JP");
+  const extraCostRows: ExtraCost[] =
+    extraCosts.length > 0
+      ? extraCosts
+      : [
+          {
+            id: "__draft_extra_cost__",
+            label: normalizeExtraCostLabel("手数料"),
+            amount: 0,
+          },
+        ];
 
   if (type === "hall") {
     return (
@@ -352,7 +425,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               </div>
 
               <div className="grid grid-cols-1 gap-2 text-sm font-semibold md:grid-cols-3" style={{ borderCollapse: "collapse" }}>
-                <div className="border border-black bg-white px-4 py-3 text-center">
+                  <div className="border border-black bg-white px-4 py-3 text-center">
                   <div className="text-[12px]">合計金額</div>
                   <div className="text-lg">{totalLabel}円</div>
                 </div>
@@ -520,7 +593,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                       <tbody>
                         <tr>
                           <th className="w-32 border border-black bg-cyan-50 px-2 py-2 text-left">小計</th>
-                          <td className="border border-black px-2 py-2 text-right">¥{totalLabel}</td>
+                          <td className="border border-black px-2 py-2 text-right">¥{itemTotalLabel}</td>
                         </tr>
                         <tr>
                           <th className="border border-black bg-cyan-50 px-2 py-2 text-left">消費税（10%）</th>
@@ -528,7 +601,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                         </tr>
                         <tr>
                           <th className="border border-black bg-cyan-50 px-2 py-2 text-left">別費用合計</th>
-                          <td className="border border-black px-2 py-2 text-right">¥{extraCostTotal.toLocaleString("ja-JP")}</td>
+                          <td className="border border-black px-2 py-2 text-right">¥{extraCostTotalLabel}</td>
                         </tr>
                         <tr>
                           <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送保険（税込）</th>
@@ -666,25 +739,14 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-2 border border-black bg-cyan-50 px-3 py-2 text-sm font-semibold">
-              <div className="flex items-center gap-2 text-[12px] text-neutral-800">
-                <span>行を追加します</span>
-                <button
-                  type="button"
-                  onClick={handleAddRow}
-                  className="rounded-none border-2 border-amber-600 bg-amber-200 px-3 py-1 text-sm font-semibold shadow-[2px_2px_0_rgba(0,0,0,0.35)]"
-                >
-                  行追加
-                </button>
-              </div>
-              <div className="flex items-center gap-2">
-                <button type="button" onClick={handleSubmit} className={primaryButton}>
-                  確認
-                </button>
-                <button type="button" onClick={() => router.back()} className={secondaryButton}>
-                  戻る
-                </button>
-              </div>
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                onClick={handleAddRow}
+                className="rounded-none border-2 border-amber-600 bg-amber-200 px-3 py-1 text-[12px] font-semibold shadow-[2px_2px_0_rgba(0,0,0,0.35)]"
+              >
+                行追加
+              </button>
             </div>
 
             <div className="overflow-x-auto">
@@ -808,6 +870,113 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               </table>
             </div>
 
+            <div className="mt-2 border border-black bg-white">
+              <div className="flex items-center justify-between border-b border-black bg-slate-700 px-3 py-2 text-xs font-bold text-white">
+                <span>別途費用</span>
+                <button
+                  type="button"
+                  onClick={handleAddExtraCost}
+                  className="border border-white bg-white px-3 py-1 text-xs font-semibold text-slate-900"
+                >
+                  ＋追加
+                </button>
+              </div>
+              <div className="p-3 text-[12px] text-neutral-900">
+                <div className="mb-2 text-[11px] text-neutral-600">※税込保険料は下段の専用欄で入力してください。</div>
+                <table className="w-full border-collapse text-[12px]">
+                  <thead className="bg-slate-100 text-left font-semibold text-neutral-800">
+                    <tr>
+                      <th className="border border-black px-2 py-1">別途費用</th>
+                      <th className="border border-black px-2 py-1 text-right">金額</th>
+                      <th className="border border-black px-2 py-1 text-center">削除</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {extraCostRows.map((item) => (
+                      <tr key={item.id}>
+                        <td className="border border-black px-2 py-1">
+                          <select
+                            value={item.label}
+                            onChange={(event) =>
+                              upsertExtraCost(item.id, {
+                                label: normalizeExtraCostLabel(event.target.value),
+                                amount: item.amount,
+                              })
+                            }
+                            className="w-full border border-black bg-amber-50 px-2 py-1 text-[12px] focus:outline-none"
+                          >
+                            {EXTRA_COST_LABELS.map((option) => (
+                              <option key={option} value={option}>
+                                {option}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+                        <td className="border border-black px-2 py-1 text-right">
+                          <input
+                            type="number"
+                            value={item.amount}
+                            onChange={(event) =>
+                              upsertExtraCost(item.id, {
+                                label: normalizeExtraCostLabel(item.label),
+                                amount: Number(event.target.value) || 0,
+                              })
+                            }
+                            className="w-full border border-black bg-amber-50 px-2 py-1 text-right text-[12px] focus:outline-none"
+                          />
+                        </td>
+                        <td className="border border-black px-2 py-1 text-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveExtraCost(item.id)}
+                            className="border border-black bg-white px-2 py-0.5 text-[11px] font-semibold"
+                          >
+                            ×
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="mt-3 flex justify-end">
+              <table className="w-full max-w-sm border border-black bg-cyan-50 text-[12px]" style={{ borderCollapse: "collapse" }}>
+                <tbody>
+                  <tr>
+                    <th className="w-40 border border-black bg-cyan-50 px-2 py-2 text-left">商品代金</th>
+                    <td className="border border-black bg-white px-2 py-2 text-right">¥{itemTotalLabel}</td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-cyan-50 px-2 py-2 text-left">別途費用</th>
+                    <td className="border border-black bg-white px-2 py-2 text-right">¥{extraCostTotalLabel}</td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-cyan-50 px-2 py-2 text-left">小計</th>
+                    <td className="border border-black bg-white px-2 py-2 text-right">¥{subTotalLabel}</td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送費</th>
+                    <td className="border border-black bg-white px-2 py-2 text-right">
+                      <input
+                        type="number"
+                        value={transportInsurance}
+                        onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
+                        className={`${yellowInput} w-full rounded-none text-right`}
+                      />
+                    </td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-cyan-50 px-2 py-2 text-left">合計</th>
+                    <td className="border border-black bg-white px-2 py-2 text-right text-base font-bold">
+                      ¥{totalLabel}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
             <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.4fr_1fr]">
               <div className="border border-black bg-amber-50 p-3">
                 <div className="mb-2 text-sm font-semibold">備考（入庫検品依頼書に表示）</div>
@@ -818,11 +987,6 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                 />
               </div>
               <div className="space-y-2">
-                <ExtraCostEditor
-                  value={extraCosts}
-                  onChange={setExtraCosts}
-                  note="※税込保険料は下段の専用欄で入力してください。"
-                />
                 <div className="border border-black bg-cyan-50 p-3 text-sm font-semibold leading-6">
                   <div className="grid gap-1 text-[12px]">
                     <div className="flex items-center justify-between border border-black bg-white px-2 py-1">
@@ -862,41 +1026,6 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                         ))}
                       </select>
                     </div>
-                  </div>
-                  <div className="mt-2 border border-black bg-white">
-                    <table className="w-full text-[12px]" style={{ borderCollapse: "collapse" }}>
-                      <tbody>
-                        <tr>
-                          <th className="w-32 border border-black bg-cyan-50 px-2 py-2 text-left">小計</th>
-                          <td className="border border-black px-2 py-2 text-right">¥{totalLabel}</td>
-                        </tr>
-                        <tr>
-                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">消費税（10%）</th>
-                          <td className="border border-black px-2 py-2 text-right">¥{taxAmount.toLocaleString("ja-JP")}</td>
-                        </tr>
-                        <tr>
-                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">別費用合計</th>
-                          <td className="border border-black px-2 py-2 text-right">¥{extraCostTotal.toLocaleString("ja-JP")}</td>
-                        </tr>
-                        <tr>
-                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送保険（税込）</th>
-                          <td className="border border-black px-2 py-2 text-right">
-                            <input
-                              type="number"
-                              value={transportInsurance}
-                              onChange={(e) => setTransportInsurance(Number(e.target.value) || 0)}
-                              className={`${yellowInput} w-full rounded-none text-right`}
-                            />
-                          </td>
-                        </tr>
-                        <tr>
-                          <th className="border border-black bg-cyan-50 px-2 py-2 text-left">合計金額</th>
-                          <td className="border border-black px-2 py-2 text-right text-base font-bold">
-                            ¥{grandTotal.toLocaleString("ja-JP")}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
                   </div>
                 </div>
               </div>
