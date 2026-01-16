@@ -4,6 +4,7 @@ import { fetchWithDevHeader } from "@/lib/api/fetchWithDevHeader";
 
 const onlineInquiryListItemSchema = z.object({
   id: z.string(),
+  naviId: z.number().optional(),
   listingId: z.string(),
   buyerUserId: z.string(),
   sellerUserId: z.string(),
