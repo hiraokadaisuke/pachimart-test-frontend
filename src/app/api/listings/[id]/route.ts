@@ -1,4 +1,10 @@
-import { ExhibitStatus, ExhibitType, RemovalStatus } from "@prisma/client";
+import {
+  DealingStatus,
+  ExhibitStatus,
+  ExhibitType,
+  NaviStatus,
+  RemovalStatus,
+} from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -12,6 +18,19 @@ import {
 } from "@/lib/exhibits/storageLocation";
 
 const exhibitClient = prisma.exhibit;
+const confirmedTradeStatuses = new Set<DealingStatus>([
+  DealingStatus.PAYMENT_REQUIRED,
+  DealingStatus.CONFIRM_REQUIRED,
+  DealingStatus.COMPLETED,
+]);
+
+const hasRemovalUpdate = (payload: unknown) => {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  return (
+    Object.prototype.hasOwnProperty.call(payload, "removalDate") ||
+    Object.prototype.hasOwnProperty.call(payload, "removalStatus")
+  );
+};
 
 const updateListingSchema = z
   .object({
@@ -191,6 +210,33 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
 
     if (String(exhibit.sellerUserId) !== sellerUserId) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    if (hasRemovalUpdate(body)) {
+      const navi = await prisma.navi.findFirst({
+        where: { listingId: id, status: { not: NaviStatus.DRAFT } },
+        select: { id: true, status: true },
+      });
+      const dealing = await prisma.dealing.findFirst({
+        where: {
+          status: { in: Array.from(confirmedTradeStatuses) },
+          navi: { listingId: id },
+        },
+        select: { id: true, status: true },
+      });
+
+      if (navi || dealing) {
+        console.warn("Blocked removal update for confirmed trade/listing", {
+          listingId: id,
+          sellerUserId,
+          naviStatus: navi?.status ?? null,
+          dealingStatus: dealing?.status ?? null,
+        });
+        return NextResponse.json(
+          { error: "取引確定後は撤去日の変更はできません" },
+          { status: 409 }
+        );
+      }
     }
 
     const updateData: Record<string, unknown> = {
