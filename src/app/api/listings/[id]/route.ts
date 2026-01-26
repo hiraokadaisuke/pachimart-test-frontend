@@ -213,17 +213,22 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
     }
 
     if (hasRemovalUpdate(body)) {
-      const navi = await prisma.navi.findFirst({
+      const navis = await prisma.navi.findMany({
         where: { listingId: id, status: { not: NaviStatus.DRAFT } },
         select: { id: true, status: true },
+        take: 1,
       });
-      const dealing = await prisma.dealing.findFirst({
+      const dealings = await prisma.dealing.findMany({
         where: {
           status: { in: Array.from(confirmedTradeStatuses) },
           navi: { listingId: id },
         },
         select: { id: true, status: true },
+        take: 1,
       });
+
+      const navi = navis[0];
+      const dealing = dealings[0];
 
       if (navi || dealing) {
         console.warn("Blocked removal update for confirmed trade/listing", {
