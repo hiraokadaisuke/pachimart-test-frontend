@@ -220,9 +220,9 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
       });
       const dealings = await prisma.dealing.findMany({
         where: {
-          status: { in: Array.from(confirmedTradeStatuses) },
+          status: { in: Array.from(confirmedTradeStatuses) } as any,
           navi: { listingId: id },
-        },
+        } as any,
         select: { id: true, status: true },
         take: 1,
       });
