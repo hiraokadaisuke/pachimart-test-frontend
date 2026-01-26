@@ -38,7 +38,7 @@ type DealingRow = {
   itemName: string;
   quantity: number;
   totalAmount: number;
-  scheduledShipDate: string;
+  scheduledShipDate: string | null;
   sellerUserId: string;
   buyerUserId: string;
   sellerName: string;
@@ -66,12 +66,16 @@ function formatDateTime(iso?: string) {
 }
 
 function formatShortDate(value?: string) {
-  if (!value) return "-";
+  if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
 }
+
+const MissingDateLabel = () => (
+  <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">未入力</span>
+);
 
 function buildDealingRow(dealing: TradeRecord, viewerId: string): DealingRow {
   const totals = calculateStatementTotals(dealing.items, dealing.taxRate ?? 0.1);
@@ -80,7 +84,7 @@ function buildDealingRow(dealing: TradeRecord, viewerId: string): DealingRow {
   const sellerUserId = dealing.sellerUserId ?? dealing.seller.userId ?? "seller";
   const buyerUserId = dealing.buyerUserId ?? dealing.buyer.userId ?? "buyer";
   const updatedAtLabel = formatDateTime(dealing.updatedAt ?? dealing.createdAt ?? new Date().toISOString());
-  const scheduledShipDate = formatShortDate(dealing.shipmentDate ?? dealing.contractDate ?? dealing.removalDate);
+  const scheduledShipDate = formatShortDate(dealing.shipmentDate ?? undefined);
   const isSeller = sellerUserId === viewerId;
   const kind = isSeller ? ("sell" as const) : ("buy" as const);
   const todo = getTodoPresentation(dealing, kind === "buy" ? "buyer" : "seller");
@@ -273,8 +277,9 @@ export function InProgressTabContent() {
     },
     {
       key: "scheduledShipDate",
-      label: "発送予定日",
+      label: "機械発送日",
       width: "140px",
+      render: (row: DealingRow) => row.scheduledShipDate ?? <MissingDateLabel />,
     },
     {
       key: "document",

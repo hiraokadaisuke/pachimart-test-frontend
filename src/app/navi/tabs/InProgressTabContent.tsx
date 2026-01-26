@@ -48,7 +48,7 @@ type DealingRow = {
   itemName: string;
   quantity: number;
   totalAmount: number;
-  scheduledShipDate: string;
+  scheduledShipDate: string | null;
   sellerUserId: string;
   buyerUserId: string;
   sellerName: string;
@@ -86,12 +86,16 @@ function formatCurrency(amount: number) {
 }
 
 function formatShortDate(value?: string) {
-  if (!value) return "-";
+  if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   const pad = (n: number) => n.toString().padStart(2, "0");
   return `${pad(date.getMonth() + 1)}/${pad(date.getDate())}`;
 }
+
+const MissingDateLabel = () => (
+  <span className="rounded bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-slate-500">未入力</span>
+);
 
 const toNumericNaviId = (value: string | number | undefined): number | null => {
   if (typeof value === "number" && Number.isInteger(value)) return value;
@@ -155,7 +159,7 @@ function buildDealingRow(dealing: TradeRecord, viewerId: string): DealingRow {
     itemName: primaryItem?.itemName ?? "商品",
     quantity: totalQty,
     totalAmount: totals.total,
-    scheduledShipDate: formatShortDate(dealing.shipmentDate ?? dealing.contractDate ?? dealing.removalDate),
+    scheduledShipDate: formatShortDate(dealing.shipmentDate ?? undefined),
     kind,
     sellerUserId: sellerId,
     buyerUserId: buyerId,
@@ -505,8 +509,9 @@ export function InProgressTabContent() {
     },
     {
       key: "scheduledShipDate",
-      label: "発送予定日",
+      label: "機械発送日",
       width: "140px",
+      render: (row: DealingRow) => row.scheduledShipDate ?? <MissingDateLabel />,
     },
   ];
 
@@ -623,9 +628,9 @@ export function InProgressTabContent() {
     },
     {
       key: "scheduledShipDate",
-      label: "発送予定日",
+      label: "機械発送日",
       width: "140px",
-      render: () => "-",
+      render: () => <MissingDateLabel />,
     },
   ];
 

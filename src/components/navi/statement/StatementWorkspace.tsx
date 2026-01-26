@@ -464,7 +464,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
     .filter((item) => !item.category || item.category === "本体")
     .reduce((sum, item) => sum + amountOf(item), 0);
 
-  const formatDateLabel = (value?: string) => value || "-";
+  const formatDateLabel = (value?: string) => value || "未入力";
 
   const memoText = primaryItem?.note ?? "-";
   const notesText = dealing.remarks ?? "-";
@@ -476,17 +476,17 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       ? [formatDateLabel(dealing.shipmentDate), dealing.shippingMethod ?? dealing.receiveMethod]
           .filter(Boolean)
           .join(" / ")
-      : "-";
+      : "未入力";
 
   const documentShipmentLabel =
     dealing.documentSentDate || dealing.documentReceivedDate
       ? [
           formatDateLabel(dealing.documentSentDate),
-          dealing.documentReceivedDate && `到着予定 ${dealing.documentReceivedDate}`,
+          dealing.documentReceivedDate && `到着予定 ${formatDateLabel(dealing.documentReceivedDate)}`,
         ]
           .filter(Boolean)
           .join(" / ")
-      : "-";
+      : "未入力";
 
   return (
     <div className="space-y-6">
