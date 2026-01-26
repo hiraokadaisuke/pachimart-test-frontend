@@ -9,84 +9,60 @@ const HERO_BADGES = [
 ];
 
 const RELIEF_CARDS = [
-  {
-    title: "電話中心の運用を、そのまま続けられます",
-    body: "これまで通り電話でのやり取りを主軸に、必要な場面だけオンラインを補助します。",
-  },
-  {
-    title: "無理なオンライン化は不要です",
-    body: "既存の取引フローを崩さず、変えたくない部分はそのまま維持できます。",
-  },
-  {
-    title: "社内共有も自然に",
-    body: "担当者が変わっても履歴が残るので、引き継ぎや確認がスムーズです。",
-  },
+  "電話での問い合わせ・条件調整は今まで通り",
+  "オンライン取引を強制しません",
+  "今お使いのサービスと併用できます",
 ];
 
 const FAQ_ITEMS = [
   "担当者不在で折り返し待ちになる",
   "急ぎの時に連絡がつかない",
   "やり取りの経緯が後から追えない",
-  "電話の内容が社内で共有しづらい",
-  "探している情報が最新か分からない",
 ];
 
-const NAVI_CARDS = [
-  {
-    title: "取引の進捗管理",
-    body: "いま何がどこまで進んでいるか、社内で同じ景色を見られます。",
-  },
-  {
-    title: "履歴の整理",
-    body: "過去のやり取りをまとめて残せるので、探す手間が減ります。",
-  },
-  {
-    title: "社内共有",
-    body: "担当者の不在時も、履歴を見ればすぐに状況が把握できます。",
-  },
-];
+const NAVI_CARDS = ["取引の進捗管理", "履歴管理", "社内共有"];
 
 const OPPORTUNITY_CARDS = [
   {
-    title: "問い合わせの見落としを防ぐ",
-    body: "問い合わせが届いた瞬間に把握できるため、機会を逃しません。",
+    title: "オンライン問い合わせ",
+    body: "営業時間外でも受付可能",
   },
   {
-    title: "即決のタイミングに強くなる",
-    body: "動きの早い案件でも、情報が整っているので対応が早くなります。",
+    title: "即決売買",
+    body: "条件が合えば即座に成約",
   },
 ];
 
 const NOTIFY_ITEMS = [
   {
-    title: "新着情報",
-    body: "出品が追加されました",
+    title: "新着出品",
+    body: "CRO○○○ 5台 / 関東エリア",
+    time: "1分前",
   },
   {
-    title: "成約速報",
-    body: "成約情報が更新されました",
+    title: "成約情報",
+    body: "パチスロ○○○ ¥XX,XXX / 10台",
+    time: "5分前",
   },
   {
-    title: "相場通知",
-    body: "平均価格が動き始めています",
+    title: "相場速報",
+    body: "CRO○○○ 平均価格が上昇中",
+    time: "30分前",
   },
 ];
 
 const COST_CARDS = [
   {
     title: "月額利用料",
-    highlight: "無料",
-    body: "まずは費用を気にせず、安心して試せます。",
+    value: "無料",
   },
   {
     title: "初期費用",
-    highlight: "なし",
-    body: "導入時の負担を抑えて、すぐに始められます。",
+    value: "なし",
   },
   {
     title: "契約縛り",
-    highlight: "なし",
-    body: "必要な期間だけ、無理なく使えます。",
+    value: "なし",
   },
 ];
 
@@ -94,17 +70,14 @@ const FLOW_STEPS = [
   {
     step: "1",
     title: "無料登録",
-    body: "基本情報を入力するだけで完了します。",
   },
   {
     step: "2",
-    title: "通知設定",
-    body: "欲しい情報だけを選んで受け取れます。",
+    title: "基本情報・通知設定",
   },
   {
     step: "3",
     title: "いつものやり方で取引開始",
-    body: "電話中心のまま、必要な場面だけオンライン。",
   },
 ];
 
@@ -130,27 +103,31 @@ export default function LpPage() {
 
   return (
     <main className="bg-white text-slate-900">
-      <section className="bg-white">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-16 px-6 py-32 lg:flex-row lg:items-center lg:gap-24 lg:py-40">
-          <div className="space-y-8" data-reveal style={{ transitionDelay: "100ms" }}>
-            <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-400">
+      <section className="relative overflow-hidden bg-white">
+        <div className="absolute -top-24 right-10 h-80 w-80 rounded-full bg-slate-100/80 blur-3xl" aria-hidden="true" />
+        <div className="absolute -bottom-32 left-10 h-96 w-96 rounded-full bg-slate-100/70 blur-3xl" aria-hidden="true" />
+        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-20 px-6 py-32 lg:grid-cols-[minmax(0,520px)_1fr] lg:py-40">
+          <div className="space-y-8" data-reveal>
+            <p className="text-sm font-medium tracking-[0.2em] text-slate-400">
               安心感のある取引へ
             </p>
             <h1 className="text-balance text-5xl font-semibold leading-tight text-slate-900 sm:text-6xl">
-              今お使いの取引方法は、そのままで。
+              今お使いの取引方法は、
+              <br />
+              そのままで。
             </h1>
-            <p className="max-w-2xl text-base leading-relaxed text-slate-600 sm:text-lg">
+            <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
               電話での問い合わせを中心に、
               <br />
-              必要なところだけオンラインも使える。
+              必要なところだけオンラインも使える
               <br />
-              いつもの取引に、静かに寄り添うプラットフォームです。
+              中古パチンコ・スロット売買プラットフォーム。
             </p>
             <div className="flex flex-wrap gap-4">
-              <button className="rounded-xl bg-slate-900 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:bg-slate-800">
+              <button className="rounded-full bg-slate-900 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:bg-slate-800">
                 無料で登録する
               </button>
-              <button className="rounded-xl border border-slate-300 px-8 py-4 text-base font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400">
+              <button className="rounded-full border border-slate-300 px-8 py-4 text-base font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400">
                 出品一覧を見る
               </button>
             </div>
@@ -165,32 +142,26 @@ export default function LpPage() {
               ))}
             </div>
           </div>
-          <div className="hidden h-72 w-full rounded-3xl border border-dashed border-slate-200 bg-slate-50 lg:block" aria-hidden="true" />
+          <div className="hidden lg:block" aria-hidden="true" />
         </div>
       </section>
 
       <section className="bg-slate-50">
-        <div className="mx-auto w-full max-w-6xl space-y-12 px-6 py-24 lg:py-32">
-          <div className="max-w-3xl" data-reveal style={{ transitionDelay: "120ms" }}>
+        <div className="mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-32">
+          <div className="max-w-3xl" data-reveal>
             <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
               無理に運用を変える必要はありません
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-              既存の取引フローをそのまま活かしながら、
-              必要なところだけオンラインで補助します。
-            </p>
           </div>
-          <div className="grid gap-8 lg:grid-cols-3" data-reveal style={{ transitionDelay: "180ms" }}>
-            {RELIEF_CARDS.map((card) => (
+          <div className="grid gap-8 lg:grid-cols-3" data-reveal>
+            {RELIEF_CARDS.map((text, index) => (
               <div
-                key={card.title}
-                className="rounded-xl bg-white p-8 shadow-sm"
+                key={text}
+                className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
               >
-                <h3 className="text-xl font-semibold text-slate-900">
-                  {card.title}
-                </h3>
-                <p className="mt-4 text-base leading-relaxed text-slate-600">
-                  {card.body}
+                <p className="text-sm font-semibold text-slate-400">{`0${index + 1}`}</p>
+                <p className="mt-4 text-lg font-semibold leading-relaxed text-slate-900">
+                  {text}
                 </p>
               </div>
             ))}
@@ -199,13 +170,13 @@ export default function LpPage() {
       </section>
 
       <section className="bg-white">
-        <div className="mx-auto w-full max-w-5xl space-y-12 px-6 py-24 lg:py-32">
-          <div className="max-w-3xl" data-reveal style={{ transitionDelay: "120ms" }}>
+        <div className="mx-auto w-full max-w-6xl space-y-12 px-6 py-24 lg:py-32">
+          <div className="max-w-3xl" data-reveal>
             <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
               こんな場面、ありませんか？
             </h2>
           </div>
-          <div className="divide-y divide-slate-200 border-y border-slate-200" data-reveal style={{ transitionDelay: "180ms" }}>
+          <div className="divide-y divide-slate-200 border-y border-slate-200" data-reveal>
             {FAQ_ITEMS.map((item) => (
               <div key={item} className="py-6 sm:py-8">
                 <p className="text-base leading-relaxed text-slate-700 sm:text-lg">
@@ -219,37 +190,33 @@ export default function LpPage() {
 
       <section className="bg-slate-50">
         <div className="mx-auto flex w-full max-w-4xl items-center justify-center px-6 py-24 lg:py-32">
-          <p
-            className="text-center text-3xl font-semibold leading-relaxed text-slate-900 sm:text-4xl"
-            data-reveal
-            style={{ transitionDelay: "140ms" }}
-          >
-            今まで通りの取引に、
-            <br />
-            そっと寄り添う立ち位置です。
-          </p>
+          <div className="text-center" data-reveal>
+            <h2 className="text-3xl font-semibold leading-relaxed text-slate-900 sm:text-4xl">
+              今まで通りの取引に、使えます
+            </h2>
+            <p className="mt-6 text-base leading-relaxed text-slate-600 sm:text-lg">
+              電話でのやり取りを中心に、
+              <br />
+              必要なところだけオンラインも使えます。
+            </p>
+          </div>
         </div>
       </section>
 
       <section className="bg-white">
-        <div className="mx-auto w-full max-w-6xl space-y-12 px-6 py-24 lg:py-32">
-          <div className="max-w-3xl" data-reveal style={{ transitionDelay: "120ms" }}>
+        <div className="mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-32">
+          <div className="max-w-3xl" data-reveal>
             <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
               取引ナビ機能（標準搭載）
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-              取引を大げさに変えるのではなく、整理と共有を静かに支えます。
-            </p>
           </div>
-          <div className="grid gap-8 lg:grid-cols-3" data-reveal style={{ transitionDelay: "180ms" }}>
+          <div className="grid gap-8 lg:grid-cols-3" data-reveal>
             {NAVI_CARDS.map((card) => (
-              <div key={card.title} className="rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-                <h3 className="text-xl font-semibold text-slate-900">
-                  {card.title}
-                </h3>
-                <p className="mt-4 text-base leading-relaxed text-slate-600">
-                  {card.body}
-                </p>
+              <div
+                key={card}
+                className="rounded-2xl border border-slate-200 bg-white p-8 text-lg font-semibold text-slate-900 shadow-sm"
+              >
+                {card}
               </div>
             ))}
           </div>
@@ -257,19 +224,19 @@ export default function LpPage() {
       </section>
 
       <section className="bg-slate-50">
-        <div className="mx-auto w-full max-w-6xl space-y-12 px-6 py-24 lg:py-32">
-          <div className="max-w-3xl" data-reveal style={{ transitionDelay: "120ms" }}>
+        <div className="mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-32">
+          <div className="max-w-3xl" data-reveal>
             <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
               取引のきっかけを、逃さないために
             </h2>
           </div>
-          <div className="grid gap-10 lg:grid-cols-2" data-reveal style={{ transitionDelay: "180ms" }}>
+          <div className="grid gap-10 lg:grid-cols-2" data-reveal>
             {OPPORTUNITY_CARDS.map((card) => (
-              <div key={card.title} className="rounded-xl bg-white p-10 shadow-sm">
-                <h3 className="text-xl font-semibold text-slate-900">
+              <div key={card.title} className="rounded-2xl bg-white p-10 shadow-sm">
+                <h3 className="text-2xl font-semibold text-slate-900">
                   {card.title}
                 </h3>
-                <p className="mt-4 text-base leading-relaxed text-slate-600">
+                <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
                   {card.body}
                 </p>
               </div>
@@ -279,28 +246,38 @@ export default function LpPage() {
       </section>
 
       <section className="bg-white">
-        <div className="mx-auto w-full max-w-6xl space-y-12 px-6 py-24 lg:py-32">
-          <div className="max-w-3xl" data-reveal style={{ transitionDelay: "120ms" }}>
+        <div className="mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-32">
+          <div className="max-w-3xl" data-reveal>
             <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
               探さなくても、情報が届きます
             </h2>
-            <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-              必要な情報が自動で届くので、画面を開きに行く手間がありません。
-            </p>
           </div>
           <div
             className="rounded-3xl border border-slate-200 bg-slate-50 p-10 shadow-sm lg:p-14"
             data-reveal
-            style={{ transitionDelay: "180ms" }}
           >
             <div className="mx-auto flex max-w-3xl flex-col gap-6">
               {NOTIFY_ITEMS.map((item) => (
                 <div
-                  key={item.body}
-                  className="flex items-center gap-4 rounded-xl bg-white p-6 shadow-md"
+                  key={item.title}
+                  className="flex items-center gap-4 rounded-2xl bg-white p-6 shadow-lg"
                 >
-                  <div className="h-12 w-12 rounded-lg bg-slate-100" aria-hidden="true" />
-                  <div>
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-100" aria-hidden="true">
+                    <svg
+                      viewBox="0 0 24 24"
+                      className="h-5 w-5 text-slate-500"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2a2 2 0 0 1-.6 1.4L4 17h5m6 0a3 3 0 0 1-6 0"
+                      />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
                     <p className="text-sm font-semibold text-slate-700">
                       {item.title}
                     </p>
@@ -308,6 +285,9 @@ export default function LpPage() {
                       {item.body}
                     </p>
                   </div>
+                  <span className="text-sm font-medium text-slate-400">
+                    {item.time}
+                  </span>
                 </div>
               ))}
             </div>
@@ -316,23 +296,20 @@ export default function LpPage() {
       </section>
 
       <section className="bg-slate-50">
-        <div className="mx-auto w-full max-w-6xl space-y-12 px-6 py-24 lg:py-32">
-          <div className="max-w-3xl" data-reveal style={{ transitionDelay: "120ms" }}>
+        <div className="mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-32">
+          <div className="max-w-3xl" data-reveal>
             <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
               まずは、費用をかけずに使えます
             </h2>
           </div>
-          <div className="grid gap-8 lg:grid-cols-3" data-reveal style={{ transitionDelay: "180ms" }}>
+          <div className="grid gap-8 lg:grid-cols-3" data-reveal>
             {COST_CARDS.map((card) => (
-              <div key={card.title} className="rounded-xl bg-white p-8 shadow-sm">
-                <p className="text-sm font-semibold uppercase tracking-widest text-slate-400">
+              <div key={card.title} className="rounded-2xl bg-white p-10 shadow-sm">
+                <p className="text-base font-semibold text-slate-500">
                   {card.title}
                 </p>
-                <p className="mt-4 text-5xl font-semibold text-slate-900">
-                  {card.highlight}
-                </p>
-                <p className="mt-4 text-base leading-relaxed text-slate-600">
-                  {card.body}
+                <p className="mt-6 text-5xl font-semibold text-slate-900">
+                  {card.value}
                 </p>
               </div>
             ))}
@@ -341,33 +318,28 @@ export default function LpPage() {
       </section>
 
       <section className="bg-white">
-        <div className="mx-auto w-full max-w-6xl space-y-12 px-6 py-24 lg:py-32">
-          <div className="max-w-3xl" data-reveal style={{ transitionDelay: "120ms" }}>
+        <div className="mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-32">
+          <div className="max-w-3xl" data-reveal>
             <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
               導入フロー
             </h2>
           </div>
-          <div className="flex flex-col items-stretch gap-8 lg:flex-row lg:items-center" data-reveal style={{ transitionDelay: "180ms" }}>
+          <div
+            className="flex flex-col items-center justify-center gap-10 text-center lg:flex-row"
+            data-reveal
+          >
             {FLOW_STEPS.map((step, index) => (
-              <div key={step.step} className="flex flex-1 flex-col items-center text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full border border-slate-300 text-2xl font-semibold text-slate-700">
-                  {step.step}
+              <div key={step.step} className="flex items-center gap-6">
+                <div className="flex flex-col items-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-slate-300 text-2xl font-semibold text-slate-700">
+                    {step.step}
+                  </div>
+                  <p className="mt-4 text-base font-semibold text-slate-900 sm:text-lg">
+                    {step.title}
+                  </p>
                 </div>
-                <h3 className="mt-4 text-xl font-semibold text-slate-900">
-                  {step.title}
-                </h3>
-                <p className="mt-3 text-base leading-relaxed text-slate-600">
-                  {step.body}
-                </p>
                 {index < FLOW_STEPS.length - 1 && (
-                  <div className="mt-6 flex h-10 items-center text-2xl text-slate-300 lg:hidden">
-                    ↓
-                  </div>
-                )}
-                {index < FLOW_STEPS.length - 1 && (
-                  <div className="hidden h-10 items-center text-3xl text-slate-300 lg:flex">
-                    →
-                  </div>
+                  <span className="hidden text-3xl text-slate-300 lg:inline">→</span>
                 )}
               </div>
             ))}
@@ -376,29 +348,26 @@ export default function LpPage() {
       </section>
 
       <section className="bg-slate-900">
-        <div className="mx-auto w-full max-w-6xl px-6 py-28 lg:py-36">
+        <div className="mx-auto w-full max-w-7xl px-6 py-28 lg:py-36">
           <div
-            className="rounded-3xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-800 p-12 text-white shadow-2xl"
+            className="rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-800 p-12 text-white shadow-2xl"
             data-reveal
-            style={{ transitionDelay: "140ms" }}
           >
-            <div className="max-w-3xl space-y-6">
+            <div className="max-w-3xl space-y-8">
               <h2 className="text-4xl font-semibold leading-tight sm:text-5xl">
-                いつもの取引のまま、
-                <br />
-                もっと安心できる環境へ。
+                今すぐ始められます
               </h2>
-              <p className="text-base leading-relaxed text-slate-200 sm:text-lg">
-                費用も運用負担も増やさず、
-                今の取引に必要な情報だけを丁寧に届けます。
-              </p>
               <div className="flex flex-wrap gap-4">
-                <button className="rounded-xl bg-white px-8 py-4 text-base font-semibold text-slate-900 shadow-lg shadow-slate-900/30 transition hover:-translate-y-0.5">
+                <button className="rounded-full bg-white px-8 py-4 text-base font-semibold text-slate-900 shadow-lg shadow-slate-900/30 transition hover:-translate-y-0.5">
                   無料で登録する
                 </button>
-                <button className="rounded-xl border border-slate-500 px-8 py-4 text-base font-semibold text-white transition hover:-translate-y-0.5 hover:border-white">
-                  まずは相談する
+                <button className="rounded-full border border-white/50 px-8 py-4 text-base font-semibold text-white transition hover:-translate-y-0.5 hover:border-white">
+                  出品一覧を見る
                 </button>
+              </div>
+              <div className="pt-8 text-sm text-slate-400">
+                <p>パチマート</p>
+                <p>© 2026 All rights reserved.</p>
               </div>
             </div>
           </div>
@@ -409,7 +378,7 @@ export default function LpPage() {
         [data-reveal] {
           opacity: 0;
           transform: translateY(16px);
-          transition: opacity 600ms ease, transform 600ms ease;
+          transition: opacity 600ms ease 120ms, transform 600ms ease 120ms;
         }
 
         [data-reveal].is-visible {
