@@ -61,7 +61,7 @@ const mapTransactionToTradeConditions = (
   shippingFee: conditions.freightCost,
   handlingFee: conditions.handlingFee,
   taxRate: conditions.taxRate,
-  removalDate: conditions.removalDate,
+  removalDate: prev.removalDate ?? conditions.removalDate ?? null,
   machineShipmentDate: conditions.machineShipmentDate,
   machineShipmentType: conditions.machineShipmentType,
   documentShipmentDate: conditions.documentShipmentDate,
@@ -325,11 +325,16 @@ function StandardNaviRequestEditor({
   const [showTermPresets, setShowTermPresets] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [submitAttempted, setSubmitAttempted] = useState(false);
-  const [isRemovalCompleted, setIsRemovalCompleted] = useState(false);
   const formattedNumber = formatCurrency;
   const isProductLinked = Boolean(draft?.productId);
   const manualItem = draft?.items?.[0];
   const [appliedPickExhibitId, setAppliedPickExhibitId] = useState<string | null>(null);
+  const isRemovalCompleted = useMemo(() => {
+    const status = linkedExhibit?.removalStatus;
+    if (!status) return false;
+    if (status === "撤去済") return true;
+    return status.toLowerCase() === "removed";
+  }, [linkedExhibit?.removalStatus]);
   const formatDateForInput = useCallback((value?: string | null) => {
     if (!value) return "";
     const trimmed = String(value).trim();
@@ -346,22 +351,6 @@ function StandardNaviRequestEditor({
     }
     return trimmed;
   }, []);
-
-  const formatDateForStorage = useCallback((value: string) => {
-    if (!value) return "";
-    return value.replace(/-/g, "/");
-  }, []);
-
-  const handleRemovalCompletedChange = useCallback(
-    (checked: boolean) => {
-      setIsRemovalCompleted(checked);
-      if (checked && !editedConditions.removalDate) {
-        const today = new Date().toISOString().slice(0, 10);
-        handleTextConditionChange("removalDate", formatDateForStorage(today));
-      }
-    },
-    [editedConditions.removalDate, formatDateForStorage]
-  );
 
   useEffect(() => {
     if (!exhibitSourceId) {
@@ -457,6 +446,7 @@ function StandardNaviRequestEditor({
 
     const shouldAttachProduct = hasProductPrefill;
     const resolvedProductId = safeSearchParams.get("productId") ?? linkedExhibit?.id ?? null;
+    const initialRemovalDate = linkedExhibit?.removalDate ? linkedExhibit.removalDate.slice(0, 10) : "";
     const initialDraft = createEmptyNaviDraft({
       id: transactionId,
       ownerUserId: currentUser.id,
@@ -489,6 +479,7 @@ function StandardNaviRequestEditor({
           shouldAttachProduct && (safeSearchParams.get("location") ?? linkedExhibit?.storageLocation)
             ? safeSearchParams.get("location") ?? linkedExhibit?.storageLocation ?? undefined
             : undefined,
+        removalDate: shouldAttachProduct ? initialRemovalDate : "",
       },
     });
 
@@ -899,7 +890,7 @@ function StandardNaviRequestEditor({
       linkedExhibit.unitPriceExclTax === null || linkedExhibit.unitPriceExclTax === undefined
         ? editedConditions.price
         : linkedExhibit.unitPriceExclTax;
-    const nextRemovalDate = linkedExhibit.removalDate ? linkedExhibit.removalDate.slice(0, 10) : editedConditions.removalDate;
+    const nextRemovalDate = linkedExhibit.removalDate ? linkedExhibit.removalDate.slice(0, 10) : "";
 
     const matchedMaker = makers.find((maker) => maker.name === (linkedExhibit.maker ?? manualItemForm.makerName));
     const makerId = matchedMaker?.id ?? manualItemForm.makerId;
@@ -959,7 +950,7 @@ function StandardNaviRequestEditor({
           quantity: nextQuantity,
           unitPrice: typeof nextUnitPrice === "number" ? nextUnitPrice : prev.conditions.unitPrice,
           location: linkedExhibit.storageLocation ?? prev.conditions.location,
-          removalDate: nextRemovalDate ?? prev.conditions.removalDate,
+          removalDate: nextRemovalDate || "",
         },
       };
     });
@@ -975,7 +966,6 @@ function StandardNaviRequestEditor({
     appliedPickExhibitId,
     draft,
     editedConditions.price,
-    editedConditions.removalDate,
     linkedExhibit,
     manualItemForm.bodyType,
     manualItemForm.frameColor,
@@ -1323,15 +1313,14 @@ function StandardNaviRequestEditor({
                         className="w-full max-w-xs rounded border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100"
                         placeholder="yyyy/mm/dd"
                         value={formatDateForInput(editedConditions.removalDate)}
-                        onChange={(e) => handleTextConditionChange("removalDate", formatDateForStorage(e.target.value))}
-                        disabled={isRemovalCompleted}
+                        disabled
                       />
                       <label className="flex items-center gap-2 text-sm text-neutral-900">
                         <input
                           type="checkbox"
                           className="h-4 w-4"
                           checked={isRemovalCompleted}
-                          onChange={(e) => handleRemovalCompletedChange(e.target.checked)}
+                          disabled
                         />
                         撤去済
                       </label>
