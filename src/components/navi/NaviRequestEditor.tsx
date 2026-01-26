@@ -643,8 +643,10 @@ function StandardNaviRequestEditor({
     if (hasErrors || !draft) return;
 
     const now = new Date().toISOString();
+    const syncedConditions = mapTransactionToTradeConditions(editedConditions, draft.conditions);
     const updatedDraft: NaviDraft = {
       ...draft,
+      conditions: syncedConditions,
       status: "sent_to_buyer",
       buyerPending: false,
       ownerUserId: currentUser.id,
