@@ -169,6 +169,9 @@ function buildShippingInfo(payload: TradePayload): ShippingInfo {
   };
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  !!value && typeof value === "object" && !Array.isArray(value);
+
 const DB_STATUS_TO_TRADE_STATUS: Record<TradeDto["status"], TradeRecord["status"]> = {
   APPROVAL_REQUIRED: "APPROVAL_REQUIRED",
   PAYMENT_REQUIRED: "PAYMENT_REQUIRED",
@@ -178,8 +181,18 @@ const DB_STATUS_TO_TRADE_STATUS: Record<TradeDto["status"], TradeRecord["status"
 };
 
 export function transformTrade(dto: TradeDto): TradeRecord {
-  const payload = (dto.payload ?? dto.navi?.payload ?? {}) as TradePayload;
-  const conditions: TradeConditions = payload.conditions ?? {};
+  const naviPayload = (dto.navi?.payload ?? {}) as TradePayload;
+  const tradePayload = (dto.payload ?? {}) as TradePayload;
+  const mergedConditions = {
+    ...(isRecord(naviPayload.conditions) ? (naviPayload.conditions as Record<string, unknown>) : {}),
+    ...(isRecord(tradePayload.conditions) ? (tradePayload.conditions as Record<string, unknown>) : {}),
+  } as TradeConditions;
+  const payload: TradePayload = {
+    ...naviPayload,
+    ...tradePayload,
+    conditions: mergedConditions,
+  };
+  const conditions: TradeConditions = mergedConditions ?? {};
   const listingSnapshot: ListingSnapshot | null = resolveListingSnapshot(
     dto.navi?.listingSnapshot ?? (payload as Record<string, unknown>).listingSnapshot ?? null
   );
