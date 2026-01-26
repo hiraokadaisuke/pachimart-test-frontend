@@ -642,6 +642,11 @@ function StandardNaviRequestEditor({
 
     if (hasErrors || !draft) return;
 
+    if (!editedConditions.machineShipmentDate?.trim()) {
+      const confirmed = window.confirm("機械発送日が未入力です。このまま送信しますか？");
+      if (!confirmed) return;
+    }
+
     const now = new Date().toISOString();
     const syncedConditions = mapTransactionToTradeConditions(editedConditions, draft.conditions);
     const updatedDraft: NaviDraft = {

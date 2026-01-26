@@ -21,7 +21,7 @@ type StatementDocumentProps = {
 };
 
 const formatDateLabel = (value?: string) => {
-  if (!value) return "-";
+  if (!value) return "未入力";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
   return parsed.toLocaleDateString("ja-JP", { year: "numeric", month: "2-digit", day: "2-digit" });
@@ -112,7 +112,7 @@ export function StatementDocument({
             note={diffNotes.unitPriceNote}
           />
           <InfoRow label="支払条件" value={paymentTerms} />
-          <InfoRow label="発送予定日" value={formatDateLabel(dealing.shipmentDate)} />
+          <InfoRow label="機械発送日" value={formatDateLabel(dealing.shipmentDate)} />
           <InfoRow
             label="受渡方法"
             value={dealing.receiveMethod ?? dealing.shippingMethod ?? "-"}
@@ -223,7 +223,7 @@ export function StatementDocument({
         <div className="rounded border border-slate-400">
           <div className="bg-[#0f1f3c] px-3 py-2 text-[12px] font-semibold text-white">スケジュール / 発送</div>
           <div className="space-y-2 p-3 text-[12px] text-neutral-900">
-            <InfoRow label="発送予定日" value={formatDateLabel(dealing.shipmentDate)} />
+            <InfoRow label="機械発送日" value={formatDateLabel(dealing.shipmentDate)} />
             <InfoRow label="受渡方法" value={dealing.receiveMethod ?? "-"} />
             <InfoRow label="発送手段" value={dealing.shippingMethod ?? "-"} />
             <InfoRow label="書類発送日" value={formatDateLabel(dealing.documentSentDate)} />
