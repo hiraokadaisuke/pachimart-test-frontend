@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect } from "react";
+import Image from "next/image";
+import { useEffect, useState } from "react";
 
-const HERO_BADGES = [
-  "月額利用料：無料（サービス拡大中）",
-  "安心決済費用：無料",
-  "社内アカウント：20名まで無料",
-];
+const HERO_IMAGE_SRC = "/lp/hero.jpg";
+const HERO_VIDEO_SRC = "/lp/hero.mp4";
 
 const RELIEF_CARDS = [
   "電話での問い合わせ・条件調整は今まで通り",
@@ -82,6 +80,13 @@ const FLOW_STEPS = [
 ];
 
 export default function LpPage() {
+  const [videoStatus, setVideoStatus] = useState<"loading" | "available" | "unavailable">(
+    "loading"
+  );
+  const [imageStatus, setImageStatus] = useState<"loading" | "available" | "unavailable">(
+    "loading"
+  );
+
   useEffect(() => {
     const targets = document.querySelectorAll<HTMLElement>("[data-reveal]");
     const observer = new IntersectionObserver(
@@ -101,22 +106,70 @@ export default function LpPage() {
     return () => observer.disconnect();
   }, []);
 
+  useEffect(() => {
+    const video = document.createElement("video");
+    video.src = HERO_VIDEO_SRC;
+    const handleVideoReady = () => setVideoStatus("available");
+    const handleVideoError = () => setVideoStatus("unavailable");
+    video.addEventListener("canplaythrough", handleVideoReady);
+    video.addEventListener("error", handleVideoError);
+    video.load();
+
+    const img = new window.Image();
+    img.src = HERO_IMAGE_SRC;
+    img.onload = () => setImageStatus("available");
+    img.onerror = () => setImageStatus("unavailable");
+
+    return () => {
+      video.removeEventListener("canplaythrough", handleVideoReady);
+      video.removeEventListener("error", handleVideoError);
+    };
+  }, []);
+
+  const showVideo = videoStatus === "available";
+  const showImage = !showVideo && imageStatus === "available";
+  const showFallback = !showVideo && !showImage;
+
   return (
     <main className="bg-white text-slate-900">
-      <section className="relative overflow-hidden bg-white">
-        <div className="absolute -top-24 right-10 h-80 w-80 rounded-full bg-slate-100/80 blur-3xl" aria-hidden="true" />
-        <div className="absolute -bottom-32 left-10 h-96 w-96 rounded-full bg-slate-100/70 blur-3xl" aria-hidden="true" />
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 gap-20 px-6 py-32 lg:grid-cols-[minmax(0,520px)_1fr] lg:py-40">
-          <div className="space-y-8" data-reveal>
-            <p className="text-sm font-medium tracking-[0.2em] text-slate-400">
-              安心感のある取引へ
-            </p>
-            <h1 className="text-balance text-5xl font-semibold leading-tight text-slate-900 sm:text-6xl">
+      <section className="relative min-h-[80vh] overflow-hidden bg-slate-950 text-white lg:min-h-[85vh]">
+        <div className="absolute inset-0">
+          {showVideo && (
+            <video
+              className="h-full w-full object-cover"
+              autoPlay
+              muted
+              loop
+              playsInline
+            >
+              <source src={HERO_VIDEO_SRC} type="video/mp4" />
+            </video>
+          )}
+          {showImage && (
+            <Image
+              src={HERO_IMAGE_SRC}
+              alt=""
+              fill
+              priority
+              className="object-cover"
+            />
+          )}
+          {showFallback && (
+            <div
+              className="h-full w-full bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900"
+              aria-hidden="true"
+            />
+          )}
+          <div className="absolute inset-0 bg-black/35" aria-hidden="true" />
+        </div>
+        <div className="relative mx-auto flex w-full max-w-7xl items-center px-6 py-24 lg:py-32">
+          <div className="max-w-2xl space-y-8" data-reveal>
+            <h1 className="text-balance text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
               今お使いの取引方法は、
               <br />
               そのままで。
             </h1>
-            <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
+            <p className="text-base leading-relaxed text-slate-100 sm:text-lg">
               電話での問い合わせを中心に、
               <br />
               必要なところだけオンラインも使える
@@ -124,25 +177,20 @@ export default function LpPage() {
               中古パチンコ・スロット売買プラットフォーム。
             </p>
             <div className="flex flex-wrap gap-4">
-              <button className="rounded-full bg-slate-900 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-slate-200 transition hover:-translate-y-0.5 hover:bg-slate-800">
+              <a
+                href="/signup"
+                className="rounded-full bg-slate-900 px-8 py-4 text-base font-semibold text-white shadow-lg shadow-black/30 transition hover:-translate-y-0.5 hover:bg-slate-800"
+              >
                 無料で登録する
-              </button>
-              <button className="rounded-full border border-slate-300 px-8 py-4 text-base font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-400">
+              </a>
+              <a
+                href="/listings"
+                className="rounded-full border border-white/70 px-8 py-4 text-base font-semibold text-white transition hover:-translate-y-0.5 hover:border-white"
+              >
                 出品一覧を見る
-              </button>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              {HERO_BADGES.map((item) => (
-                <span
-                  key={item}
-                  className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600"
-                >
-                  {item}
-                </span>
-              ))}
+              </a>
             </div>
           </div>
-          <div className="hidden lg:block" aria-hidden="true" />
         </div>
       </section>
 
