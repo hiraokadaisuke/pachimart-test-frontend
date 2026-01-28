@@ -23,6 +23,7 @@ export type FormState = {
   supplierAddress: string;
   tel: string;
   fax: string;
+  invoiceNumber: string;
   paymentDate: string;
   arrivalDate: string;
   memo: string;

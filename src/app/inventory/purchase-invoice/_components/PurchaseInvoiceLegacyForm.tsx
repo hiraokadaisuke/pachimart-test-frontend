@@ -8,7 +8,12 @@ import {
   markInventoriesWithInvoice,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
-import { loadMasterData, type CompanyProfile, type Warehouse } from "@/lib/demo-data/demoMasterData";
+import {
+  DEFAULT_MASTER_DATA,
+  loadMasterData,
+  type CompanyProfile,
+  type MasterData,
+} from "@/lib/demo-data/demoMasterData";
 import { addPurchaseInvoice, generateInvoiceId } from "@/lib/demo-data/purchaseInvoices";
 import ExtraCostEditor from "@/components/invoices/ExtraCostEditor";
 import type { AdditionalCostItem, PurchaseInvoice, PurchaseInvoiceItem } from "@/types/purchaseInvoices";
@@ -22,7 +27,7 @@ const formatPostalCode = (value?: string) => {
   return value;
 };
 
-const EXTRA_COST_LABELS = ["-", "手数料", "保険料", "その他", "電話代"] as const;
+const EXTRA_COST_LABELS = ["ー", "手数料", "保険料", "その他", "電話代"] as const;
 type ExtraCostLabel = (typeof EXTRA_COST_LABELS)[number];
 type ExtraCost = {
   id: string;
@@ -30,12 +35,14 @@ type ExtraCost = {
   amount: number;
 };
 
-const INVOICE_ORIGINAL_OPTIONS = ["-", "要", "不要"] as const;
+const INVOICE_ORIGINAL_OPTIONS = ["ー", "要", "不要"] as const;
 type InvoiceOriginalLabel = (typeof INVOICE_ORIGINAL_OPTIONS)[number];
 
 // Normalize label values coming from UI or stored data.
-const normalizeExtraCostLabel = (value: string): ExtraCostLabel =>
-  (EXTRA_COST_LABELS as readonly string[]).includes(value) ? (value as ExtraCostLabel) : "-";
+const normalizeExtraCostLabel = (value: string): ExtraCostLabel => {
+  if (value === "-") return "ー";
+  return (EXTRA_COST_LABELS as readonly string[]).includes(value) ? (value as ExtraCostLabel) : "ー";
+};
 
 const buildExtraCostId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -44,11 +51,11 @@ const buildExtraCostId = () =>
 
 const createEmptyExtraCost = (): ExtraCost => ({
   id: buildExtraCostId(),
-  label: "-",
+  label: "ー",
   amount: 0,
 });
 
-const isExtraCostPayloadItem = (item: ExtraCost): item is AdditionalCostItem => item.label !== "-";
+const isExtraCostPayloadItem = (item: ExtraCost): item is AdditionalCostItem => item.label !== "ー";
 
 type BaseRow = {
   inventoryId: string;
@@ -73,7 +80,6 @@ type Props = {
 const yellowInput =
   "w-full bg-amber-100 border border-black px-2 py-1 text-[13px] leading-tight focus:outline-none";
 
-const framedLabel = "bg-cyan-50 px-2 py-1 text-[12px] font-semibold text-neutral-900";
 const primaryButton =
   "rounded-none border-2 border-amber-600 bg-amber-300 px-5 py-2 text-sm font-bold text-neutral-900 shadow-[3px_3px_0_rgba(0,0,0,0.35)]";
 const secondaryButton =
@@ -86,8 +92,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const [staffOptions, setStaffOptions] = useState<string[]>([]);
   const [hasInitializedStaff, setHasInitializedStaff] = useState(false);
   const [purchaseTermsText, setPurchaseTermsText] = useState("");
+  const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
   const [buyerProfile, setBuyerProfile] = useState<CompanyProfile | null>(null);
-  const [warehouseDetails, setWarehouseDetails] = useState<Warehouse[]>([]);
   const [issuedDate, setIssuedDate] = useState(toDateInputValue(new Date()));
   const [paymentDate, setPaymentDate] = useState("");
   const [warehousingDate, setWarehousingDate] = useState("");
@@ -98,9 +104,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const [extraCosts, setExtraCosts] = useState<ExtraCost[]>(() =>
     type === "vendor" ? [createEmptyExtraCost()] : [],
   );
-  const [productAddressSource, setProductAddressSource] = useState<"warehouse" | "hq">("warehouse");
-  const [contractAddressSource, setContractAddressSource] = useState<"warehouse" | "hq">("warehouse");
-  const [invoiceOriginal, setInvoiceOriginal] = useState<InvoiceOriginalLabel>("-");
+  const [invoiceOriginal, setInvoiceOriginal] = useState<InvoiceOriginalLabel>("ー");
 
   useEffect(() => {
     const defaults = inventories.map<BaseRow>((item) => ({
@@ -129,9 +133,9 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
 
   useEffect(() => {
     const data = loadMasterData();
+    setMasterData(data);
     setPurchaseTermsText(data.purchaseTermsText ?? "");
     setStaffOptions(data.buyerStaffs ?? []);
-    setWarehouseDetails(data.warehouseDetails ?? []);
     const primaryProfile =
       data.companyProfiles?.find((profile) => profile.isPrimary) ?? data.companyProfiles?.[0] ?? data.companyProfile;
     setBuyerProfile(primaryProfile ?? null);
@@ -151,7 +155,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   );
   const extraCostTotal = useMemo(
     () =>
-      extraCosts.reduce((sum, item) => (item.label === "-" ? sum : sum + (Number(item.amount) || 0)), 0),
+      extraCosts.reduce((sum, item) => (item.label === "ー" ? sum : sum + (Number(item.amount) || 0)), 0),
     [extraCosts],
   );
   const subTotal = useMemo(() => itemTotal + extraCostTotal, [itemTotal, extraCostTotal]);
@@ -173,29 +177,32 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       representative: profile?.representative ? `代表者 ${profile.representative}` : "代表者 代表 取締役 デモ",
       tel: profile?.phone ? `TEL ${profile.phone}` : "TEL 012-1234-5678",
       fax: profile?.fax ? `FAX ${profile.fax}` : "FAX 012-1234-5679",
+      invoiceNumber: profile?.invoiceNumber
+        ? `インボイス番号 ${profile.invoiceNumber}`
+        : "インボイス番号 ―",
     };
   }, [buyerProfile]);
 
-  const warehouseName = inventories[0]?.warehouse ?? inventories[0]?.storageLocation ?? "倉庫";
-  const warehouseAddressText = useMemo(() => {
-    const detail = warehouseDetails.find((warehouse) => warehouse.name === warehouseName);
-    const addressLine = detail?.address?.trim();
-    return [warehouseName, addressLine].filter(Boolean).join("\n") || "倉庫住所未登録";
-  }, [warehouseDetails, warehouseName]);
-  const headquartersAddressText = useMemo(() => {
-    return [buyerDisplay.companyName, buyerDisplay.postal, buyerDisplay.address, buyerDisplay.tel]
-      .filter(Boolean)
-      .join("\n");
-  }, [buyerDisplay]);
-  const productAddressText = productAddressSource === "warehouse" ? warehouseAddressText : headquartersAddressText;
-  const contractAddressText = contractAddressSource === "warehouse" ? warehouseAddressText : headquartersAddressText;
+  const supplierName = inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? "";
+  const supplierBranchName = inventories[0]?.supplierBranch ?? "";
+  const supplierProfile = useMemo(() => {
+    if (!supplierName) return null;
+    const supplier = masterData.suppliers.find((entry) => entry.corporateName === supplierName);
+    if (!supplier) return null;
+    const branch = supplier.branches.find((entry) => entry.name === supplierBranchName) ?? supplier.branches[0];
+    return { supplier, branch };
+  }, [masterData.suppliers, supplierBranchName, supplierName]);
+
+  const supplierPhone =
+    inventories[0]?.supplierPhone || supplierProfile?.branch?.phone || supplierProfile?.supplier?.phone || "―";
+  const supplierFax =
+    inventories[0]?.supplierFax || supplierProfile?.branch?.fax || supplierProfile?.supplier?.fax || "―";
+  const supplierInvoiceNumber = supplierProfile?.supplier?.invoiceNumber || "―";
 
   const makerOptions = ["SANKYO", "SANYO", "Sammy", "UNIVERSAL", "大都技研", "その他"];
   const machineOptions = ["機種A", "機種B", "機種C", "機種D"];
   const typeOptions = ["本体", "枠", "セル", "その他"];
   const applicationOptions = ["-", "対象", "対象外"];
-  const shippingMethodOptions = ["チャーター便", "路線便", "引取", "持込"];
-  const contractReceiveOptions = ["郵送", "メール", "FAX", "引取"];
   const invoiceOriginalOptions = INVOICE_ORIGINAL_OPTIONS;
   const buildSelectOptions = (current: string, options: string[]) =>
     Array.from(new Set(["", current, ...options].filter((option) => option !== undefined)));
@@ -332,9 +339,6 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const vendorGrandTotal = subTotal + transportInsurance;
   const grandTotal = type === "hall" ? hallGrandTotal : vendorGrandTotal;
   const totalLabel = grandTotal.toLocaleString("ja-JP");
-  const supplierName = inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? "";
-  const supplierPhone = inventories[0]?.supplierPhone ?? "―";
-  const supplierFax = inventories[0]?.supplierFax ?? "―";
   const itemTotalLabel = itemTotal.toLocaleString("ja-JP");
   const subTotalLabel = subTotal.toLocaleString("ja-JP");
   const extraCostTotalLabel = extraCostTotal.toLocaleString("ja-JP");
@@ -381,6 +385,11 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                     * p-kanriclubと{supplierName || "○○ホール○○店 株式会社○○○○"}
                     は下記の条件にて売買契約を締結いたします
                   </div>
+                  <div className="space-y-0.5 text-[11px] text-neutral-800">
+                    <div>TEL {supplierPhone}</div>
+                    <div>FAX {supplierFax}</div>
+                    <div>インボイス番号 {supplierInvoiceNumber}</div>
+                  </div>
                 </div>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center justify-end gap-2 text-sm font-semibold">
@@ -414,12 +423,13 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                   <div className="border border-black bg-white text-[12px] leading-5">
                     <div className="border-b border-black bg-neutral-100 px-2 py-1 font-semibold">【買主】</div>
                     <div className="space-y-1 px-2 py-2">
-                      <div>〒541-0047 大阪府大阪市中央区淡路町3丁目6-3 御堂筋MTRビル2階</div>
-                      <div>株式会社PACHI MANAGEMENT</div>
-                      <div>代表者名：齋藤 克也</div>
+                      <div>{buyerDisplay.postal} {buyerDisplay.address}</div>
+                      <div>{buyerDisplay.companyName}</div>
+                      <div>{buyerDisplay.representative}</div>
                       <div>
-                        TEL 06-4708-8285 <span className="ml-4">FAX 06-4708-8286</span>
+                        {buyerDisplay.tel} <span className="ml-4">{buyerDisplay.fax}</span>
                       </div>
+                      <div>{buyerDisplay.invoiceNumber}</div>
                     </div>
                   </div>
                 </div>
@@ -681,6 +691,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               <div className="space-y-0.5 text-[11px] text-neutral-800">
                 <div>TEL {supplierPhone}</div>
                 <div>FAX {supplierFax}</div>
+                <div>インボイス番号 {supplierInvoiceNumber}</div>
               </div>
               <div className="text-[11px] text-neutral-800">当社の規約に基づき下記の通り購入いたします。</div>
               <div className="whitespace-pre-line text-[11px] text-neutral-800">
@@ -696,6 +707,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                 <span>{buyerDisplay.tel}</span>
                 <span>{buyerDisplay.fax}</span>
               </div>
+              <div>{buyerDisplay.invoiceNumber}</div>
               <div className="flex items-center gap-2">
                 <span>担当</span>
                 <select
@@ -912,7 +924,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                         <td className="border border-black bg-white px-2 py-2 text-right">¥{subTotalLabel}</td>
                       </tr>
                       <tr>
-                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送費</th>
+                        <th className="border border-black bg-cyan-50 px-2 py-2 text-left">運送保険料</th>
                         <td className="border border-black bg-white px-2 py-2 text-right">
                           <input
                             type="number"
@@ -961,117 +973,6 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               </div>
             </div>
 
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-              <div className="space-y-2 border-2 border-black p-2">
-                <div className={framedLabel}>商品受取先</div>
-                <div className="grid grid-cols-3 gap-2 border border-black p-2 text-[12px]">
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold">発送方法</div>
-                      <select className={`${yellowInput} rounded-none`} defaultValue="">
-                        <option value="">選択してください</option>
-                        {shippingMethodOptions.map((option) => (
-                          <option key={option}>{option}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="font-semibold">発送日</div>
-                      <input type="date" className={`${yellowInput} rounded-none text-center`} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold">入庫予定日</div>
-                      <div className="flex gap-1">
-                        <input type="date" className={`${yellowInput} rounded-none text-center`} />
-                        <select className={`${yellowInput} w-20 rounded-none`} defaultValue="">
-                          <option value="">指定なし</option>
-                          <option>午前</option>
-                          <option>午後</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-semibold">住所</div>
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <span>住所変更</span>
-                        <select
-                          value={productAddressSource}
-                          onChange={(e) => setProductAddressSource(e.target.value as "warehouse" | "hq")}
-                          className={`${yellowInput} w-20 rounded-none`}
-                        >
-                          <option value="hq">本社</option>
-                          <option value="warehouse">倉庫</option>
-                        </select>
-                      </div>
-                    </div>
-                    <textarea
-                      value={productAddressText}
-                      readOnly
-                      className="h-28 w-full border border-black bg-orange-100 p-2 text-[12px] leading-tight focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-2 border-2 border-black p-2">
-                <div className={framedLabel}>売契送り先</div>
-                <div className="grid grid-cols-3 gap-2 border border-black p-2 text-[12px]">
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold">売契受取方法</div>
-                      <select className={`${yellowInput} rounded-none`} defaultValue="">
-                        <option value="">選択してください</option>
-                        {contractReceiveOptions.map((option) => (
-                          <option key={option}>{option}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="font-semibold">発送日</div>
-                      <input type="date" className={`${yellowInput} rounded-none text-center`} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="space-y-1">
-                      <div className="font-semibold">到着予定日</div>
-                      <div className="flex gap-1">
-                        <input type="date" className={`${yellowInput} rounded-none text-center`} />
-                        <select className={`${yellowInput} w-20 rounded-none`} defaultValue="">
-                          <option value="">指定なし</option>
-                          <option>午前</option>
-                          <option>午後</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="font-semibold">住所</div>
-                      <div className="flex items-center gap-2 text-[11px]">
-                        <span>住所変更</span>
-                        <select
-                          value={contractAddressSource}
-                          onChange={(e) => setContractAddressSource(e.target.value as "warehouse" | "hq")}
-                          className={`${yellowInput} w-20 rounded-none`}
-                        >
-                          <option value="hq">本社</option>
-                          <option value="warehouse">倉庫</option>
-                        </select>
-                      </div>
-                    </div>
-                    <textarea
-                      value={contractAddressText}
-                      readOnly
-                      className="h-28 w-full border border-black bg-orange-100 p-2 text-[12px] leading-tight focus:outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
           {/* === ここまで業者用レイアウト差し替え === */}
 

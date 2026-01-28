@@ -9,6 +9,7 @@ export type CompanyProfile = {
   addressLine2?: string;
   phone: string;
   fax: string;
+  invoiceNumber?: string;
   title: string;
   representative: string;
   note: string;
@@ -70,6 +71,7 @@ export type SupplierCorporate = {
   address: string;
   phone?: string;
   fax?: string;
+  invoiceNumber?: string;
   email?: string;
   isHidden?: boolean;
   branches: SupplierBranch[];
@@ -118,6 +120,7 @@ const buildDefaultSupplier = (
   address: "",
   phone: "",
   fax: "",
+  invoiceNumber: "",
   email: "",
   isHidden: false,
   branches: [
@@ -159,6 +162,7 @@ export const DEFAULT_MASTER_DATA: MasterData = {
     addressLine2: "",
     phone: "",
     fax: "",
+    invoiceNumber: "",
     title: "",
     representative: "",
     note: "",
