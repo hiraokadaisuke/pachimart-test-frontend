@@ -31,6 +31,14 @@ const DOCUMENT_ACTIONS = [
   { label: "書類一括", path: null, requiresSerial: false },
 ] as const;
 
+const CONTRACT_COPY_OPTIONS = [
+  { value: "both", label: "両方印刷" },
+  { value: "seller", label: "売主控え印刷" },
+  { value: "buyer", label: "買主控え印刷" },
+] as const;
+
+type ContractCopyOption = (typeof CONTRACT_COPY_OPTIONS)[number]["value"];
+
 const formatFullDate = (value?: string): string => {
   if (!value) return "-";
   const parsed = new Date(value);
@@ -54,6 +62,7 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [selectedPrintLabel, setSelectedPrintLabel] = useState<string | null>(null);
   const [selectedBuyerId, setSelectedBuyerId] = useState<string>(BUYER_OPTIONS[0].id);
+  const [selectedContractCopy, setSelectedContractCopy] = useState<ContractCopyOption>("both");
 
   useEffect(() => {
     const invoices = loadPurchaseInvoices();
@@ -71,6 +80,7 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
     setIsPrintModalOpen(false);
     setSelectedPrintLabel(null);
     setSelectedBuyerId(BUYER_OPTIONS[0].id);
+    setSelectedContractCopy("both");
   }, [invoiceId]);
 
   const items = useMemo(() => invoice?.items ?? [], [invoice]);
@@ -145,6 +155,9 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
       return;
     }
     setSelectedPrintLabel(label);
+    if (label === "売買契約書") {
+      setSelectedContractCopy("both");
+    }
     setIsPrintModalOpen(true);
   };
 
@@ -154,7 +167,11 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
     const target = DOCUMENT_ACTIONS.find((action) => action.label === selectedPrintLabel);
     if (!target?.path) return;
     const path = target.path;
-    const url = `/inventory/purchase-invoice/print/${path}/${invoice.invoiceId}?buyerId=${encodeURIComponent(buyer.id)}`;
+    const params = new URLSearchParams({ buyerId: buyer.id });
+    if (path === "sales-contract") {
+      params.set("copy", selectedContractCopy);
+    }
+    const url = `/inventory/purchase-invoice/print/${path}/${invoice.invoiceId}?${params.toString()}`;
     router.push(url);
     setIsPrintModalOpen(false);
   };
@@ -247,6 +264,26 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
                 ))}
               </select>
             </div>
+            {selectedPrintLabel === "売買契約書" && (
+              <div className="mt-4 space-y-2 text-sm">
+                <label className="block text-xs text-neutral-700">控え種別</label>
+                <div className="space-y-2">
+                  {CONTRACT_COPY_OPTIONS.map((option) => (
+                    <label key={option.value} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="radio"
+                        name="contract-copy"
+                        value={option.value}
+                        checked={selectedContractCopy === option.value}
+                        onChange={() => setSelectedContractCopy(option.value)}
+                        className="h-4 w-4"
+                      />
+                      <span>{option.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="mt-6 flex justify-end gap-2 text-sm font-semibold">
               <button
                 type="button"

@@ -63,6 +63,11 @@ a {
   display: none;
 }
 
+.print-page-break {
+  break-after: page;
+  page-break-after: always;
+}
+
 @media print {
   body {
     background: #fff;
