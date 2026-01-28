@@ -8,6 +8,12 @@ import { splitInventoryForSales } from "@/lib/inventory/salesInvoiceSplit";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
 import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
+import {
+  DEFAULT_MASTER_DATA,
+  loadMasterData,
+  type CompanyProfile,
+  type MasterData,
+} from "@/lib/demo-data/demoMasterData";
 import type { SerialInputRow } from "@/lib/serialInputStorage";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
@@ -59,10 +65,12 @@ type Props = {
 export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState<BaseRow[]>([]);
+  const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
+  const [sellerProfile, setSellerProfile] = useState<CompanyProfile | null>(null);
   const [hallName, setHallName] = useState("ダミーホール");
-  const [contactName, setContactName] = useState("御中");
   const [hallTel, setHallTel] = useState("03-0000-0000");
   const [hallFax, setHallFax] = useState("03-0000-0001");
+  const [hallInvoiceNumber, setHallInvoiceNumber] = useState("");
   const [issuedDate, setIssuedDate] = useState(toDateInputValue());
   const [staff, setStaff] = useState("デモユーザー");
   const [manager, setManager] = useState("担当者A");
@@ -87,6 +95,14 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     maxQuantity: number;
     requiredQuantity: number;
   } | null>(null);
+
+  useEffect(() => {
+    const data = loadMasterData();
+    setMasterData(data);
+    const primaryProfile =
+      data.companyProfiles?.find((profile) => profile.isPrimary) ?? data.companyProfiles?.[0] ?? data.companyProfile;
+    setSellerProfile(primaryProfile ?? null);
+  }, []);
 
   const buildRowsFromInventory = useCallback((items: InventoryRecord[] | undefined) => {
     if (!items || items.length === 0) return [] as BaseRow[];
@@ -120,10 +136,15 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
         ? mapped
         : [{ quantity: 1, unitPrice: "", amount: 0, remainingDebt: "" }],
     );
-    setHallName("ダミーホール");
-    setContactName("御中");
-    setHallTel("03-0000-0000");
-    setHallFax("03-0000-0001");
+    const defaultHallName =
+      inventories?.[0]?.supplierCorporate ?? inventories?.[0]?.supplier ?? "ダミーホール";
+    setHallName(defaultHallName);
+    const supplier = masterData.suppliers.find((entry) => entry.corporateName === defaultHallName);
+    const branchName = inventories?.[0]?.supplierBranch ?? "";
+    const branch = supplier?.branches.find((entry) => entry.name === branchName) ?? supplier?.branches[0];
+    setHallTel(branch?.phone || supplier?.phone || "03-0000-0000");
+    setHallFax(branch?.fax || supplier?.fax || "03-0000-0001");
+    setHallInvoiceNumber(supplier?.invoiceNumber ?? "");
     setIssuedDate(toDateInputValue());
     setStaff("デモユーザー");
     setManager("担当者A");
@@ -140,7 +161,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     setDocumentArrivalDate("");
     setStorageLocation("倉庫A");
     setRemarks("特記事項があれば入力してください");
-  }, [buildRowsFromInventory, inventories]);
+  }, [buildRowsFromInventory, inventories, masterData.suppliers]);
 
   useEffect(() => {
     resetForm();
@@ -150,6 +171,22 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     const total = rows.reduce((sum, row) => sum + toNumber(row.quantity) * toNumber(row.unitPrice), 0);
     setSubtotal(total);
   }, [rows]);
+
+  const sellerDisplay = useMemo(() => {
+    const profile = sellerProfile;
+    const address = [profile?.prefecture, profile?.city, profile?.addressLine2 ?? profile?.addressLine]
+      .filter(Boolean)
+      .join("");
+    return {
+      postalCode: profile?.postalCode || "150-0031",
+      address: address || "東京都渋谷区桜丘町26-1 セルリアンタワー15F",
+      companyName: profile?.corporateName || "株式会社ピーコム",
+      representative: profile?.representative || "代表取締役 A",
+      tel: profile?.phone || "03-1234-5678",
+      fax: profile?.fax || "03-1234-5679",
+      invoiceNumber: profile?.invoiceNumber || "―",
+    };
+  }, [sellerProfile]);
 
   const tax = useMemo(() => Math.floor(subtotal * 0.1), [subtotal]);
   const totalAmount = useMemo(() => subtotal + tax + toNumber(insurance), [subtotal, tax, insurance]);
@@ -391,33 +428,48 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                     className={`${yellowInput} flex-1`}
                   />
                 </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-16">インボイス番号</span>
+                  <input
+                    type="text"
+                    value={hallInvoiceNumber}
+                    onChange={(e) => setHallInvoiceNumber(e.target.value)}
+                    className={`${yellowInput} flex-1`}
+                  />
+                </div>
               </div>
             </div>
 
             <div className="border border-[#333]">
-              <div className="border-b border-[#333] bg-[#f5f5f5] px-2 py-1 text-[13px] font-semibold">【売主】 株式会社ピーコム</div>
+              <div className="border-b border-[#333] bg-[#f5f5f5] px-2 py-1 text-[13px] font-semibold">
+                【売主】 {sellerDisplay.companyName}
+              </div>
               <div className="space-y-1 px-2 py-2 text-[12px]">
                 <div className="grid grid-cols-[90px_1fr] items-center gap-2">
                   <span className="text-right">郵便番号</span>
-                  <input type="text" value="150-0031" readOnly className={`${grayInput} w-40`} />
+                  <input type="text" value={sellerDisplay.postalCode} readOnly className={`${grayInput} w-40`} />
                 </div>
                 <div className="grid grid-cols-[90px_1fr] items-center gap-2">
                   <span className="text-right">住所</span>
-                  <input type="text" value="東京都渋谷区桜丘町26-1 セルリアンタワー15F" readOnly className={grayInput} />
+                  <input type="text" value={sellerDisplay.address} readOnly className={grayInput} />
                 </div>
                 <div className="grid grid-cols-[90px_1fr] items-center gap-2">
                   <span className="text-right">会社名</span>
-                  <input type="text" value="株式会社ピーコム" readOnly className={grayInput} />
+                  <input type="text" value={sellerDisplay.companyName} readOnly className={grayInput} />
                 </div>
                 <div className="grid grid-cols-[90px_1fr] items-center gap-2">
                   <span className="text-right">代表者</span>
-                  <input type="text" value="代表取締役 A" readOnly className={`${grayInput} w-56`} />
+                  <input type="text" value={sellerDisplay.representative} readOnly className={`${grayInput} w-56`} />
                 </div>
                 <div className="grid grid-cols-[90px_1fr] items-center gap-2">
                   <span className="text-right">TEL</span>
-                  <input type="text" value="03-1234-5678" readOnly className={`${grayInput} w-44`} />
+                  <input type="text" value={sellerDisplay.tel} readOnly className={`${grayInput} w-44`} />
                   <span className="text-right">FAX</span>
-                  <input type="text" value="03-1234-5679" readOnly className={`${grayInput} w-44`} />
+                  <input type="text" value={sellerDisplay.fax} readOnly className={`${grayInput} w-44`} />
+                </div>
+                <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                  <span className="text-right">インボイス番号</span>
+                  <input type="text" value={sellerDisplay.invoiceNumber} readOnly className={`${grayInput} w-44`} />
                 </div>
                 <div className="flex items-center justify-between pt-1 text-[13px]">
                   <div className="flex items-center gap-2">

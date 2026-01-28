@@ -6,6 +6,12 @@ import { useRouter } from "next/navigation";
 import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
 import { addSalesInvoice, generateSalesInvoiceId, loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { loadInventoryRecords, updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
+import {
+  DEFAULT_MASTER_DATA,
+  loadMasterData,
+  type CompanyProfile,
+  type MasterData,
+} from "@/lib/demo-data/demoMasterData";
 import { splitInventoryForSales } from "@/lib/inventory/salesInvoiceSplit";
 import type { SerialInputRow } from "@/lib/serialInputStorage";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
@@ -59,10 +65,13 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
   const [rows, setRows] = useState<BaseRow[]>([]);
   const [inventoryRecords, setInventoryRecords] = useState<InventoryRecord[]>([]);
   const [error, setError] = useState<string>("");
+  const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
+  const [sellerProfile, setSellerProfile] = useState<CompanyProfile | null>(null);
   const [vendorName, setVendorName] = useState("株式会社ピーコム");
   const [contactName] = useState("御中");
   const [vendorTel, setVendorTel] = useState("03-1234-5678");
   const [vendorFax, setVendorFax] = useState("03-1234-5679");
+  const [vendorInvoiceNumber, setVendorInvoiceNumber] = useState("");
   const [issuedDate, setIssuedDate] = useState(new Date().toISOString().slice(0, 10));
   const [staff, setStaff] = useState("デモユーザー");
   const [manager, setManager] = useState("担当者A");
@@ -91,11 +100,27 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
   } | null>(null);
 
   const idsKey = useMemo(() => (selectedIds && selectedIds.length > 0 ? selectedIds.join("_") : ""), [selectedIds]);
+  const sellerDisplay = useMemo(() => {
+    const profile = sellerProfile;
+    const address = [profile?.prefecture, profile?.city, profile?.addressLine2 ?? profile?.addressLine]
+      .filter(Boolean)
+      .join("");
+    return {
+      postalCode: profile?.postalCode || "150-8512",
+      address: address || "東京都渋谷区桜丘町26-1 セルリアンタワー15F",
+      companyName: profile?.corporateName || "株式会社ピーコム",
+      representative: profile?.representative || "代表 太郎",
+      tel: profile?.phone || "03-1234-5678",
+      fax: profile?.fax || "03-1234-5679",
+      invoiceNumber: profile?.invoiceNumber || "―",
+    };
+  }, [sellerProfile]);
 
   const resetForm = () => {
     setVendorName("株式会社ピーコム");
     setVendorTel("03-1234-5678");
     setVendorFax("03-1234-5679");
+    setVendorInvoiceNumber("");
     setIssuedDate(new Date().toISOString().slice(0, 10));
     setStaff("デモユーザー");
     setManager("担当者A");
@@ -113,6 +138,14 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     setInventoryRecords([]);
     setError("");
   };
+
+  useEffect(() => {
+    const data = loadMasterData();
+    setMasterData(data);
+    const primaryProfile =
+      data.companyProfiles?.find((profile) => profile.isPrimary) ?? data.companyProfiles?.[0] ?? data.companyProfile;
+    setSellerProfile(primaryProfile ?? null);
+  }, []);
 
   useEffect(() => {
     resetForm();
@@ -158,8 +191,16 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     const firstVendor = orderedRecords[0]?.supplierCorporate ?? orderedRecords[0]?.supplier ?? "";
     if (firstVendor) {
       setVendorName(firstVendor);
+      const supplier = masterData.suppliers.find((entry) => entry.corporateName === firstVendor);
+      if (supplier) {
+        const branchName = orderedRecords[0]?.supplierBranch ?? "";
+        const branch = supplier.branches.find((entry) => entry.name === branchName) ?? supplier.branches[0];
+        setVendorTel(branch?.phone || supplier.phone || "");
+        setVendorFax(branch?.fax || supplier.fax || "");
+        setVendorInvoiceNumber(supplier.invoiceNumber ?? "");
+      }
     }
-  }, [idsKey, inventories, selectedIds]);
+  }, [idsKey, inventories, masterData.suppliers, selectedIds]);
 
   const subtotal = useMemo(
     () => rows.reduce((sum, row) => sum + toNumber(row.quantity) * toNumber(row.unitPrice), 0),
@@ -420,6 +461,15 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                       className={`${yellowInput} w-32`}
                     />
                   </div>
+                  <div className="flex items-center gap-2 text-sm">
+                    <span>インボイス番号</span>
+                    <input
+                      type="text"
+                      value={vendorInvoiceNumber}
+                      onChange={(e) => setVendorInvoiceNumber(e.target.value)}
+                      className={`${yellowInput} w-44`}
+                    />
+                  </div>
                   <div className="rounded-sm border border-black bg-amber-50 px-3 py-1.5 text-[12px] leading-tight">
                     <div className="text-sm font-semibold">当社規約に基づき売買いたします</div>
                     <ul className="list-disc space-y-0.5 pl-4">
@@ -447,25 +497,31 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                     <div className="space-y-1 px-2 py-2 text-[12px] leading-tight">
                       <div className="flex items-center gap-2">
                         <span className={labelCell}>郵便番号</span>
-                        <span className="border border-black px-2 py-1">150-8512</span>
+                        <span className="border border-black px-2 py-1">{sellerDisplay.postalCode}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={labelCell}>住所</span>
-                        <span className="border border-black px-2 py-1">東京都渋谷区桜丘町26-1 セルリアンタワー15F</span>
+                        <span className="border border-black px-2 py-1">{sellerDisplay.address}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={labelCell}>会社名</span>
-                        <span className="border border-black px-2 py-1">株式会社ピーコム</span>
+                        <span className="border border-black px-2 py-1">{sellerDisplay.companyName}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={labelCell}>代表</span>
-                        <span className="border border-black px-2 py-1">代表 太郎</span>
+                        <span className="border border-black px-2 py-1">{sellerDisplay.representative}</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={labelCell}>TEL</span>
-                        <span className="border border-black px-2 py-1">03-1234-5678</span>
+                        <span className="border border-black px-2 py-1">{sellerDisplay.tel}</span>
                         <span className="w-10 text-right">FAX</span>
-                        <span className="border border-black px-2 py-1">03-1234-5679</span>
+                        <span className="border border-black px-2 py-1">{sellerDisplay.fax}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className={labelCell}>インボイス番号</span>
+                        <span className="border border-black px-2 py-1">
+                          {sellerDisplay.invoiceNumber}
+                        </span>
                       </div>
                     </div>
                     <div className="border-t border-black px-2 py-2 text-sm">
@@ -829,12 +885,21 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                     <span className="w-20">電話番号</span>
                     <span className="flex-1 border border-black px-2 py-1">{vendorTel}</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20">FAX番号</span>
+                    <span className="flex-1 border border-black px-2 py-1">{vendorFax}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="w-20">インボイス番号</span>
+                    <span className="flex-1 border border-black px-2 py-1">{vendorInvoiceNumber || "―"}</span>
+                  </div>
                 </div>
                 <div className="border-t-2 border-black bg-white px-3 py-2 text-[12px] leading-snug">
                   <div className="font-semibold text-red-700">リアルタイムの在庫確認ができます</div>
                   <div>URL: {noteUrl}</div>
                   <div>Email: {noteMail}</div>
-                  <div>FAX: 03-1234-5679</div>
+                  <div>FAX: {vendorFax}</div>
+                  <div>インボイス番号: {vendorInvoiceNumber || "―"}</div>
                   <div className="mt-1 text-center text-lg text-slate-600">↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓↓</div>
                 </div>
               </div>

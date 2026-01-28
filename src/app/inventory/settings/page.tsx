@@ -35,6 +35,7 @@ type CorporateFormState = {
   addressLine: string;
   phone: string;
   fax: string;
+  invoiceNumber: string;
   email: string;
   isHidden: boolean;
 };
@@ -106,6 +107,7 @@ const createEmptyCorporateForm = (): CorporateFormState => ({
   addressLine: "",
   phone: "",
   fax: "",
+  invoiceNumber: "",
   email: "",
   isHidden: false,
 });
@@ -136,6 +138,7 @@ const createEmptyCompanyProfileEntry = (isPrimary = false): CompanyProfileFormSt
   addressLine2: "",
   phone: "",
   fax: "",
+  invoiceNumber: "",
   title: "",
   representative: "",
   note: "",
@@ -238,6 +241,7 @@ function InventorySettingsContent() {
     "corporate-representative",
     "corporate-phone",
     "corporate-fax",
+    "corporate-invoiceNumber",
     "corporate-email",
   ];
 
@@ -519,6 +523,7 @@ function InventorySettingsContent() {
           address,
           phone: corporateForm.phone.trim(),
           fax: corporateForm.fax.trim(),
+          invoiceNumber: corporateForm.invoiceNumber.trim(),
           email: corporateForm.email.trim(),
           isHidden: corporateForm.isHidden,
         } satisfies SupplierCorporate;
@@ -538,6 +543,7 @@ function InventorySettingsContent() {
         address,
         phone: corporateForm.phone.trim(),
         fax: corporateForm.fax.trim(),
+        invoiceNumber: corporateForm.invoiceNumber.trim(),
         email: corporateForm.email.trim(),
         isHidden: corporateForm.isHidden,
         branches: [],
@@ -564,6 +570,7 @@ function InventorySettingsContent() {
       addressLine: supplier.addressLine ?? "",
       phone: supplier.phone ?? "",
       fax: supplier.fax ?? "",
+      invoiceNumber: supplier.invoiceNumber ?? "",
       email: supplier.email ?? "",
       isHidden: supplier.isHidden ?? false,
     });
@@ -680,6 +687,7 @@ function InventorySettingsContent() {
       addressLine2: profile.addressLine2?.trim() ?? "",
       phone: profile.phone.trim(),
       fax: profile.fax.trim(),
+      invoiceNumber: profile.invoiceNumber?.trim() ?? "",
       title: profile.title.trim(),
       representative: profile.representative.trim(),
       note: profile.note.trim(),
@@ -694,6 +702,7 @@ function InventorySettingsContent() {
           profile.addressLine2 ||
           profile.phone ||
           profile.fax ||
+          profile.invoiceNumber ||
           profile.title ||
           profile.representative ||
           profile.note,
@@ -714,6 +723,7 @@ function InventorySettingsContent() {
         { label: `${labelPrefix} 番地・ビル名`, value: profile.addressLine2 || "-" },
         { label: `${labelPrefix} 電話番号`, value: profile.phone || "-" },
         { label: `${labelPrefix} FAX番号`, value: profile.fax || "-" },
+        { label: `${labelPrefix} インボイス番号`, value: profile.invoiceNumber || "-" },
         { label: `${labelPrefix} 役職`, value: profile.title || "-" },
         { label: `${labelPrefix} 代表名`, value: profile.representative || "-" },
         { label: `${labelPrefix} 備考`, value: profile.note || "-" },
@@ -729,6 +739,7 @@ function InventorySettingsContent() {
       addressLine2: primaryProfile.addressLine2,
       phone: primaryProfile.phone,
       fax: primaryProfile.fax,
+      invoiceNumber: primaryProfile.invoiceNumber ?? "",
       title: primaryProfile.title,
       representative: primaryProfile.representative,
       note: primaryProfile.note,
@@ -1221,6 +1232,7 @@ function InventorySettingsContent() {
                             <th className={tableHeader}>代表者</th>
                             <th className={tableHeader}>電話番号</th>
                             <th className={tableHeader}>FAX番号</th>
+                            <th className={tableHeader}>インボイス番号</th>
                             <th className={tableHeader}>mailアドレス</th>
                             <th className={tableHeader}>操作</th>
                           </tr>
@@ -1253,6 +1265,17 @@ function InventorySettingsContent() {
                                 onChange={(event) => handleCorporateFormChange("fax", event.target.value)}
                                 onKeyDown={(event) => handleEnterNext(event, corporateFieldOrder, "corporate-fax")}
                                 ref={registerFocus("corporate-fax")}
+                                className={inputBase}
+                              />
+                            </td>
+                            <td className={tableCell}>
+                              <input
+                                value={corporateForm.invoiceNumber}
+                                onChange={(event) => handleCorporateFormChange("invoiceNumber", event.target.value)}
+                                onKeyDown={(event) =>
+                                  handleEnterNext(event, corporateFieldOrder, "corporate-invoiceNumber")
+                                }
+                                ref={registerFocus("corporate-invoiceNumber")}
                                 className={inputBase}
                               />
                             </td>
@@ -1318,6 +1341,7 @@ function InventorySettingsContent() {
                           <th className={tableHeader}>代表者</th>
                           <th className={tableHeader}>電話番号</th>
                           <th className={tableHeader}>FAX番号</th>
+                          <th className={tableHeader}>インボイス番号</th>
                           <th className={tableHeader}>mail</th>
                           <th className={tableHeader}>非表示</th>
                           <th className={tableHeader}>操作</th>
@@ -1326,7 +1350,7 @@ function InventorySettingsContent() {
                       <tbody>
                         {filteredCorporates.length === 0 ? (
                           <tr>
-                            <td colSpan={12} className="border border-gray-400 px-3 py-4 text-center text-sm">
+                            <td colSpan={13} className="border border-gray-400 px-3 py-4 text-center text-sm">
                               該当する法人がありません。
                             </td>
                           </tr>
@@ -1346,6 +1370,7 @@ function InventorySettingsContent() {
                               <td className={tableCell}>{supplier.corporateRepresentative || "-"}</td>
                               <td className={tableCell}>{supplier.phone || "-"}</td>
                               <td className={tableCell}>{supplier.fax || "-"}</td>
+                              <td className={tableCell}>{supplier.invoiceNumber || "-"}</td>
                               <td className={tableCell}>{supplier.email || "-"}</td>
                               <td className={tableCell}>{supplier.isHidden ? "非表示" : "表示"}</td>
                               <td className={`${tableCell} whitespace-nowrap`}>
@@ -1773,9 +1798,10 @@ function InventorySettingsContent() {
                               </tr>
                               <tr>
                                 <th className={tableHeader}>FAX番号</th>
+                                <th className={tableHeader}>インボイス番号</th>
                                 <th className={tableHeader}>役職</th>
                                 <th className={tableHeader}>代表者名</th>
-                                <th className={tableHeader} colSpan={3}>
+                                <th className={tableHeader} colSpan={2}>
                                   備考
                                 </th>
                                 <th className={tableHeader}>操作</th>
@@ -1786,6 +1812,15 @@ function InventorySettingsContent() {
                                     value={profile.fax}
                                     onChange={(event) =>
                                       handleCompanyProfileFormChange(profile.id, "fax", event.target.value)
+                                    }
+                                    className={inputBase}
+                                  />
+                                </td>
+                                <td className={tableCell}>
+                                  <input
+                                    value={profile.invoiceNumber ?? ""}
+                                    onChange={(event) =>
+                                      handleCompanyProfileFormChange(profile.id, "invoiceNumber", event.target.value)
                                     }
                                     className={inputBase}
                                   />
@@ -1808,7 +1843,7 @@ function InventorySettingsContent() {
                                     className={inputBase}
                                   />
                                 </td>
-                                <td className={tableCell} colSpan={3}>
+                                <td className={tableCell} colSpan={2}>
                                   <input
                                     value={profile.note}
                                     onChange={(event) =>
@@ -1881,17 +1916,19 @@ function InventorySettingsContent() {
                                 </tr>
                                 <tr>
                                   <th className={tableHeader}>FAX番号</th>
+                                  <th className={tableHeader}>インボイス番号</th>
                                   <th className={tableHeader}>役職</th>
                                   <th className={tableHeader}>代表者名</th>
-                                  <th className={tableHeader} colSpan={4}>
+                                  <th className={tableHeader} colSpan={3}>
                                     備考
                                   </th>
                                 </tr>
                                 <tr className="odd:bg-white even:bg-slate-50">
                                   <td className={tableCell}>{profile.fax || "-"}</td>
+                                  <td className={tableCell}>{profile.invoiceNumber || "-"}</td>
                                   <td className={tableCell}>{profile.title || "-"}</td>
                                   <td className={tableCell}>{profile.representative || "-"}</td>
-                                  <td className={tableCell} colSpan={4}>
+                                  <td className={tableCell} colSpan={3}>
                                     {profile.note || "-"}
                                   </td>
                                 </tr>
