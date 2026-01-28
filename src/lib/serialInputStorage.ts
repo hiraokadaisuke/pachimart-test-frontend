@@ -51,6 +51,9 @@ const serialRowsKey = (inventoryId: string) => `${SERIAL_ROWS_PREFIX}${inventory
 export const loadSerialRows = async (inventoryId: string): Promise<SerialInputRow[]> =>
   readLocalStorage<SerialInputRow[]>(serialRowsKey(inventoryId)) ?? [];
 
+export const loadSerialRowsSync = (inventoryId: string): SerialInputRow[] =>
+  readLocalStorage<SerialInputRow[]>(serialRowsKey(inventoryId)) ?? [];
+
 export const saveSerialRows = async (inventoryId: string, rows: SerialInputRow[]): Promise<void> => {
   writeLocalStorage(serialRowsKey(inventoryId), rows);
 };
