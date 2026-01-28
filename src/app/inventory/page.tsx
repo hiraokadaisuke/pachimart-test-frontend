@@ -20,7 +20,13 @@ import type { InventoryStatusOption, PurchaseInvoice } from "@/types/purchaseInv
 import type { SalesInvoice } from "@/types/salesInvoices";
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import { buildEditForm, buildPayload } from "@/lib/inventory/editUtils";
-import { loadSerialDraft, loadSerialInput, loadSerialRows, type SerialInputRow } from "@/lib/serialInputStorage";
+import {
+  loadSerialDraft,
+  loadSerialInput,
+  loadSerialRows,
+  loadSerialRowsSync,
+  type SerialInputRow,
+} from "@/lib/serialInputStorage";
 import { formatCompactId } from "@/lib/inventory/idDisplay";
 import { openAttachmentInNewTab } from "@/lib/attachments/attachmentStore";
 
@@ -46,6 +52,9 @@ type SearchFilters = {
   stockInDate: DateRange;
   maker: string;
   model: string;
+  serialQuery: string;
+  serialBoard: boolean;
+  serialFrame: boolean;
   supplier: string;
   staff: string;
   warehouse: string;
@@ -95,6 +104,9 @@ const defaultFilters: SearchFilters = {
   stockInDate: { from: "", to: "" },
   maker: "",
   model: "",
+  serialQuery: "",
+  serialBoard: false,
+  serialFrame: false,
   supplier: "",
   staff: "",
   warehouse: "",
@@ -356,6 +368,9 @@ export default function InventoryPage() {
   const filteredRecords = useMemo(() => {
     const keywordMaker = searchFilters.maker.trim().toLowerCase();
     const keywordModel = searchFilters.model.trim().toLowerCase();
+    const serialQuery = searchFilters.serialQuery.trim().toLowerCase();
+    const serialBoard = searchFilters.serialBoard;
+    const serialFrame = searchFilters.serialFrame;
     const keywordSupplier = searchFilters.supplier.trim().toLowerCase();
     const keywordStaff = searchFilters.staff.trim().toLowerCase();
     const hiddenFilter = searchFilters.showHidden;
@@ -408,6 +423,15 @@ export default function InventoryPage() {
 
       const stockInValue = item.stockInDate ?? item.arrivalDate;
       if (!matchesDateRange(stockInValue, searchFilters.stockInDate)) return false;
+
+      if (serialQuery && (serialBoard || serialFrame)) {
+        const rows = loadSerialRowsSync(item.id);
+        const matchesBoard =
+          serialBoard && rows.some((row) => (row.board ?? "").toLowerCase().includes(serialQuery));
+        const matchesFrame =
+          serialFrame && rows.some((row) => (row.frame ?? "").toLowerCase().includes(serialQuery));
+        if (!matchesBoard && !matchesFrame) return false;
+      }
 
       return true;
     });
@@ -1336,23 +1360,46 @@ export default function InventoryPage() {
                       )}
                     </td>
                     <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
-                      仕入先
+                      遊技機番号/枠番号
                     </th>
                     <td className="border border-gray-300 px-2 py-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-start gap-3">
+                        <div className="flex flex-col gap-1 text-[11px] text-neutral-700">
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="checkbox"
+                              checked={searchDraft.serialBoard}
+                              onChange={(event) =>
+                                setSearchDraft((prev) => ({
+                                  ...prev,
+                                  serialBoard: event.target.checked,
+                                }))
+                              }
+                            />
+                            <span>遊技機番号</span>
+                          </label>
+                          <label className="flex items-center gap-1">
+                            <input
+                              type="checkbox"
+                              checked={searchDraft.serialFrame}
+                              onChange={(event) =>
+                                setSearchDraft((prev) => ({
+                                  ...prev,
+                                  serialFrame: event.target.checked,
+                                }))
+                              }
+                            />
+                            <span>枠番号</span>
+                          </label>
+                        </div>
                         <input
-                          value={searchDraft.supplier}
+                          value={searchDraft.serialQuery}
                           onChange={(event) =>
-                            setSearchDraft((prev) => ({ ...prev, supplier: event.target.value }))
+                            setSearchDraft((prev) => ({ ...prev, serialQuery: event.target.value }))
                           }
+                          placeholder="番号を入力"
                           className="flex-1 border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
                         />
-                        <button
-                          type="button"
-                          className="border border-gray-300 bg-[#f7f3e9] px-2 py-0.5 text-xs font-semibold"
-                        >
-                          仕入先検索
-                        </button>
                       </div>
                     </td>
                   </tr>
@@ -1370,31 +1417,23 @@ export default function InventoryPage() {
                       />
                     </td>
                     <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
-                      非表示物件の表示
+                      仕入先
                     </th>
                     <td className="border border-gray-300 px-2 py-1">
-                      <div className="flex items-center gap-3 text-xs">
-                        {[
-                          { value: "all", label: "すべて" },
-                          { value: "only", label: "非表示のみ" },
-                          { value: "exclude", label: "非表示以外" },
-                        ].map((option) => (
-                          <label key={option.value} className="flex items-center gap-1">
-                            <input
-                              type="radio"
-                              name="hidden"
-                              value={option.value}
-                              checked={searchDraft.showHidden === option.value}
-                              onChange={() =>
-                                setSearchDraft((prev) => ({
-                                  ...prev,
-                                  showHidden: option.value as SearchFilters["showHidden"],
-                                }))
-                              }
-                            />
-                            <span>{option.label}</span>
-                          </label>
-                        ))}
+                      <div className="flex items-center gap-2">
+                        <input
+                          value={searchDraft.supplier}
+                          onChange={(event) =>
+                            setSearchDraft((prev) => ({ ...prev, supplier: event.target.value }))
+                          }
+                          className="flex-1 border border-[#c98200] bg-[#fff4d6] px-2 py-1 text-xs"
+                        />
+                        <button
+                          type="button"
+                          className="border border-gray-300 bg-[#f7f3e9] px-2 py-0.5 text-xs font-semibold"
+                        >
+                          仕入先検索
+                        </button>
                       </div>
                     </td>
                     <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
@@ -1446,7 +1485,35 @@ export default function InventoryPage() {
                         ))}
                       </div>
                     </td>
-                    <td colSpan={4} className="border border-gray-300 px-2 py-1 text-xs text-neutral-500">
+                    <th className="border border-gray-300 bg-[#e8f5e9] px-2 py-1 text-left text-xs font-semibold">
+                      非表示物件の表示
+                    </th>
+                    <td className="border border-gray-300 px-2 py-1">
+                      <div className="flex items-center gap-3 text-xs">
+                        {[
+                          { value: "all", label: "すべて" },
+                          { value: "only", label: "非表示のみ" },
+                          { value: "exclude", label: "非表示以外" },
+                        ].map((option) => (
+                          <label key={option.value} className="flex items-center gap-1">
+                            <input
+                              type="radio"
+                              name="hidden"
+                              value={option.value}
+                              checked={searchDraft.showHidden === option.value}
+                              onChange={() =>
+                                setSearchDraft((prev) => ({
+                                  ...prev,
+                                  showHidden: option.value as SearchFilters["showHidden"],
+                                }))
+                              }
+                            />
+                            <span>{option.label}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </td>
+                    <td colSpan={2} className="border border-gray-300 px-2 py-1 text-xs text-neutral-500">
                       ※倉庫や販売済みの表示条件は検索ボタン押下後に反映されます。
                     </td>
                   </tr>
