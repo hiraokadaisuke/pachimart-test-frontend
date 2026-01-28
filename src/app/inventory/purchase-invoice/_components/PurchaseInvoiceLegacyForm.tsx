@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import {
   deleteDraft,
@@ -49,6 +52,11 @@ const buildExtraCostId = () =>
     ? crypto.randomUUID()
     : `extra-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
+const buildRowId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 const createEmptyExtraCost = (): ExtraCost => ({
   id: buildExtraCostId(),
   label: "ー",
@@ -58,6 +66,7 @@ const createEmptyExtraCost = (): ExtraCost => ({
 const isExtraCostPayloadItem = (item: ExtraCost): item is AdditionalCostItem => item.label !== "ー";
 
 type BaseRow = {
+  rowId: string;
   inventoryId: string;
   maker: string;
   machineName: string;
@@ -105,9 +114,14 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     type === "vendor" ? [createEmptyExtraCost()] : [],
   );
   const [invoiceOriginal, setInvoiceOriginal] = useState<InvoiceOriginalLabel>("ー");
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
 
   useEffect(() => {
     const defaults = inventories.map<BaseRow>((item) => ({
+      rowId: buildRowId(),
       inventoryId: item.id,
       maker: item.maker ?? "",
       machineName: item.machineName ?? item.model ?? "",
@@ -120,15 +134,22 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       storeName: item.supplierBranch ?? item.customFields?.storeName ?? "",
       removalDate: item.removalDate ?? item.removeDate ?? "",
     }));
-    setRows(defaults.length > 0 ? defaults : [{
-      inventoryId: "-",
-      maker: "",
-      machineName: "",
-      type: "",
-      quantity: 1,
-      unitPrice: 0,
-      amount: 0,
-    }]);
+    setRows(
+      defaults.length > 0
+        ? defaults
+        : [
+            {
+              rowId: buildRowId(),
+              inventoryId: "-",
+              maker: "",
+              machineName: "",
+              type: "",
+              quantity: 1,
+              unitPrice: 0,
+              amount: 0,
+            },
+          ],
+    );
   }, [inventories]);
 
   useEffect(() => {
@@ -207,10 +228,10 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   const buildSelectOptions = (current: string, options: string[]) =>
     Array.from(new Set(["", current, ...options].filter((option) => option !== undefined)));
 
-  const handleChange = (index: number, key: keyof BaseRow, value: string) => {
+  const handleChange = (rowId: string, key: keyof Omit<BaseRow, "rowId">, value: string) => {
     setRows((prev) =>
-      prev.map((row, i) => {
-        if (i !== index) return row;
+      prev.map((row) => {
+        if (row.rowId !== rowId) return row;
         const updated: BaseRow = {
           ...row,
           [key]: key === "quantity" || key === "unitPrice" ? Number(value) || 0 : value,
@@ -227,6 +248,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     setRows((prev) => [
       ...prev,
       {
+        rowId: buildRowId(),
         inventoryId: "-",
         maker: "",
         machineName: "",
@@ -278,6 +300,239 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       }
       return prev.filter((item) => item.id !== id);
     });
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setRows((prev) => {
+      const activeIndex = prev.findIndex((row) => row.rowId === active.id);
+      const overIndex = prev.findIndex((row) => row.rowId === over.id);
+      if (activeIndex === -1 || overIndex === -1) return prev;
+      return arrayMove(prev, activeIndex, overIndex);
+    });
+  };
+
+  const SortableHallRow = ({ row }: { row: BaseRow }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: row.rowId,
+    });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+    return (
+      <tr ref={setNodeRef} style={style} className={`bg-white ${isDragging ? "opacity-70" : ""}`}>
+        <td className="border border-black px-1 py-1 text-center">
+          <button
+            type="button"
+            className="cursor-grab text-lg leading-none text-neutral-700 active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+            aria-label="並び替え"
+          >
+            ≡
+          </button>
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="date"
+            value={row.removalDate ?? ""}
+            onChange={(e) => handleChange(row.rowId, "removalDate", e.target.value)}
+            className={`${yellowInput} rounded-none text-center`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.storeName ?? ""}
+            onChange={(e) => handleChange(row.rowId, "storeName", e.target.value)}
+            className={`${yellowInput} rounded-none`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.maker}
+            onChange={(e) => handleChange(row.rowId, "maker", e.target.value)}
+            className={`${yellowInput} rounded-none`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.machineName}
+            onChange={(e) => handleChange(row.rowId, "machineName", e.target.value)}
+            className={`${yellowInput} rounded-none`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.type}
+            onChange={(e) => handleChange(row.rowId, "type", e.target.value)}
+            className={`${yellowInput} rounded-none`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="number"
+            value={row.quantity}
+            onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+            className={`${yellowInput} rounded-none text-right`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="number"
+            value={row.unitPrice}
+            onChange={(e) => handleChange(row.rowId, "unitPrice", e.target.value)}
+            className={`${yellowInput} rounded-none text-right`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
+          {row.amount.toLocaleString("ja-JP")}
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="number"
+            value={row.remainingDebt ?? 0}
+            onChange={(e) => handleChange(row.rowId, "remainingDebt", e.target.value)}
+            className={`${yellowInput} rounded-none text-right`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.note ?? ""}
+            onChange={(e) => handleChange(row.rowId, "note", e.target.value)}
+            placeholder="(印刷時に表示されます)"
+            className={`${yellowInput} rounded-none`}
+          />
+        </td>
+      </tr>
+    );
+  };
+
+  const SortableVendorRow = ({ row }: { row: BaseRow }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: row.rowId,
+    });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+    return (
+      <tr ref={setNodeRef} style={style} className={`bg-white ${isDragging ? "opacity-70" : ""}`}>
+        <td className="border border-black px-1 py-1 text-center">
+          <button
+            type="button"
+            className="cursor-grab text-lg leading-none text-neutral-700 active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+            aria-label="並び替え"
+          >
+            ≡
+          </button>
+        </td>
+        <td className="border border-black px-1 py-1">
+          <select
+            value={row.maker}
+            onChange={(e) => handleChange(row.rowId, "maker", e.target.value)}
+            className={`${yellowInput} rounded-none`}
+          >
+            {buildSelectOptions(row.maker, makerOptions).map((option) => (
+              <option key={option || "placeholder"} value={option}>
+                {option || "選択してください"}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td className="border border-black px-1 py-1">
+          <select
+            value={row.machineName}
+            onChange={(e) => handleChange(row.rowId, "machineName", e.target.value)}
+            className={`${yellowInput} rounded-none`}
+          >
+            {buildSelectOptions(row.machineName, machineOptions).map((option) => (
+              <option key={option || "placeholder"} value={option}>
+                {option || "選択してください"}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td className="border border-black px-1 py-1">
+          <select
+            value={row.type}
+            onChange={(e) => handleChange(row.rowId, "type", e.target.value)}
+            className={`${yellowInput} rounded-none`}
+          >
+            {buildSelectOptions(row.type, typeOptions).map((option) => (
+              <option key={option || "placeholder"} value={option}>
+                {option || "選択してください"}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="number"
+            value={row.quantity}
+            onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+            className={`${yellowInput} rounded-none text-right`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="number"
+            value={row.unitPrice}
+            onChange={(e) => handleChange(row.rowId, "unitPrice", e.target.value)}
+            className={`${yellowInput} rounded-none text-right`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
+          {row.amount.toLocaleString("ja-JP")}
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="number"
+            value={row.remainingDebt ?? 0}
+            onChange={(e) => handleChange(row.rowId, "remainingDebt", e.target.value)}
+            className={`${yellowInput} rounded-none text-right`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <select
+            value={applicationFlag}
+            onChange={(e) => setApplicationFlag(e.target.value)}
+            className={`${yellowInput} rounded-none text-center`}
+          >
+            {applicationOptions.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="date"
+            value={applicationDate}
+            onChange={(e) => setApplicationDate(e.target.value)}
+            className={`${yellowInput} rounded-none text-center`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.note ?? ""}
+            onChange={(e) => handleChange(row.rowId, "note", e.target.value)}
+            placeholder="(印刷時に表示されます)"
+            className={`${yellowInput} rounded-none`}
+          />
+        </td>
+      </tr>
+    );
   };
 
   const handleSubmit = () => {
@@ -485,6 +740,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                 <table className="min-w-full border border-black text-center text-[12px]" style={{ borderCollapse: "collapse" }}>
                   <thead className="bg-cyan-50 text-[12px] font-semibold">
                     <tr>
+                      <th className="border border-black px-2 py-2" aria-label="並び替え" />
                       <th className="border border-black px-2 py-2">撤去日</th>
                       <th className="border border-black px-2 py-2">店舗名</th>
                       <th className="border border-black px-2 py-2">メーカー名</th>
@@ -497,88 +753,15 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                       <th className="border border-black px-2 py-2">商品補足</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={`${row.inventoryId}-${index}`} className="bg-white">
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="date"
-                            value={row.removalDate ?? ""}
-                            onChange={(e) => handleChange(index, "removalDate", e.target.value)}
-                            className={`${yellowInput} rounded-none text-center`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.storeName ?? ""}
-                            onChange={(e) => handleChange(index, "storeName", e.target.value)}
-                            className={`${yellowInput} rounded-none`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.maker}
-                            onChange={(e) => handleChange(index, "maker", e.target.value)}
-                            className={`${yellowInput} rounded-none`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.machineName}
-                            onChange={(e) => handleChange(index, "machineName", e.target.value)}
-                            className={`${yellowInput} rounded-none`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.type}
-                            onChange={(e) => handleChange(index, "type", e.target.value)}
-                            className={`${yellowInput} rounded-none`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="number"
-                            value={row.quantity}
-                            onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                            className={`${yellowInput} rounded-none text-right`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="number"
-                            value={row.unitPrice}
-                            onChange={(e) => handleChange(index, "unitPrice", e.target.value)}
-                            className={`${yellowInput} rounded-none text-right`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
-                          {row.amount.toLocaleString("ja-JP")}
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="number"
-                            value={row.remainingDebt ?? 0}
-                            onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
-                            className={`${yellowInput} rounded-none text-right`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.note ?? ""}
-                            onChange={(e) => handleChange(index, "note", e.target.value)}
-                            placeholder="(印刷時に表示されます)"
-                            className={`${yellowInput} rounded-none`}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                  <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                    <SortableContext items={rows.map((row) => row.rowId)} strategy={verticalListSortingStrategy}>
+                      <tbody>
+                        {rows.map((row) => (
+                          <SortableHallRow key={row.rowId} row={row} />
+                        ))}
+                      </tbody>
+                    </SortableContext>
+                  </DndContext>
                 </table>
               </div>
 
@@ -731,6 +914,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               <table className="min-w-full border border-black text-center text-[12px]" style={{ borderCollapse: "collapse" }}>
                 <thead className="bg-cyan-50 text-[12px] font-semibold">
                   <tr>
+                    <th className="border border-black px-2 py-2" aria-label="並び替え" />
                     <th className="border border-black px-2 py-2">メーカー名</th>
                     <th className="border border-black px-2 py-2">商品名</th>
                     <th className="border border-black px-2 py-2">タイプ</th>
@@ -743,108 +927,15 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                     <th className="border border-black px-2 py-2">商品補足</th>
                   </tr>
                 </thead>
-                <tbody>
-                  {rows.map((row, index) => (
-                    <tr key={`${row.inventoryId}-${index}`} className="bg-white">
-                      <td className="border border-black px-1 py-1">
-                        <select
-                          value={row.maker}
-                          onChange={(e) => handleChange(index, "maker", e.target.value)}
-                          className={`${yellowInput} rounded-none`}
-                        >
-                          {buildSelectOptions(row.maker, makerOptions).map((option) => (
-                            <option key={option || "placeholder"} value={option}>
-                              {option || "選択してください"}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="border border-black px-1 py-1">
-                        <select
-                          value={row.machineName}
-                          onChange={(e) => handleChange(index, "machineName", e.target.value)}
-                          className={`${yellowInput} rounded-none`}
-                        >
-                          {buildSelectOptions(row.machineName, machineOptions).map((option) => (
-                            <option key={option || "placeholder"} value={option}>
-                              {option || "選択してください"}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="border border-black px-1 py-1">
-                        <select
-                          value={row.type}
-                          onChange={(e) => handleChange(index, "type", e.target.value)}
-                          className={`${yellowInput} rounded-none`}
-                        >
-                          {buildSelectOptions(row.type, typeOptions).map((option) => (
-                            <option key={option || "placeholder"} value={option}>
-                              {option || "選択してください"}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="border border-black px-1 py-1">
-                        <input
-                          type="number"
-                          value={row.quantity}
-                          onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                          className={`${yellowInput} rounded-none text-right`}
-                        />
-                      </td>
-                      <td className="border border-black px-1 py-1">
-                        <input
-                          type="number"
-                          value={row.unitPrice}
-                          onChange={(e) => handleChange(index, "unitPrice", e.target.value)}
-                          className={`${yellowInput} rounded-none text-right`}
-                        />
-                      </td>
-                      <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
-                        {row.amount.toLocaleString("ja-JP")}
-                      </td>
-                      <td className="border border-black px-1 py-1">
-                        <input
-                          type="number"
-                          value={row.remainingDebt ?? 0}
-                          onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
-                          className={`${yellowInput} rounded-none text-right`}
-                        />
-                      </td>
-                      <td className="border border-black px-1 py-1">
-                        <select
-                          value={applicationFlag}
-                          onChange={(e) => setApplicationFlag(e.target.value)}
-                          className={`${yellowInput} rounded-none text-center`}
-                        >
-                          {applicationOptions.map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </td>
-                      <td className="border border-black px-1 py-1">
-                        <input
-                          type="date"
-                          value={applicationDate}
-                          onChange={(e) => setApplicationDate(e.target.value)}
-                          className={`${yellowInput} rounded-none text-center`}
-                        />
-                      </td>
-                      <td className="border border-black px-1 py-1">
-                        <input
-                          type="text"
-                          value={row.note ?? ""}
-                          onChange={(e) => handleChange(index, "note", e.target.value)}
-                          placeholder="(印刷時に表示されます)"
-                          className={`${yellowInput} rounded-none`}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
+                <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                  <SortableContext items={rows.map((row) => row.rowId)} strategy={verticalListSortingStrategy}>
+                    <tbody>
+                      {rows.map((row) => (
+                        <SortableVendorRow key={row.rowId} row={row} />
+                      ))}
+                    </tbody>
+                  </SortableContext>
+                </DndContext>
               </table>
             </div>
 
