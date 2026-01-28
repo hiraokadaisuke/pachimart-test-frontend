@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
 import { addSalesInvoice, generateSalesInvoiceId, loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
@@ -17,6 +20,7 @@ import type { SerialInputRow } from "@/lib/serialInputStorage";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
 type BaseRow = {
+  rowId: string;
   inventoryId?: string;
   maker?: string;
   productName?: string;
@@ -60,6 +64,11 @@ const toInputNumber = (value?: number) => {
   return String(value);
 };
 
+const buildRowId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props) {
   const router = useRouter();
   const [rows, setRows] = useState<BaseRow[]>([]);
@@ -91,13 +100,17 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
   const [noteUrl] = useState("https://pachimart.jp");
   const [noteMail] = useState("info@pachimart.jp");
   const [serialModalState, setSerialModalState] = useState<{
-    rowIndex: number;
+    rowId: string;
     inventoryId: string;
     inventoryLabel: string;
     kind?: string;
     maxQuantity: number;
     requiredQuantity: number;
   } | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
 
   const idsKey = useMemo(() => (selectedIds && selectedIds.length > 0 ? selectedIds.join("_") : ""), [selectedIds]);
   const sellerDisplay = useMemo(() => {
@@ -171,6 +184,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
       const quantity = item.quantity ?? 1;
       const unitPriceValue = item.saleUnitPrice ?? item.unitPrice ?? 0;
       return {
+        rowId: buildRowId(),
         inventoryId: item.id,
         maker: item.maker ?? "",
         productName: item.model ?? item.machineName ?? "",
@@ -230,10 +244,10 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
       .filter((id): id is string => Boolean(id));
   }, [invoiceInventoryIds]);
 
-  const handleChange = (index: number, key: keyof BaseRow, value: string) => {
+  const handleChange = (rowId: string, key: keyof Omit<BaseRow, "rowId">, value: string) => {
     setRows((prev) => {
-      const next = prev.map((row, i) => {
-        if (i !== index) return row;
+      const next = prev.map((row) => {
+        if (row.rowId !== rowId) return row;
         const updated: BaseRow = { ...row } as BaseRow;
         if (key === "quantity") {
           const nextQuantity = Math.max(0, Number(value) || 0);
@@ -277,6 +291,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     setRows((prev) => [
       ...prev,
       {
+        rowId: buildRowId(),
         quantity: 1,
         unitPrice: "",
         amount: 0,
@@ -289,6 +304,161 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     const num = Number(value);
     if (Number.isNaN(num)) return "0";
     return num.toLocaleString("ja-JP");
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setRows((prev) => {
+      const activeIndex = prev.findIndex((row) => row.rowId === active.id);
+      const overIndex = prev.findIndex((row) => row.rowId === over.id);
+      if (activeIndex === -1 || overIndex === -1) return prev;
+      return arrayMove(prev, activeIndex, overIndex);
+    });
+  };
+
+  const SortableRow = ({ row }: { row: BaseRow }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: row.rowId,
+    });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+    return (
+      <tr ref={setNodeRef} style={style} className={`bg-white ${isDragging ? "opacity-70" : ""}`}>
+        <td className="border border-black px-1 py-1 text-center">
+          <button
+            type="button"
+            className="cursor-grab text-lg leading-none text-neutral-700 active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+            aria-label="並び替え"
+          >
+            ≡
+          </button>
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.maker ?? ""}
+            onChange={(e) => handleChange(row.rowId, "maker", e.target.value)}
+            className={yellowInput}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.productName ?? ""}
+            onChange={(e) => handleChange(row.rowId, "productName", e.target.value)}
+            className={yellowInput}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.type ?? ""}
+            onChange={(e) => handleChange(row.rowId, "type", e.target.value)}
+            className={yellowInput}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                if (!row.inventoryId || !row.maxQuantity) return;
+                setSerialModalState({
+                  rowId: row.rowId,
+                  inventoryId: row.inventoryId,
+                  inventoryLabel: row.productName ?? row.maker ?? row.inventoryId,
+                  kind: row.kind,
+                  maxQuantity: row.maxQuantity,
+                  requiredQuantity: row.quantity,
+                });
+              }}
+              disabled={!row.inventoryId}
+              className="border border-black bg-slate-100 px-2 py-0.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              選択
+            </button>
+            {row.inventoryId && (
+              <div className="text-[10px] text-neutral-600">
+                選択済 {row.selectedSerialIndexes?.length ?? 0}/{row.quantity}
+              </div>
+            )}
+            {row.serialSelectionError && (
+              <div className="text-[10px] text-red-600">{row.serialSelectionError}</div>
+            )}
+          </div>
+        </td>
+        <td className="border border-black px-1 py-1">
+          {row.maxQuantity && row.maxQuantity > 1 ? (
+            <select
+              value={row.quantity}
+              onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+              className={`${yellowInput} text-right`}
+            >
+              {Array.from({ length: row.maxQuantity }, (_, i) => i + 1).map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="number"
+              value={row.quantity}
+              onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+              className={`${yellowInput} text-right`}
+            />
+          )}
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="number"
+            value={row.unitPrice}
+            onChange={(e) => handleChange(row.rowId, "unitPrice", e.target.value)}
+            className={`${yellowInput} text-right`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
+          {moneyDisplay(row.amount)}
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="number"
+            value={row.remainingDebt ?? ""}
+            onChange={(e) => handleChange(row.rowId, "remainingDebt", e.target.value)}
+            className={`${yellowInput} text-right`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.applicationPrefecture ?? ""}
+            onChange={(e) => handleChange(row.rowId, "applicationPrefecture", e.target.value)}
+            className={orangeInput}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="date"
+            value={row.applicationDate ?? ""}
+            onChange={(e) => handleChange(row.rowId, "applicationDate", e.target.value)}
+            className={`${yellowInput} text-center`}
+          />
+        </td>
+        <td className="border border-black px-1 py-1">
+          <input
+            type="text"
+            value={row.note ?? ""}
+            onChange={(e) => handleChange(row.rowId, "note", e.target.value)}
+            className={yellowInput}
+          />
+        </td>
+      </tr>
+    );
   };
 
   const handleSubmit = () => {
@@ -567,6 +737,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                   style={{ borderCollapse: "collapse" }}
                 >
                   <colgroup>
+                    <col style={{ width: "4%" }} />
                     <col style={{ width: "10%" }} />
                     <col style={{ width: "20%" }} />
                     <col style={{ width: "10%" }} />
@@ -581,6 +752,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                   </colgroup>
                   <thead className="bg-slate-100 text-[12px] font-semibold">
                     <tr>
+                      <th className="border border-black px-2 py-1" aria-label="並び替え" />
                       <th className="border border-black px-2 py-1">メーカー名</th>
                       <th className="border border-black px-2 py-1">商品名</th>
                       <th className="border border-black px-2 py-1">タイプ</th>
@@ -594,131 +766,15 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                       <th className="border border-black px-2 py-1">商品補足</th>
                     </tr>
                   </thead>
-                  <tbody>
-                    {rows.map((row, index) => (
-                      <tr key={`${row.inventoryId ?? "row"}-${index}`} className="bg-white">
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.maker ?? ""}
-                            onChange={(e) => handleChange(index, "maker", e.target.value)}
-                            className={yellowInput}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.productName ?? ""}
-                            onChange={(e) => handleChange(index, "productName", e.target.value)}
-                            className={yellowInput}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.type ?? ""}
-                            onChange={(e) => handleChange(index, "type", e.target.value)}
-                            className={yellowInput}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <div className="flex flex-col items-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                if (!row.inventoryId || !row.maxQuantity) return;
-                                setSerialModalState({
-                                  rowIndex: index,
-                                  inventoryId: row.inventoryId,
-                                  inventoryLabel: row.productName ?? row.maker ?? row.inventoryId,
-                                  kind: row.kind,
-                                  maxQuantity: row.maxQuantity,
-                                  requiredQuantity: row.quantity,
-                                });
-                              }}
-                              disabled={!row.inventoryId}
-                              className="border border-black bg-slate-100 px-2 py-0.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              選択
-                            </button>
-                            {row.inventoryId && (
-                              <div className="text-[10px] text-neutral-600">
-                                選択済 {row.selectedSerialIndexes?.length ?? 0}/{row.quantity}
-                              </div>
-                            )}
-                            {row.serialSelectionError && (
-                              <div className="text-[10px] text-red-600">{row.serialSelectionError}</div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          {row.maxQuantity && row.maxQuantity > 1 ? (
-                            <select
-                              value={row.quantity}
-                              onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                              className={`${yellowInput} text-right`}
-                            >
-                              {Array.from({ length: row.maxQuantity }, (_, i) => i + 1).map((value) => (
-                                <option key={value} value={value}>
-                                  {value}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input
-                              type="number"
-                              value={row.quantity}
-                              onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                              className={`${yellowInput} text-right`}
-                            />
-                          )}
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="number"
-                            value={row.unitPrice}
-                            onChange={(e) => handleChange(index, "unitPrice", e.target.value)}
-                            className={`${yellowInput} text-right`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1 bg-amber-50 text-right font-semibold">
-                          {moneyDisplay(row.amount)}
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="number"
-                            value={row.remainingDebt ?? ""}
-                            onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
-                            className={`${yellowInput} text-right`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.applicationPrefecture ?? ""}
-                            onChange={(e) => handleChange(index, "applicationPrefecture", e.target.value)}
-                            className={orangeInput}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="date"
-                            value={row.applicationDate ?? ""}
-                            onChange={(e) => handleChange(index, "applicationDate", e.target.value)}
-                            className={`${yellowInput} text-center`}
-                          />
-                        </td>
-                        <td className="border border-black px-1 py-1">
-                          <input
-                            type="text"
-                            value={row.note ?? ""}
-                            onChange={(e) => handleChange(index, "note", e.target.value)}
-                            className={yellowInput}
-                          />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
+                  <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                    <SortableContext items={rows.map((row) => row.rowId)} strategy={verticalListSortingStrategy}>
+                      <tbody>
+                        {rows.map((row) => (
+                          <SortableRow key={row.rowId} row={row} />
+                        ))}
+                      </tbody>
+                    </SortableContext>
+                  </DndContext>
                 </table>
               </div>
               <div className="mt-1 text-right text-[11px] text-neutral-600">商品補足（印刷料金で表示されます）</div>
@@ -915,12 +971,12 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
           kind={serialModalState.kind}
           availableQuantity={serialModalState.maxQuantity}
           requiredQuantity={serialModalState.requiredQuantity}
-          selectedIndexes={rows[serialModalState.rowIndex]?.selectedSerialIndexes ?? []}
+          selectedIndexes={rows.find((row) => row.rowId === serialModalState.rowId)?.selectedSerialIndexes ?? []}
           onClose={() => setSerialModalState(null)}
           onConfirm={({ selectedIndexes, rows: serialRows }) => {
             setRows((prev) =>
-              prev.map((row, index) =>
-                index === serialModalState.rowIndex
+              prev.map((row) =>
+                row.rowId === serialModalState.rowId
                   ? {
                       ...row,
                       selectedSerialIndexes: selectedIndexes,

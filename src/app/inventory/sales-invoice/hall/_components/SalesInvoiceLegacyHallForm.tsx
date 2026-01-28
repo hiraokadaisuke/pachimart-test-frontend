@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 import { updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 import { splitInventoryForSales } from "@/lib/inventory/salesInvoiceSplit";
@@ -39,7 +42,13 @@ const toInputNumber = (value?: number) => {
   return String(value);
 };
 
+const buildRowId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `row-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
 type BaseRow = {
+  rowId: string;
   inventoryId?: string;
   maker?: string;
   productName?: string;
@@ -88,13 +97,17 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   const [storageLocation, setStorageLocation] = useState("倉庫A");
   const [remarks, setRemarks] = useState("特記事項があれば入力してください");
   const [serialModalState, setSerialModalState] = useState<{
-    rowIndex: number;
+    rowId: string;
     inventoryId: string;
     inventoryLabel: string;
     kind?: string;
     maxQuantity: number;
     requiredQuantity: number;
   } | null>(null);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
+  );
 
   useEffect(() => {
     const data = loadMasterData();
@@ -110,6 +123,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       const quantity = item.quantity ?? 1;
       const unitPriceValue = item.saleUnitPrice ?? item.unitPrice ?? 0;
       return {
+        rowId: buildRowId(),
         inventoryId: item.id,
         maker: item.maker ?? "",
         productName: item.model ?? item.machineName ?? "",
@@ -134,7 +148,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     setRows(
       mapped.length > 0
         ? mapped
-        : [{ quantity: 1, unitPrice: "", amount: 0, remainingDebt: "" }],
+        : [{ rowId: buildRowId(), quantity: 1, unitPrice: "", amount: 0, remainingDebt: "" }],
     );
     const defaultHallName =
       inventories?.[0]?.supplierCorporate ?? inventories?.[0]?.supplier ?? "ダミーホール";
@@ -207,10 +221,10 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       .filter((id): id is string => Boolean(id));
   }, [inventories]);
 
-  const handleChange = (index: number, key: keyof BaseRow, value: string) => {
+  const handleChange = (rowId: string, key: keyof Omit<BaseRow, "rowId">, value: string) => {
     setRows((prev) =>
-      prev.map((row, i) => {
-        if (i !== index) return row;
+      prev.map((row) => {
+        if (row.rowId !== rowId) return row;
         const updated: BaseRow = { ...row } as BaseRow;
         if (key === "quantity") {
           const nextQuantity = Math.max(0, Number(value) || 0);
@@ -253,6 +267,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     setRows((prev) => [
       ...prev,
       {
+        rowId: buildRowId(),
         quantity: 1,
         unitPrice: "",
         amount: 0,
@@ -364,6 +379,164 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     const num = Number(value);
     if (Number.isNaN(num)) return "0";
     return num.toLocaleString("ja-JP");
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setRows((prev) => {
+      const activeIndex = prev.findIndex((row) => row.rowId === active.id);
+      const overIndex = prev.findIndex((row) => row.rowId === over.id);
+      if (activeIndex === -1 || overIndex === -1) return prev;
+      return arrayMove(prev, activeIndex, overIndex);
+    });
+  };
+
+  const SortableRow = ({ row }: { row: BaseRow }) => {
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+      id: row.rowId,
+    });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+    return (
+      <tr ref={setNodeRef} style={style} className={`bg-white ${isDragging ? "opacity-70" : ""}`}>
+        <td className="border border-[#333] px-1 py-1 text-center">
+          <button
+            type="button"
+            className="cursor-grab text-lg leading-none text-neutral-700 active:cursor-grabbing"
+            {...attributes}
+            {...listeners}
+            aria-label="並び替え"
+          >
+            ≡
+          </button>
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          <input
+            type="text"
+            value={row.maker ?? ""}
+            onChange={(e) => handleChange(row.rowId, "maker", e.target.value)}
+            className={yellowInput}
+          />
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          <div className="flex items-center">
+            <input
+              type="text"
+              value={row.productName ?? ""}
+              onChange={(e) => handleChange(row.rowId, "productName", e.target.value)}
+              className={`${yellowInput} flex-1`}
+            />
+            <span className="border border-[#333] bg-[#f3f3f3] px-2 py-1 text-xs">▼</span>
+          </div>
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          <input
+            type="text"
+            value={row.type ?? ""}
+            onChange={(e) => handleChange(row.rowId, "type", e.target.value)}
+            className={yellowInput}
+          />
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          <div className="flex flex-col items-center gap-1">
+            <button
+              type="button"
+              onClick={() => {
+                if (!row.inventoryId || !row.maxQuantity) return;
+                setSerialModalState({
+                  rowId: row.rowId,
+                  inventoryId: row.inventoryId,
+                  inventoryLabel: row.productName ?? row.maker ?? row.inventoryId,
+                  kind: row.kind,
+                  maxQuantity: row.maxQuantity,
+                  requiredQuantity: row.quantity,
+                });
+              }}
+              disabled={!row.inventoryId}
+              className="border border-[#333] bg-[#f3f3f3] px-3 py-1 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              選択
+            </button>
+            {row.inventoryId && (
+              <div className="text-[10px] text-neutral-600">
+                選択済 {row.selectedSerialIndexes?.length ?? 0}/{row.quantity}
+              </div>
+            )}
+            {row.serialSelectionError && (
+              <div className="text-[10px] text-red-600">{row.serialSelectionError}</div>
+            )}
+          </div>
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          {row.maxQuantity && row.maxQuantity > 1 ? (
+            <select
+              value={row.quantity}
+              onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+              className={`${yellowInput} text-right`}
+            >
+              {Array.from({ length: row.maxQuantity }, (_, i) => i + 1).map((value) => (
+                <option key={value} value={value}>
+                  {value}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="number"
+              value={row.quantity}
+              onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+              className={`${yellowInput} text-right`}
+            />
+          )}
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          <input
+            type="number"
+            value={row.unitPrice}
+            onChange={(e) => handleChange(row.rowId, "unitPrice", e.target.value)}
+            className={`${yellowInput} text-right`}
+          />
+        </td>
+        <td className="border border-[#333] px-1 py-1 bg-[#fff6cc] text-right font-semibold">
+          {moneyDisplay(row.amount)}
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          <input
+            type="number"
+            value={row.remainingDebt ?? ""}
+            onChange={(e) => handleChange(row.rowId, "remainingDebt", e.target.value)}
+            className={`${yellowInput} text-right`}
+          />
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          <input
+            type="text"
+            value={row.applicationPrefecture ?? ""}
+            onChange={(e) => handleChange(row.rowId, "applicationPrefecture", e.target.value)}
+            className={yellowInput}
+          />
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          <input
+            type="date"
+            value={row.applicationDate ?? ""}
+            onChange={(e) => handleChange(row.rowId, "applicationDate", e.target.value)}
+            className={`${yellowInput} text-center`}
+          />
+        </td>
+        <td className="border border-[#333] px-1 py-1">
+          <input
+            type="text"
+            value={row.note ?? ""}
+            onChange={(e) => handleChange(row.rowId, "note", e.target.value)}
+            className={yellowInput}
+          />
+        </td>
+      </tr>
+    );
   };
 
   return (
@@ -509,6 +682,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
             <table className="min-w-full border-2 border-[#333] text-center text-[12px]">
               <thead className="bg-[#efefef] text-[12px] font-semibold">
                 <tr>
+                  <th className="border border-[#333] px-2 py-2" aria-label="並び替え" />
                   <th className="border border-[#333] px-2 py-2">メーカー名</th>
                   <th className="border border-[#333] px-2 py-2">商品名</th>
                   <th className="border border-[#333] px-2 py-2">タイプ</th>
@@ -522,134 +696,15 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                   <th className="border border-[#333] px-2 py-2">商品補足</th>
                 </tr>
               </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr key={`${row.inventoryId ?? "row"}-${index}`} className="bg-white">
-                    <td className="border border-[#333] px-1 py-1">
-                      <input
-                        type="text"
-                        value={row.maker ?? ""}
-                        onChange={(e) => handleChange(index, "maker", e.target.value)}
-                        className={yellowInput}
-                      />
-                    </td>
-                    <td className="border border-[#333] px-1 py-1">
-                      <div className="flex items-center">
-                        <input
-                          type="text"
-                          value={row.productName ?? ""}
-                          onChange={(e) => handleChange(index, "productName", e.target.value)}
-                          className={`${yellowInput} flex-1`}
-                        />
-                        <span className="border border-[#333] bg-[#f3f3f3] px-2 py-1 text-xs">▼</span>
-                      </div>
-                    </td>
-                    <td className="border border-[#333] px-1 py-1">
-                      <input
-                        type="text"
-                        value={row.type ?? ""}
-                        onChange={(e) => handleChange(index, "type", e.target.value)}
-                        className={yellowInput}
-                      />
-                    </td>
-                    <td className="border border-[#333] px-1 py-1">
-                      <div className="flex flex-col items-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (!row.inventoryId || !row.maxQuantity) return;
-                            setSerialModalState({
-                              rowIndex: index,
-                              inventoryId: row.inventoryId,
-                              inventoryLabel: row.productName ?? row.maker ?? row.inventoryId,
-                              kind: row.kind,
-                              maxQuantity: row.maxQuantity,
-                              requiredQuantity: row.quantity,
-                            });
-                          }}
-                          disabled={!row.inventoryId}
-                          className="border border-[#333] bg-[#f3f3f3] px-3 py-1 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          選択
-                        </button>
-                        {row.inventoryId && (
-                          <div className="text-[10px] text-neutral-600">
-                            選択済 {row.selectedSerialIndexes?.length ?? 0}/{row.quantity}
-                          </div>
-                        )}
-                        {row.serialSelectionError && (
-                          <div className="text-[10px] text-red-600">{row.serialSelectionError}</div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="border border-[#333] px-1 py-1">
-                      {row.maxQuantity && row.maxQuantity > 1 ? (
-                        <select
-                          value={row.quantity}
-                          onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                          className={`${yellowInput} text-right`}
-                        >
-                          {Array.from({ length: row.maxQuantity }, (_, i) => i + 1).map((value) => (
-                            <option key={value} value={value}>
-                              {value}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <input
-                          type="number"
-                          value={row.quantity}
-                          onChange={(e) => handleChange(index, "quantity", e.target.value)}
-                          className={`${yellowInput} text-right`}
-                        />
-                      )}
-                    </td>
-                    <td className="border border-[#333] px-1 py-1">
-                      <input
-                        type="number"
-                        value={row.unitPrice}
-                        onChange={(e) => handleChange(index, "unitPrice", e.target.value)}
-                        className={`${yellowInput} text-right`}
-                      />
-                    </td>
-                    <td className="border border-[#333] px-1 py-1 bg-[#fff6cc] text-right font-semibold">
-                      {moneyDisplay(row.amount)}
-                    </td>
-                    <td className="border border-[#333] px-1 py-1">
-                      <input
-                        type="number"
-                        value={row.remainingDebt ?? ""}
-                        onChange={(e) => handleChange(index, "remainingDebt", e.target.value)}
-                        className={`${yellowInput} text-right`}
-                      />
-                    </td>
-                    <td className="border border-[#333] px-1 py-1">
-                      <input
-                        type="text"
-                        value={row.applicationPrefecture ?? ""}
-                        onChange={(e) => handleChange(index, "applicationPrefecture", e.target.value)}
-                        className={yellowInput}
-                      />
-                    </td>
-                    <td className="border border-[#333] px-1 py-1">
-                      <input
-                        type="date"
-                        value={row.applicationDate ?? ""}
-                        onChange={(e) => handleChange(index, "applicationDate", e.target.value)}
-                        className={`${yellowInput} text-center`}
-                      />
-                    </td>
-                    <td className="border border-[#333] px-1 py-1">
-                      <input
-                        type="text"
-                        value={row.note ?? ""}
-                        onChange={(e) => handleChange(index, "note", e.target.value)}
-                        className={yellowInput}
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
+              <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+                <SortableContext items={rows.map((row) => row.rowId)} strategy={verticalListSortingStrategy}>
+                  <tbody>
+                    {rows.map((row) => (
+                      <SortableRow key={row.rowId} row={row} />
+                    ))}
+                  </tbody>
+                </SortableContext>
+              </DndContext>
             </table>
             <div className="mt-1 flex justify-end">
               <button
@@ -854,12 +909,12 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
           kind={serialModalState.kind}
           availableQuantity={serialModalState.maxQuantity}
           requiredQuantity={serialModalState.requiredQuantity}
-          selectedIndexes={rows[serialModalState.rowIndex]?.selectedSerialIndexes ?? []}
+          selectedIndexes={rows.find((row) => row.rowId === serialModalState.rowId)?.selectedSerialIndexes ?? []}
           onClose={() => setSerialModalState(null)}
           onConfirm={({ selectedIndexes, rows: serialRows }) => {
             setRows((prev) =>
-              prev.map((row, index) =>
-                index === serialModalState.rowIndex
+              prev.map((row) =>
+                row.rowId === serialModalState.rowId
                   ? {
                       ...row,
                       selectedSerialIndexes: selectedIndexes,
