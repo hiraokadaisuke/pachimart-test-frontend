@@ -44,8 +44,7 @@ const OPPORTUNITY_CARDS = [
       "営業時間外でも問い合わせを残せます",
       "条件・台数を先に共有できるので、折り返しが早い",
     ],
-    href: "/signup",
-    linkLabel: "詳しく見る",
+    
   },
   {
     title: "即決売買",
@@ -54,8 +53,7 @@ const OPPORTUNITY_CARDS = [
       "価格・台数・エリアなど条件が合えばそのまま成約",
       "“確認待ち”が減り、タイミングを逃しにくい",
     ],
-    href: "/signup",
-    linkLabel: "詳しく見る",
+    
   },
 ] as const;
 
@@ -126,6 +124,29 @@ const GROWTH_STATS = [
   { label: "物件掲載", value: "増加中" },
   { label: "改善反映", value: "継続中" },
 ] as const;
+
+const PROOF_LITE = [
+  {
+    src: "/lp/navi-list.png",
+    title: "取引ナビ",
+    body: "進捗や条件を、取引ごとに確認できます。",
+  },
+  {
+    src: "/lp/listings.png",
+    title: "出品一覧",
+    body: "探す・比較する・問い合わせまでをシンプルに。",
+  },
+] as const;
+
+
+
+const PROOF_FACTS = [
+  { title: "電話での微調整に対応", body: "取引はこれまで通り電話中心で進められます。" },
+  { title: "改善を継続して反映", body: "現場の声をもとに、使いやすさを継続的に見直しています。" },
+  { title: "月額無料で提供中", body: "拡大フェーズのため、現在は月額0円で提供しています。" },
+] as const;
+
+
 
 function DotPattern() {
   return (
@@ -200,32 +221,33 @@ export default function LpPage() {
             
 
             <h1 className="text-balance text-4xl font-semibold leading-tight text-slate-900 sm:text-5xl lg:text-6xl">
-              今お使いの取引方法は
-              <br />
-              そのままで。
-            </h1>
+  中古遊技機 売買サイト
+  <br />
+  「パチマート」
+</h1>
 
-            <p className="text-base leading-relaxed text-slate-700 sm:text-lg">
-  電話での問い合わせを中心に
+<p className="text-base leading-relaxed text-slate-700 sm:text-lg">
+  出品・取引・進捗管理ができる
   <br />
-  必要なところだけオンラインも使える
-  <br />
-  中古遊技機売買サイト。
+  低コストで利用できる中古機売買サービスです。
 </p>
-            <div className="flex flex-wrap gap-4">
-              <a
-                href="/signup"
-                className="rounded-full bg-gradient-to-b from-[#3BB4C6] to-[#2A8FA0] px-8 py-4 text-base font-semibold text-white shadow-lg shadow-black/10 transition hover:-translate-y-0.5"
-              >
-                無料で登録する
-              </a>
-              <a
-                href="/listings"
-                className="rounded-full border border-slate-300 bg-white/70 px-8 py-4 text-base font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:border-slate-400"
-              >
-                出品一覧を見る
-              </a>
-            </div>
+
+<div className="flex flex-wrap gap-4">
+  <a
+    href="/signup"
+    className="rounded-full bg-gradient-to-b from-[#3BB4C6] to-[#2A8FA0] px-8 py-4 text-base font-semibold text-white shadow-lg shadow-black/10 transition hover:-translate-y-0.5"
+  >
+    無料で登録する
+  </a>
+
+  {/* 補助導線は “ヒーロー直下” ではなく別セクションへ移動推奨 */}
+  {/* <a href="/listings" className="...">出品一覧を見る</a> */}
+</div>
+
+{/* 補助リンク（控えめ） */}
+<div className="pt-2">
+ 
+</div>
           </div>
         </div>
       </section>
@@ -298,12 +320,10 @@ export default function LpPage() {
     {/* 上段：補強（センター） */}
     <div className="mx-auto max-w-3xl text-center" data-reveal>
       <h2 className="text-2xl font-semibold tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
-        今まで通りの取引に使えます
+        業界で慣れている取引フローをベースに設計
       </h2>
       <p className="mt-6 text-base leading-relaxed text-slate-600 sm:text-lg">
-        電話でのやり取りを中心に
-        <br />
-        必要なところだけオンラインも使えます。
+        新しい操作を覚えなくても、これまでの感覚で使えます。
       </p>
     </div>
 
@@ -400,13 +420,7 @@ hover:shadow-[0_18px_44px_rgba(15,23,42,0.19)]"
           </ul>
 
           <div className="mt-7">
-            <a
-              href={card.href}
-              className="inline-flex items-center gap-2 text-sm font-semibold text-[#1F7F8E] hover:underline"
-            >
-              {card.linkLabel}
-              <span aria-hidden="true">→</span>
-            </a>
+          
           </div>
         </div>
       ))}
@@ -697,12 +711,7 @@ hover:shadow-[0_18px_44px_rgba(15,23,42,0.19)]"
     >
       無料で登録する
     </a>
-    <a
-      href="/contact"
-      className="inline-flex items-center justify-center rounded-full border border-slate-300 bg-white/80 px-10 py-4 text-base font-semibold text-slate-900 transition hover:-translate-y-0.5 hover:border-slate-400"
-    >
-      詳細を問い合わせる
-    </a>
+    
   </div>
 
   {/* 注釈（終了条件だけ） */}
@@ -711,6 +720,57 @@ hover:shadow-[0_18px_44px_rgba(15,23,42,0.19)]"
   </div>
 </div>
 
+    </div>
+  </div>
+</section>
+
+{/* Proof（Step4：最終版） */}
+<section className="border-t border-slate-200/70 bg-white">
+  <div className="mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-28">
+    <div className="max-w-3xl space-y-3" data-reveal>
+      <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
+        実際の画面で確認できます
+      </h2>
+      <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
+        業界で慣れている取引フローをベースに、
+        必要な情報だけをシンプルにまとめています。
+      </p>
+    </div>
+
+    <div className="grid gap-6 lg:grid-cols-2" data-reveal>
+      {PROOF_LITE.map((item) => (
+        <div
+          key={item.title}
+          className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
+        >
+          <div className="relative aspect-[16/9] bg-slate-50">
+            <Image
+              src={item.src}
+              alt={item.title}
+              fill
+              className="object-cover"
+            />
+          </div>
+
+          <div className="space-y-1 p-6">
+            <p className="text-base font-semibold text-slate-900">
+              {item.title}
+            </p>
+            <p className="text-sm leading-relaxed text-slate-600">
+              {item.body}
+            </p>
+          </div>
+        </div>
+      ))}
+    </div>
+
+    <div className="pt-6" data-reveal>
+      <a
+        href="/signup"
+        className="inline-flex items-center justify-center rounded-full bg-gradient-to-b from-[#3BB4C6] to-[#2A8FA0] px-10 py-4 text-base font-semibold text-white shadow-lg shadow-black/15 transition hover:-translate-y-0.5"
+      >
+        無料で登録する
+      </a>
     </div>
   </div>
 </section>
@@ -796,12 +856,7 @@ hover:shadow-[0_18px_44px_rgba(15,23,42,0.19)]"
         </a>
 
         {/* サブ：出品一覧 */}
-        <a
-          href="/listings"
-          className="inline-flex items-center justify-center rounded-full border border-white/70 px-10 py-4 text-base font-semibold text-white transition hover:-translate-y-0.5 hover:border-white"
-        >
-          出品一覧を見る
-        </a>
+       
       </div>
     </div>
   </div>
