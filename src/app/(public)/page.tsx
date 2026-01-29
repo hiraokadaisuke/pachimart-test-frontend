@@ -1,10 +1,5 @@
-import LpLayout from "./lp/layout";
-import LpPage from "./lp/page";
+import { redirect } from "next/navigation";
 
 export default function HomePage() {
-  return (
-    <LpLayout>
-      <LpPage />
-    </LpLayout>
-  );
+  redirect("/portal");
 }
