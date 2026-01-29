@@ -36,16 +36,18 @@ export default function InventoryImportHubPage() {
         >
           <ul className="divide-y divide-slate-200 text-sm">
             {importEntries.map((entry) => (
-              <li key={entry.href} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-slate-900">{entry.title}</p>
-                  <p className="mt-1 text-xs text-slate-600">{entry.description}</p>
-                </div>
+              <li key={entry.href}>
                 <Link
                   href={entry.href}
-                  className="border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                  className="flex w-full cursor-pointer flex-wrap items-center justify-between gap-3 rounded-md px-2 py-3 text-left transition-colors hover:bg-slate-50"
                 >
-                  開く
+                  <div>
+                    <p className="text-sm font-semibold text-slate-900">{entry.title}</p>
+                    <p className="mt-1 text-xs text-slate-600">{entry.description}</p>
+                  </div>
+                  <span className="text-sm font-semibold text-slate-400" aria-hidden="true">
+                    ›
+                  </span>
                 </Link>
               </li>
             ))}

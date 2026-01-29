@@ -10,6 +10,7 @@ const navItems = [
   { label: "在庫物件", href: "/inventory/items?type=stock", type: "stock" },
   { label: "非在庫物件", href: "/inventory/items?type=inactive", type: "inactive" },
   { label: "設置物件", href: "/inventory/items?type=installed", type: "installed" },
+  { label: "QR取込", href: "/inventory/import/qr", className: "hidden md:inline-flex" },
   { label: "設定", href: "/inventory/settings" },
 ];
 
@@ -40,6 +41,7 @@ export default function InventoryHeader() {
                     isActive
                       ? "border-white bg-white/10 text-white"
                       : "text-slate-200 hover:border-white/40 hover:bg-white/5",
+                    item.className,
                   )}
                 >
                   {item.label}
@@ -48,9 +50,17 @@ export default function InventoryHeader() {
             })}
           </nav>
         </div>
-        <Link href="/portal" className="text-xs font-semibold text-slate-200 hover:text-white">
-          /portalへ戻る
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/inventory/import/qr"
+            className="inline-flex items-center rounded-md border border-white/50 bg-white px-3 py-1 text-xs font-bold text-slate-900 shadow-sm md:hidden"
+          >
+            QR取込
+          </Link>
+          <Link href="/portal" className="text-xs font-semibold text-slate-200 hover:text-white">
+            /portalへ戻る
+          </Link>
+        </div>
       </div>
     </header>
   );
