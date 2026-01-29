@@ -197,7 +197,7 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
 
   const handleSelectForNavi = (exhibitId: string) => {
     const params = new URLSearchParams({ tab: "new", pickListingId: exhibitId });
-    router.push(`/navi?${params.toString()}`);
+    router.push(`/market/navi?${params.toString()}`);
   };
 
   const handleCreateNaviFromExhibit = (exhibit: Exhibit) => {
@@ -453,7 +453,7 @@ export function ExhibitList({ status, onNewExhibit, selectionMode }: ExhibitList
                         ) : canOperate ? (
                           <ActionMenu
                             onCreateNavi={() => handleCreateNaviFromExhibit(exhibit)}
-                            onEdit={() => router.push(`/mypage/exhibits/${exhibit.id}/edit`)}
+                            onEdit={() => router.push(`/market/mypage/exhibits/${exhibit.id}/edit`)}
                             onDelete={() => handleDeleteExhibit(exhibit.id)}
                             statusActionLabel={statusActionLabel ?? undefined}
                             onStatusAction={

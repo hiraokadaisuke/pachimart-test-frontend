@@ -809,7 +809,7 @@ export function InProgressTabContent() {
             rows={buyerInquiryRows}
             loading={dealingLoading || inquiryLoading}
             emptyMessage="現在オンライン問い合わせはありません。"
-            onRowClick={(row) => row.id && router.push(`/navi/inquiries/${(row as InquiryRow).id}`)}
+            onRowClick={(row) => row.id && router.push(`/market/navi/inquiries/${(row as InquiryRow).id}`)}
           />
         </div>
       </section>
@@ -842,7 +842,7 @@ export function InProgressTabContent() {
             rows={sellerInquiryRows}
             loading={dealingLoading || inquiryLoading}
             emptyMessage="現在オンライン問い合わせはありません。"
-            onRowClick={(row) => row.id && router.push(`/navi/inquiries/${(row as InquiryRow).id}`)}
+            onRowClick={(row) => row.id && router.push(`/market/navi/inquiries/${(row as InquiryRow).id}`)}
           />
         </div>
       </section>

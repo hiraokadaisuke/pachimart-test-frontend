@@ -14,13 +14,13 @@ export default function NewExhibitPage() {
           </div>
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-center">
             <Link
-              href="/mypage/exhibits/new/pachinko"
+              href="/market/mypage/exhibits/new/pachinko"
               className="rounded-lg border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-900 shadow-sm transition hover:border-blue-200 hover:text-blue-700"
             >
               パチンコ
             </Link>
             <Link
-              href="/mypage/exhibits/new/slot"
+              href="/market/mypage/exhibits/new/slot"
               className="rounded-lg border border-slate-200 bg-white px-8 py-4 text-base font-semibold text-slate-900 shadow-sm transition hover:border-blue-200 hover:text-blue-700"
             >
               スロット

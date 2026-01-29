@@ -679,7 +679,7 @@ function StandardNaviRequestEditor({
       deleteNaviDraft(currentUser.id, updatedDraft.id);
       setDraft(updatedDraft);
       alert("取引Naviを取引先へ送信しました。");
-      router.push("/navi");
+      router.push("/market/navi");
     } catch (error) {
       console.error("Failed to send trade navi", error);
       alert("送信中にエラーが発生しました。再度お試しください。");
@@ -961,7 +961,7 @@ function StandardNaviRequestEditor({
     const nextParams = new URLSearchParams(safeSearchParams);
     nextParams.delete("pickListingId");
     const queryString = nextParams.toString();
-    router.replace(`/navi${queryString ? `?${queryString}` : ""}`);
+    router.replace(`/market/navi${queryString ? `?${queryString}` : ""}`);
   }, [
     appliedPickExhibitId,
     draft,
@@ -1180,7 +1180,7 @@ function StandardNaviRequestEditor({
                   type="button"
                   variant="outline"
                   className="h-7 px-3 text-xs"
-                  onClick={() => router.push("/mypage/exhibits?tab=active&mode=pickForNavi")}
+                  onClick={() => router.push("/market/mypage/exhibits?tab=active&mode=pickForNavi")}
                 >
                   出品から選ぶ
                 </Button>
@@ -1740,7 +1740,7 @@ function OnlineInquiryCreator({
       }
 
       alert("オンライン問い合わせを送信しました。");
-      router.push("/navi?tab=inProgress");
+      router.push("/market/navi?tab=inProgress");
     } catch (error) {
       console.error("Failed to send online inquiry", error);
       alert("送信に失敗しました。時間をおいて再度お試しください。");

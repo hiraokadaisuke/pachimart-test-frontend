@@ -21,8 +21,8 @@ export const MY_PAGE_SUB_TABS: MyPageSubTabsConfig = {
     {
       key: "exhibits",
       label: "出品中",
-      href: "/mypage/exhibits",
-      matchPatterns: ["/mypage/exhibits"],
+      href: "/market/mypage/exhibits",
+      matchPatterns: ["/market/mypage/exhibits"],
     },
     {
       key: "drafts",
@@ -33,8 +33,8 @@ export const MY_PAGE_SUB_TABS: MyPageSubTabsConfig = {
     {
       key: "newExhibit",
       label: "新規出品",
-      href: "/mypage/exhibits/new",
-      matchPatterns: ["/mypage/exhibits/new"],
+      href: "/market/mypage/exhibits/new",
+      matchPatterns: ["/market/mypage/exhibits/new"],
     },
     {
       key: "inquiryMessages",
@@ -47,8 +47,8 @@ export const MY_PAGE_SUB_TABS: MyPageSubTabsConfig = {
     {
       key: "navi",
       label: "ナビ",
-      href: "/navi",
-      matchPatterns: ["/navi"],
+      href: "/market/navi",
+      matchPatterns: ["/market/navi"],
     },
     {
       key: "purchases",

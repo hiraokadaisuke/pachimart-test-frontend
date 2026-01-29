@@ -1,5 +1,10 @@
-import { redirect } from 'next/navigation';
+import LpLayout from "./lp/layout";
+import LpPage from "./lp/page";
 
 export default function HomePage() {
-  redirect('/products');
+  return (
+    <LpLayout>
+      <LpPage />
+    </LpLayout>
+  );
 }
