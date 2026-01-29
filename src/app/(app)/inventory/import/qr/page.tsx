@@ -20,6 +20,7 @@ export default function InventoryImportQrPage() {
   const [scanStatus, setScanStatus] = useState<"idle" | "scanning" | "success">("idle");
   const [scanOrigin, setScanOrigin] = useState<"camera" | "manual">("manual");
   const [scanError, setScanError] = useState<string | null>(null);
+  const [scanErrorDetail, setScanErrorDetail] = useState<string | null>(null);
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const [manualMaker, setManualMaker] = useState("");
   const [manualModel, setManualModel] = useState("");
@@ -75,14 +76,90 @@ export default function InventoryImportQrPage() {
     }
   };
 
+  const requestCameraStream = async () => {
+    if (!navigator.mediaDevices?.getUserMedia) {
+      const error = new Error("MediaDevicesUnavailable");
+      error.name = "MediaDevicesUnavailable";
+      throw error;
+    }
+
+    const constraintsCandidates: MediaStreamConstraints[] = [
+      { video: { facingMode: { ideal: "environment" } }, audio: false },
+      { video: true, audio: false },
+    ];
+
+    let lastError: unknown;
+    for (const constraints of constraintsCandidates) {
+      try {
+        return await navigator.mediaDevices.getUserMedia(constraints);
+      } catch (error) {
+        lastError = error;
+        if (error instanceof Error && error.name === "OverconstrainedError") {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw lastError ?? new Error("UnknownCameraError");
+  };
+
+  const resolveCameraErrorMessage = (error: unknown) => {
+    if (error instanceof Error) {
+      switch (error.name) {
+        case "NotAllowedError":
+        case "SecurityError":
+          return {
+            message: "カメラの権限が拒否されています。設定で許可してからページを再読み込みしてください。",
+            detail: null,
+          };
+        case "NotFoundError":
+          return { message: "この端末にカメラが見つかりません。", detail: null };
+        case "NotReadableError":
+          return {
+            message: "他のアプリがカメラを使用中です。アプリを閉じてから再度お試しください。",
+            detail: null,
+          };
+        case "OverconstrainedError":
+          return {
+            message:
+              "環境カメラを使用できませんでした。フロントカメラ/デフォルトで再試行してください。",
+            detail: null,
+          };
+        case "MediaDevicesUnavailable":
+          return { message: "このブラウザはカメラに対応していません。", detail: null };
+        default:
+          return {
+            message: "カメラの起動に失敗しました。QR文字列貼り付けをお試しください。",
+            detail: error.name,
+          };
+      }
+    }
+    return {
+      message: "カメラの起動に失敗しました。QR文字列貼り付けをお試しください。",
+      detail: null,
+    };
+  };
+
   const handleStartScan = async () => {
     setScanError(null);
+    setScanErrorDetail(null);
     setRegisteredMessage(null);
 
     const BarcodeDetectorClass = (window as Window & { BarcodeDetector?: BarcodeDetectorType })
       .BarcodeDetector;
-    if (!BarcodeDetectorClass || !navigator.mediaDevices?.getUserMedia) {
-      setScanError("カメラが使えないため、QR文字列を貼り付けてください。");
+    if (!window.isSecureContext) {
+      setScanError("httpsで開かないとカメラは使えません。QR文字列貼り付けをご利用ください。");
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setScanError("このブラウザはカメラに対応していません。");
+      return;
+    }
+
+    if (!BarcodeDetectorClass) {
+      setScanError("このブラウザはQR読み取りに対応していません。QR文字列貼り付けをご利用ください。");
       return;
     }
 
@@ -90,10 +167,7 @@ export default function InventoryImportQrPage() {
     setScanStatus("scanning");
     try {
       detectorRef.current = new BarcodeDetectorClass({ formats: ["qr_code"] });
-      streamRef.current = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
-        audio: false,
-      });
+      streamRef.current = await requestCameraStream();
 
       if (!videoRef.current) return;
       videoRef.current.srcObject = streamRef.current;
@@ -114,7 +188,9 @@ export default function InventoryImportQrPage() {
       }, 700);
     } catch (error) {
       console.error(error);
-      setScanError("カメラが使えないため、QR文字列を貼り付けてください。");
+      const { message, detail } = resolveCameraErrorMessage(error);
+      setScanError(message);
+      setScanErrorDetail(detail);
       setScanStatus("idle");
       await stopScanner();
     }
@@ -148,6 +224,7 @@ export default function InventoryImportQrPage() {
     setManualModel("");
     setRegisteredMessage(null);
     setScanError(null);
+    setScanErrorDetail(null);
     setSelectedSuggestionId(null);
   };
 
@@ -168,13 +245,23 @@ export default function InventoryImportQrPage() {
           title="QR読み取り"
           description="カメラを起動し、QRコードを読み取って自動入力します。"
           actions={
-            <Button
-              onClick={handleStartScan}
-              className="h-11 w-full rounded-none text-sm sm:w-auto"
-              disabled={scanStatus === "scanning"}
-            >
-              カメラで読み取る
-            </Button>
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+              <Button
+                onClick={handleStartScan}
+                className="h-11 w-full rounded-none text-sm sm:w-auto"
+                disabled={scanStatus === "scanning"}
+              >
+                カメラで読み取る
+              </Button>
+              <Button
+                onClick={() => void stopScanner()}
+                variant="outline"
+                className="h-11 w-full rounded-none text-sm sm:w-auto"
+                disabled={scanStatus !== "scanning"}
+              >
+                停止
+              </Button>
+            </div>
           }
         >
           <div className="space-y-3">
@@ -194,7 +281,12 @@ export default function InventoryImportQrPage() {
               )}
             </div>
             {scanError ? (
-              <p className="text-xs text-rose-600">{scanError}</p>
+              <div className="space-y-1 text-xs text-rose-600">
+                <p>{scanError}</p>
+                {scanErrorDetail ? (
+                  <p className="text-[11px] text-rose-500">詳細: {scanErrorDetail}</p>
+                ) : null}
+              </div>
             ) : (
               <p className="text-xs text-slate-500">
                 iPhone/Androidに対応。カメラが使えない場合は手動入力をご利用ください。
