@@ -25,8 +25,9 @@ const typeLabels: Record<InventoryStatus, string> = {
 };
 
 export default function InventoryItemDetailPage() {
-  const params = useParams<{ id: string }>();
-  const item = getItem(params.id);
+  const params = useParams<{ id?: string | string[] }>();
+  const id = Array.isArray(params?.id) ? params?.id[0] : params?.id;
+  const item = id ? getItem(id) : null;
   const [modalType, setModalType] = useState<"frame" | "cell" | null>(null);
 
   if (!item) {
