@@ -26,7 +26,7 @@ const typeOptions: InventoryStatus[] = ["stock", "installed", "inactive"];
 export default function InventoryItemsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const typeParam = (searchParams.get("type") as InventoryStatus) ?? "stock";
+  const typeParam = (searchParams?.get("type") as InventoryStatus) ?? "stock";
   const type = typeOptions.includes(typeParam) ? typeParam : "stock";
   const items = listItems(type);
 
