@@ -49,7 +49,7 @@ export default function Header() {
     available: availableBalance,
   };
   const pathname = usePathname();
-  const isInventoryPage = pathname?.startsWith("/inventory");
+  const isInventoryPage = pathname?.startsWith("/sales");
   const devUserLabel = `${currentUser.companyName}で閲覧中`;
   const isProd = process.env.NEXT_PUBLIC_ENV === "production";
 
@@ -119,7 +119,7 @@ export default function Header() {
               >
                 お問い合わせ
               </Link>
-              <Link href="/inventory" className="text-sm font-semibold text-neutral-800 transition hover:text-blue-700">
+              <Link href="/sales" className="text-sm font-semibold text-neutral-800 transition hover:text-blue-700">
                 在庫管理 →
               </Link>
             </div>

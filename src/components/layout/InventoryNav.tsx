@@ -19,43 +19,43 @@ type NavMenuItem = {
 type NavItem = NavLinkItem | NavMenuItem;
 
 const NAV_ITEMS: NavItem[] = [
-  { kind: "link", href: "/inventory/new", label: "在庫登録" },
-  { kind: "link", href: "/inventory", label: "在庫一覧" },
+  { kind: "link", href: "/sales/new", label: "在庫登録" },
+  { kind: "link", href: "/sales", label: "在庫一覧" },
   {
     kind: "menu",
     label: "購入伝票",
     items: [
-      { kind: "link", href: "/inventory/purchase-invoice/create", label: "購入伝票作成" },
-      { kind: "link", href: "/inventory/purchase-invoice/list", label: "購入伝票一覧" },
+      { kind: "link", href: "/sales/purchase-invoice/create", label: "購入伝票作成" },
+      { kind: "link", href: "/sales/purchase-invoice/list", label: "購入伝票一覧" },
     ],
   },
   {
     kind: "menu",
     label: "販売伝票",
     items: [
-      { kind: "link", href: "/inventory/sales-invoice/create", label: "販売伝票作成" },
-      { kind: "link", href: "/inventory/sales-invoice/list", label: "販売伝票一覧" },
+      { kind: "link", href: "/sales/sales-invoice/create", label: "販売伝票作成" },
+      { kind: "link", href: "/sales/sales-invoice/list", label: "販売伝票一覧" },
     ],
   },
-  { kind: "link", href: "/inventory/profit", label: "利益管理" },
+  { kind: "link", href: "/sales/profit", label: "利益管理" },
   {
     kind: "menu",
     label: "詳細設定",
     items: [
-      { kind: "link", href: "/inventory/settings?mode=customer&tab=corp", label: "取引先管理" },
-      { kind: "link", href: "/inventory/settings?mode=self&tab=corp", label: "自社設定" },
-      { kind: "link", href: "/inventory/settings?mode=purchase-terms", label: "購入規約" },
+      { kind: "link", href: "/sales/settings?mode=customer&tab=corp", label: "取引先管理" },
+      { kind: "link", href: "/sales/settings?mode=self&tab=corp", label: "自社設定" },
+      { kind: "link", href: "/sales/settings?mode=purchase-terms", label: "購入規約" },
     ],
   },
 ];
 
 const isActive = (path: string, searchParams: URLSearchParams | null, href: string) => {
-  if (href === "/inventory") {
-    return path === "/inventory";
+  if (href === "/sales") {
+    return path === "/sales";
   }
   const [basePath, queryString] = href.split("?");
-  if (basePath === "/inventory/settings") {
-    if (path !== "/inventory/settings") return false;
+  if (basePath === "/sales/settings") {
+    if (path !== "/sales/settings") return false;
     const hrefParams = new URLSearchParams(queryString);
     const targetMode = hrefParams.get("mode");
     const currentMode = searchParams?.get("mode") ?? "customer";
