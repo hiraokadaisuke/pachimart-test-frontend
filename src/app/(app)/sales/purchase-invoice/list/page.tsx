@@ -7,7 +7,7 @@ import { deletePurchaseInvoices, loadPurchaseInvoices } from "@/lib/demo-data/pu
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
-import { formatShortId } from "@/lib/sales/idDisplay";
+import { formatShortId } from "@/lib/inventory/idDisplay";
 
 const labelCellClass = "bg-slate-100 text-center font-semibold text-slate-800";
 const borderCell = "border border-gray-300";

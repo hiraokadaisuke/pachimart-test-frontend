@@ -12,7 +12,7 @@ import {
   type SupplierCategory,
   type SupplierCorporate,
 } from "@/lib/demo-data/demoMasterData";
-import { MACHINE_CATALOG, getMakerOptions } from "@/lib/sales/machineCatalog";
+import { MACHINE_CATALOG, getMakerOptions } from "@/lib/inventory/machineCatalog";
 
 type SupplierInfo = {
   supplier: string;

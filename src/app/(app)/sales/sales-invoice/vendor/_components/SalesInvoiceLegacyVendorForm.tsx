@@ -6,7 +6,7 @@ import { DndContext, PointerSensor, TouchSensor, useSensor, useSensors, type Dra
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-import { SalesInvoiceSerialModal } from "@/components/sales/SalesInvoiceSerialModal";
+import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
 import { addSalesInvoice, generateSalesInvoiceId, loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { loadInventoryRecords, updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 import {
@@ -15,7 +15,7 @@ import {
   type CompanyProfile,
   type MasterData,
 } from "@/lib/demo-data/demoMasterData";
-import { splitInventoryForSales } from "@/lib/sales/salesInvoiceSplit";
+import { splitInventoryForSales } from "@/lib/inventory/salesInvoiceSplit";
 import type { SerialInputRow } from "@/lib/serialInputStorage";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 

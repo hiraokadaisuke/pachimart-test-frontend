@@ -16,7 +16,7 @@ import {
   loadSalesInvoiceGroups,
 } from "@/lib/demo-data/salesInvoiceGroups";
 import type { SalesInvoice, SalesInvoiceGroup } from "@/types/salesInvoices";
-import { formatShortId } from "@/lib/sales/idDisplay";
+import { formatShortId } from "@/lib/inventory/idDisplay";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 
 interface SalesInvoiceRow {

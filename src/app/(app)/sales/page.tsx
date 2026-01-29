@@ -18,8 +18,8 @@ import { loadPurchaseInvoices, savePurchaseInvoices } from "@/lib/demo-data/purc
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import type { InventoryStatusOption, PurchaseInvoice } from "@/types/purchaseInvoices";
 import type { SalesInvoice } from "@/types/salesInvoices";
-import InventoryEditTable from "@/components/sales/InventoryEditTable";
-import { buildEditForm, buildPayload } from "@/lib/sales/editUtils";
+import InventoryEditTable from "@/components/inventory/InventoryEditTable";
+import { buildEditForm, buildPayload } from "@/lib/inventory/editUtils";
 import {
   loadSerialDraft,
   loadSerialInput,
@@ -27,7 +27,7 @@ import {
   loadSerialRowsSync,
   type SerialInputRow,
 } from "@/lib/serialInputStorage";
-import { formatCompactId } from "@/lib/sales/idDisplay";
+import { formatCompactId } from "@/lib/inventory/idDisplay";
 import { openAttachmentInNewTab } from "@/lib/attachments/attachmentStore";
 
 type Column = {

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 
-import InventoryEditTable from "@/components/sales/InventoryEditTable";
+import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import SerialInputPanel, {
   type SerialSplitPayload,
 } from "@/app/(app)/sales/purchase-invoice/_components/SerialInputPanel";
@@ -16,7 +16,7 @@ import {
 } from "@/lib/demo-data/demoInventory";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
-import { buildEditForm, buildPayload } from "@/lib/sales/editUtils";
+import { buildEditForm, buildPayload } from "@/lib/inventory/editUtils";
 import {
   clearSerialDraft,
   saveSerialRows,

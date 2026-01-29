@@ -7,10 +7,10 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 
 import { updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
-import { splitInventoryForSales } from "@/lib/sales/salesInvoiceSplit";
+import { splitInventoryForSales } from "@/lib/inventory/salesInvoiceSplit";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
-import { SalesInvoiceSerialModal } from "@/components/sales/SalesInvoiceSerialModal";
+import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
 import {
   DEFAULT_MASTER_DATA,
   loadMasterData,
