@@ -3,7 +3,11 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import InventoryPanel from "@/components/inventory/InventoryPanel";
+import InventoryTable from "@/components/inventory/InventoryTable";
+import InventoryToolbar from "@/components/inventory/InventoryToolbar";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { listItems, type InventoryStatus } from "@/lib/inventory/mock";
 
 const typeLabels: Record<InventoryStatus, string> = {
@@ -26,96 +30,104 @@ export default function InventoryItemsClient() {
   const typeParam = (searchParams?.get("type") as InventoryStatus) ?? "stock";
   const type = typeOptions.includes(typeParam) ? typeParam : "stock";
   const items = listItems(type);
-  const tableHeader = "border border-gray-300 bg-slate-600 px-2 py-1 text-xs font-bold text-white";
-  const tableCell = "border border-gray-300 px-2 py-1 text-xs text-slate-700";
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-10">
-      <div className="flex flex-wrap items-start justify-between gap-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{typeLabels[type]}物件一覧</h1>
-          <p className="mt-2 text-sm text-slate-600">{typeDescriptions[type]}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="outline">CSV出力（ダミー）</Button>
-          <Link href="/inventory/import">
-            <Button variant="outline">取込データ設定へ</Button>
-          </Link>
-        </div>
-      </div>
+    <div className="mx-auto w-full max-w-6xl px-6 py-8">
+      <InventoryToolbar title="在庫物件一覧" description={typeDescriptions[type]} />
 
-      <div className="mt-6 flex flex-wrap items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {typeOptions.map((option) => (
-          <Button
+          <button
             key={option}
-            variant={option === type ? "default" : "outline"}
+            type="button"
             onClick={() => router.push(`/inventory/items?type=${option}`)}
+            className={
+              option === type
+                ? "border border-slate-800 bg-slate-800 px-3 py-1 text-xs font-semibold text-white"
+                : "border border-slate-300 bg-white px-3 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+            }
           >
             {typeLabels[option]}
-          </Button>
+          </button>
         ))}
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-md border border-gray-300 bg-white">
-        <table className="min-w-full border-collapse text-xs text-slate-800">
-          <thead className="bg-slate-600 text-left text-white">
-            <tr>
-              <th className={`${tableHeader} w-8`}>
-                <input type="checkbox" aria-label="すべて選択" />
-              </th>
-              <th className={tableHeader}>管理ID</th>
-              <th className={tableHeader}>入庫日</th>
-              <th className={tableHeader}>メーカー</th>
-              <th className={tableHeader}>機種名</th>
-              <th className={tableHeader}>種別</th>
-              <th className={tableHeader}>タイプ</th>
-              <th className={tableHeader}>保管先</th>
-              <th className={tableHeader}>保管場所</th>
-              <th className={tableHeader}>外れ店</th>
-              <th className={tableHeader}>外れ日</th>
-              <th className={tableHeader}>撤去日</th>
-              <th className={tableHeader}>担当</th>
-              <th className={tableHeader}>備考</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length === 0 ? (
-              <tr>
-                <td colSpan={14} className="py-8 text-center text-sm text-slate-500">
-                  該当データがありません。
-                </td>
-              </tr>
-            ) : null}
+      <div className="mt-4">
+        <InventoryPanel
+          title={`${typeLabels[type]}物件一覧`}
+          description="出入番頭の業務テーブルで在庫を確認します。"
+          actions={
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                className="h-8 w-48 rounded-none"
+                placeholder="検索キーワード"
+              />
+              <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
+                検索
+              </Button>
+              <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
+                CSV出力
+              </Button>
+              <Link href="/inventory/import">
+                <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
+                  取込へ
+                </Button>
+              </Link>
+            </div>
+          }
+        >
+          <InventoryTable
+            headers={[
+              "",
+              "管理ID",
+              "入庫日",
+              "メーカー",
+              "機種名",
+              "種別",
+              "タイプ",
+              "保管先",
+              "保管場所",
+              "外れ店",
+              "外れ日",
+              "撤去日",
+              "担当",
+              "備考",
+            ]}
+            emptyMessage={items.length === 0 ? "該当データがありません。" : undefined}
+            emptyColSpan={14}
+          >
             {items.map((item, index) => {
               const kind = index % 2 === 0 ? "P" : "S";
               const typeLabel = index % 3 === 0 ? "本体" : index % 3 === 1 ? "枠" : "セル";
               return (
                 <tr
                   key={item.id}
-                  className="cursor-pointer odd:bg-white even:bg-[#f8fafc]"
+                  className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}
                   onClick={() => router.push(`/inventory/items/${item.id}`)}
                 >
-                  <td className={tableCell}>
+                  <td className="border border-slate-200 px-2 py-1">
                     <input type="checkbox" aria-label={`${item.id}を選択`} />
                   </td>
-                  <td className={tableCell}>{item.id}</td>
-                  <td className={tableCell}>{item.stockedAt}</td>
-                  <td className={tableCell}>{item.maker}</td>
-                  <td className={tableCell}>{item.model}</td>
-                  <td className={tableCell}>{kind}</td>
-                  <td className={tableCell}>{typeLabel}</td>
-                  <td className={tableCell}>{item.storageHub}</td>
-                  <td className={tableCell}>{item.storageLocation}</td>
-                  <td className={tableCell}>{item.partner}</td>
-                  <td className={tableCell}>{item.removedAt || "-"}</td>
-                  <td className={tableCell}>{item.status === "installed" ? "-" : item.removedAt || "-"}</td>
-                  <td className={tableCell}>{item.reader ?? "未設定"}</td>
-                  <td className={tableCell}>-</td>
+                  <td className="border border-slate-200 px-2 py-1">{item.id}</td>
+                  <td className="border border-slate-200 px-2 py-1">{item.stockedAt}</td>
+                  <td className="border border-slate-200 px-2 py-1">{item.maker}</td>
+                  <td className="border border-slate-200 px-2 py-1">{item.model}</td>
+                  <td className="border border-slate-200 px-2 py-1">{kind}</td>
+                  <td className="border border-slate-200 px-2 py-1">{typeLabel}</td>
+                  <td className="border border-slate-200 px-2 py-1">{item.storageHub}</td>
+                  <td className="border border-slate-200 px-2 py-1">{item.storageLocation}</td>
+                  <td className="border border-slate-200 px-2 py-1">{item.partner}</td>
+                  <td className="border border-slate-200 px-2 py-1">{item.removedAt || "-"}</td>
+                  <td className="border border-slate-200 px-2 py-1">
+                    {item.status === "installed" ? "-" : item.removedAt || "-"}
+                  </td>
+                  <td className="border border-slate-200 px-2 py-1">{item.reader ?? "未設定"}</td>
+                  <td className="border border-slate-200 px-2 py-1">-</td>
                 </tr>
               );
             })}
-          </tbody>
-        </table>
+          </InventoryTable>
+        </InventoryPanel>
       </div>
     </div>
   );

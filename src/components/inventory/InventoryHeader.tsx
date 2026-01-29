@@ -19,27 +19,27 @@ export default function InventoryHeader() {
   const activeType = searchParams?.get("type") ?? "stock";
 
   return (
-    <header className="w-full border-b border-slate-200 bg-white">
-      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-8">
-          <Link href="/inventory" className="text-lg font-semibold text-[#2A8FA0]">
-            在庫管理
+    <header className="w-full border-b border-slate-700 bg-slate-800 text-white">
+      <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
+        <div className="flex items-center gap-6">
+          <Link href="/inventory" className="text-base font-semibold tracking-wide text-white">
+            在庫管理（出入番頭）
           </Link>
-          <nav className="flex items-center gap-4 text-sm font-semibold">
+          <nav className="flex items-center gap-2 text-xs font-semibold">
             {navItems.map((item) => {
               const isActive =
                 item.type
                   ? pathname === "/inventory/items" && activeType === item.type
-                  : pathname === item.href;
+                  : pathname?.startsWith(item.href);
               return (
                 <Link
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "rounded-full px-3 py-1 transition",
+                    "border border-transparent px-3 py-1",
                     isActive
-                      ? "bg-slate-900 text-white"
-                      : "text-slate-600 hover:bg-slate-100",
+                      ? "border-white bg-white/10 text-white"
+                      : "text-slate-200 hover:border-white/40 hover:bg-white/5",
                   )}
                 >
                   {item.label}
@@ -48,7 +48,7 @@ export default function InventoryHeader() {
             })}
           </nav>
         </div>
-        <Link href="/portal" className="text-sm font-medium text-slate-600 hover:text-slate-900">
+        <Link href="/portal" className="text-xs font-semibold text-slate-200 hover:text-white">
           /portalへ戻る
         </Link>
       </div>
