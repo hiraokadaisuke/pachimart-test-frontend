@@ -29,11 +29,19 @@ export type InventoryImportRead = {
   readAt: string;
   source: string;
   qrPayload?: string;
+  qrRaw?: string;
   maker?: string;
   model?: string;
   storageHub?: string;
   storageLocation?: string;
   confirmed: boolean;
+};
+
+export type QrImportPayload = {
+  qrRaw: string;
+  maker?: string;
+  model?: string;
+  source?: string;
 };
 
 export type ConfirmImportPayload = {
@@ -202,6 +210,25 @@ export function addImport(qrPayload: string) {
     readAt: timestamp,
     source: "QR仮登録",
     qrPayload,
+    qrRaw: qrPayload,
+    confirmed: false,
+  };
+
+  importedReads = [nextImport, ...importedReads];
+  return nextImport;
+}
+
+export function addImportFromQr(payload: QrImportPayload) {
+  const timestamp = formatDateTime(new Date());
+  const nextId = `READ-${Math.floor(100 + Math.random() * 900)}`;
+  const nextImport: InventoryImportRead = {
+    id: nextId,
+    readAt: timestamp,
+    source: payload.source ?? "QR仮登録",
+    qrPayload: payload.qrRaw,
+    qrRaw: payload.qrRaw,
+    maker: payload.maker,
+    model: payload.model,
     confirmed: false,
   };
 

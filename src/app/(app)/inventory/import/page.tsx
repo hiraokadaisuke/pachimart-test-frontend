@@ -13,6 +13,7 @@ const importEntries = [
     title: "QRで仮登録（スマホ）",
     description: "QR文字列を仮登録として記録します。",
     href: "/inventory/import/qr",
+    highlight: true,
   },
   {
     title: "仮登録の補完・確定（PC）",
@@ -39,10 +40,20 @@ export default function InventoryImportHubPage() {
               <li key={entry.href}>
                 <Link
                   href={entry.href}
-                  className="flex w-full cursor-pointer flex-wrap items-center justify-between gap-3 rounded-md px-2 py-3 text-left transition-colors hover:bg-slate-50"
+                  className={`flex w-full cursor-pointer flex-wrap items-center justify-between gap-3 rounded-md px-3 py-4 text-left transition-colors hover:bg-slate-50 sm:py-3 ${
+                    entry.highlight
+                      ? "border border-emerald-200 bg-emerald-50/60"
+                      : "border border-transparent"
+                  }`}
                 >
                   <div>
-                    <p className="text-sm font-semibold text-slate-900">{entry.title}</p>
+                    <p
+                      className={`text-sm font-semibold ${
+                        entry.highlight ? "text-emerald-900" : "text-slate-900"
+                      }`}
+                    >
+                      {entry.title}
+                    </p>
                     <p className="mt-1 text-xs text-slate-600">{entry.description}</p>
                   </div>
                   <span className="text-sm font-semibold text-slate-400" aria-hidden="true">
