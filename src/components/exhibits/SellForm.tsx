@@ -364,7 +364,7 @@ export function SellForm({ showHeader = true, exhibitType, mode = "create", init
         throw new Error(`Failed to ${mode === "edit" ? "update" : "create"} listing: ${response.status}`);
       }
 
-      router.push("/mypage/exhibits");
+      router.push("/market/mypage/exhibits");
     } catch (error) {
       console.error(`Failed to ${mode === "edit" ? "update" : "create"} listing`, error);
       setSubmitError(

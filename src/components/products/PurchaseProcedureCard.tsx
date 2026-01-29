@@ -217,7 +217,7 @@ export function PurchaseProcedureCard({
     params.set("shippingHandlingTotal", String(estimate.shippingHandlingTotal));
     params.set("total", String(estimate.total));
     params.set("pickupRequested", pickupRequested ? "true" : "false");
-    return `/navi?${params.toString()}`;
+    return `/market/navi?${params.toString()}`;
   }, [
     estimate,
     exhibit.id,

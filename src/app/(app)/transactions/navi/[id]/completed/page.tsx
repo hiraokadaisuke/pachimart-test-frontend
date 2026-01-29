@@ -64,7 +64,7 @@ export default function TransactionNaviCompletedPage() {
               取引内容を確認する
             </Link>
             <Link
-              href="/mypage/exhibits"
+              href="/market/mypage/exhibits"
               className="rounded bg-sky-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-sky-700"
             >
               出品一覧に戻る

@@ -35,7 +35,7 @@ function ExhibitHubContent() {
       {activeTab === "active" && (
         <ExhibitList
           status="出品中"
-          onNewExhibit={() => router.push("/mypage/exhibits/new")}
+          onNewExhibit={() => router.push("/market/mypage/exhibits/new")}
           selectionMode={selectionMode ? "pickForNavi" : undefined}
         />
       )}

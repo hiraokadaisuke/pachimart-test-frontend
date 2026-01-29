@@ -42,7 +42,7 @@ function NaviContent() {
     const params = new URLSearchParams(searchParams ? searchParams.toString() : "");
     params.set("tab", next);
     const query = params.toString();
-    router.replace(query ? `/navi?${query}` : "/navi", { scroll: false });
+    router.replace(query ? `/market/navi?${query}` : "/market/navi", { scroll: false });
   };
 
   return (

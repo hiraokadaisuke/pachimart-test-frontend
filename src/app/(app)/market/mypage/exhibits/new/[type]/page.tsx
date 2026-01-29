@@ -15,7 +15,7 @@ export default function NewExhibitFormPage({ params }: { params: { type?: string
   const routeType = params?.type ? typeMap[params.type] : undefined;
 
   if (!routeType) {
-    redirect("/mypage/exhibits/new");
+    redirect("/market/mypage/exhibits/new");
   }
 
   return (

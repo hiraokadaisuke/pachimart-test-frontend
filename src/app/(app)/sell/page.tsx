@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function SellPage() {
-  redirect("/mypage/exhibits/new");
+  redirect("/market/mypage/exhibits/new");
 }

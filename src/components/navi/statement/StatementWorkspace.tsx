@@ -340,7 +340,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
       if (latest) {
         setMessage("承認しました。ステータスを更新しました。");
         setError(null);
-        router.push("/navi?tab=purchaseHistory");
+        router.push("/market/navi?tab=purchaseHistory");
       }
     } catch (approveError) {
       console.error("Failed to approve trade", approveError);
@@ -361,7 +361,7 @@ export function StatementWorkspace({ tradeId, pageTitle, description, backHref }
         setMessage("依頼をキャンセルしました。");
         setError(null);
 
-        router.push("/navi?tab=purchaseHistory");
+        router.push("/market/navi?tab=purchaseHistory");
       }
     } catch (cancelError) {
       console.error("Failed to cancel trade", cancelError);
