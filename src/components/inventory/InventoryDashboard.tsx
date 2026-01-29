@@ -16,7 +16,7 @@ import MainContainer from "@/components/layout/MainContainer";
 import { InventorySearchBar } from "./InventorySearchBar";
 import { InventoryColumnSelectorModal } from "./InventoryColumnSelectorModal";
 import { InventoryDocumentsModal } from "./InventoryDocumentsModal";
-import { InventoryTable } from "./InventoryTable";
+import { InventoryTable } from "./InventoryDataTable";
 import {
   DEFAULT_INVENTORY_COLUMNS,
   type InventoryColumnId,

@@ -4,9 +4,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 
+import InventoryPanel from "@/components/inventory/InventoryPanel";
+import InventoryTable from "@/components/inventory/InventoryTable";
+import InventoryToolbar from "@/components/inventory/InventoryToolbar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -15,7 +17,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getItem, type InventoryStatus } from "@/lib/inventory/mock";
 
 const typeLabels: Record<InventoryStatus, string> = {
@@ -32,94 +33,85 @@ export default function InventoryItemDetailPage() {
 
   if (!item) {
     return (
-      <div className="mx-auto w-full max-w-6xl px-6 py-10">
+      <div className="mx-auto w-full max-w-6xl px-6 py-8">
         <p className="text-sm text-slate-600">該当する物件が見つかりません。</p>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-10">
-      <div className="flex items-start justify-between gap-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">物件詳細</h1>
-          <p className="mt-2 text-sm text-slate-600">{item.id} の履歴と状態を確認できます。</p>
-        </div>
-        <Link href={`/inventory/items?type=${item.status}`}>
-          <Button variant="outline">一覧へ戻る</Button>
-        </Link>
-      </div>
+    <div className="mx-auto w-full max-w-6xl px-6 py-8">
+      <InventoryToolbar
+        title="物件詳細"
+        description={`${item.id} の履歴と状態を確認できます。`}
+        actions={
+          <Link
+            href={`/inventory/items?type=${item.status}`}
+            className="border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+          >
+            一覧へ戻る
+          </Link>
+        }
+      />
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle className="flex flex-wrap items-center gap-3">
-            {item.maker} / {item.model}
-            <Badge variant="outline">{typeLabels[item.status]}</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-2">
-          <div>
-            <p className="text-xs font-semibold text-slate-500">拠点 / 場所</p>
-            <p className="text-sm text-slate-900">
-              {item.storageHub} / {item.storageLocation}
-            </p>
+      <div className="mt-4 space-y-4">
+        <InventoryPanel
+          title="基本情報"
+          actions={<Badge variant="outline">{typeLabels[item.status]}</Badge>}
+        >
+          <div className="grid gap-3 text-xs md:grid-cols-2">
+            <div>
+              <p className="font-semibold text-slate-600">メーカー / 機種</p>
+              <p className="text-sm text-slate-900">
+                {item.maker} / {item.model}
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-600">拠点 / 場所</p>
+              <p className="text-sm text-slate-900">
+                {item.storageHub} / {item.storageLocation}
+              </p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-600">最終更新</p>
+              <p className="text-sm text-slate-900">{item.updatedAt}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-600">取込日</p>
+              <p className="text-sm text-slate-900">{item.stockedAt}</p>
+            </div>
+            <div>
+              <p className="font-semibold text-slate-600">取引元</p>
+              <p className="text-sm text-slate-900">{item.partner}</p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-500">最終更新</p>
-            <p className="text-sm text-slate-900">{item.updatedAt}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-500">取込日</p>
-            <p className="text-sm text-slate-900">{item.stockedAt}</p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-slate-500">取引元</p>
-            <p className="text-sm text-slate-900">{item.partner}</p>
-          </div>
-        </CardContent>
-      </Card>
+        </InventoryPanel>
 
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>履歴</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>日時</TableHead>
-                <TableHead>作業</TableHead>
-                <TableHead>拠点・場所</TableHead>
-                <TableHead>担当</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {item.history.map((entry) => (
-                <TableRow key={entry.id}>
-                  <TableCell>{entry.date}</TableCell>
-                  <TableCell>{entry.action}</TableCell>
-                  <TableCell>{entry.location}</TableCell>
-                  <TableCell>{entry.operator ?? "-"}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+        <InventoryPanel title="履歴">
+          <InventoryTable headers={["日時", "作業", "拠点・場所", "担当"]}>
+            {item.history.map((entry, index) => (
+              <tr key={entry.id} className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                <td className="border border-slate-200 px-2 py-1">{entry.date}</td>
+                <td className="border border-slate-200 px-2 py-1">{entry.action}</td>
+                <td className="border border-slate-200 px-2 py-1">{entry.location}</td>
+                <td className="border border-slate-200 px-2 py-1">{entry.operator ?? "-"}</td>
+              </tr>
+            ))}
+          </InventoryTable>
 
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => setModalType("frame")}
-            >
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="outline" className="h-8 rounded-none px-3 text-xs" onClick={() => setModalType("frame")}>
               枠履歴
             </Button>
-            <Button variant="outline" onClick={() => setModalType("cell")}
-            >
+            <Button variant="outline" className="h-8 rounded-none px-3 text-xs" onClick={() => setModalType("cell")}>
               セル履歴
             </Button>
           </div>
-        </CardContent>
-      </Card>
+        </InventoryPanel>
+      </div>
 
       <Dialog open={modalType !== null} onOpenChange={() => setModalType(null)}>
-        <DialogContent>
+        <DialogContent className="rounded-none border border-slate-300">
           <DialogHeader>
             <DialogTitle>{modalType === "frame" ? "枠履歴" : "セル履歴"}</DialogTitle>
             <DialogDescription>ダミーデータのモーダルです。</DialogDescription>
@@ -128,7 +120,9 @@ export default function InventoryItemDetailPage() {
             今後の詳細履歴はここに表示されます。
           </div>
           <DialogFooter>
-            <Button onClick={() => setModalType(null)}>閉じる</Button>
+            <Button onClick={() => setModalType(null)} className="rounded-none">
+              閉じる
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

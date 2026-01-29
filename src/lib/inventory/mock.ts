@@ -28,6 +28,7 @@ export type InventoryImportRead = {
   id: string;
   readAt: string;
   source: string;
+  qrPayload?: string;
   maker?: string;
   model?: string;
   storageHub?: string;
@@ -43,6 +44,15 @@ export type ConfirmImportPayload = {
   certificationDate?: string;
   storageHub: string;
   storageLocation: string;
+};
+
+export type ManualItemPayload = {
+  maker: string;
+  model: string;
+  storageHub: string;
+  storageLocation: string;
+  stockedAt?: string;
+  partner?: string;
 };
 
 const now = new Date();
@@ -180,6 +190,25 @@ export function listImportedReads() {
   return importedReads.filter((read) => !read.confirmed);
 }
 
+export function listImports() {
+  return listImportedReads();
+}
+
+export function addImport(qrPayload: string) {
+  const timestamp = formatDateTime(new Date());
+  const nextId = `READ-${Math.floor(100 + Math.random() * 900)}`;
+  const nextImport: InventoryImportRead = {
+    id: nextId,
+    readAt: timestamp,
+    source: "QR仮登録",
+    qrPayload,
+    confirmed: false,
+  };
+
+  importedReads = [nextImport, ...importedReads];
+  return nextImport;
+}
+
 export function confirmImport(readId: string, payload: ConfirmImportPayload) {
   const read = importedReads.find((entry) => entry.id === readId);
   if (!read || read.confirmed) return null;
@@ -213,6 +242,38 @@ export function confirmImport(readId: string, payload: ConfirmImportPayload) {
   };
 
   items = [newItem, ...items];
+  importedReads = importedReads.filter((entry) => entry.id !== readId);
+  return newItem;
+}
+
+export function createItemManual(payload: ManualItemPayload) {
+  const nextId = `INV-${Math.floor(5000 + Math.random() * 500)}`;
+  const timestamp = formatDateTime(new Date());
+  const stockDate = payload.stockedAt ?? formatDate(new Date());
+  const newItem: InventoryItem = {
+    id: nextId,
+    status: "stock",
+    maker: payload.maker,
+    model: payload.model,
+    storageHub: payload.storageHub,
+    storageLocation: payload.storageLocation,
+    stockedAt: stockDate,
+    partner: payload.partner ?? "手入力",
+    readAt: timestamp,
+    reader: "手入力",
+    updatedAt: timestamp,
+    history: [
+      {
+        id: `H-${nextId}`,
+        date: timestamp,
+        action: "入庫",
+        location: `${payload.storageHub} / ${payload.storageLocation}`,
+        operator: "手入力",
+      },
+    ],
+  };
+
+  items = [newItem, ...items];
   return newItem;
 }
 
@@ -221,6 +282,6 @@ export function getInventorySummary() {
     stock: listItems("stock").length,
     installed: listItems("installed").length,
     inactive: listItems("inactive").length,
-    pending: listImportedReads().length,
+    pending: listImports().length,
   };
 }
