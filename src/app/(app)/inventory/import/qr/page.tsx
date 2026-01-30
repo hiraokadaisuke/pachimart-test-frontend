@@ -14,6 +14,7 @@ type ScannerState = "idle" | "starting" | "scanning" | "stopping";
 type Html5QrcodeCamera = { id: string; label?: string };
 
 type ScanMode = "pachi" | "slot";
+type InputType = "pachi" | "slot" | "unknown";
 
 type ParsedGuess = {
   maker_guess?: string;
@@ -26,6 +27,9 @@ type ScanItem = {
   id: string;
   raw_qr: string;
   display_code: string;
+  placeholder: string;
+  inputType: InputType;
+  statusLabel: string;
   parsed: ParsedGuess;
   parsedRaw: ReturnType<typeof parseQrRaw>;
 };
@@ -48,6 +52,44 @@ const inferModeFromRaw = (raw: string) => {
   if (/^P\d/.test(trimmed)) return "pachi";
   if (/^[A-Z0-9]{10,}$/.test(trimmed)) return "pachi";
   return null;
+};
+
+const buildPachiPlaceholder = (parsed: ReturnType<typeof parseQrRaw>) => {
+  const prefix = parsed.extracted.modelNumbers[0];
+  const number = parsed.extracted.numericStrings.find((token) => token.length >= 4);
+  if (prefix && number) return `${prefix} No.${number}`;
+  if (prefix) return `${prefix} No.XXXX`;
+  if (number) return `SS-E No.${number}`;
+  return "例: SS-E No.146568";
+};
+
+const inferInputType = (raw: string, parsed: ReturnType<typeof parseQrRaw>) => {
+  const trimmed = raw.trim().toUpperCase();
+  const isSlotLike = /[A-Z0-9]+[/-][A-Z0-9]+/.test(trimmed);
+  const isPachiLike = /^P\d/.test(trimmed) || (!trimmed.includes("/") && trimmed.length >= 10);
+  if (isSlotLike) {
+    return {
+      inputType: "slot" as const,
+      displayCode: raw,
+      placeholder: "",
+      statusLabel: "自動入力済",
+    };
+  }
+  if (isPachiLike) {
+    const displayCode = buildPachiDisplayCode(parsed);
+    return {
+      inputType: "pachi" as const,
+      displayCode,
+      placeholder: displayCode ? "" : `推定候補: ${buildPachiPlaceholder(parsed)}`,
+      statusLabel: displayCode ? "自動入力済" : "要確認",
+    };
+  }
+  return {
+    inputType: "unknown" as const,
+    displayCode: "",
+    placeholder: `推定候補: ${buildPachiPlaceholder(parsed)}`,
+    statusLabel: "要確認",
+  };
 };
 
 const buildParsedGuess = (parsed: ReturnType<typeof parseQrRaw>): ParsedGuess => {
@@ -142,20 +184,6 @@ export default function InventoryImportQrPage() {
       setSelectedSuggestionId("unknown");
     }
   }, [suggestions]);
-
-  useEffect(() => {
-    if (inferredMode !== "slot") return;
-    setScanItems((prev) =>
-      prev.map((item) =>
-        item.display_code.trim()
-          ? item
-          : {
-              ...item,
-              display_code: item.raw_qr,
-            },
-      ),
-    );
-  }, [inferredMode]);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -442,11 +470,14 @@ export default function InventoryImportQrPage() {
       }
       const parsedRaw = parseQrRaw(trimmed);
       const parsed = buildParsedGuess(parsedRaw);
-      const displayCode = inferredMode === "slot" ? trimmed : buildPachiDisplayCode(parsedRaw);
+      const inferredInput = inferInputType(trimmed, parsedRaw);
       const nextItem: ScanItem = {
         id: crypto.randomUUID(),
         raw_qr: trimmed,
-        display_code: displayCode,
+        display_code: inferredInput.displayCode,
+        placeholder: inferredInput.placeholder,
+        inputType: inferredInput.inputType,
+        statusLabel: inferredInput.statusLabel,
         parsed,
         parsedRaw,
       };
@@ -461,7 +492,15 @@ export default function InventoryImportQrPage() {
 
   const handleDisplayCodeChange = (id: string, value: string) => {
     setScanItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, display_code: value } : item)),
+      prev.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              display_code: value,
+              statusLabel: value.trim() ? "入力済" : item.statusLabel,
+            }
+          : item,
+      ),
     );
   };
 
@@ -641,7 +680,12 @@ export default function InventoryImportQrPage() {
               {scanItems.map((item, index) => (
                 <div key={item.id} className="rounded-2xl bg-slate-900 p-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-slate-100">読み取り {index + 1}</p>
+                    <div className="flex items-center gap-2">
+                      <p className="text-sm font-semibold text-slate-100">読み取り {index + 1}</p>
+                      <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-semibold text-slate-200">
+                        {item.statusLabel}
+                      </span>
+                    </div>
                     <button
                       type="button"
                       onClick={() => handleDeleteItem(item.id)}
@@ -656,7 +700,7 @@ export default function InventoryImportQrPage() {
                       value={item.display_code}
                       onChange={(event) => handleDisplayCodeChange(item.id, event.target.value)}
                       className="h-11 rounded-xl border-slate-700 bg-slate-950 text-white"
-                      placeholder="実物表記を入力"
+                      placeholder={item.display_code.trim() ? "実物表記を入力" : item.placeholder}
                     />
                     <button
                       type="button"
