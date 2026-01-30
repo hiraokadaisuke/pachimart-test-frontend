@@ -24,8 +24,14 @@ export default function InventoryImportQrPage() {
   const [manualMaker, setManualMaker] = useState("");
   const [manualModel, setManualModel] = useState("");
   const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
   const qrRegionId = useId();
   const scannerRef = useRef<Html5QrcodeInstance | null>(null);
+  const isStartingRef = useRef(false);
+  const isRunningRef = useRef(false);
+  const startPromiseRef = useRef<Promise<void> | null>(null);
+  const unmountedRef = useRef(false);
+  const isHandlingSuccessRef = useRef(false);
 
   const suggestions = useMemo(() => suggestModels(qrRaw, inventoryModelMasters), [qrRaw]);
 
@@ -50,25 +56,50 @@ export default function InventoryImportQrPage() {
 
   useEffect(() => {
     return () => {
-      void stopScanner();
+      unmountedRef.current = true;
+      const cleanup = async () => {
+        if (startPromiseRef.current) {
+          try {
+            await startPromiseRef.current;
+          } catch (error) {
+            console.debug(error);
+          }
+        }
+        if (isRunningRef.current && scannerRef.current) {
+          isRunningRef.current = false;
+          try {
+            await scannerRef.current.stop();
+          } catch (error) {
+            console.debug(error);
+          }
+          try {
+            scannerRef.current.clear();
+          } catch (error) {
+            console.debug(error);
+          }
+          scannerRef.current = null;
+        }
+      };
+      void cleanup();
     };
   }, []);
 
   const stopScanner = async (resetStatus = true) => {
-    if (scannerRef.current) {
+    if (isRunningRef.current && scannerRef.current) {
+      isRunningRef.current = false;
       try {
         await scannerRef.current.stop();
       } catch (error) {
-        console.error(error);
+        console.debug(error);
       }
       try {
         scannerRef.current.clear();
       } catch (error) {
-        console.error(error);
+        console.debug(error);
       }
       scannerRef.current = null;
     }
-    if (resetStatus) {
+    if (resetStatus && !unmountedRef.current) {
       setScanStatus("idle");
     }
   };
@@ -119,11 +150,12 @@ export default function InventoryImportQrPage() {
       }
       scannerRef.current = new Html5Qrcode(qrRegionId);
     }
+    const qrBoxSize = Math.max(200, Math.min(260, Math.floor(window.innerWidth * 0.6)));
     await scannerRef.current.start(
       cameraConfig as MediaTrackConstraints,
       {
         fps: 10,
-        qrbox: { width: 240, height: 240 },
+        qrbox: { width: qrBoxSize, height: qrBoxSize },
         aspectRatio: 1.0,
         disableFlip: false,
       },
@@ -139,6 +171,8 @@ export default function InventoryImportQrPage() {
   };
 
   const handleStartScan = async () => {
+    if (isStartingRef.current || isRunningRef.current) return;
+
     setScanError(null);
     setScanErrorDetail(null);
     setRegisteredMessage(null);
@@ -153,13 +187,20 @@ export default function InventoryImportQrPage() {
       return;
     }
 
+    isStartingRef.current = true;
+    isHandlingSuccessRef.current = false;
+    if (!unmountedRef.current) {
+      setIsStarting(true);
+    }
     setScanOrigin("camera");
-    setScanStatus("scanning");
-    try {
+    const startPromise = (async () => {
       const onSuccess = async (decodedText: string) => {
+        if (isHandlingSuccessRef.current || unmountedRef.current) return;
+        isHandlingSuccessRef.current = true;
         setQrRaw(decodedText);
         setScanStatus("success");
         await stopScanner(false);
+        isHandlingSuccessRef.current = false;
       };
 
       const onFailure = (error: Error | string) => {
@@ -182,13 +223,31 @@ export default function InventoryImportQrPage() {
           }
         }
       }
+      isRunningRef.current = true;
+      if (!unmountedRef.current) {
+        setScanStatus("scanning");
+      }
+    })();
+
+    startPromiseRef.current = startPromise;
+    try {
+      await startPromise;
     } catch (error) {
       console.error(error);
+      isRunningRef.current = false;
       const { message, detail } = resolveCameraErrorMessage(error);
-      setScanError(message);
-      setScanErrorDetail(detail);
-      setScanStatus("idle");
+      if (!unmountedRef.current) {
+        setScanError(message);
+        setScanErrorDetail(detail);
+        setScanStatus("idle");
+      }
       await stopScanner();
+    } finally {
+      isStartingRef.current = false;
+      startPromiseRef.current = null;
+      if (!unmountedRef.current) {
+        setIsStarting(false);
+      }
     }
   };
 
@@ -245,9 +304,9 @@ export default function InventoryImportQrPage() {
               <Button
                 onClick={handleStartScan}
                 className="h-11 w-full rounded-none text-sm sm:w-auto"
-                disabled={scanStatus === "scanning"}
+                disabled={scanStatus === "scanning" || isStarting}
               >
-                カメラで読み取る
+                {isStarting ? "起動中…" : "カメラで読み取る"}
               </Button>
               <Button
                 onClick={() => void stopScanner()}
