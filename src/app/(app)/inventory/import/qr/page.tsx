@@ -30,7 +30,7 @@ type ScanItem = {
   parsedRaw: ReturnType<typeof parseQrRaw>;
 };
 
-type Step = "scan" | "confirm" | "model";
+type Step = "intro" | "scan" | "confirm" | "model";
 
 type ModeConfig = { requiredCount: number; label: string };
 
@@ -44,9 +44,9 @@ const DEDUPE_MS = 1500;
 const inferModeFromRaw = (raw: string) => {
   const trimmed = raw.trim().toUpperCase();
   if (!trimmed) return null;
-  if (trimmed.startsWith("P") && /\d/.test(trimmed)) return "pachi";
-  if (trimmed.includes("PACHI")) return "pachi";
-  if (trimmed.includes("SLOT") || trimmed.startsWith("S")) return "slot";
+  if (/[/-]/.test(trimmed)) return "slot";
+  if (/^P\d/.test(trimmed)) return "pachi";
+  if (/^[A-Z0-9]{10,}$/.test(trimmed)) return "pachi";
   return null;
 };
 
@@ -75,7 +75,8 @@ export default function InventoryImportQrPage() {
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
   const [expandedSuggestions, setExpandedSuggestions] = useState(false);
   const [expandedRawIds, setExpandedRawIds] = useState<Set<string>>(new Set());
-  const [step, setStep] = useState<Step>("scan");
+  const [step, setStep] = useState<Step>("intro");
+  const [cameraEnabled, setCameraEnabled] = useState(false);
 
   const qrRegionId = useId();
   const scannerRef = useRef<Html5QrcodeInstance | null>(null);
@@ -87,12 +88,18 @@ export default function InventoryImportQrPage() {
   const lastDecodedRef = useRef<{ text: string; time: number } | null>(null);
 
   const inferredMode = useMemo<ScanMode>(() => {
-    const inferred = scanItems
-      .map((item) => inferModeFromRaw(item.raw_qr))
-      .find((mode): mode is ScanMode => Boolean(mode));
-    if (inferred) return inferred;
+    const modeCounts = scanItems.reduce(
+      (acc, item) => {
+        const inferred = inferModeFromRaw(item.raw_qr);
+        if (inferred) acc[inferred] += 1;
+        return acc;
+      },
+      { pachi: 0, slot: 0 } as Record<ScanMode, number>,
+    );
+    if (modeCounts.pachi > modeCounts.slot) return "pachi";
+    if (modeCounts.slot > modeCounts.pachi) return "slot";
     if (scanItems.length >= 2) return "slot";
-    return "pachi";
+    return "slot";
   }, [scanItems]);
 
   const activeConfig = MODE_CONFIG[inferredMode];
@@ -393,13 +400,13 @@ export default function InventoryImportQrPage() {
   };
 
   useEffect(() => {
-    if (step === "scan") {
+    if (step === "scan" && cameraEnabled) {
       void withActionLock(safeStart);
     }
-    if (step !== "scan") {
+    if (step !== "scan" || !cameraEnabled) {
       void withActionLock(() => safeStop());
     }
-  }, [step]);
+  }, [step, cameraEnabled]);
 
   useEffect(() => {
     return () => {
@@ -466,7 +473,8 @@ export default function InventoryImportQrPage() {
     setScanItems([]);
     setScanNotice(null);
     setExpandedRawIds(new Set());
-    setStep("scan");
+    setCameraEnabled(false);
+    setStep("intro");
     await withActionLock(safeStop);
   };
 
@@ -483,11 +491,12 @@ export default function InventoryImportQrPage() {
       rawCodes: scanItems.map((item) => item.raw_qr),
     });
 
-    setToastMessage("仮登録が完了しました");
+    setToastMessage("仮登録しました");
     setScanItems([]);
     setSelectedSuggestionId(null);
     setExpandedSuggestions(false);
-    setStep("scan");
+    setCameraEnabled(false);
+    setStep("intro");
     await withActionLock(safeStop);
   };
 
@@ -508,13 +517,43 @@ export default function InventoryImportQrPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-white">
       <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-4 pb-10 pt-6">
+        {step === "intro" ? (
+          <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
+            <div className="space-y-3">
+              <h1 className="text-2xl font-semibold">QR在庫登録</h1>
+              <p className="text-sm text-slate-300">
+                読み取り開始を押してカメラを起動します
+              </p>
+            </div>
+            <Button
+              className="h-14 w-full max-w-sm rounded-2xl text-base"
+              onClick={() => {
+                setCameraEnabled(true);
+                setStep("scan");
+              }}
+            >
+              読み取り開始
+            </Button>
+            <button
+              type="button"
+              className="text-xs text-emerald-300"
+              onClick={() => {
+                setCameraEnabled(false);
+                setStep("scan");
+              }}
+            >
+              カメラが使えない方（文字列貼り付け）
+            </button>
+          </div>
+        ) : null}
+
         {step === "scan" ? (
           <div className="flex flex-1 flex-col gap-6">
             <div className="space-y-3">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-300">
                 QR連続スキャン
               </p>
-              <h1 className="text-xl font-semibold">あと{remaining}回読み取ってください</h1>
+              <h1 className="text-xl font-semibold">あと{remaining}回</h1>
               <div className="flex items-center gap-3 text-sm text-slate-200">
                 <div className="flex items-center gap-1">
                   {Array.from({ length: activeConfig.requiredCount }).map((_, index) => (
@@ -533,15 +572,21 @@ export default function InventoryImportQrPage() {
             </div>
 
             <div className="flex-1 space-y-4">
-              <div className="relative w-full overflow-hidden rounded-3xl border border-slate-800 bg-slate-900">
-                <div
-                  id={qrRegionId}
-                  className="aspect-[3/4] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
-                />
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-400">
-                  QRコードを枠内に合わせてください
+              {cameraEnabled ? (
+                <div className="relative w-full overflow-hidden rounded-3xl border border-slate-800 bg-slate-900">
+                  <div
+                    id={qrRegionId}
+                    className="aspect-[3/4] w-full [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+                  />
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-400">
+                    QRコードを枠内に合わせてください
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="rounded-2xl border border-slate-800 bg-slate-900 p-4 text-xs text-slate-300">
+                  カメラが使えない場合はQR文字列を貼り付けてください。
+                </div>
+              )}
               {scanError ? (
                 <div className="space-y-2 text-xs text-rose-300">
                   <p>{scanError}</p>
@@ -549,11 +594,8 @@ export default function InventoryImportQrPage() {
                 </div>
               ) : null}
               {scanNotice ? <p className="text-xs text-amber-300">{scanNotice}</p> : null}
-              {scanError ? (
+              {!cameraEnabled || scanError ? (
                 <div className="rounded-2xl bg-slate-900 p-4">
-                  <p className="mb-3 text-xs text-slate-300">
-                    カメラが使えない場合のみQR文字列を貼り付けてください。
-                  </p>
                   <div className="flex flex-col gap-2">
                     <Input
                       value={manualRaw}
@@ -572,6 +614,14 @@ export default function InventoryImportQrPage() {
                   </div>
                 </div>
               ) : null}
+              {scanItems.length >= activeConfig.requiredCount ? (
+                <Button
+                  onClick={() => setStep("confirm")}
+                  className="h-12 w-full rounded-2xl text-base"
+                >
+                  次へ進む
+                </Button>
+              ) : null}
             </div>
           </div>
         ) : null}
@@ -584,7 +634,7 @@ export default function InventoryImportQrPage() {
               </p>
               <h1 className="text-xl font-semibold">display_codeを確定してください</h1>
               <p className="text-xs text-slate-400">
-                {MODE_CONFIG[inferredMode].label}の推定結果を元に自動入力しています。
+                推定結果を元に自動入力しています。必要なら修正してください。
               </p>
             </div>
             <div className="space-y-4">
@@ -608,16 +658,14 @@ export default function InventoryImportQrPage() {
                       className="h-11 rounded-xl border-slate-700 bg-slate-950 text-white"
                       placeholder="実物表記を入力"
                     />
-                    {inferredMode === "slot" ? (
-                      <button
-                        type="button"
-                        onClick={() => toggleRawDetail(item.id)}
-                        className="text-left text-xs text-emerald-300"
-                      >
-                        詳細を見る
-                      </button>
-                    ) : null}
-                    {inferredMode === "slot" && expandedRawIds.has(item.id) ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleRawDetail(item.id)}
+                      className="text-left text-xs text-emerald-300"
+                    >
+                      {expandedRawIds.has(item.id) ? "詳細を閉じる" : "詳細を見る"}
+                    </button>
+                    {expandedRawIds.has(item.id) ? (
                       <div className="rounded-xl bg-slate-950 px-3 py-2 text-[11px] text-slate-400">
                         <p className="font-semibold text-slate-300">raw_qr</p>
                         <p className="break-all">{item.raw_qr}</p>
