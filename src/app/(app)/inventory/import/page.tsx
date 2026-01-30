@@ -1,69 +1,43 @@
 import Link from "next/link";
 
-import InventoryPanel from "@/components/inventory/InventoryPanel";
-import InventoryToolbar from "@/components/inventory/InventoryToolbar";
-
-const importEntries = [
-  {
-    title: "手入力で登録（PC）",
-    description: "入力フォームで確定登録を行います。",
-    href: "/inventory/import/manual",
-  },
-  {
-    title: "QRで仮登録（スマホ）",
-    description: "QR文字列を仮登録として記録します。",
-    href: "/inventory/import/qr",
-    highlight: true,
-  },
-  {
-    title: "仮登録の補完・確定（PC）",
-    description: "仮登録一覧を補完して在庫へ反映します。",
-    href: "/inventory/import/review",
-  },
-];
-
 export default function InventoryImportHubPage() {
   return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-8">
-      <InventoryToolbar
-        title="取込ハブ"
-        description="在庫取込の入口を選択してください。"
-      />
+    <div className="min-h-screen bg-slate-950 text-white">
+      <div className="mx-auto flex min-h-screen w-full max-w-[520px] flex-col px-4 pb-12 pt-8">
+        <div className="flex flex-1 flex-col items-center justify-center gap-10 text-center">
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-emerald-300">
+              Inventory Register
+            </p>
+            <h1 className="text-2xl font-semibold">在庫登録</h1>
+            <p className="text-sm text-slate-300">登録方法を選んでください</p>
+          </div>
 
-      <div className="mt-4">
-        <InventoryPanel
-          title="取込入口メニュー"
-          description="出入番頭の業務フローに沿って入口を選択します。"
-        >
-          <ul className="divide-y divide-slate-200 text-sm">
-            {importEntries.map((entry) => (
-              <li key={entry.href}>
-                <Link
-                  href={entry.href}
-                  className={`flex w-full cursor-pointer flex-wrap items-center justify-between gap-3 rounded-md px-3 py-4 text-left transition-colors hover:bg-slate-50 sm:py-3 ${
-                    entry.highlight
-                      ? "border border-emerald-200 bg-emerald-50/60"
-                      : "border border-transparent"
-                  }`}
-                >
-                  <div>
-                    <p
-                      className={`text-sm font-semibold ${
-                        entry.highlight ? "text-emerald-900" : "text-slate-900"
-                      }`}
-                    >
-                      {entry.title}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600">{entry.description}</p>
-                  </div>
-                  <span className="text-sm font-semibold text-slate-400" aria-hidden="true">
-                    ›
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </InventoryPanel>
+          <div className="flex w-full flex-col gap-4">
+            <Link
+              href="/inventory/import/qr"
+              className="flex flex-col items-start gap-2 rounded-3xl border border-emerald-400/40 bg-emerald-500/10 px-6 py-5 text-left shadow-lg transition hover:border-emerald-300"
+            >
+              <span className="text-lg font-semibold">QR読み取り</span>
+              <span className="text-sm text-emerald-100">
+                QRを複数回連続スキャン
+              </span>
+            </Link>
+            <Link
+              href="/inventory/import/text"
+              className="flex flex-col items-start gap-2 rounded-3xl border border-slate-700 bg-slate-900 px-6 py-5 text-left shadow-lg transition hover:border-slate-500"
+            >
+              <span className="text-lg font-semibold">テキスト読み取り</span>
+              <span className="text-sm text-slate-300">
+                紙の番号をカメラで読み取り
+              </span>
+            </Link>
+          </div>
+
+          <p className="text-xs text-slate-400">
+            カメラが使えない方は各画面で文字列貼り付けが可能
+          </p>
+        </div>
       </div>
     </div>
   );
