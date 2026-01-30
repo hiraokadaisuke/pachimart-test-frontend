@@ -30,6 +30,7 @@ export default function InventoryImportQrPage() {
   const qrRegionId = useId();
   const scannerRef = useRef<Html5QrcodeInstance | null>(null);
   const scannerStateRef = useRef<ScannerState>("idle");
+  const actionLockRef = useRef<Promise<void>>(Promise.resolve());
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const unmountedRef = useRef(false);
   const isHandlingSuccessRef = useRef(false);
@@ -62,57 +63,19 @@ export default function InventoryImportQrPage() {
     }
   };
 
-  useEffect(() => {
-    return () => {
-      unmountedRef.current = true;
-      const cleanup = async () => {
-        if (startPromiseRef.current) {
-          try {
-            await startPromiseRef.current;
-          } catch (error) {
-            console.debug(error);
-          }
-        }
-        if (scannerStateRef.current === "scanning" && scannerRef.current) {
-          setScannerStateSafe("stopping");
-          try {
-            await scannerRef.current.stop();
-          } catch (error) {
-            console.debug(error);
-          }
-          try {
-            scannerRef.current.clear();
-          } catch (error) {
-            console.debug(error);
-          }
-          scannerRef.current = null;
-          setScannerStateSafe("idle");
-        }
-      };
-      void cleanup();
-    };
-  }, []);
-
-  const stopScanner = async (resetStatus = true) => {
-    if (scannerStateRef.current !== "scanning" || !scannerRef.current) {
-      return;
-    }
-    setScannerStateSafe("stopping");
+  const withActionLock = async (action: () => Promise<void>) => {
+    const previous = actionLockRef.current;
+    let releaseLock: () => void = () => undefined;
+    const next = new Promise<void>((resolve) => {
+      releaseLock = resolve;
+    });
+    actionLockRef.current = previous.then(() => next);
+    await previous;
     try {
-      await scannerRef.current.stop();
-    } catch (error) {
-      console.debug(error);
+      await action();
+    } finally {
+      releaseLock();
     }
-    try {
-      scannerRef.current.clear();
-    } catch (error) {
-      console.debug(error);
-    }
-    scannerRef.current = null;
-    if (resetStatus && !unmountedRef.current) {
-      setScanStatus("idle");
-    }
-    setScannerStateSafe("idle");
   };
 
   const resolveCameraErrorMessage = (error: unknown) => {
@@ -170,11 +133,12 @@ export default function InventoryImportQrPage() {
     if (video) {
       video.setAttribute("playsinline", "true");
       video.setAttribute("webkit-playsinline", "true");
+      video.setAttribute("muted", "true");
     }
   };
 
-  const startScannerWithCamera = async (
-    cameraId: string,
+  const startScanner = async (
+    cameraConfig: string | MediaTrackConstraints | boolean,
     onSuccess: (decodedText: string) => void,
     onFailure: (error: Error | string) => void,
   ) => {
@@ -186,7 +150,7 @@ export default function InventoryImportQrPage() {
     }
     const qrBoxSize = Math.max(200, Math.min(260, Math.floor(window.innerWidth * 0.6)));
     await scannerRef.current.start(
-      cameraId,
+      cameraConfig,
       {
         fps: 10,
         qrbox: { width: qrBoxSize, height: qrBoxSize },
@@ -199,7 +163,33 @@ export default function InventoryImportQrPage() {
     attachInlineVideoAttributes();
   };
 
-  const handleStartScan = async () => {
+  const safeStop = async (resetStatus = true) => {
+    if (!scannerRef.current) {
+      if (resetStatus && !unmountedRef.current) {
+        setScanStatus("idle");
+      }
+      setScannerStateSafe("idle");
+      return;
+    }
+    setScannerStateSafe("stopping");
+    try {
+      await scannerRef.current.stop();
+    } catch (error) {
+      console.debug(error);
+    }
+    try {
+      await scannerRef.current.clear();
+    } catch (error) {
+      console.debug(error);
+    }
+    scannerRef.current = null;
+    if (resetStatus && !unmountedRef.current) {
+      setScanStatus("idle");
+    }
+    setScannerStateSafe("idle");
+  };
+
+  const safeStart = async () => {
     if (scannerStateRef.current !== "idle") return;
 
     setScanError(null);
@@ -216,47 +206,77 @@ export default function InventoryImportQrPage() {
       return;
     }
 
+    const qrRegion = document.getElementById(qrRegionId);
+    const rect = qrRegion?.getBoundingClientRect();
+    if (!qrRegion || !rect || rect.height <= 0 || rect.width <= 0) {
+      setScanError("カメラ表示領域を取得できませんでした。ページを再読み込みしてください。");
+      return;
+    }
+
+    await safeStop();
     setScannerStateSafe("starting");
     isHandlingSuccessRef.current = false;
     setScanOrigin("camera");
     let didStart = false;
+
     const startPromise = (async () => {
       const onSuccess = async (decodedText: string) => {
         if (isHandlingSuccessRef.current || unmountedRef.current) return;
         isHandlingSuccessRef.current = true;
         setQrRaw(decodedText);
         setScanStatus("success");
-        await stopScanner(false);
+        await safeStop(false);
         isHandlingSuccessRef.current = false;
       };
 
       const onFailure = (error: Error | string) => {
-        if (scanStatus !== "scanning") return;
+        if (scannerStateRef.current !== "scanning") return;
         if (typeof error === "string" && error.includes("QR code parse error")) return;
         if (error instanceof Error && error.name === "QR_CODE_PARSE_ERROR") return;
         console.debug(error);
       };
 
+      const attemptStart = async (cameraConfig: string | MediaTrackConstraints | boolean) => {
+        await startScanner(cameraConfig, onSuccess, onFailure);
+      };
+
+      let lastError: unknown;
       try {
         const cameras = (await Html5Qrcode.getCameras()) as Html5QrcodeCamera[];
-        const cameraId = selectCameraId(cameras);
-        if (!cameraId) {
-          throw createNamedError("NotFoundError", "No cameras available");
+        const cameraId = selectCameraId(cameras ?? []);
+        if (cameraId) {
+          await attemptStart(cameraId);
+          return;
         }
-        await startScannerWithCamera(cameraId, onSuccess, onFailure);
       } catch (error) {
-        throw error;
+        lastError = error;
       }
-      if (!unmountedRef.current) {
-        setScanStatus("scanning");
+
+      const fallbackConfigs: Array<MediaTrackConstraints | boolean> = [
+        { facingMode: "environment" },
+        true,
+        { facingMode: "user" },
+      ];
+      for (const config of fallbackConfigs) {
+        try {
+          await attemptStart(config);
+          return;
+        } catch (error) {
+          lastError = error;
+        }
       }
-      setScannerStateSafe("scanning");
-      didStart = true;
+
+      throw lastError ?? createNamedError("NotFoundError", "No cameras available");
     })();
 
     startPromiseRef.current = startPromise;
     try {
       await startPromise;
+      if (!unmountedRef.current) {
+        setScanStatus("scanning");
+      }
+      setScannerStateSafe("scanning");
+      didStart = true;
     } catch (error) {
       console.error(error);
       setScannerStateSafe("idle");
@@ -266,13 +286,33 @@ export default function InventoryImportQrPage() {
         setScanErrorDetail(detail);
         setScanStatus("idle");
       }
-      await stopScanner();
+      await safeStop();
     } finally {
       startPromiseRef.current = null;
       if (!didStart) {
         setScannerStateSafe("idle");
       }
     }
+  };
+
+  useEffect(() => {
+    return () => {
+      unmountedRef.current = true;
+      void withActionLock(async () => {
+        if (startPromiseRef.current) {
+          try {
+            await startPromiseRef.current;
+          } catch (error) {
+            console.debug(error);
+          }
+        }
+        await safeStop(false);
+      });
+    };
+  }, []);
+
+  const handleStartScan = async () => {
+    await withActionLock(safeStart);
   };
 
   const handleRegister = () => {
@@ -295,7 +335,7 @@ export default function InventoryImportQrPage() {
   };
 
   const handleReset = () => {
-    void stopScanner();
+    void withActionLock(() => safeStop());
     setQrRaw("");
     setScanOrigin("manual");
     setScanStatus("idle");
@@ -333,7 +373,7 @@ export default function InventoryImportQrPage() {
                 {scannerState === "starting" ? "起動中…" : "カメラで読み取る"}
               </Button>
               <Button
-                onClick={() => void stopScanner()}
+                onClick={() => void withActionLock(() => safeStop())}
                 variant="outline"
                 className="h-11 w-full rounded-none text-sm sm:w-auto"
                 disabled={scannerState !== "scanning"}
@@ -344,18 +384,16 @@ export default function InventoryImportQrPage() {
           }
         >
           <div className="space-y-3">
-            <div
-              className="relative flex min-h-[220px] w-full items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500"
-            >
+            <div className="relative w-full">
               <div
                 id={qrRegionId}
-                className={`h-full w-full rounded-md ${
-                  scanStatus === "scanning" ? "block" : "hidden"
-                }`}
+                className="min-h-[360px] w-full overflow-hidden rounded-md border border-dashed border-slate-300 bg-slate-50 sm:min-h-[320px] [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
               />
-              {scanStatus === "scanning" ? null : (
-                <span>QRコードを枠内に合わせてください</span>
-              )}
+              {scanStatus === "idle" ? (
+                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-500">
+                  QRコードを枠内に合わせてください
+                </div>
+              ) : null}
             </div>
             {scanError ? (
               <div className="space-y-1 text-xs text-rose-600">
