@@ -27,6 +27,7 @@ export default function InventoryImportQrPage() {
   const [manualModel, setManualModel] = useState("");
   const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>("idle");
+  const [scanHistory, setScanHistory] = useState<string[]>([]);
   const qrRegionId = useId();
   const scannerRef = useRef<Html5QrcodeInstance | null>(null);
   const scannerStateRef = useRef<ScannerState>("idle");
@@ -34,6 +35,7 @@ export default function InventoryImportQrPage() {
   const startPromiseRef = useRef<Promise<void> | null>(null);
   const unmountedRef = useRef(false);
   const isHandlingSuccessRef = useRef(false);
+  const lastDecodedRef = useRef<{ text: string; time: number } | null>(null);
 
   const suggestions = useMemo(() => suggestModels(qrRaw, inventoryModelMasters), [qrRaw]);
 
@@ -148,12 +150,15 @@ export default function InventoryImportQrPage() {
       }
       scannerRef.current = new Html5Qrcode(qrRegionId);
     }
-    const qrBoxSize = Math.max(200, Math.min(260, Math.floor(window.innerWidth * 0.6)));
+    const qrbox = ((width: number, height: number) => {
+      const size = Math.min(width, height, 280);
+      return { width: size, height: size };
+    }) as any;
     await scannerRef.current.start(
       cameraConfig,
       {
         fps: 10,
-        qrbox: { width: qrBoxSize, height: qrBoxSize },
+        qrbox,
         aspectRatio: 1.0,
         disableFlip: false,
       },
@@ -161,6 +166,15 @@ export default function InventoryImportQrPage() {
       onFailure,
     );
     attachInlineVideoAttributes();
+  };
+
+  const pushScanHistory = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    setScanHistory((prev) => {
+      const next = [trimmed, ...prev.filter((entry) => entry !== trimmed)];
+      return next.slice(0, 5);
+    });
   };
 
   const safeStop = async (resetStatus = true) => {
@@ -222,9 +236,15 @@ export default function InventoryImportQrPage() {
     const startPromise = (async () => {
       const onSuccess = async (decodedText: string) => {
         if (isHandlingSuccessRef.current || unmountedRef.current) return;
+        const now = Date.now();
+        const last = lastDecodedRef.current;
+        if (last && last.text === decodedText && now - last.time < 800) return;
+        lastDecodedRef.current = { text: decodedText, time: now };
         isHandlingSuccessRef.current = true;
+        setScanOrigin("camera");
         setQrRaw(decodedText);
         setScanStatus("success");
+        pushScanHistory(decodedText);
         await safeStop(false);
         isHandlingSuccessRef.current = false;
       };
@@ -312,6 +332,16 @@ export default function InventoryImportQrPage() {
 
   const handleStartScan = async () => {
     await withActionLock(safeStart);
+  };
+
+  const handleManualConfirm = (value = qrRaw) => {
+    const trimmed = value.trim();
+    if (!trimmed) return;
+    setQrRaw(trimmed);
+    setScanOrigin("manual");
+    setScanStatus("success");
+    pushScanHistory(trimmed);
+    setRegisteredMessage(null);
   };
 
   const handleRegister = () => {
@@ -410,7 +440,7 @@ export default function InventoryImportQrPage() {
         </InventoryPanel>
 
         <InventoryPanel
-          title="読取結果"
+          title="読み取り結果"
           description="QR文字列が自動で入力されます。手動で貼り付けてもOKです。"
         >
           <div className="space-y-3">
@@ -422,11 +452,57 @@ export default function InventoryImportQrPage() {
                 setScanStatus("idle");
                 setRegisteredMessage(null);
               }}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  handleManualConfirm(event.currentTarget.value);
+                }
+              }}
               className="h-11 rounded-none"
               placeholder="QR文字列を貼り付け"
             />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 rounded-none text-xs"
+                onClick={() => handleManualConfirm()}
+                disabled={!qrRaw.trim()}
+              >
+                入力を確定して履歴へ追加
+              </Button>
+              <span className="text-xs text-slate-400">Enterキーでも確定できます。</span>
+            </div>
             <div className="text-xs text-slate-500">
               解析トークン: {qrRaw ? `${suggestions.length} 件の候補を抽出中` : "-"}
+            </div>
+            <div className="space-y-2 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
+              <div>
+                <p className="text-xs text-slate-500">最新の読み取り結果</p>
+                <p className="mt-1 break-all text-base font-semibold">
+                  {qrRaw ? qrRaw : "まだ読み取り結果がありません。"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">履歴（直近5件）</p>
+                {scanHistory.length > 0 ? (
+                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
+                    {scanHistory.map((entry) => (
+                      <li key={entry}>
+                        <button
+                          type="button"
+                          className="w-full rounded-sm border border-transparent px-2 py-1 text-left hover:border-emerald-200 hover:bg-emerald-50"
+                          onClick={() => handleManualConfirm(entry)}
+                        >
+                          {entry}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-xs text-slate-400">履歴はまだありません。</p>
+                )}
+              </div>
             </div>
           </div>
         </InventoryPanel>
