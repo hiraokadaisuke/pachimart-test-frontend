@@ -1,5 +1,6 @@
 "use client";
 
+import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
@@ -7,26 +8,11 @@ import InventoryPanel from "@/components/inventory/InventoryPanel";
 import InventoryToolbar from "@/components/inventory/InventoryToolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { inventoryModelMasters } from "@/lib/inventory/mockMasters";
 import { addImportFromQr } from "@/lib/inventory/mock";
+import { inventoryModelMasters } from "@/lib/inventory/mockMasters";
 import { suggestModels } from "@/lib/inventory/qr/parse";
 
-type Html5QrcodeType = new (elementId: string) => {
-  start: (
-    cameraIdOrConfig: { facingMode: "environment" | "user" },
-    config: { fps: number; qrbox: { width: number; height: number }; aspectRatio: number },
-    qrCodeSuccessCallback: (decodedText: string) => void,
-    qrCodeErrorCallback: (error: Error | string) => void,
-  ) => Promise<void>;
-  stop: () => Promise<void>;
-  clear: () => void;
-};
-
-declare global {
-  interface Window {
-    Html5Qrcode?: Html5QrcodeType;
-  }
-}
+type Html5QrcodeInstance = InstanceType<typeof Html5Qrcode>;
 
 export default function InventoryImportQrPage() {
   const [qrRaw, setQrRaw] = useState("");
@@ -39,8 +25,7 @@ export default function InventoryImportQrPage() {
   const [manualModel, setManualModel] = useState("");
   const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
   const qrRegionId = useId();
-  const scannerRef = useRef<InstanceType<Html5QrcodeType> | null>(null);
-  const scriptLoadRef = useRef<Promise<void> | null>(null);
+  const scannerRef = useRef<Html5QrcodeInstance | null>(null);
 
   const suggestions = useMemo(() => suggestModels(qrRaw, inventoryModelMasters), [qrRaw]);
 
@@ -110,11 +95,9 @@ export default function InventoryImportQrPage() {
           message: "環境カメラを使用できませんでした。フロントカメラで再試行してください。",
           detail: null,
         };
-      case "Html5QrcodeUnavailable":
-      case "ScriptLoadError":
+      case "LibraryLoadError":
         return {
-          message:
-            "QR読み取りライブラリの読み込みに失敗しました。QR文字列貼り付けをご利用ください。",
+          message: "ライブラリ読み込み失敗のためQR文字列貼り付けをご利用ください。",
           detail: name ?? null,
         };
       default:
@@ -125,47 +108,34 @@ export default function InventoryImportQrPage() {
     }
   };
 
-  const loadHtml5Qrcode = async () => {
-    if (window.Html5Qrcode) return;
-    if (!scriptLoadRef.current) {
-      scriptLoadRef.current = new Promise<void>((resolve, reject) => {
-        const existing = document.getElementById("html5-qrcode-script") as HTMLScriptElement | null;
-        if (existing) {
-          existing.addEventListener("load", () => resolve());
-          existing.addEventListener("error", () => reject(new Error("ScriptLoadError")));
-          return;
-        }
-
-        const script = document.createElement("script");
-        script.id = "html5-qrcode-script";
-        script.src = "https://unpkg.com/html5-qrcode@2.3.9/minified/html5-qrcode.min.js";
-        script.async = true;
-        script.onload = () => resolve();
-        script.onerror = () => reject(new Error("ScriptLoadError"));
-        document.body.appendChild(script);
-      });
-    }
-    await scriptLoadRef.current;
-  };
-
-  const startScannerWithFacingMode = async (
-    facingMode: "environment" | "user",
+  const startScannerWithConfig = async (
+    cameraConfig: MediaTrackConstraints | { facingMode: { ideal: "environment" } } | boolean,
     onSuccess: (decodedText: string) => void,
     onFailure: (error: Error | string) => void,
   ) => {
-    await loadHtml5Qrcode();
-    if (!window.Html5Qrcode) {
-      throw new Error("Html5QrcodeUnavailable");
-    }
     if (!scannerRef.current) {
-      scannerRef.current = new window.Html5Qrcode(qrRegionId);
+      if (!Html5Qrcode) {
+        throw new Error("LibraryLoadError");
+      }
+      scannerRef.current = new Html5Qrcode(qrRegionId);
     }
     await scannerRef.current.start(
-      { facingMode },
-      { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1.0 },
+      cameraConfig as MediaTrackConstraints,
+      {
+        fps: 10,
+        qrbox: { width: 240, height: 240 },
+        aspectRatio: 1.0,
+        disableFlip: false,
+      },
       onSuccess,
       onFailure,
     );
+    const qrRegion = document.getElementById(qrRegionId);
+    const video = qrRegion?.querySelector("video");
+    if (video) {
+      video.setAttribute("playsinline", "true");
+      video.setAttribute("webkit-playsinline", "true");
+    }
   };
 
   const handleStartScan = async () => {
@@ -200,12 +170,16 @@ export default function InventoryImportQrPage() {
       };
 
       try {
-        await startScannerWithFacingMode("environment", onSuccess, onFailure);
+        await startScannerWithConfig({ facingMode: { ideal: "environment" } }, onSuccess, onFailure);
       } catch (error) {
-        if (error instanceof Error && error.name === "OverconstrainedError") {
-          await startScannerWithFacingMode("user", onSuccess, onFailure);
-        } else {
-          throw error;
+        try {
+          await startScannerWithConfig(true, onSuccess, onFailure);
+        } catch (fallbackError) {
+          if (fallbackError instanceof Error && fallbackError.name === "OverconstrainedError") {
+            await startScannerWithConfig({ facingMode: "user" }, onSuccess, onFailure);
+          } else {
+            throw fallbackError;
+          }
         }
       }
     } catch (error) {
