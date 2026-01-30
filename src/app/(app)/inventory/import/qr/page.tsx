@@ -269,7 +269,7 @@ export default function InventoryImportQrPage() {
       await stopScanner();
     } finally {
       startPromiseRef.current = null;
-      if (!didStart && scannerStateRef.current !== "scanning") {
+      if (!didStart) {
         setScannerStateSafe("idle");
       }
     }
