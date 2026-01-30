@@ -21,6 +21,8 @@ export type InventoryItem = {
   readAt?: string;
   reader?: string;
   updatedAt: string;
+  displayCodes?: string[];
+  rawQrCodes?: string[];
   history: InventoryHistoryEntry[];
 };
 
@@ -61,6 +63,14 @@ export type ManualItemPayload = {
   storageLocation: string;
   stockedAt?: string;
   partner?: string;
+};
+
+export type QrScanStockPayload = {
+  maker: string;
+  model: string;
+  mode: "pachi" | "slot";
+  displayCodes: string[];
+  rawCodes: string[];
 };
 
 const now = new Date();
@@ -296,6 +306,39 @@ export function createItemManual(payload: ManualItemPayload) {
         action: "入庫",
         location: `${payload.storageHub} / ${payload.storageLocation}`,
         operator: "手入力",
+      },
+    ],
+  };
+
+  items = [newItem, ...items];
+  return newItem;
+}
+
+export function addStockFromQrScan(payload: QrScanStockPayload) {
+  const nextId = `INV-${Math.floor(6000 + Math.random() * 500)}`;
+  const timestamp = formatDateTime(new Date());
+  const stockDate = formatDate(new Date());
+  const newItem: InventoryItem = {
+    id: nextId,
+    status: "stock",
+    maker: payload.maker,
+    model: payload.model,
+    storageHub: "東東京倉庫",
+    storageLocation: payload.mode === "pachi" ? "パチQR棚" : "スロQR棚",
+    stockedAt: stockDate,
+    partner: "QR在庫登録",
+    readAt: timestamp,
+    reader: "QR読取",
+    updatedAt: timestamp,
+    displayCodes: payload.displayCodes,
+    rawQrCodes: payload.rawCodes,
+    history: [
+      {
+        id: `H-${nextId}`,
+        date: timestamp,
+        action: "入庫",
+        location: "QR登録",
+        operator: "QR読取",
       },
     ],
   };
