@@ -219,6 +219,7 @@ export default function InventoryImportQrPage() {
     setScannerStateSafe("starting");
     isHandlingSuccessRef.current = false;
     setScanOrigin("camera");
+    let didStart = false;
     const startPromise = (async () => {
       const onSuccess = async (decodedText: string) => {
         if (isHandlingSuccessRef.current || unmountedRef.current) return;
@@ -250,6 +251,7 @@ export default function InventoryImportQrPage() {
         setScanStatus("scanning");
       }
       setScannerStateSafe("scanning");
+      didStart = true;
     })();
 
     startPromiseRef.current = startPromise;
@@ -267,7 +269,7 @@ export default function InventoryImportQrPage() {
       await stopScanner();
     } finally {
       startPromiseRef.current = null;
-      if (scannerStateRef.current === "starting") {
+      if (!didStart && scannerStateRef.current !== "scanning") {
         setScannerStateSafe("idle");
       }
     }
