@@ -138,7 +138,7 @@ export default function InventoryImportQrPage() {
   };
 
   const startScanner = async (
-    cameraConfig: string | MediaTrackConstraints | boolean,
+    cameraConfig: string | MediaTrackConstraints,
     onSuccess: (decodedText: string) => void,
     onFailure: (error: Error | string) => void,
   ) => {
@@ -236,7 +236,7 @@ export default function InventoryImportQrPage() {
         console.debug(error);
       };
 
-      const attemptStart = async (cameraConfig: string | MediaTrackConstraints | boolean) => {
+      const attemptStart = async (cameraConfig: string | MediaTrackConstraints) => {
         await startScanner(cameraConfig, onSuccess, onFailure);
       };
 
@@ -252,9 +252,8 @@ export default function InventoryImportQrPage() {
         lastError = error;
       }
 
-      const fallbackConfigs: Array<MediaTrackConstraints | boolean> = [
+      const fallbackConfigs: MediaTrackConstraints[] = [
         { facingMode: "environment" },
-        true,
         { facingMode: "user" },
       ];
       for (const config of fallbackConfigs) {
