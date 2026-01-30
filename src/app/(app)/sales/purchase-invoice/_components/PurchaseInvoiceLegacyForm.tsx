@@ -685,8 +685,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
 
           <div className="mt-4 border-[10px] border-cyan-700 bg-cyan-100 p-3 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
             <div className="space-y-4 border-4 border-black bg-white p-4">
-              <div className="grid grid-cols-1 gap-4 md:grid-cols-[2fr_1fr]">
-                <div className="space-y-2 border border-black bg-white p-3">
+            <div className="flex flex-wrap items-start justify-between gap-6">
+                <div className="w-fit max-w-[520px] space-y-2 bg-white p-1 text-left">
                   <div className="text-lg font-bold leading-relaxed text-neutral-900">
                     <span className="bg-orange-200 px-2 text-orange-900">
                       {supplierName || "○○ホール○○店 株式会社○○○○"}
@@ -703,8 +703,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                     <div>インボイス番号 {supplierInvoiceNumber}</div>
                   </div>
                 </div>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center justify-end gap-2 text-sm font-semibold">
+                <div className="flex flex-col items-start gap-2">
+                  <div className="flex items-center gap-2 self-end text-sm font-semibold">
                     <span className="text-neutral-700">伝票日付</span>
                     <div className="flex items-stretch border border-black">
                       <input
@@ -716,13 +716,13 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                       <span className="border-l border-black bg-neutral-100 px-2 py-1 text-[11px]">📅</span>
                     </div>
                   </div>
-                  <div className="border border-orange-500 bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-900">
-                    <div className="flex items-center justify-between">
+                  <div className="self-end border border-orange-500 bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-900">
+                    <div className="flex items-center justify-between gap-2">
                       <span>担当</span>
                       <select
                         value={staff}
                         onChange={(e) => setStaff(e.target.value)}
-                        className={`${yellowInput} w-36 rounded-none border border-orange-500 text-center font-semibold text-orange-900`}
+                        className={`${yellowInput} w-36 flex-none truncate rounded-none border border-orange-500 text-center font-semibold text-orange-900`}
                       >
                         {selectableStaffOptions.map((name) => (
                           <option key={name} value={name}>
@@ -732,9 +732,9 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                       </select>
                     </div>
                   </div>
-                  <div className="border border-black bg-white text-[12px] leading-5">
-                    <div className="border-b border-black bg-neutral-100 px-2 py-1 font-semibold">【買主】</div>
-                    <div className="space-y-1 px-2 py-2">
+                  <div className="w-fit max-w-[520px] whitespace-normal break-words bg-white text-[12px] leading-5">
+                    <div className="font-semibold text-neutral-700">【買主】</div>
+                    <div className="mt-1 space-y-1 text-left">
                       <div>{buyerDisplay.postal} {buyerDisplay.address}</div>
                       <div>{buyerDisplay.companyName}</div>
                       <div>{buyerDisplay.representative}</div>
@@ -896,8 +896,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
 
         <div className="mt-4 border-[10px] border-cyan-700 bg-cyan-100 p-3 shadow-[6px_6px_0_rgba(0,0,0,0.35)]">
           <div className="space-y-4 border-4 border-black bg-white p-4">
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-[2fr_1fr]">
-              <div className="space-y-2 border border-black bg-white p-3">
+            <div className="flex flex-wrap items-start justify-between gap-6">
+              <div className="w-fit max-w-[520px] space-y-2 bg-white p-1 text-left">
                 <div className="text-lg font-bold leading-relaxed text-neutral-900">
                   <span className="bg-orange-200 px-2 text-orange-900">
                     {supplierName || "○○ホール○○店 株式会社○○○○"}
@@ -913,8 +913,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                   <div>インボイス番号 {supplierInvoiceNumber}</div>
                 </div>
               </div>
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-end gap-2 text-sm font-semibold">
+              <div className="flex flex-col items-start gap-2">
+                <div className="flex items-center gap-2 self-end text-sm font-semibold">
                   <span className="text-neutral-700">伝票日付</span>
                   <div className="flex items-stretch border border-black">
                     <input
@@ -926,13 +926,13 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                     <span className="border-l border-black bg-neutral-100 px-2 py-1 text-[11px]">📅</span>
                   </div>
                 </div>
-                <div className="border border-orange-500 bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-900">
-                  <div className="flex items-center justify-between">
+                <div className="self-end border border-orange-500 bg-orange-50 px-3 py-2 text-[12px] font-bold text-orange-900">
+                  <div className="flex items-center justify-between gap-2">
                     <span>担当</span>
                     <select
                       value={staff}
                       onChange={(e) => setStaff(e.target.value)}
-                      className={`${yellowInput} w-36 rounded-none border border-orange-500 text-center font-semibold text-orange-900`}
+                      className={`${yellowInput} w-36 flex-none truncate rounded-none border border-orange-500 text-center font-semibold text-orange-900`}
                     >
                       {selectableStaffOptions.map((name) => (
                         <option key={name} value={name}>
@@ -942,9 +942,9 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
                     </select>
                   </div>
                 </div>
-                <div className="border border-black bg-white text-[12px] leading-5">
-                  <div className="border-b border-black bg-neutral-100 px-2 py-1 font-semibold">【買主】</div>
-                  <div className="space-y-1 px-2 py-2">
+                <div className="w-fit max-w-[520px] whitespace-normal break-words bg-white text-[12px] leading-5">
+                  <div className="font-semibold text-neutral-700">【買主】</div>
+                  <div className="mt-1 space-y-1 text-left">
                     <div>{buyerDisplay.postal} {buyerDisplay.address}</div>
                     <div>{buyerDisplay.companyName}</div>
                     <div>{buyerDisplay.representative}</div>
