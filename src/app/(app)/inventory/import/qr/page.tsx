@@ -2,32 +2,63 @@
 
 import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import Link from "next/link";
 
 import InventoryPanel from "@/components/inventory/InventoryPanel";
 import InventoryToolbar from "@/components/inventory/InventoryToolbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { addImportFromQr } from "@/lib/inventory/mock";
+import { addStockFromQrScan } from "@/lib/inventory/mock";
 import { inventoryModelMasters } from "@/lib/inventory/mockMasters";
-import { suggestModels } from "@/lib/inventory/qr/parse";
+import { parseQrRaw, suggestModels } from "@/lib/inventory/qr/parse";
 
 type Html5QrcodeInstance = InstanceType<typeof Html5Qrcode>;
 type ScannerState = "idle" | "starting" | "scanning" | "stopping";
 type Html5QrcodeCamera = { id: string; label?: string };
 
+type ScanMode = "pachi" | "slot";
+type ScanKind = "board" | "frame" | "mainboard" | "serial";
+
+type ScanItem = {
+  id: string;
+  raw_qr: string;
+  display_code: string;
+  kind: ScanKind;
+  parsed: ReturnType<typeof parseQrRaw>;
+};
+
+const MODE_CONFIG: Record<ScanMode, { label: string; requiredCount: number; kinds: ScanKind[] }> = {
+  pachi: {
+    label: "パチンコ（3本）",
+    requiredCount: 3,
+    kinds: ["board", "frame", "mainboard"],
+  },
+  slot: {
+    label: "スロット（2本）",
+    requiredCount: 2,
+    kinds: ["serial", "mainboard"],
+  },
+};
+
+const KIND_LABELS: Record<ScanKind, string> = {
+  board: "遊技盤番号",
+  frame: "枠番号",
+  mainboard: "主基板番号",
+  serial: "本体製造番号",
+};
+
+const DEDUPE_MS = 1500;
+
 export default function InventoryImportQrPage() {
-  const [qrRaw, setQrRaw] = useState("");
-  const [scanStatus, setScanStatus] = useState<"idle" | "scanning" | "success">("idle");
-  const [scanOrigin, setScanOrigin] = useState<"camera" | "manual">("manual");
+  const [scanMode, setScanMode] = useState<ScanMode>("pachi");
   const [scanError, setScanError] = useState<string | null>(null);
   const [scanErrorDetail, setScanErrorDetail] = useState<string | null>(null);
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
-  const [manualMaker, setManualMaker] = useState("");
-  const [manualModel, setManualModel] = useState("");
   const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
   const [scannerState, setScannerState] = useState<ScannerState>("idle");
-  const [scanHistory, setScanHistory] = useState<string[]>([]);
+  const [scanItems, setScanItems] = useState<ScanItem[]>([]);
+  const [manualRaw, setManualRaw] = useState("");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const qrRegionId = useId();
   const scannerRef = useRef<Html5QrcodeInstance | null>(null);
   const scannerStateRef = useRef<ScannerState>("idle");
@@ -37,18 +68,19 @@ export default function InventoryImportQrPage() {
   const isHandlingSuccessRef = useRef(false);
   const lastDecodedRef = useRef<{ text: string; time: number } | null>(null);
 
-  const suggestions = useMemo(() => suggestModels(qrRaw, inventoryModelMasters), [qrRaw]);
+  const activeConfig = MODE_CONFIG[scanMode];
 
-  const makerOptions = useMemo(() => {
-    return Array.from(new Set(inventoryModelMasters.map((entry) => entry.maker)));
-  }, []);
+  const suggestionSource = useMemo(() => {
+    return scanItems
+      .map((item) => item.display_code.trim() || item.raw_qr.trim())
+      .filter(Boolean)
+      .join(" ");
+  }, [scanItems]);
 
-  const modelOptions = useMemo(() => {
-    if (!manualMaker) return [];
-    return inventoryModelMasters
-      .filter((entry) => entry.maker === manualMaker)
-      .map((entry) => entry.model);
-  }, [manualMaker]);
+  const suggestions = useMemo(
+    () => suggestModels(suggestionSource, inventoryModelMasters),
+    [suggestionSource],
+  );
 
   useEffect(() => {
     if (suggestions.length > 0) {
@@ -57,6 +89,12 @@ export default function InventoryImportQrPage() {
       setSelectedSuggestionId(null);
     }
   }, [suggestions]);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timeoutId = window.setTimeout(() => setToastMessage(null), 2400);
+    return () => window.clearTimeout(timeoutId);
+  }, [toastMessage]);
 
   const setScannerStateSafe = (nextState: ScannerState) => {
     scannerStateRef.current = nextState;
@@ -157,7 +195,7 @@ export default function InventoryImportQrPage() {
     await scannerRef.current.start(
       cameraConfig,
       {
-        fps: 10,
+        fps: 12,
         qrbox,
         aspectRatio: 1.0,
         disableFlip: false,
@@ -168,19 +206,10 @@ export default function InventoryImportQrPage() {
     attachInlineVideoAttributes();
   };
 
-  const pushScanHistory = (value: string) => {
-    const trimmed = value.trim();
-    if (!trimmed) return;
-    setScanHistory((prev) => {
-      const next = [trimmed, ...prev.filter((entry) => entry !== trimmed)];
-      return next.slice(0, 5);
-    });
-  };
-
   const safeStop = async (resetStatus = true) => {
     if (!scannerRef.current) {
       if (resetStatus && !unmountedRef.current) {
-        setScanStatus("idle");
+        setScannerState("idle");
       }
       setScannerStateSafe("idle");
       return;
@@ -198,7 +227,7 @@ export default function InventoryImportQrPage() {
     }
     scannerRef.current = null;
     if (resetStatus && !unmountedRef.current) {
-      setScanStatus("idle");
+      setScannerState("idle");
     }
     setScannerStateSafe("idle");
   };
@@ -230,22 +259,16 @@ export default function InventoryImportQrPage() {
     await safeStop();
     setScannerStateSafe("starting");
     isHandlingSuccessRef.current = false;
-    setScanOrigin("camera");
-    let didStart = false;
 
     const startPromise = (async () => {
       const onSuccess = async (decodedText: string) => {
         if (isHandlingSuccessRef.current || unmountedRef.current) return;
         const now = Date.now();
         const last = lastDecodedRef.current;
-        if (last && last.text === decodedText && now - last.time < 800) return;
+        if (last && last.text === decodedText && now - last.time < DEDUPE_MS) return;
         lastDecodedRef.current = { text: decodedText, time: now };
         isHandlingSuccessRef.current = true;
-        setScanOrigin("camera");
-        setQrRaw(decodedText);
-        setScanStatus("success");
-        pushScanHistory(decodedText);
-        await safeStop(false);
+        addScanItem(decodedText);
         isHandlingSuccessRef.current = false;
       };
 
@@ -292,10 +315,9 @@ export default function InventoryImportQrPage() {
     try {
       await startPromise;
       if (!unmountedRef.current) {
-        setScanStatus("scanning");
+        setScannerState("scanning");
       }
       setScannerStateSafe("scanning");
-      didStart = true;
     } catch (error) {
       console.error(error);
       setScannerStateSafe("idle");
@@ -303,16 +325,17 @@ export default function InventoryImportQrPage() {
       if (!unmountedRef.current) {
         setScanError(message);
         setScanErrorDetail(detail);
-        setScanStatus("idle");
+        setScannerState("idle");
       }
       await safeStop();
     } finally {
       startPromiseRef.current = null;
-      if (!didStart) {
-        setScannerStateSafe("idle");
-      }
     }
   };
+
+  useEffect(() => {
+    void withActionLock(safeStart);
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -330,79 +353,159 @@ export default function InventoryImportQrPage() {
     };
   }, []);
 
-  const handleStartScan = async () => {
-    await withActionLock(safeStart);
+  const assignKindForNewItem = (items: ScanItem[]) => {
+    const kinds = MODE_CONFIG[scanMode].kinds;
+    const used = new Set(items.map((item) => item.kind));
+    const nextKind = kinds.find((kind) => !used.has(kind));
+    return nextKind ?? kinds[0];
   };
 
-  const handleManualConfirm = (value = qrRaw) => {
+  const addScanItem = (value: string) => {
     const trimmed = value.trim();
     if (!trimmed) return;
-    setQrRaw(trimmed);
-    setScanOrigin("manual");
-    setScanStatus("success");
-    pushScanHistory(trimmed);
+    setScanNotice(null);
+    setScanItems((prev) => {
+      if (prev.length >= activeConfig.requiredCount) {
+        setScanNotice("必要本数が揃っています。誤読は削除してから再スキャンしてください。");
+        return prev;
+      }
+      const parsed = parseQrRaw(trimmed);
+      const kind = assignKindForNewItem(prev);
+      const displayCode = scanMode === "slot" ? trimmed : "";
+      const nextItem: ScanItem = {
+        id: crypto.randomUUID(),
+        raw_qr: trimmed,
+        display_code: displayCode,
+        kind,
+        parsed,
+      };
+      return [...prev, nextItem];
+    });
+  };
+
+  const handleStopScan = async () => {
+    await withActionLock(() => safeStop());
+  };
+
+  const handleManualAdd = () => {
+    addScanItem(manualRaw);
+    setManualRaw("");
+  };
+
+  const handleKindChange = (id: string, nextKind: ScanKind) => {
+    setScanItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, kind: nextKind } : item)),
+    );
+  };
+
+  const handleDisplayCodeChange = (id: string, value: string) => {
+    setScanItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, display_code: value } : item)),
+    );
+  };
+
+  const handleDeleteItem = (id: string) => {
+    setScanItems((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const handleModeChange = (mode: ScanMode) => {
+    setScanMode(mode);
+    setScanItems([]);
+    setManualRaw("");
+    setScanNotice(null);
     setRegisteredMessage(null);
   };
 
-  const handleRegister = () => {
-    if (!qrRaw.trim()) return;
+  const displayCodes = scanItems.map((item) => item.display_code.trim()).filter(Boolean);
+  const uniqueDisplayCodes = new Set(displayCodes);
+  const hasDuplicateDisplayCode = uniqueDisplayCodes.size !== displayCodes.length;
+  const requiredKindsReady = activeConfig.kinds.every(
+    (kind) => scanItems.filter((item) => item.kind === kind).length === 1,
+  );
+  const allDisplayFilled = scanItems.length === activeConfig.requiredCount;
+  const canRegister =
+    scanItems.length === activeConfig.requiredCount &&
+    requiredKindsReady &&
+    allDisplayFilled &&
+    displayCodes.length === activeConfig.requiredCount &&
+    !hasDuplicateDisplayCode &&
+    Boolean(selectedSuggestionId);
 
+  const handleRegister = async () => {
+    if (!canRegister) return;
     const selectedSuggestion = suggestions.find((item) => item.id === selectedSuggestionId);
-    const maker = selectedSuggestion?.maker ?? manualMaker;
-    const model = selectedSuggestion?.model ?? manualModel;
+    if (!selectedSuggestion) return;
+    const displayList = scanItems.map((item) => item.display_code.trim());
 
-    if (!maker || !model) return;
-
-    addImportFromQr({
-      qrRaw: qrRaw.trim(),
-      maker,
-      model,
-      source: scanOrigin === "camera" ? "QR仮登録(カメラ)" : "QR仮登録(貼り付け)",
+    addStockFromQrScan({
+      maker: selectedSuggestion.maker,
+      model: selectedSuggestion.model,
+      mode: scanMode,
+      displayCodes: displayList,
+      rawCodes: scanItems.map((item) => item.raw_qr),
     });
 
-    setRegisteredMessage("仮登録しました。レビューで補完してください。");
-  };
-
-  const handleReset = () => {
-    void withActionLock(() => safeStop());
-    setQrRaw("");
-    setScanOrigin("manual");
-    setScanStatus("idle");
-    setManualMaker("");
-    setManualModel("");
-    setRegisteredMessage(null);
-    setScanError(null);
-    setScanErrorDetail(null);
+    setRegisteredMessage("在庫登録が完了しました。次のQRを読み取れます。");
+    setToastMessage("在庫登録が完了しました");
+    setScanItems([]);
     setSelectedSuggestionId(null);
+    setScanNotice(null);
+    await withActionLock(() => safeStop());
   };
 
-  const canRegister = Boolean(
-    qrRaw.trim() &&
-      ((selectedSuggestionId && suggestions.length > 0) || (manualMaker && manualModel)),
-  );
+  const remaining = Math.max(activeConfig.requiredCount - scanItems.length, 0);
+
+  const resolveDisplayPlaceholder = (item: ScanItem) => {
+    const candidate = item.parsed.extracted.numericStrings[0] ?? item.parsed.extracted.modelNumbers[0];
+    return candidate ? `例: ${candidate}` : "実物表記を入力";
+  };
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto w-full max-w-5xl px-4 pb-24 pt-4 sm:px-6 sm:pt-6">
       <InventoryToolbar
-        title="QR仮登録（スマホ）"
-        description="カメラ読み取り → 自動入力 → 機種候補 → 仮登録までをスマホで完結します。"
+        title="QR在庫登録（スマホ特化）"
+        description="連続スキャンで番号を割り当て、機種選択から在庫登録まで完結します。"
       />
 
       <div className="mt-4 space-y-4">
+        <div className="flex flex-col gap-3 rounded-md border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex gap-2">
+            {(Object.keys(MODE_CONFIG) as ScanMode[]).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => handleModeChange(mode)}
+                className={`rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
+                  scanMode === mode
+                    ? "bg-emerald-600 text-white"
+                    : "border border-slate-200 bg-white text-slate-700"
+                }`}
+              >
+                {MODE_CONFIG[mode].label}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3 rounded-md bg-emerald-50 px-4 py-2 text-emerald-700">
+            <span className="text-xs font-semibold">残り</span>
+            <span className="text-3xl font-bold leading-none">{remaining}</span>
+            <span className="text-xs">本</span>
+          </div>
+        </div>
+
         <InventoryPanel
-          title="QR読み取り"
-          description="カメラを起動し、QRコードを読み取って自動入力します。"
+          title="連続スキャン"
+          description="カメラを止めずに読み取り結果を積み上げます。"
           actions={
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Button
-                onClick={handleStartScan}
+                onClick={() => void withActionLock(safeStart)}
                 className="h-11 w-full rounded-none text-sm sm:w-auto"
                 disabled={scannerState !== "idle"}
               >
-                {scannerState === "starting" ? "起動中…" : "カメラで読み取る"}
+                {scannerState === "starting" ? "起動中…" : "カメラ起動"}
               </Button>
               <Button
-                onClick={() => void withActionLock(() => safeStop())}
+                onClick={handleStopScan}
                 variant="outline"
                 className="h-11 w-full rounded-none text-sm sm:w-auto"
                 disabled={scannerState !== "scanning"}
@@ -416,13 +519,11 @@ export default function InventoryImportQrPage() {
             <div className="relative w-full">
               <div
                 id={qrRegionId}
-                className="min-h-[360px] w-full overflow-hidden rounded-md border border-dashed border-slate-300 bg-slate-50 sm:min-h-[320px] [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
+                className="aspect-[3/4] w-full overflow-hidden rounded-md border border-dashed border-slate-300 bg-slate-50 [&_video]:h-full [&_video]:w-full [&_video]:object-cover"
               />
-              {scanStatus === "idle" ? (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-500">
-                  QRコードを枠内に合わせてください
-                </div>
-              ) : null}
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center text-xs text-slate-500">
+                QRコードを枠内に合わせてください
+              </div>
             </div>
             {scanError ? (
               <div className="space-y-1 text-xs text-rose-600">
@@ -433,83 +534,110 @@ export default function InventoryImportQrPage() {
               </div>
             ) : (
               <p className="text-xs text-slate-500">
-                iPhone/Androidに対応。カメラが使えない場合は手動入力をご利用ください。
+                iPhone/Android対応。カメラが使えない場合は下の手入力をご利用ください。
               </p>
             )}
+            {scanNotice ? <p className="text-xs text-amber-600">{scanNotice}</p> : null}
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input
+                value={manualRaw}
+                onChange={(event) => setManualRaw(event.target.value)}
+                className="h-11 rounded-none"
+                placeholder="QR文字列を手入力"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-none text-sm"
+                onClick={handleManualAdd}
+                disabled={!manualRaw.trim()}
+              >
+                手入力を追加
+              </Button>
+            </div>
           </div>
         </InventoryPanel>
 
         <InventoryPanel
           title="読み取り結果"
-          description="QR文字列が自動で入力されます。手動で貼り付けてもOKです。"
+          description="番号種別と実物表記（display_code）を確定してください。"
         >
           <div className="space-y-3">
-            <Input
-              value={qrRaw}
-              onChange={(event) => {
-                setQrRaw(event.target.value);
-                setScanOrigin("manual");
-                setScanStatus("idle");
-                setRegisteredMessage(null);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  event.preventDefault();
-                  handleManualConfirm(event.currentTarget.value);
-                }
-              }}
-              className="h-11 rounded-none"
-              placeholder="QR文字列を貼り付け"
-            />
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 rounded-none text-xs"
-                onClick={() => handleManualConfirm()}
-                disabled={!qrRaw.trim()}
-              >
-                入力を確定して履歴へ追加
-              </Button>
-              <span className="text-xs text-slate-400">Enterキーでも確定できます。</span>
-            </div>
-            <div className="text-xs text-slate-500">
-              解析トークン: {qrRaw ? `${suggestions.length} 件の候補を抽出中` : "-"}
-            </div>
-            <div className="space-y-2 rounded-md border border-slate-200 bg-white p-3 text-sm text-slate-700">
-              <div>
-                <p className="text-xs text-slate-500">最新の読み取り結果</p>
-                <p className="mt-1 break-all text-base font-semibold">
-                  {qrRaw ? qrRaw : "まだ読み取り結果がありません。"}
-                </p>
+            {scanItems.length === 0 ? (
+              <div className="rounded-md border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                まだ読み取り結果がありません。QRを読み取るとカードが追加されます。
               </div>
-              <div>
-                <p className="text-xs text-slate-500">履歴（直近5件）</p>
-                {scanHistory.length > 0 ? (
-                  <ul className="mt-2 space-y-1 text-xs text-slate-600">
-                    {scanHistory.map((entry) => (
-                      <li key={entry}>
-                        <button
-                          type="button"
-                          className="w-full rounded-sm border border-transparent px-2 py-1 text-left hover:border-emerald-200 hover:bg-emerald-50"
-                          onClick={() => handleManualConfirm(entry)}
-                        >
-                          {entry}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="mt-2 text-xs text-slate-400">履歴はまだありません。</p>
-                )}
+            ) : (
+              <div className="space-y-3">
+                {scanItems.map((item, index) => (
+                  <div
+                    key={item.id}
+                    className="rounded-md border border-slate-200 bg-white p-3 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-slate-900">読み取り {index + 1}</p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-8 rounded-none px-3 text-xs"
+                        onClick={() => handleDeleteItem(item.id)}
+                      >
+                        削除
+                      </Button>
+                    </div>
+                    <div className="mt-2 grid gap-2">
+                      <div className="flex flex-wrap gap-2">
+                        {activeConfig.kinds.map((kind) => (
+                          <button
+                            key={kind}
+                            type="button"
+                            onClick={() => handleKindChange(item.id, kind)}
+                            className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${
+                              item.kind === kind
+                                ? "bg-emerald-600 text-white"
+                                : "border border-slate-200 bg-white text-slate-700"
+                            }`}
+                          >
+                            {KIND_LABELS[kind]}
+                          </button>
+                        ))}
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-slate-600">display_code</label>
+                        <Input
+                          value={item.display_code}
+                          onChange={(event) => handleDisplayCodeChange(item.id, event.target.value)}
+                          className="mt-1 h-11 rounded-none"
+                          placeholder={
+                            scanMode === "slot" ? "自動入力（必要なら編集）" : resolveDisplayPlaceholder(item)
+                          }
+                        />
+                        {scanMode === "pachi" && !item.display_code.trim() ? (
+                          <p className="mt-1 text-[11px] text-amber-600">
+                            パチンコは実物表記の入力が必須です。
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="rounded-md bg-slate-50 px-3 py-2 text-xs text-slate-500">
+                        <p className="font-semibold text-slate-600">raw_qr</p>
+                        <p className="break-all">{item.raw_qr}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
+            {hasDuplicateDisplayCode ? (
+              <p className="text-xs text-rose-600">
+                display_code が重複しています。異なる実物表記を入力してください。
+              </p>
+            ) : null}
           </div>
         </InventoryPanel>
 
         <InventoryPanel
-          title="解析結果（機種候補）"
-          description="読み取った文字列から機種候補を提示します。"
+          title="機種候補"
+          description="読み取り結果から機種を選択します。"
         >
           {suggestions.length > 0 ? (
             <div className="space-y-3">
@@ -541,89 +669,39 @@ export default function InventoryImportQrPage() {
               ))}
             </div>
           ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-slate-600">
-                候補が見つかりません。手入力でメーカー/機種を選択してください。
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label className="text-xs text-slate-500">
-                  メーカー
-                  <select
-                    value={manualMaker}
-                    onChange={(event) => {
-                      setManualMaker(event.target.value);
-                      setManualModel("");
-                    }}
-                    className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
-                  >
-                    <option value="">メーカーを選択</option>
-                    {makerOptions.map((maker) => (
-                      <option key={maker} value={maker}>
-                        {maker}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="text-xs text-slate-500">
-                  機種
-                  <select
-                    value={manualModel}
-                    onChange={(event) => setManualModel(event.target.value)}
-                    className="mt-2 h-11 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
-                    disabled={!manualMaker}
-                  >
-                    <option value="">機種を選択</option>
-                    {modelOptions.map((model) => (
-                      <option key={model} value={model}>
-                        {model}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </div>
+            <p className="text-sm text-slate-600">読み取り結果から候補が見つかりません。</p>
           )}
         </InventoryPanel>
-
-        <InventoryPanel
-          title="仮登録"
-          description="選択した候補をもとに仮登録し、レビュー画面へ進みます。"
-          actions={
-            <Button
-              onClick={handleRegister}
-              className="h-11 w-full rounded-none text-sm sm:w-auto"
-              disabled={!canRegister}
-            >
-              仮登録
-            </Button>
-          }
-        >
-          <div className="space-y-3 text-sm text-slate-600">
-            {registeredMessage ? (
-              <div className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700">
-                {registeredMessage}
-              </div>
-            ) : (
-              <p>仮登録後、補完画面で保管拠点や棚を入力してください。</p>
-            )}
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Link
-                href="/inventory/import/review"
-                className="flex h-11 items-center justify-center rounded-none border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 hover:bg-slate-100"
-              >
-                仮登録レビューへ
-              </Link>
-              <Button
-                variant="outline"
-                onClick={handleReset}
-                className="h-11 w-full rounded-none text-sm sm:w-auto"
-              >
-                続けて読み取る
-              </Button>
-            </div>
-          </div>
-        </InventoryPanel>
       </div>
+
+      <div className="sticky bottom-0 left-0 right-0 mt-6 border-t border-slate-200 bg-white/95 px-4 py-4 backdrop-blur sm:px-6">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-1 text-sm text-slate-600">
+            <p className="font-semibold text-slate-900">登録条件</p>
+            <ul className="list-inside list-disc text-xs text-slate-500">
+              <li>{activeConfig.requiredCount}本の番号が揃っている</li>
+              <li>display_code が全て入力済み</li>
+              <li>機種候補を1つ選択</li>
+            </ul>
+            {registeredMessage ? (
+              <p className="text-sm font-semibold text-emerald-600">{registeredMessage}</p>
+            ) : null}
+          </div>
+          <Button
+            onClick={handleRegister}
+            className="h-12 w-full rounded-none text-base sm:w-56"
+            disabled={!canRegister}
+          >
+            在庫登録
+          </Button>
+        </div>
+      </div>
+
+      {toastMessage ? (
+        <div className="fixed bottom-20 left-1/2 z-40 w-[90%] -translate-x-1/2 rounded-md bg-emerald-600 px-4 py-3 text-center text-sm font-semibold text-white shadow-lg sm:w-[360px]">
+          {toastMessage}
+        </div>
+      ) : null}
     </div>
   );
 }
