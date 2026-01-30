@@ -34,7 +34,7 @@ export type PurchaseInvoiceItem = {
 
 export type AdditionalCostItem = {
   id: string;
-  label: "手数料" | "保険料" | "その他" | "電話代";
+  label: "ー" | "ダンボール代" | "手数料" | "保険料" | "その他" | "書類代";
   amount: number;
 };
 

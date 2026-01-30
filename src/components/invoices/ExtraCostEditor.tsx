@@ -4,7 +4,20 @@ import type { ChangeEvent } from "react";
 
 import type { AdditionalCostItem } from "@/types/purchaseInvoices";
 
-const COST_OPTIONS: AdditionalCostItem["label"][] = ["手数料", "保険料", "その他", "電話代"];
+const COST_OPTIONS: AdditionalCostItem["label"][] = [
+  "ー",
+  "ダンボール代",
+  "手数料",
+  "保険料",
+  "その他",
+  "書類代",
+];
+
+const normalizeCostLabel = (value: string): AdditionalCostItem["label"] => {
+  if (value === "-" || value === "ー") return "ー";
+  if (value === "電話代") return "その他";
+  return (COST_OPTIONS as readonly string[]).includes(value) ? (value as AdditionalCostItem["label"]) : "ー";
+};
 
 const buildId = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto
@@ -24,7 +37,7 @@ export default function ExtraCostEditor({ value, onChange, title = "別費用", 
       ...value,
       {
         id: buildId(),
-        label: "手数料",
+        label: "ー",
         amount: 0,
       },
     ]);
@@ -35,7 +48,7 @@ export default function ExtraCostEditor({ value, onChange, title = "別費用", 
   };
 
   const handleLabelChange = (id: string, nextLabel: AdditionalCostItem["label"]) => {
-    onChange(value.map((item) => (item.id === id ? { ...item, label: nextLabel } : item)));
+    onChange(value.map((item) => (item.id === id ? { ...item, label: normalizeCostLabel(nextLabel) } : item)));
   };
 
   const handleAmountChange = (id: string, event: ChangeEvent<HTMLInputElement>) => {
@@ -77,9 +90,9 @@ export default function ExtraCostEditor({ value, onChange, title = "別費用", 
                 <tr key={item.id}>
                   <td className="border border-black px-2 py-1">
                     <select
-                      value={item.label}
+                      value={normalizeCostLabel(item.label)}
                       onChange={(event) =>
-                        handleLabelChange(item.id, event.target.value as AdditionalCostItem["label"])
+                        handleLabelChange(item.id, normalizeCostLabel(event.target.value))
                       }
                       className="w-full border border-black bg-amber-50 px-2 py-1 text-[12px] focus:outline-none"
                     >
