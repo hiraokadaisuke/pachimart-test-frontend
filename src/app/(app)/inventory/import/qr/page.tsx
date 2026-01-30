@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 import InventoryPanel from "@/components/inventory/InventoryPanel";
@@ -11,9 +11,22 @@ import { inventoryModelMasters } from "@/lib/inventory/mockMasters";
 import { addImportFromQr } from "@/lib/inventory/mock";
 import { suggestModels } from "@/lib/inventory/qr/parse";
 
-type BarcodeDetectorType = new (options: { formats: string[] }) => {
-  detect: (source: ImageBitmapSource) => Promise<{ rawValue: string }[]>;
+type Html5QrcodeType = new (elementId: string) => {
+  start: (
+    cameraIdOrConfig: { facingMode: "environment" | "user" },
+    config: { fps: number; qrbox: { width: number; height: number }; aspectRatio: number },
+    qrCodeSuccessCallback: (decodedText: string) => void,
+    qrCodeErrorCallback: (error: Error | string) => void,
+  ) => Promise<void>;
+  stop: () => Promise<void>;
+  clear: () => void;
 };
+
+declare global {
+  interface Window {
+    Html5Qrcode?: Html5QrcodeType;
+  }
+}
 
 export default function InventoryImportQrPage() {
   const [qrRaw, setQrRaw] = useState("");
@@ -25,10 +38,9 @@ export default function InventoryImportQrPage() {
   const [manualMaker, setManualMaker] = useState("");
   const [manualModel, setManualModel] = useState("");
   const [registeredMessage, setRegisteredMessage] = useState<string | null>(null);
-  const videoRef = useRef<HTMLVideoElement | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const detectTimerRef = useRef<number | null>(null);
-  const detectorRef = useRef<InstanceType<BarcodeDetectorType> | null>(null);
+  const qrRegionId = useId();
+  const scannerRef = useRef<InstanceType<Html5QrcodeType> | null>(null);
+  const scriptLoadRef = useRef<Promise<void> | null>(null);
 
   const suggestions = useMemo(() => suggestModels(qrRaw, inventoryModelMasters), [qrRaw]);
 
@@ -58,87 +70,102 @@ export default function InventoryImportQrPage() {
   }, []);
 
   const stopScanner = async (resetStatus = true) => {
-    if (detectTimerRef.current) {
-      window.clearInterval(detectTimerRef.current);
-      detectTimerRef.current = null;
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+      } catch (error) {
+        console.error(error);
+      }
+      try {
+        scannerRef.current.clear();
+      } catch (error) {
+        console.error(error);
+      }
+      scannerRef.current = null;
     }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    if (videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.srcObject = null;
-    }
-    detectorRef.current = null;
     if (resetStatus) {
       setScanStatus("idle");
     }
   };
 
-  const requestCameraStream = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) {
-      const error = new Error("MediaDevicesUnavailable");
-      error.name = "MediaDevicesUnavailable";
-      throw error;
+  const resolveCameraErrorMessage = (error: unknown) => {
+    const name = error instanceof Error ? error.name : undefined;
+    const detail = error instanceof Error ? error.message : null;
+    switch (name) {
+      case "NotAllowedError":
+      case "SecurityError":
+        return {
+          message: "カメラの権限が拒否されています。設定で許可してからページを再読み込みしてください。",
+          detail: null,
+        };
+      case "NotFoundError":
+        return { message: "この端末にカメラが見つかりません。", detail: null };
+      case "NotReadableError":
+        return {
+          message: "他のアプリがカメラを使用中です。アプリを閉じてから再度お試しください。",
+          detail: null,
+        };
+      case "OverconstrainedError":
+        return {
+          message: "環境カメラを使用できませんでした。フロントカメラで再試行してください。",
+          detail: null,
+        };
+      case "Html5QrcodeUnavailable":
+      case "ScriptLoadError":
+        return {
+          message:
+            "QR読み取りライブラリの読み込みに失敗しました。QR文字列貼り付けをご利用ください。",
+          detail: name ?? null,
+        };
+      default:
+        return {
+          message: "カメラの起動に失敗しました。QR文字列貼り付けをお試しください。",
+          detail: name ?? detail,
+        };
     }
-
-    const constraintsCandidates: MediaStreamConstraints[] = [
-      { video: { facingMode: { ideal: "environment" } }, audio: false },
-      { video: true, audio: false },
-    ];
-
-    let lastError: unknown;
-    for (const constraints of constraintsCandidates) {
-      try {
-        return await navigator.mediaDevices.getUserMedia(constraints);
-      } catch (error) {
-        lastError = error;
-        if (error instanceof Error && error.name === "OverconstrainedError") {
-          continue;
-        }
-        throw error;
-      }
-    }
-
-    throw lastError ?? new Error("UnknownCameraError");
   };
 
-  const resolveCameraErrorMessage = (error: unknown) => {
-    if (error instanceof Error) {
-      switch (error.name) {
-        case "NotAllowedError":
-        case "SecurityError":
-          return {
-            message: "カメラの権限が拒否されています。設定で許可してからページを再読み込みしてください。",
-            detail: null,
-          };
-        case "NotFoundError":
-          return { message: "この端末にカメラが見つかりません。", detail: null };
-        case "NotReadableError":
-          return {
-            message: "他のアプリがカメラを使用中です。アプリを閉じてから再度お試しください。",
-            detail: null,
-          };
-        case "OverconstrainedError":
-          return {
-            message:
-              "環境カメラを使用できませんでした。フロントカメラ/デフォルトで再試行してください。",
-            detail: null,
-          };
-        case "MediaDevicesUnavailable":
-          return { message: "このブラウザはカメラに対応していません。", detail: null };
-        default:
-          return {
-            message: "カメラの起動に失敗しました。QR文字列貼り付けをお試しください。",
-            detail: error.name,
-          };
-      }
+  const loadHtml5Qrcode = async () => {
+    if (window.Html5Qrcode) return;
+    if (!scriptLoadRef.current) {
+      scriptLoadRef.current = new Promise<void>((resolve, reject) => {
+        const existing = document.getElementById("html5-qrcode-script") as HTMLScriptElement | null;
+        if (existing) {
+          existing.addEventListener("load", () => resolve());
+          existing.addEventListener("error", () => reject(new Error("ScriptLoadError")));
+          return;
+        }
+
+        const script = document.createElement("script");
+        script.id = "html5-qrcode-script";
+        script.src = "https://unpkg.com/html5-qrcode@2.3.9/minified/html5-qrcode.min.js";
+        script.async = true;
+        script.onload = () => resolve();
+        script.onerror = () => reject(new Error("ScriptLoadError"));
+        document.body.appendChild(script);
+      });
     }
-    return {
-      message: "カメラの起動に失敗しました。QR文字列貼り付けをお試しください。",
-      detail: null,
-    };
+    await scriptLoadRef.current;
+  };
+
+  const startScannerWithFacingMode = async (
+    facingMode: "environment" | "user",
+    onSuccess: (decodedText: string) => void,
+    onFailure: (error: Error | string) => void,
+  ) => {
+    await loadHtml5Qrcode();
+    if (!window.Html5Qrcode) {
+      throw new Error("Html5QrcodeUnavailable");
+    }
+    if (!scannerRef.current) {
+      scannerRef.current = new window.Html5Qrcode(qrRegionId);
+    }
+    await scannerRef.current.start(
+      { facingMode },
+      { fps: 10, qrbox: { width: 240, height: 240 }, aspectRatio: 1.0 },
+      onSuccess,
+      onFailure,
+    );
   };
 
   const handleStartScan = async () => {
@@ -146,46 +173,41 @@ export default function InventoryImportQrPage() {
     setScanErrorDetail(null);
     setRegisteredMessage(null);
 
-    const BarcodeDetectorClass = (window as Window & { BarcodeDetector?: BarcodeDetectorType })
-      .BarcodeDetector;
     if (!window.isSecureContext) {
       setScanError("httpsで開かないとカメラは使えません。QR文字列貼り付けをご利用ください。");
       return;
     }
 
     if (!navigator.mediaDevices?.getUserMedia) {
-      setScanError("このブラウザはカメラに対応していません。");
-      return;
-    }
-
-    if (!BarcodeDetectorClass) {
-      setScanError("このブラウザはQR読み取りに対応していません。QR文字列貼り付けをご利用ください。");
+      setScanError("このブラウザではカメラが利用できません。QR文字列貼り付けをご利用ください。");
       return;
     }
 
     setScanOrigin("camera");
     setScanStatus("scanning");
     try {
-      detectorRef.current = new BarcodeDetectorClass({ formats: ["qr_code"] });
-      streamRef.current = await requestCameraStream();
+      const onSuccess = async (decodedText: string) => {
+        setQrRaw(decodedText);
+        setScanStatus("success");
+        await stopScanner(false);
+      };
 
-      if (!videoRef.current) return;
-      videoRef.current.srcObject = streamRef.current;
-      await videoRef.current.play();
+      const onFailure = (error: Error | string) => {
+        if (scanStatus !== "scanning") return;
+        if (typeof error === "string" && error.includes("QR code parse error")) return;
+        if (error instanceof Error && error.name === "QR_CODE_PARSE_ERROR") return;
+        console.debug(error);
+      };
 
-      detectTimerRef.current = window.setInterval(async () => {
-        if (!videoRef.current || !detectorRef.current) return;
-        try {
-          const codes = await detectorRef.current.detect(videoRef.current);
-          if (codes.length > 0) {
-            setQrRaw(codes[0].rawValue);
-            setScanStatus("success");
-            await stopScanner(false);
-          }
-        } catch (error) {
-          console.error(error);
+      try {
+        await startScannerWithFacingMode("environment", onSuccess, onFailure);
+      } catch (error) {
+        if (error instanceof Error && error.name === "OverconstrainedError") {
+          await startScannerWithFacingMode("user", onSuccess, onFailure);
+        } else {
+          throw error;
         }
-      }, 700);
+      }
     } catch (error) {
       console.error(error);
       const { message, detail } = resolveCameraErrorMessage(error);
@@ -266,15 +288,13 @@ export default function InventoryImportQrPage() {
         >
           <div className="space-y-3">
             <div
-              className="flex min-h-[220px] w-full items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500"
+              className="relative flex min-h-[220px] w-full items-center justify-center rounded-md border border-dashed border-slate-300 bg-slate-50 text-xs text-slate-500"
             >
-              <video
-                ref={videoRef}
-                className={`h-full w-full rounded-md object-cover ${
+              <div
+                id={qrRegionId}
+                className={`h-full w-full rounded-md ${
                   scanStatus === "scanning" ? "block" : "hidden"
                 }`}
-                muted
-                playsInline
               />
               {scanStatus === "scanning" ? null : (
                 <span>QRコードを枠内に合わせてください</span>
