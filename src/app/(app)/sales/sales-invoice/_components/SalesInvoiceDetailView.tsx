@@ -10,6 +10,7 @@ import {
   saveInventoryRecords,
 } from "@/lib/demo-data/demoInventory";
 import { BUYER_OPTIONS, findBuyerById, type BuyerInfo } from "@/lib/demo-data/buyers";
+import { loadMasterData } from "@/lib/demo-data/demoMasterData";
 import { loadAllSalesInvoices, upsertSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { loadSalesInvoiceGroups } from "@/lib/demo-data/salesInvoiceGroups";
 import {
@@ -21,6 +22,7 @@ import {
 } from "@/lib/serialInputStorage";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { SalesInvoice, SalesInvoiceGroup } from "@/types/salesInvoices";
+import { PrintMenu } from "@/app/(app)/sales/_components/PrintMenu";
 
 const COMPANY_INFO = {
   name: "p-kanriclub",
@@ -41,9 +43,9 @@ const PRINT_ACTIONS = [
 ] as const;
 
 const CONTRACT_COPY_OPTIONS = [
-  { value: "both", label: "両方印刷" },
-  { value: "seller", label: "売主控え印刷" },
-  { value: "buyer", label: "買主控え印刷" },
+  { value: "both", label: "両方確認" },
+  { value: "seller", label: "売主控え確認" },
+  { value: "buyer", label: "買主控え確認" },
 ] as const;
 
 type ContractCopyOption = (typeof CONTRACT_COPY_OPTIONS)[number]["value"];
@@ -183,6 +185,7 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const [selectedSellerId, setSelectedSellerId] = useState<string>(BUYER_OPTIONS[0].id);
   const [selectedContractCopy, setSelectedContractCopy] = useState<ContractCopyOption>("both");
   const [refreshToken, setRefreshToken] = useState(0);
+  const masterData = useMemo(() => loadMasterData(), []);
 
   useEffect(() => {
     const invoices = loadAllSalesInvoices();
@@ -317,6 +320,17 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
     if (!invoice) return null;
     return invoice.inventoryIds?.map((id) => inventories.get(id)).find((entry) => Boolean(entry)) ?? null;
   }, [invoice, inventories]);
+
+  const sellerInvoiceNumber = masterData.companyProfile.invoiceNumber || "―";
+  const buyerInvoiceNumber = useMemo(() => {
+    const supplierName =
+      invoice?.vendorName ||
+      invoice?.buyerName ||
+      primaryInventory?.supplierCorporate ||
+      primaryInventory?.supplier;
+    const supplier = masterData.suppliers.find((entry) => entry.corporateName === supplierName);
+    return supplier?.invoiceNumber || "―";
+  }, [invoice?.buyerName, invoice?.vendorName, masterData.suppliers, primaryInventory]);
 
   const recipientName = useMemo(() => {
     const fromInvoice = invoice?.vendorName || invoice?.buyerName;
@@ -701,7 +715,7 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
                 onClick={handlePrint}
                 className="border border-yellow-600 bg-yellow-300 px-5 py-2 text-neutral-900"
               >
-                印刷
+                確認
               </button>
             </div>
           </div>
@@ -815,37 +829,16 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 shadow-sm">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-neutral-700">印刷メニュー：</span>
-            <div className="flex flex-wrap items-center gap-2">
-              {PRINT_ACTIONS.map((action) => {
-                const disabled = action.requiresSerial && !serialStatus.allComplete;
-                return (
-                  <button
-                    key={action.label}
-                    type="button"
-                    onClick={() => handlePrintMenu(action.label)}
-                    disabled={disabled}
-                    className="rounded border border-slate-400 bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800 shadow hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    {action.label}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-neutral-700">機械番号明細：</span>
-            <button
-              type="button"
-              onClick={handleMachineDetail}
-              className="rounded border border-amber-600 bg-amber-200 px-4 py-1.5 text-xs font-semibold text-neutral-900 shadow hover:bg-amber-100"
-            >
-              販売機械番号明細
-            </button>
-          </div>
-        </div>
+        <PrintMenu
+          menuLabel="メニュー："
+          actions={PRINT_ACTIONS.map((action) => ({
+            label: action.label,
+            onClick: () => handlePrintMenu(action.label),
+            disabled: action.requiresSerial && !serialStatus.allComplete,
+          }))}
+          sideLabel="機械番号明細："
+          sideAction={{ label: "販売機械番号明細", onClick: handleMachineDetail }}
+        />
         {!serialStatus.allComplete && serialStatus.totalCount > 0 && (
           <div className="text-[11px] font-medium text-amber-700">
             番号が揃っていないため印刷できません（{serialStatus.filledCount}/{serialStatus.totalCount}
@@ -868,6 +861,8 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
                   issuedDateLabel,
                   paymentDueDateLabel,
                   invoiceOriginalRequiredLabel,
+                  sellerInvoiceNumber,
+                  buyerInvoiceNumber,
                 })
               : renderHallSheet({
                   recipientName,
@@ -883,6 +878,8 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
                   invoiceOriginalRequiredLabel,
                   paymentDateLabel,
                   warehousingDateLabel,
+                  sellerInvoiceNumber,
+                  buyerInvoiceNumber,
                 })}
 
             <div className="mb-4 mt-6 min-h-[120px] border border-black p-3 text-[13px]">
@@ -940,6 +937,8 @@ type VendorSheetProps = {
   paymentDueDateLabel: string;
   invoiceOriginalRequiredLabel: string;
   sellerInfo?: BuyerInfo;
+  sellerInvoiceNumber?: string;
+  buyerInvoiceNumber?: string;
 };
 
 type HallSheetProps = VendorSheetProps & {
@@ -960,6 +959,8 @@ export const renderVendorSheet = ({
   paymentDueDateLabel,
   invoiceOriginalRequiredLabel,
   sellerInfo,
+  sellerInvoiceNumber,
+  buyerInvoiceNumber,
 }: VendorSheetProps) => {
   const sellerDisplay = sellerInfo
     ? {
@@ -983,6 +984,7 @@ export const renderVendorSheet = ({
               <span>FAX ―</span>
               <span>TEL ―</span>
             </div>
+            <div className="text-xs text-neutral-700">インボイス番号 {buyerInvoiceNumber || "―"}</div>
             <div className="text-sm font-semibold text-neutral-900">当社の規約に基づき下記の通り売却いたします</div>
             <div className="text-xs leading-relaxed text-neutral-800">
               <div>＊キャンセルは理由の如何にかかわらず承りません。</div>
@@ -1006,6 +1008,7 @@ export const renderVendorSheet = ({
                   <span>{sellerDisplay.tel}</span>
                   <span>{sellerDisplay.fax}</span>
                 </div>
+                <div className="text-xs">インボイス番号 {sellerInvoiceNumber || "―"}</div>
                 <div className="flex items-center justify-between text-xs">
                   <span>担当 {staffName}</span>
                   <span>経理担当 {manager}</span>
@@ -1198,6 +1201,8 @@ const renderHallSheet = ({
   issuedDateLabel,
   paymentDateLabel,
   warehousingDateLabel,
+  sellerInvoiceNumber,
+  buyerInvoiceNumber,
 }: HallSheetProps) => {
   return (
     <div className="space-y-6">
@@ -1207,6 +1212,7 @@ const renderHallSheet = ({
           <div className="text-sm font-semibold text-neutral-900">
             ＊ p-kanriclubの規約に基づき（別紙参照）下記の通り契約をいたします。
           </div>
+          <div className="text-xs text-neutral-700">インボイス番号 {buyerInvoiceNumber || "―"}</div>
         </div>
         <div className="flex flex-col items-end gap-2 text-sm font-semibold text-neutral-900">
           <div>{issuedDateLabel}</div>
@@ -1219,6 +1225,7 @@ const renderHallSheet = ({
                 <span>TEL 03-5389-1955</span>
                 <span>FAX 03-5389-1956</span>
               </div>
+              <div className="text-xs">インボイス番号 {sellerInvoiceNumber || "―"}</div>
               <div className="flex items-center justify-between text-xs">
                 <span>担当 {staffName}</span>
                 <span>経理担当 {manager}</span>

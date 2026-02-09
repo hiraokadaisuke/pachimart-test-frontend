@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { loadInventoryRecords, type InventoryRecord } from "@/lib/demo-data/demoInventory";
+import { loadMasterData } from "@/lib/demo-data/demoMasterData";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import type { SalesInvoice, SalesInvoiceItem } from "@/types/salesInvoices";
 
@@ -74,6 +75,7 @@ const formatNumber = (value?: number): string => {
 export const useSalesInvoicePrintData = (invoiceId: string) => {
   const [invoice, setInvoice] = useState<SalesInvoice>(PLACEHOLDER_INVOICE);
   const [inventories, setInventories] = useState<InventoryRecord[]>([PLACEHOLDER_INVENTORY]);
+  const masterData = useMemo(() => loadMasterData(), []);
 
   useEffect(() => {
     const invoices = loadSalesInvoices();
@@ -108,6 +110,12 @@ export const useSalesInvoicePrintData = (invoiceId: string) => {
       primaryInventory?.supplierCorporate || primaryInventory?.supplierBranch || primaryInventory?.supplier;
     return (fromInvoice || fromInventory || "〇〇商事").trim();
   }, [invoice.vendorName, invoice.buyerName, primaryInventory]);
+
+  const sellerInvoiceNumber = masterData.companyProfile.invoiceNumber || "―";
+  const buyerInvoiceNumber = useMemo(() => {
+    const supplier = masterData.suppliers.find((entry) => entry.corporateName === recipientName);
+    return supplier?.invoiceNumber || "―";
+  }, [masterData.suppliers, recipientName]);
 
   const staffName = invoice?.staff || primaryInventory?.staff || "担当者";
   const manager = invoice?.manager || "経理担当";
@@ -170,6 +178,8 @@ export const useSalesInvoicePrintData = (invoiceId: string) => {
     issuedDateLabel,
     paymentDueDateLabel,
     invoiceOriginalRequiredLabel,
+    sellerInvoiceNumber,
+    buyerInvoiceNumber,
     subtotal,
     tax,
     shippingInsurance,

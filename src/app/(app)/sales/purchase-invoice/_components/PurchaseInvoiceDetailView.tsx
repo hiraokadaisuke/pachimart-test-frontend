@@ -5,10 +5,12 @@ import { useRouter } from "next/navigation";
 
 import { formatCurrency, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import { BUYER_OPTIONS, findBuyerById } from "@/lib/demo-data/buyers";
+import { loadMasterData } from "@/lib/demo-data/demoMasterData";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
 import { loadSerialDraft, loadSerialInput } from "@/lib/serialInputStorage";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { PurchaseInvoice } from "@/types/purchaseInvoices";
+import { PrintMenu } from "@/app/(app)/sales/_components/PrintMenu";
 
 type Props = {
   invoiceId: string;
@@ -32,9 +34,9 @@ const DOCUMENT_ACTIONS = [
 ] as const;
 
 const CONTRACT_COPY_OPTIONS = [
-  { value: "both", label: "両方印刷" },
-  { value: "seller", label: "売主控え印刷" },
-  { value: "buyer", label: "買主控え印刷" },
+  { value: "both", label: "両方確認" },
+  { value: "seller", label: "売主控え確認" },
+  { value: "buyer", label: "買主控え確認" },
 ] as const;
 
 type ContractCopyOption = (typeof CONTRACT_COPY_OPTIONS)[number]["value"];
@@ -63,6 +65,7 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   const [selectedPrintLabel, setSelectedPrintLabel] = useState<string | null>(null);
   const [selectedBuyerId, setSelectedBuyerId] = useState<string>(BUYER_OPTIONS[0].id);
   const [selectedContractCopy, setSelectedContractCopy] = useState<ContractCopyOption>("both");
+  const masterData = useMemo(() => loadMasterData(), []);
 
   useEffect(() => {
     const invoices = loadPurchaseInvoices();
@@ -97,6 +100,13 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
       primaryInventory?.supplierCorporate || primaryInventory?.supplierBranch || primaryInventory?.supplier;
     return (fromItem || fromInvoice || fromInventory || "◯◯◯◯").trim();
   }, [invoice?.partnerName, items, primaryInventory]);
+
+  const supplierInvoiceNumber = useMemo(() => {
+    const supplier = masterData.suppliers.find((entry) => entry.corporateName === supplierName);
+    return supplier?.invoiceNumber || "―";
+  }, [masterData.suppliers, supplierName]);
+
+  const buyerInvoiceNumber = masterData.companyProfile.invoiceNumber || "―";
 
   const branchName = useMemo(() => {
     const fromItem = items[0]?.storeName;
@@ -297,7 +307,7 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
                 onClick={handlePrint}
                 className="border border-yellow-600 bg-yellow-300 px-5 py-2 text-neutral-900"
               >
-                印刷
+                確認
               </button>
             </div>
           </div>
@@ -317,65 +327,21 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
           <span>詳細情報</span>
         </div>
 
-        <div className="rounded border border-slate-300 bg-white px-4 py-3 text-sm font-semibold text-neutral-800 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="text-neutral-700">書類一覧</span>
-            <button
-              type="button"
-              onClick={handleSerialInput}
-              className="rounded border border-amber-500 bg-amber-300 px-4 py-1.5 text-xs font-semibold text-neutral-900 shadow hover:bg-amber-200"
-            >
-              購入機械番号入力
-            </button>
+        <PrintMenu
+          menuLabel="メニュー："
+          actions={DOCUMENT_ACTIONS.map((action) => ({
+            label: action.label,
+            onClick: () => handlePrintMenu(action.label),
+            disabled: action.requiresSerial && !serialComplete,
+          }))}
+          sideLabel="機械番号明細："
+          sideAction={{ label: "購入機械番号入力", onClick: handleSerialInput }}
+        />
+        {!serialComplete && (
+          <div className="text-[11px] font-medium text-amber-700">
+            番号が揃っていないため印刷できません。
           </div>
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-full table-fixed border-collapse text-xs">
-              <thead className="bg-slate-100 text-left text-xs font-semibold text-slate-700">
-                <tr>
-                  <th className="border border-slate-300 px-2 py-2">書類名</th>
-                  <th className="border border-slate-300 px-2 py-2 text-center">番号要否</th>
-                  <th className="border border-slate-300 px-2 py-2 text-center">状態</th>
-                  <th className="border border-slate-300 px-2 py-2 text-center">出力</th>
-                </tr>
-              </thead>
-              <tbody>
-                {DOCUMENT_ACTIONS.map((action) => {
-                  const needsSerial = action.requiresSerial;
-                  const disabled = needsSerial && !serialComplete;
-                  const statusLabel = needsSerial
-                    ? serialComplete
-                      ? "番号入力済"
-                      : "要番号入力"
-                    : "出力可";
-                  return (
-                    <tr key={action.label} className="odd:bg-white even:bg-slate-50">
-                      <td className="border border-slate-300 px-2 py-2">{action.label}</td>
-                      <td className="border border-slate-300 px-2 py-2 text-center">
-                        {needsSerial ? "必須" : "不要"}
-                      </td>
-                      <td className="border border-slate-300 px-2 py-2 text-center">{statusLabel}</td>
-                      <td className="border border-slate-300 px-2 py-2 text-center">
-                        <button
-                          type="button"
-                          onClick={() => handlePrintMenu(action.label)}
-                          disabled={disabled || action.path == null}
-                          className="rounded border border-slate-400 bg-slate-100 px-3 py-1 text-xs font-semibold text-neutral-800 shadow disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          {action.path == null ? "準備中" : "印刷"}
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          {!serialComplete && (
-            <div className="mt-2 text-[11px] font-medium text-amber-700">
-              番号必須の書類は、全台の番号が揃うまで出力できません。
-            </div>
-          )}
-        </div>
+        )}
 
         <div className="flex justify-center">
           <div className="w-full max-w-5xl border border-black bg-white p-6 shadow-sm">
@@ -385,6 +351,7 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
                 <div className="text-sm text-neutral-800">
                   ＊p-kanriclub と {headerContractPartner} は下記の条件で売買契約を締結いたします
                 </div>
+                <div className="text-xs text-neutral-700">インボイス番号 {supplierInvoiceNumber}</div>
               </div>
               <div className="flex flex-col items-end gap-1 text-sm font-semibold text-neutral-900">
                 <div>{issuedDateLabel}</div>
@@ -398,6 +365,7 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
                       <span>{COMPANY_INFO.tel}</span>
                       <span>{COMPANY_INFO.fax}</span>
                     </div>
+                    <div>インボイス番号 {buyerInvoiceNumber}</div>
                   </div>
                 </div>
                 <div className="text-xs text-neutral-800">担当　{staffName}</div>

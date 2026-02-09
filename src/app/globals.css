@@ -69,8 +69,9 @@ a {
 }
 
 .print-page-break {
-  break-after: page;
-  page-break-after: always;
+  height: 0;
+  break-before: page;
+  page-break-before: always;
 }
 
 @media print {

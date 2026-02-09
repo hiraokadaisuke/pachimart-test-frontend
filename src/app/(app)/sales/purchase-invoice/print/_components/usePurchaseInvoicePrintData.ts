@@ -6,6 +6,7 @@ import {
   loadInventoryRecords,
   type InventoryRecord,
 } from "@/lib/demo-data/demoInventory";
+import { loadMasterData } from "@/lib/demo-data/demoMasterData";
 import { loadPurchaseInvoices } from "@/lib/demo-data/purchaseInvoices";
 import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/types/purchaseInvoices";
 
@@ -72,6 +73,7 @@ const formatNumber = (value?: number): string => {
 export const usePurchaseInvoicePrintData = (invoiceId: string) => {
   const [invoice, setInvoice] = useState<PurchaseInvoice>(PLACEHOLDER_INVOICE);
   const [inventories, setInventories] = useState<InventoryRecord[]>([PLACEHOLDER_INVENTORY]);
+  const masterData = useMemo(() => loadMasterData(), []);
 
   useEffect(() => {
     const invoices = loadPurchaseInvoices();
@@ -118,6 +120,13 @@ export const usePurchaseInvoicePrintData = (invoiceId: string) => {
 
   const recipientLine = branchName ? `${supplierName} ${branchName} 御中` : `${supplierName} 御中`;
   const headerContractPartner = branchName ? `${supplierName} ${branchName}` : supplierName;
+
+  const sellerInvoiceNumber = useMemo(() => {
+    const supplier = masterData.suppliers.find((entry) => entry.corporateName === supplierName);
+    return supplier?.invoiceNumber || "―";
+  }, [masterData.suppliers, supplierName]);
+
+  const buyerInvoiceNumber = masterData.companyProfile.invoiceNumber || "―";
 
   const paymentDateLabel = formatFullDate(invoice?.formInput?.paymentDate);
   const warehousingDateLabel = formatFullDate(invoice?.formInput?.warehousingDate);
@@ -202,6 +211,8 @@ export const usePurchaseInvoicePrintData = (invoiceId: string) => {
     primaryInventory,
     supplierName,
     branchName,
+    sellerInvoiceNumber,
+    buyerInvoiceNumber,
     staffName,
     recipientLine,
     headerContractPartner,
