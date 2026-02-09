@@ -35,6 +35,8 @@ export default function SalesContractPrintPage() {
     invoice,
     supplierName,
     branchName,
+    sellerInvoiceNumber,
+    buyerInvoiceNumber,
     staffName,
     recipientLine,
     headerContractPartner,
@@ -49,40 +51,57 @@ export default function SalesContractPrintPage() {
   const copyTargets: Array<CopyOption | null> = copyOption === "both" ? ["seller", "buyer"] : [copyOption];
   const pdfCopyLabel = copyOption ?? "single";
   const pdfFileName = invoiceId ? `sales-contract_${invoiceId}_${pdfCopyLabel}.pdf` : `sales-contract_${pdfCopyLabel}.pdf`;
+  const totalPages = copyTargets.length;
 
   return (
     <PrintScaffold pdfFileName={pdfFileName}>
-      {copyTargets.map((copy, index) => (
-        <div
-          key={`${copy ?? "single"}-${index}`}
-          className={copyTargets.length > 1 && index === 0 ? "print-page-break" : ""}
-        >
-          <div className="mb-4 text-center text-lg font-semibold">{resolveTitle(copy)}</div>
-          <div className="mb-6 flex flex-col gap-3 text-[12px]">
-            <div className="flex flex-wrap justify-between gap-4">
-              <div className="min-w-[260px] flex-1 space-y-1">
-                <div className="text-base font-semibold">{recipientLine}</div>
-                <div className="text-[11px]">
-                  ＊p-kanriclub と {headerContractPartner} は下記の条件で売買契約を締結いたします
+      {copyTargets.map((copy, index) => {
+        const copyLabel = copy === "seller" ? "売主控え" : copy === "buyer" ? "買主控え" : "控え";
+        return (
+          <div key={`${copy ?? "single"}-${index}`}>
+            {index > 0 && (
+              <>
+                <div className="print-hidden my-8 flex items-center gap-4 text-xs text-slate-500">
+                  <div className="h-px flex-1 bg-slate-300" />
+                  <span>ページ区切り</span>
+                  <div className="h-px flex-1 bg-slate-300" />
                 </div>
+                <div className="print-page-break" aria-hidden="true" />
+              </>
+            )}
+            {totalPages > 1 && (
+              <div className="mb-2 text-center text-xs font-semibold text-neutral-600">
+                {index + 1}枚目：{copyLabel}
               </div>
-              <div className="min-w-[240px] text-right">
-                <div className="text-sm font-semibold">{issuedDateLabel}</div>
-                <div className="mt-2 inline-block border border-black px-3 py-2 text-left text-[11px] font-semibold leading-relaxed">
-                  <div className="text-sm font-bold">[買主]</div>
-                  <div>{buyer.postalCode}</div>
-                  <div>{buyer.address}</div>
-                  <div>{buyer.corporate}</div>
-                  <div>{buyer.representative}</div>
-                  <div className="space-y-0.5">
-                    <div>{buyer.tel}</div>
-                    <div>{buyer.fax}</div>
+            )}
+            <div className="mb-4 text-center text-lg font-semibold">{resolveTitle(copy)}</div>
+            <div className="mb-6 flex flex-col gap-3 text-[12px]">
+              <div className="flex flex-wrap justify-between gap-4">
+                <div className="min-w-[260px] flex-1 space-y-1">
+                  <div className="text-base font-semibold">{recipientLine}</div>
+                  <div className="text-[11px]">
+                    ＊p-kanriclub と {headerContractPartner} は下記の条件で売買契約を締結いたします
                   </div>
+                  <div className="text-[11px]">インボイス番号 {sellerInvoiceNumber}</div>
                 </div>
-                <div className="mt-1 text-[11px]">担当　{staffName}</div>
+                <div className="min-w-[240px] text-right">
+                  <div className="text-sm font-semibold">{issuedDateLabel}</div>
+                  <div className="mt-2 inline-block border border-black px-3 py-2 text-left text-[11px] font-semibold leading-relaxed">
+                    <div className="text-sm font-bold">[買主]</div>
+                    <div>{buyer.postalCode}</div>
+                    <div>{buyer.address}</div>
+                    <div>{buyer.corporate}</div>
+                    <div>{buyer.representative}</div>
+                    <div className="space-y-0.5">
+                      <div>{buyer.tel}</div>
+                      <div>{buyer.fax}</div>
+                    </div>
+                    <div>インボイス番号 {buyerInvoiceNumber}</div>
+                  </div>
+                  <div className="mt-1 text-[11px]">担当　{staffName}</div>
+                </div>
               </div>
             </div>
-          </div>
 
           <div className="mb-6">
             <table className="w-full table-fixed border border-black text-center text-[12px]">
@@ -162,6 +181,7 @@ export default function SalesContractPrintPage() {
                 <div>{invoice.items?.[0]?.supplierAddress || "住所"}</div>
                 <div>{invoice.items?.[0]?.supplierPhone || "電話番号"}</div>
                 <div>{invoice.items?.[0]?.supplierFax || "FAX"}</div>
+                <div>インボイス番号 {sellerInvoiceNumber}</div>
                 <div className="mt-4 h-16 w-full border border-black" aria-hidden />
               </div>
             </div>
@@ -172,7 +192,8 @@ export default function SalesContractPrintPage() {
             </div>
           </div>
         </div>
-      ))}
+      );
+    })}
     </PrintScaffold>
   );
 }

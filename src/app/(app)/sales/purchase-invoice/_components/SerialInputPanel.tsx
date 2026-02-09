@@ -784,7 +784,7 @@ export default function SerialInputPanel({
         <div className="border border-black bg-white">
           <div className="flex flex-wrap items-center justify-between border-b border-black bg-[#d7e4f2] px-3 py-2 text-[12px] font-semibold">
             <div className="flex items-center gap-2">
-              <span>印刷メニュー</span>
+              <span>メニュー</span>
             </div>
             <div className="flex flex-wrap items-center gap-2">
               {PRINT_MENU_ITEMS.map((item) => (

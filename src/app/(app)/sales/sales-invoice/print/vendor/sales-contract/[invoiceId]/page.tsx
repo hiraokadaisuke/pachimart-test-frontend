@@ -44,40 +44,60 @@ export default function SalesContractPrintPage() {
     issuedDateLabel,
     paymentDueDateLabel,
     invoiceOriginalRequiredLabel,
+    sellerInvoiceNumber,
+    buyerInvoiceNumber,
   } = useSalesInvoicePrintData(invoiceId ?? "");
 
   const copyTargets: Array<CopyOption | null> = copyOption === "both" ? ["seller", "buyer"] : [copyOption];
   const pdfCopyLabel = copyOption ?? "single";
   const pdfFileName = invoiceId ? `sales-contract_${invoiceId}_${pdfCopyLabel}.pdf` : `sales-contract_${pdfCopyLabel}.pdf`;
+  const totalPages = copyTargets.length;
 
   return (
     <PrintScaffold pdfFileName={pdfFileName}>
-      {copyTargets.map((copy, index) => (
-        <div
-          key={`${copy ?? "single"}-${index}`}
-          className={copyTargets.length > 1 && index === 0 ? "print-page-break" : ""}
-        >
-          <div className="mb-4 text-center text-lg font-semibold">{resolveTitle(copy)}</div>
-          {renderVendorSheet({
-            recipientName,
-            staffName,
-            manager,
-            items: rawItems,
-            subtotal,
-            tax,
-            shippingInsurance,
-            grandTotal,
-            issuedDateLabel,
-            paymentDueDateLabel,
-            invoiceOriginalRequiredLabel,
-            sellerInfo: seller,
-          })}
-          <div className="mb-4 mt-6 min-h-[120px] border border-black p-3 text-[13px]">
-            <div className="mb-2 text-sm font-semibold text-neutral-900">備考</div>
-            <div className="whitespace-pre-wrap text-neutral-800">{invoice.remarks || "―"}</div>
+      {copyTargets.map((copy, index) => {
+        const copyLabel = copy === "seller" ? "売主控え" : copy === "buyer" ? "買主控え" : "控え";
+        return (
+          <div key={`${copy ?? "single"}-${index}`}>
+            {index > 0 && (
+              <>
+                <div className="print-hidden my-8 flex items-center gap-4 text-xs text-slate-500">
+                  <div className="h-px flex-1 bg-slate-300" />
+                  <span>ページ区切り</span>
+                  <div className="h-px flex-1 bg-slate-300" />
+                </div>
+                <div className="print-page-break" aria-hidden="true" />
+              </>
+            )}
+            {totalPages > 1 && (
+              <div className="mb-2 text-center text-xs font-semibold text-neutral-600">
+                {index + 1}枚目：{copyLabel}
+              </div>
+            )}
+            <div className="mb-4 text-center text-lg font-semibold">{resolveTitle(copy)}</div>
+            {renderVendorSheet({
+              recipientName,
+              staffName,
+              manager,
+              items: rawItems,
+              subtotal,
+              tax,
+              shippingInsurance,
+              grandTotal,
+              issuedDateLabel,
+              paymentDueDateLabel,
+              invoiceOriginalRequiredLabel,
+              sellerInfo: seller,
+              sellerInvoiceNumber,
+              buyerInvoiceNumber,
+            })}
+            <div className="mb-4 mt-6 min-h-[120px] border border-black p-3 text-[13px]">
+              <div className="mb-2 text-sm font-semibold text-neutral-900">備考</div>
+              <div className="whitespace-pre-wrap text-neutral-800">{invoice.remarks || "―"}</div>
+            </div>
           </div>
-        </div>
-      ))}
+        );
+      })}
     </PrintScaffold>
   );
 }
