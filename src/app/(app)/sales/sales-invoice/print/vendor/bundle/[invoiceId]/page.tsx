@@ -30,6 +30,8 @@ export default function BundlePrintPage() {
     issuedDateLabel,
     paymentDueDateLabel,
     invoiceOriginalRequiredLabel,
+    sellerInvoiceNumber,
+    buyerInvoiceNumber,
   } = useSalesInvoicePrintData(invoiceId ?? "");
 
   return (
@@ -54,6 +56,8 @@ export default function BundlePrintPage() {
               paymentDueDateLabel,
               invoiceOriginalRequiredLabel,
               sellerInfo: seller,
+              sellerInvoiceNumber,
+              buyerInvoiceNumber,
             })}
             <div className="mb-4 mt-6 min-h-[120px] border border-black p-3 text-[13px]">
               <div className="mb-2 text-sm font-semibold text-neutral-900">備考</div>

@@ -5,7 +5,7 @@ import { useParams, useSearchParams } from "next/navigation";
 
 import { PrintScaffold } from "../../../_components/PrintScaffold";
 import { useSalesInvoicePrintData } from "../../../_components/useSalesInvoicePrintData";
-import { renderVendorSheet } from "@/app/(app)/sales/sales-invoice/_components/SalesInvoiceDetailView";
+import { renderSalesContractInvoiceSheet } from "@/app/(app)/sales/sales-invoice/_components/SalesInvoiceDetailView";
 import { findBuyerById } from "@/lib/demo-data/buyers";
 
 const COPY_OPTIONS = ["both", "seller", "buyer"] as const;
@@ -32,18 +32,14 @@ export default function SalesContractPrintPage() {
 
   const seller = useMemo(() => findBuyerById(sellerId), [sellerId]);
   const {
-    invoice,
     recipientName,
     staffName,
-    manager,
     rawItems,
     subtotal,
     tax,
-    shippingInsurance,
     grandTotal,
     issuedDateLabel,
     paymentDueDateLabel,
-    invoiceOriginalRequiredLabel,
     sellerInvoiceNumber,
     buyerInvoiceNumber,
   } = useSalesInvoicePrintData(invoiceId ?? "");
@@ -74,27 +70,20 @@ export default function SalesContractPrintPage() {
                 {index + 1}枚目：{copyLabel}
               </div>
             )}
-            <div className="mb-4 text-center text-lg font-semibold">{resolveTitle(copy)}</div>
-            {renderVendorSheet({
+            {renderSalesContractInvoiceSheet({
+              title: resolveTitle(copy),
               recipientName,
               staffName,
-              manager,
               items: rawItems,
               subtotal,
               tax,
-              shippingInsurance,
               grandTotal,
               issuedDateLabel,
               paymentDueDateLabel,
-              invoiceOriginalRequiredLabel,
               sellerInfo: seller,
               sellerInvoiceNumber,
               buyerInvoiceNumber,
             })}
-            <div className="mb-4 mt-6 min-h-[120px] border border-black p-3 text-[13px]">
-              <div className="mb-2 text-sm font-semibold text-neutral-900">備考</div>
-              <div className="whitespace-pre-wrap text-neutral-800">{invoice.remarks || "―"}</div>
-            </div>
           </div>
         );
       })}

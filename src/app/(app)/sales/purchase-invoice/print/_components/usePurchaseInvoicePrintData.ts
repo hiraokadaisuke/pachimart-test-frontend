@@ -187,23 +187,24 @@ export const usePurchaseInvoicePrintData = (invoiceId: string) => {
   );
 
   const detailRows = useMemo(() => {
-    const rows = [buildDetailRow()];
-    while (rows.length < 25) {
-      rows.push({
-        removalDate: "",
-        storeName: "",
-        maker: "",
-        machineName: "",
-        type: "",
-        quantity: "",
-        unitPrice: "",
-        amount: "",
-        remainingDebt: "",
-        note: "",
-      });
+    if (items.length === 0) {
+      return [
+        {
+          removalDate: "",
+          storeName: "",
+          maker: "",
+          machineName: "",
+          type: "",
+          quantity: "",
+          unitPrice: "",
+          amount: "",
+          remainingDebt: "",
+          note: "",
+        },
+      ];
     }
-    return rows;
-  }, [buildDetailRow]);
+    return items.map((item) => buildDetailRow(item));
+  }, [buildDetailRow, items]);
 
   return {
     invoice,
