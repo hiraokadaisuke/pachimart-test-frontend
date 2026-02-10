@@ -36,7 +36,6 @@ const COMPANY_INFO = {
 
 const PRINT_ACTIONS = [
   { label: "売買契約書", path: "sales-contract", requiresSerial: false },
-  { label: "売却証明書", path: "sale-certificate", requiresSerial: true },
   { label: "請求書", path: "invoice", requiresSerial: false },
   { label: "発送依頼書", path: "shipping-request", requiresSerial: true },
   { label: "書類一括", path: "bundle", requiresSerial: true },
@@ -94,6 +93,11 @@ const formatMonthDay = (value?: string): string => {
 const formatNumber = (value?: number): string => {
   if (value == null || Number.isNaN(value)) return "―";
   return value.toLocaleString("ja-JP");
+};
+
+const formatYen = (value?: number): string => {
+  if (value == null || Number.isNaN(value)) return "―";
+  return `${value.toLocaleString("ja-JP")}円`;
 };
 
 const resolveInvoiceSubtotal = (invoice: SalesInvoice): number => {
@@ -1183,6 +1187,166 @@ export const renderVendorSheet = ({
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+type SalesContractInvoiceSheetProps = {
+  title: string;
+  issuedDateLabel: string;
+  recipientName: string;
+  staffName: string;
+  items: SalesInvoice["items"];
+  subtotal: number;
+  tax: number;
+  grandTotal: number;
+  paymentDueDateLabel: string;
+  sellerInfo?: BuyerInfo;
+  sellerInvoiceNumber?: string;
+  buyerInvoiceNumber?: string;
+};
+
+export const renderSalesContractInvoiceSheet = ({
+  title,
+  issuedDateLabel,
+  recipientName,
+  staffName,
+  items,
+  subtotal,
+  tax,
+  grandTotal,
+  paymentDueDateLabel,
+  sellerInfo,
+  sellerInvoiceNumber,
+  buyerInvoiceNumber,
+}: SalesContractInvoiceSheetProps) => {
+  const sellerDisplay = sellerInfo
+    ? {
+        ...COMPANY_INFO,
+        name: sellerInfo.corporate,
+        address: sellerInfo.address,
+        postal: sellerInfo.postalCode,
+        tel: sellerInfo.tel,
+        fax: sellerInfo.fax,
+        representative: sellerInfo.representative,
+      }
+    : { ...COMPANY_INFO, representative: undefined };
+
+  return (
+    <div className="space-y-4 text-[12px] text-neutral-900">
+      <div className="grid grid-cols-[1fr_1.5fr_1fr] items-start">
+        <div />
+        <div className="text-center text-lg font-semibold">{title}</div>
+        <div className="text-right text-[12px]">{issuedDateLabel}</div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
+        <div className="space-y-2">
+          <div className="text-[13px] font-semibold">{recipientName} 御中</div>
+          <div className="text-[11px] text-neutral-700">インボイス番号 {buyerInvoiceNumber || "―"}</div>
+        </div>
+        <div className="border border-black p-3 text-[11px]">
+          <div className="mb-1 text-right text-sm font-semibold">【売主】</div>
+          <div className="space-y-0.5">
+            <div>{sellerDisplay.postal}</div>
+            <div>{sellerDisplay.address}</div>
+            <div>{sellerDisplay.name}</div>
+            {sellerDisplay.representative && <div>{sellerDisplay.representative}</div>}
+            <div className="flex items-center justify-between">
+              <span>{sellerDisplay.tel}</span>
+              <span>{sellerDisplay.fax}</span>
+            </div>
+            <div>担当 {staffName}</div>
+            <div>インボイス番号 {sellerInvoiceNumber || "―"}</div>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full table-fixed border border-black text-[11px]">
+          <thead className="bg-slate-100 text-center font-semibold">
+            <tr>
+              <th className="border border-black px-2 py-1">メーカー名</th>
+              <th className="border border-black px-2 py-1">商品名</th>
+              <th className="border border-black px-2 py-1">タイプ</th>
+              <th className="border border-black px-2 py-1 text-right">数量</th>
+              <th className="border border-black px-2 py-1 text-right">単価</th>
+              <th className="border border-black px-2 py-1 text-right">金額</th>
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="border border-black px-3 py-4 text-center text-[11px] text-neutral-600">
+                  明細が登録されていません。
+                </td>
+              </tr>
+            ) : (
+              items.map((item, index) => (
+                <tr key={`${item.productName}-${index}`} className="align-middle text-center">
+                  <td className="border border-black px-2 py-1 text-left">{item.maker || ""}</td>
+                  <td className="border border-black px-2 py-1 text-left font-semibold">{item.productName || ""}</td>
+                  <td className="border border-black px-2 py-1 text-left">{item.type || ""}</td>
+                  <td className="border border-black px-2 py-1 text-right">{formatNumber(item.quantity)}</td>
+                  <td className="border border-black px-2 py-1 text-right">{formatNumber(item.unitPrice)}</td>
+                  <td className="border border-black px-2 py-1 text-right">{formatNumber(item.amount)}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <div className="w-full max-w-sm border border-black p-3 text-[11px]">
+          <div className="mb-2 text-sm font-semibold">金額集計</div>
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <span>小計</span>
+              <span className="font-semibold">{formatYen(subtotal)}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span>消費税（10%）</span>
+              <span className="font-semibold">{formatYen(tax)}</span>
+            </div>
+            <div className="flex items-center justify-between border-t border-black pt-1 text-right font-bold">
+              <span>合計金額</span>
+              <span>{formatYen(grandTotal)}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="w-full max-w-sm border border-black p-3 text-[11px]">
+          <div className="text-sm font-semibold">お振込先</div>
+          <div className="mt-2 space-y-1">
+            <div>三菱東京UFJ銀行 高田馬場支店</div>
+            <div>普通 0131849 カ)ピーカンクラブ</div>
+          </div>
+          <div className="mt-3 border-t border-black pt-2">
+            <div className="mb-1 text-sm font-semibold">お支払方法 / お支払日 / 金額</div>
+            <div className="grid grid-cols-3 gap-2 text-[11px]">
+              <div className="border border-black px-2 py-1 text-center">振込</div>
+              <div className="border border-black px-2 py-1 text-center">{paymentDueDateLabel || " "}</div>
+              <div className="border border-black px-2 py-1 text-center font-semibold">{formatYen(grandTotal)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-[120px_1fr] gap-2 text-[11px]">
+        <div className="flex flex-col justify-between border border-black px-2 py-3 text-center font-semibold">
+          <div>住所</div>
+          <div>会社名</div>
+          <div>電話番号</div>
+          <div className="mt-4">印</div>
+        </div>
+        <div className="space-y-2">
+          <div className="h-7 border border-black" />
+          <div className="h-7 border border-black" />
+          <div className="h-7 border border-black" />
+          <div className="h-16 border border-black" />
         </div>
       </div>
     </div>
