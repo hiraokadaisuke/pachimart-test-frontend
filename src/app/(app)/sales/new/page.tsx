@@ -361,15 +361,17 @@ export default function InventoryNewPage() {
       supplierInfo.supplierPostalCode || branch?.postalCode || corporate?.postalCode || "";
     const supplierPhone = supplierInfo.supplierPhone || branch?.phone || corporate?.phone || "";
     const supplierFax = supplierInfo.supplierFax || branch?.fax || corporate?.fax || "";
+    const registrationBaseMs = Date.now();
+
     const prepared: InventoryRecord[] = rows
       .filter((row) => row.maker || row.model)
-      .map((row) => {
+      .map((row, index) => {
         const listingStatus = row.isPublished ? "listing" : "not_listing";
         const status = mapListingStatusToStockStatus(listingStatus);
         const stockInDate = row.stockInDate || supplierInfo.inputDate || today;
         return {
           id: row.id || generateInventoryId(),
-          createdAt: supplierInfo.inputDate || today,
+          createdAt: new Date(registrationBaseMs + index).toISOString(),
           status,
           stockStatus: status,
           listingStatus,

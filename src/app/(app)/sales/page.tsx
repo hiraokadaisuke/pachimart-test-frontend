@@ -183,6 +183,12 @@ const parseNonNegativeInteger = (value: string) => {
   return { normalized, parsed: Number(normalized), error: "" };
 };
 
+const compareInventoryRecordsByNewest = (a: InventoryRecord, b: InventoryRecord) => {
+  const createdAtDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  if (createdAtDiff !== 0) return createdAtDiff;
+  return b.id.localeCompare(a.id, "ja", { numeric: true, sensitivity: "base" });
+};
+
 export default function InventoryPage() {
   const router = useRouter();
   const [records, setRecords] = useState<InventoryRecord[]>([]);
@@ -376,9 +382,7 @@ export default function InventoryPage() {
     const hiddenFilter = searchFilters.showHidden;
     const completedFilter = searchFilters.showCompleted;
 
-    const sorted = [...records].sort(
-      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+    const sorted = [...records].sort(compareInventoryRecordsByNewest);
 
     return sorted.filter((item) => {
       if (searchFilters.kind !== "all" && item.kind !== searchFilters.kind) {
