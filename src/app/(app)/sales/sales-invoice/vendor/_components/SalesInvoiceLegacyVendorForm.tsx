@@ -51,7 +51,10 @@ const yellowInput =
   "w-full bg-amber-100 border border-black px-2 py-1 text-[12px] leading-tight focus:outline-none";
 const orangeInput =
   "w-full bg-orange-200 border border-black px-2 py-1 text-[12px] leading-tight focus:outline-none";
-const labelCell = "w-20 text-[12px]";
+const hallStyleYellowInput =
+  "w-full bg-[#fff6cc] border border-[#333] px-2 py-[6px] text-[13px] leading-tight focus:outline-none";
+const hallStyleGrayInput =
+  "w-full bg-[#f4f0e6] border border-[#333] px-2 py-[6px] text-[13px] leading-tight focus:outline-none";
 
 const toNumber = (value: string | number | undefined) => {
   const normalized = typeof value === "string" ? value.replace(/,/g, "").trim() : value;
@@ -77,7 +80,6 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
   const [masterData, setMasterData] = useState<MasterData>(DEFAULT_MASTER_DATA);
   const [sellerProfile, setSellerProfile] = useState<CompanyProfile | null>(null);
   const [vendorName, setVendorName] = useState("株式会社ピーコム");
-  const [contactName] = useState("御中");
   const [vendorTel, setVendorTel] = useState("03-1234-5678");
   const [vendorFax, setVendorFax] = useState("03-1234-5679");
   const [vendorInvoiceNumber, setVendorInvoiceNumber] = useState("");
@@ -516,7 +518,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
       createdAt: new Date().toISOString(),
       issuedDate,
       vendorName,
-      buyerName: "株式会社ピーコム",
+      buyerName: vendorName,
       staff,
       manager,
       inventoryIds: soldInventoryIds.length > 0 ? soldInventoryIds : invoiceInventoryIds,
@@ -606,51 +608,6 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
             <div className="grid grid-cols-2 gap-2 border-2 border-black bg-white p-2">
               <div className="col-span-2 grid grid-cols-[1.05fr_0.95fr] gap-2 border-b-2 border-black pb-2">
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center gap-2 text-[15px] font-bold">
-                    <input
-                      type="text"
-                      value={vendorName}
-                      onChange={(e) => setVendorName(e.target.value)}
-                      className={`${yellowInput} max-w-sm text-lg font-bold`}
-                    />
-                    <span className="text-sm font-semibold">{contactName}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span>FAX</span>
-                    <input
-                      type="text"
-                      value={vendorFax}
-                      onChange={(e) => setVendorFax(e.target.value)}
-                      className={`${yellowInput} w-32`}
-                    />
-                    <span>TEL</span>
-                    <input
-                      type="text"
-                      value={vendorTel}
-                      onChange={(e) => setVendorTel(e.target.value)}
-                      className={`${yellowInput} w-32`}
-                    />
-                  </div>
-                  <div className="flex items-center gap-2 text-sm">
-                    <span>インボイス番号</span>
-                    <input
-                      type="text"
-                      value={vendorInvoiceNumber}
-                      onChange={(e) => setVendorInvoiceNumber(e.target.value)}
-                      className={`${yellowInput} w-44`}
-                    />
-                  </div>
-                  <div className="rounded-sm border border-black bg-amber-50 px-3 py-1.5 text-[12px] leading-tight">
-                    <div className="text-sm font-semibold">当社規約に基づき売買いたします</div>
-                    <ul className="list-disc space-y-0.5 pl-4">
-                      <li>成立後キャンセルは売買代金の50%をご請求します。</li>
-                      <li>商品到着後3営業日以内に検品・ご連絡ください。</li>
-                      <li>搬出入車両は指定場所への手配をお願いします。</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-1.5">
                   <div className="flex justify-end">
                     <div className="flex items-center gap-2 border border-black bg-white px-2 py-1 text-sm font-semibold">
                       <span>日付</span>
@@ -662,59 +619,114 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
                       />
                     </div>
                   </div>
-                  <div className="border border-black">
-                    <div className="border-b border-black bg-slate-100 px-2 py-1 text-sm font-bold">【売主】</div>
-                    <div className="space-y-1 px-2 py-2 text-[12px] leading-tight">
-                      <div className="flex items-center gap-2">
-                        <span className={labelCell}>郵便番号</span>
-                        <span className="border border-black px-2 py-1">{sellerDisplay.postalCode}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={labelCell}>住所</span>
-                        <span className="border border-black px-2 py-1">{sellerDisplay.address}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={labelCell}>会社名</span>
-                        <span className="border border-black px-2 py-1">{sellerDisplay.companyName}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={labelCell}>代表</span>
-                        <span className="border border-black px-2 py-1">{sellerDisplay.representative}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={labelCell}>TEL</span>
-                        <span className="border border-black px-2 py-1">{sellerDisplay.tel}</span>
-                        <span className="w-10 text-right">FAX</span>
-                        <span className="border border-black px-2 py-1">{sellerDisplay.fax}</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className={labelCell}>インボイス番号</span>
-                        <span className="border border-black px-2 py-1">
-                          {sellerDisplay.invoiceNumber}
-                        </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="border border-[#333]">
+                      <div className="border-b border-[#333] bg-[#f5f5f5] px-2 py-1 text-[13px] font-semibold">販売先（ホール）</div>
+                      <div className="space-y-1 px-2 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="w-16">ホール名</span>
+                          <input
+                            type="text"
+                            value={vendorName}
+                            onChange={(e) => setVendorName(e.target.value)}
+                            className={`${hallStyleYellowInput} flex-1`}
+                          />
+                          <button
+                            type="button"
+                            className="border border-[#333] bg-[#f3f3f3] px-3 py-1 text-[12px]"
+                          >
+                            売主検索
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-16">TEL</span>
+                          <input
+                            type="text"
+                            value={vendorTel}
+                            onChange={(e) => setVendorTel(e.target.value)}
+                            className={`${hallStyleYellowInput} flex-1`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-16">FAX</span>
+                          <input
+                            type="text"
+                            value={vendorFax}
+                            onChange={(e) => setVendorFax(e.target.value)}
+                            className={`${hallStyleYellowInput} flex-1`}
+                          />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="w-16">インボイス番号</span>
+                          <input
+                            type="text"
+                            value={vendorInvoiceNumber}
+                            onChange={(e) => setVendorInvoiceNumber(e.target.value)}
+                            className={`${hallStyleYellowInput} flex-1`}
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="border-t border-black px-2 py-2 text-sm">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold">担当</span>
-                        <select
-                          value={staff}
-                          onChange={(e) => setStaff(e.target.value)}
-                          className={`${orangeInput} w-28`}
-                        >
-                          {["デモユーザー", "担当A", "担当B"].map((name) => (
-                            <option key={name} value={name}>
-                              {name}
-                            </option>
-                          ))}
-                        </select>
-                        <span className="font-semibold">経理担当</span>
-                        <input
-                          type="text"
-                          value={manager}
-                          onChange={(e) => setManager(e.target.value)}
-                          className={`${yellowInput} w-32`}
-                        />
+
+                    <div className="border border-[#333]">
+                      <div className="border-b border-[#333] bg-[#f5f5f5] px-2 py-1 text-[13px] font-semibold">
+                        【売主】 {sellerDisplay.companyName}
+                      </div>
+                      <div className="space-y-1 px-2 py-2 text-[12px]">
+                        <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                          <span className="text-right">郵便番号</span>
+                          <input type="text" value={sellerDisplay.postalCode} readOnly className={`${hallStyleGrayInput} w-40`} />
+                        </div>
+                        <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                          <span className="text-right">住所</span>
+                          <input type="text" value={sellerDisplay.address} readOnly className={hallStyleGrayInput} />
+                        </div>
+                        <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                          <span className="text-right">会社名</span>
+                          <input type="text" value={sellerDisplay.companyName} readOnly className={hallStyleGrayInput} />
+                        </div>
+                        <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                          <span className="text-right">代表者</span>
+                          <input type="text" value={sellerDisplay.representative} readOnly className={`${hallStyleGrayInput} w-56`} />
+                        </div>
+                        <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                          <span className="text-right">TEL</span>
+                          <input type="text" value={sellerDisplay.tel} readOnly className={`${hallStyleGrayInput} w-44`} />
+                          <span className="text-right">FAX</span>
+                          <input type="text" value={sellerDisplay.fax} readOnly className={`${hallStyleGrayInput} w-44`} />
+                        </div>
+                        <div className="grid grid-cols-[90px_1fr] items-center gap-2">
+                          <span className="text-right">インボイス番号</span>
+                          <input type="text" value={sellerDisplay.invoiceNumber} readOnly className={`${hallStyleGrayInput} w-44`} />
+                        </div>
+                        <div className="flex items-center justify-between pt-1 text-[13px]">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold">担当</span>
+                            <select
+                              value={staff}
+                              onChange={(e) => setStaff(e.target.value)}
+                              className={`${hallStyleYellowInput} w-28`}
+                            >
+                              {["デモユーザー", "担当A", "担当B"].map((name) => (
+                                <option key={name} value={name}>
+                                  {name}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="w-16 text-right">管理担当</span>
+                            <input
+                              type="text"
+                              value={manager}
+                              onChange={(e) => setManager(e.target.value)}
+                              className={`${hallStyleYellowInput} w-32`}
+                            />
+                            <button type="button" className="border border-[#333] bg-[#f3f3f3] px-3 py-1 text-[12px] font-semibold">
+                              印
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
