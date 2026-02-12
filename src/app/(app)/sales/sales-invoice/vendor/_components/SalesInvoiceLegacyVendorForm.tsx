@@ -488,7 +488,9 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
 
     const { inventoryIdMap, soldInventoryIds } = splitInventoryForSales(rows);
 
-    const items: SalesInvoiceItem[] = rows.map((row) => ({
+    const items: SalesInvoiceItem[] = rows.map((row, index) => ({
+      itemId: row.rowId,
+      sortOrder: index,
       inventoryId: row.inventoryId ? inventoryIdMap.get(row.inventoryId) ?? row.inventoryId : row.inventoryId,
       maker: row.maker,
       productName: row.productName,

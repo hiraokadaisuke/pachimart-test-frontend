@@ -187,7 +187,8 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
   };
 
   const handleEdit = () => {
-    alert("編集機能は準備中です");
+    if (!invoice) return;
+    router.push(`/sales/purchase-invoice/${invoice.invoiceType}/${invoice.invoiceId}/reorder`);
   };
 
   const handleDelete = () => {
@@ -400,7 +401,7 @@ export function PurchaseInvoiceDetailView({ invoiceId, title, expectedType }: Pr
                       const removalDate = formatFullDate((item.extra as { removalDate?: string } | undefined)?.removalDate);
                       const store = item.storeName || (item.extra as { storeName?: string } | undefined)?.storeName || "―";
                       return (
-                        <tr key={`${item.inventoryId}-${index}`} className="align-middle text-center">
+                        <tr key={item.itemId ?? `${item.inventoryId}-${index}`} className="align-middle text-center">
                           <td className="border border-black px-2 py-2">{removalDate}</td>
                           <td className="border border-black px-2 py-2 text-left">{store}</td>
                           <td className="border border-black px-2 py-2 text-left">{item.maker || ""}</td>

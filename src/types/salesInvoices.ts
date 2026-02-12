@@ -1,6 +1,8 @@
 import type { SerialInputRow } from "@/lib/serialInputStorage";
 
 export type SalesInvoiceItem = {
+  itemId?: string;
+  sortOrder?: number;
   inventoryId?: string;
   maker?: string;
   productName?: string;

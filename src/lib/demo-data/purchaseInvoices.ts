@@ -1,6 +1,29 @@
-import type { PurchaseInvoice } from "@/types/purchaseInvoices";
+import type { PurchaseInvoice, PurchaseInvoiceItem } from "@/types/purchaseInvoices";
 
 const STORAGE_KEY = "purchase_invoices_v1";
+
+const normalizePurchaseItem = (invoiceId: string, item: PurchaseInvoiceItem, index: number): PurchaseInvoiceItem => ({
+  ...item,
+  itemId: item.itemId ?? `${invoiceId}-item-${index + 1}`,
+  sortOrder: item.sortOrder ?? index,
+});
+
+const sortPurchaseItems = (items: PurchaseInvoiceItem[]): PurchaseInvoiceItem[] =>
+  [...items].sort((a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER));
+
+const normalizePurchaseInvoice = (invoice: PurchaseInvoice): PurchaseInvoice => {
+  const normalizedItems = sortPurchaseItems((invoice.items ?? []).map((item, index) => normalizePurchaseItem(invoice.invoiceId, item, index))).map(
+    (item, index) => ({
+      ...item,
+      sortOrder: index,
+    }),
+  );
+
+  return {
+    ...invoice,
+    items: normalizedItems,
+  };
+};
 
 export const loadPurchaseInvoices = (): PurchaseInvoice[] => {
   if (typeof window === "undefined") return [];
@@ -10,7 +33,7 @@ export const loadPurchaseInvoices = (): PurchaseInvoice[] => {
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed as PurchaseInvoice[];
+      return (parsed as PurchaseInvoice[]).map(normalizePurchaseInvoice);
     }
   } catch (error) {
     console.error("Failed to parse purchase invoices", error);
@@ -21,12 +44,21 @@ export const loadPurchaseInvoices = (): PurchaseInvoice[] => {
 
 export const savePurchaseInvoices = (invoices: PurchaseInvoice[]): void => {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
+  const normalized = invoices.map(normalizePurchaseInvoice);
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
 };
 
 export const addPurchaseInvoice = (invoice: PurchaseInvoice): void => {
   const current = loadPurchaseInvoices();
-  savePurchaseInvoices([invoice, ...current]);
+  savePurchaseInvoices([normalizePurchaseInvoice(invoice), ...current]);
+};
+
+export const upsertPurchaseInvoice = (invoice: PurchaseInvoice): void => {
+  const current = loadPurchaseInvoices();
+  const next = normalizePurchaseInvoice(invoice);
+  const map = new Map(current.map((entry) => [entry.invoiceId, entry]));
+  map.set(invoice.invoiceId, next);
+  savePurchaseInvoices(Array.from(map.values()));
 };
 
 export const deletePurchaseInvoices = (invoiceIds: string[]): PurchaseInvoice[] => {
