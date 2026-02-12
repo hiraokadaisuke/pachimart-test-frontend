@@ -556,7 +556,9 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
 
     const now = new Date();
     const invoiceId = generateInvoiceId(type);
-    const items: PurchaseInvoiceItem[] = rows.map((row) => ({
+    const items: PurchaseInvoiceItem[] = rows.map((row, index) => ({
+      itemId: row.rowId,
+      sortOrder: index,
       inventoryId: row.inventoryId,
       maker: row.maker,
       machineName: row.machineName,

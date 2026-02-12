@@ -13,6 +13,8 @@ export type SimpleInventory = {
 };
 
 export type PurchaseInvoiceItem = {
+  itemId?: string;
+  sortOrder?: number;
   inventoryId: string;
   maker?: string;
   machineName?: string;

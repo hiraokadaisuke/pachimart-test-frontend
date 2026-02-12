@@ -205,6 +205,30 @@ export const SEED_SALES_INVOICES: SalesInvoice[] = [
 
 const STORAGE_KEY = "sales_invoices_v1";
 
+
+const normalizeSalesItem = (invoiceId: string, item: SalesInvoice["items"][number], index: number) => ({
+  ...item,
+  itemId: item.itemId ?? `${invoiceId}-item-${index + 1}`,
+  sortOrder: item.sortOrder ?? index,
+});
+
+const sortSalesItems = (items: SalesInvoice["items"]) =>
+  [...items].sort((a, b) => (a.sortOrder ?? Number.MAX_SAFE_INTEGER) - (b.sortOrder ?? Number.MAX_SAFE_INTEGER));
+
+const normalizeSalesInvoice = (invoice: SalesInvoice): SalesInvoice => {
+  const normalizedItems = sortSalesItems((invoice.items ?? []).map((item, index) => normalizeSalesItem(invoice.invoiceId, item, index))).map(
+    (item, index) => ({
+      ...item,
+      sortOrder: index,
+    }),
+  );
+  return {
+    ...invoice,
+    items: normalizedItems,
+  };
+};
+
+
 export const loadSalesInvoices = (): SalesInvoice[] => {
   if (typeof window === "undefined") return [];
   const raw = window.localStorage.getItem(STORAGE_KEY);
@@ -213,7 +237,7 @@ export const loadSalesInvoices = (): SalesInvoice[] => {
   try {
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed as SalesInvoice[];
+      return (parsed as SalesInvoice[]).map(normalizeSalesInvoice);
     }
   } catch (error) {
     console.error("Failed to parse sales invoices", error);
@@ -224,8 +248,8 @@ export const loadSalesInvoices = (): SalesInvoice[] => {
 
 const mergeInvoicesById = (seed: SalesInvoice[], stored: SalesInvoice[]): SalesInvoice[] => {
   const map = new Map<string, SalesInvoice>();
-  seed.forEach((invoice) => map.set(invoice.invoiceId, invoice));
-  stored.forEach((invoice) => map.set(invoice.invoiceId, invoice));
+  seed.forEach((invoice) => map.set(invoice.invoiceId, normalizeSalesInvoice(invoice)));
+  stored.forEach((invoice) => map.set(invoice.invoiceId, normalizeSalesInvoice(invoice)));
   return Array.from(map.values());
 };
 
@@ -234,19 +258,20 @@ export const loadAllSalesInvoices = (): SalesInvoice[] =>
 
 export const saveSalesInvoices = (invoices: SalesInvoice[]): void => {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(invoices));
+  const normalized = invoices.map(normalizeSalesInvoice);
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
 };
 
 export const addSalesInvoice = (invoice: SalesInvoice): void => {
   const current = loadSalesInvoices();
-  saveSalesInvoices([invoice, ...current]);
+  saveSalesInvoices([normalizeSalesInvoice(invoice), ...current]);
 };
 
 export const upsertSalesInvoices = (nextInvoices: SalesInvoice[]): SalesInvoice[] => {
   const current = loadSalesInvoices();
   const map = new Map(current.map((invoice) => [invoice.invoiceId, invoice]));
   nextInvoices.forEach((invoice) => {
-    map.set(invoice.invoiceId, invoice);
+    map.set(invoice.invoiceId, normalizeSalesInvoice(invoice));
   });
   const updated = Array.from(map.values());
   saveSalesInvoices(updated);

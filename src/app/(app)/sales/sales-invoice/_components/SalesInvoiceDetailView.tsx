@@ -412,7 +412,12 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   };
 
   const handleEdit = () => {
-    alert("編集機能は準備中です");
+    if (!invoice) return;
+    if (invoiceGroup) {
+      router.push(`/sales/sales-invoice/group/${invoiceId}/reorder`);
+      return;
+    }
+    router.push(`/sales/sales-invoice/${invoice.invoiceType}/${invoice.invoiceId}/reorder`);
   };
 
   const handleDelete = () => {
@@ -1048,7 +1053,7 @@ export const renderVendorSheet = ({
                   </tr>
                 ) : (
                   items.map((item, index) => (
-                    <tr key={`${item.productName}-${index}`} className="align-middle text-center">
+                    <tr key={item.itemId ?? `${item.productName}-${index}`} className="align-middle text-center">
                       <td className="border border-black px-2 py-2 text-left">{item.maker || ""}</td>
                       <td className="border border-black px-2 py-2 text-left font-semibold">{item.productName || ""}</td>
                       <td className="border border-black px-2 py-2 text-left">{item.type || ""}</td>
@@ -1285,7 +1290,7 @@ export const renderSalesContractInvoiceSheet = ({
               </tr>
             ) : (
               items.map((item, index) => (
-                <tr key={`${item.productName}-${index}`} className="align-middle text-center">
+                <tr key={item.itemId ?? `${item.productName}-${index}`} className="align-middle text-center">
                   <td className="border border-black px-2 py-1 text-left">{item.maker || ""}</td>
                   <td className="border border-black px-2 py-1 text-left font-semibold">{item.productName || ""}</td>
                   <td className="border border-black px-2 py-1 text-left">{item.type || ""}</td>
@@ -1421,7 +1426,7 @@ const renderHallSheet = ({
               </tr>
             ) : (
               items.map((item, index) => (
-                <tr key={`${item.productName}-${index}`} className="align-middle text-center">
+                <tr key={item.itemId ?? `${item.productName}-${index}`} className="align-middle text-center">
                   <td className="border border-black px-2 py-2 text-left">{item.maker || ""}</td>
                   <td className="border border-black px-2 py-2 text-left font-semibold">{item.productName || ""}</td>
                   <td className="border border-black px-2 py-2 text-left">{item.type || ""}</td>
