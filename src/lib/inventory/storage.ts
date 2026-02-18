@@ -45,6 +45,7 @@ export interface StoredInventoryItem {
   attachments?: {
     kentuuAttachmentId?: string;
     tekkyoAttachmentId?: string;
+    kakuninshoAttachmentId?: string;
   };
   quantity?: number;
   unitPrice?: number;
