@@ -16,7 +16,7 @@ const resolveCopyOption = (value?: string | null): CopyOption | null => {
   return COPY_OPTIONS.includes(value as CopyOption) ? (value as CopyOption) : null;
 };
 
-const resolveTitle = () => "売買契約書";
+const resolveTitle = (_copy?: CopyOption | null) => "売買契約書";
 
 const resolveCopyLabel = (copy: CopyOption | null) => {
   if (copy === "seller") return "（売主控え）";
@@ -86,10 +86,11 @@ export default function SalesContractPrintPage() {
               subtotal={subtotal}
               tax={tax}
               grandTotal={grandTotal}
+              copyLabel={copyLabel}
             />
-        </div>
-      );
-    })}
+          </div>
+        );
+      })}
     </PrintScaffold>
   );
 }

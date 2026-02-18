@@ -48,7 +48,7 @@ export const PurchaseContractInvoiceSheet = ({
   return (
     <div className="space-y-4 text-[12px] text-neutral-900">
       <div className="relative grid grid-cols-[1fr_1.5fr_1fr] items-start pt-3">
-        {copyLabel && <div className="absolute right-0 top-0 text-[10px] font-semibold text-neutral-700">{copyLabel}</div>}
+        {copyLabel && <div className="absolute right-0 top-0 text-[10px] font-semibold text-neutral-700 print:text-[10px]">{copyLabel}</div>}
         <div />
         <div className="text-center text-lg font-semibold">{title}</div>
         <div className="text-right text-[12px]">{issuedDateLabel}</div>
