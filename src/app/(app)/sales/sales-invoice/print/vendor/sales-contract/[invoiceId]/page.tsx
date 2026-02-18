@@ -16,11 +16,7 @@ const resolveCopyOption = (value?: string | null): CopyOption | null => {
   return COPY_OPTIONS.includes(value as CopyOption) ? (value as CopyOption) : null;
 };
 
-const resolveTitle = (copy: CopyOption | null) => {
-  if (copy === "seller") return "売買契約書（売主控え）";
-  if (copy === "buyer") return "売買契約書（買主控え）";
-  return "売買契約書";
-};
+const resolveTitle = (_copy: CopyOption | null) => "売買契約書";
 
 export default function SalesContractPrintPage() {
   const params = useParams<{ invoiceId: string }>();
@@ -83,6 +79,7 @@ export default function SalesContractPrintPage() {
               sellerInfo: seller,
               sellerInvoiceNumber,
               buyerInvoiceNumber,
+              copyLabel,
             })}
           </div>
         );

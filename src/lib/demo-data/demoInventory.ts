@@ -53,6 +53,7 @@ export type InventoryRecord = {
   attachments?: {
     kentuuAttachmentId?: string;
     tekkyoAttachmentId?: string;
+    kakuninshoAttachmentId?: string;
   };
 };
 
