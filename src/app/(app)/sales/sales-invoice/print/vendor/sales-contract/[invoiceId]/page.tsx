@@ -86,6 +86,7 @@ export default function SalesContractPrintPage() {
               sellerInfo: seller,
               sellerInvoiceNumber,
               buyerInvoiceNumber,
+              copyLabel,
             })}
           </div>
         );

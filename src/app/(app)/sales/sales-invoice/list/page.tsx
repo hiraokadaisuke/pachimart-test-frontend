@@ -247,6 +247,16 @@ export default function SalesInvoiceListPage() {
 
   const rows = useMemo(() => [...groupRows, ...invoiceRows], [groupRows, invoiceRows]);
 
+  const groupInvoiceIdMap = useMemo(() => new Map(groups.map((group) => [group.id, group.invoiceIds])), [groups]);
+
+  const resolveRowInvoiceIds = (rowId: string) => {
+    if (groupInvoiceIdMap.has(rowId)) return groupInvoiceIdMap.get(rowId) ?? [];
+    return [rowId];
+  };
+
+  const resolveSelectedInvoiceIds = (selected: Set<string>) =>
+    Array.from(new Set(Array.from(selected).flatMap((rowId) => resolveRowInvoiceIds(rowId))));
+
   const filteredInvoices = useMemo(() => {
     const filtered = rows
       .filter((invoice) => invoice.id.toLowerCase().includes(appliedFilters.id.toLowerCase()))
