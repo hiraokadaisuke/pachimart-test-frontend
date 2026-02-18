@@ -10,11 +10,13 @@ function HallSalesInvoiceCreateContent() {
   const searchParams = useSearchParams();
   const [inventories, setInventories] = useState<InventoryRecord[]>([]);
 
+  const idsParam = searchParams?.get("ids") ?? "";
+
   const requestedIds = useMemo(() => {
-    const raw = searchParams?.get("ids");
+    const raw = idsParam;
     if (!raw) return [] as string[];
     return raw.split(",").filter(Boolean);
-  }, [searchParams]);
+  }, [idsParam]);
 
   useEffect(() => {
     const all = loadInventoryRecords();

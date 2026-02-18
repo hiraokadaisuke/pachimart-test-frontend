@@ -217,7 +217,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
         setVendorInvoiceNumber(supplier.invoiceNumber ?? "");
       }
     }
-  }, [idsKey, inventories, masterData.suppliers, selectedIds]);
+  }, [idsKey, inventories]);
 
   const subtotal = useMemo(
     () => rows.reduce((sum, row) => sum + toNumber(row.quantity) * toNumber(row.unitPrice), 0),

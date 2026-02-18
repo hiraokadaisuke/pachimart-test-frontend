@@ -20,6 +20,7 @@ import {
 import { addPurchaseInvoice, generateInvoiceId } from "@/lib/demo-data/purchaseInvoices";
 import ExtraCostEditor from "@/components/invoices/ExtraCostEditor";
 import type { AdditionalCostItem, PurchaseInvoice, PurchaseInvoiceItem } from "@/types/purchaseInvoices";
+import { normalizeNumericInput } from "@/lib/inputNormalization";
 
 const toDateInputValue = (date: Date) => date.toISOString().slice(0, 10);
 const normalizeDateInputValue = (value?: string) => {
@@ -79,10 +80,10 @@ type BaseRow = {
   maker: string;
   machineName: string;
   type: string;
-  quantity: number;
-  unitPrice: number;
+  quantity: string;
+  unitPrice: string;
   amount: number;
-  remainingDebt?: number;
+  remainingDebt?: string;
   note?: string;
   storeName?: string;
   removalDate?: string;
@@ -96,6 +97,17 @@ type Props = {
 
 const yellowInput =
   "w-full bg-amber-100 border border-black px-2 py-1 text-[13px] leading-tight focus:outline-none";
+
+const toNumber = (value: string | number | undefined) => {
+  const normalized = typeof value === "string" ? normalizeNumericInput(value) : value;
+  const num = Number(normalized);
+  return Number.isNaN(num) ? 0 : num;
+};
+
+const toInputNumber = (value?: number) => {
+  if (value == null || value === 0) return "";
+  return String(value);
+};
 
 const primaryButton =
   "rounded-none border-2 border-amber-600 bg-amber-300 px-5 py-2 text-sm font-bold text-neutral-900 shadow-[3px_3px_0_rgba(0,0,0,0.35)]";
@@ -134,10 +146,10 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       maker: item.maker ?? "",
       machineName: item.machineName ?? item.model ?? "",
       type: item.type ?? item.deviceType ?? "",
-      quantity: item.quantity ?? 1,
-      unitPrice: item.unitPrice ?? 0,
+      quantity: toInputNumber(item.quantity ?? 1),
+      unitPrice: toInputNumber(item.unitPrice ?? 0),
       amount: (item.quantity ?? 1) * (item.unitPrice ?? 0),
-      remainingDebt: item.remainingDebt ?? 0,
+      remainingDebt: toInputNumber(item.remainingDebt),
       note: item.note ?? item.notes ?? "",
       storeName: item.supplierBranch ?? item.customFields?.storeName ?? "",
       removalDate: item.removalDate ?? item.removeDate ?? "",
@@ -152,8 +164,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
               maker: "",
               machineName: "",
               type: "",
-              quantity: 1,
-              unitPrice: 0,
+              quantity: "1",
+              unitPrice: "",
               amount: 0,
             },
           ],
@@ -187,7 +199,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
   }, [inventories, warehousingDate]);
 
   const itemTotal = useMemo(
-    () => rows.reduce((sum, row) => sum + (Number(row.quantity) || 0) * (Number(row.unitPrice) || 0), 0),
+    () => rows.reduce((sum, row) => sum + toNumber(row.quantity) * toNumber(row.unitPrice), 0),
     [rows],
   );
   const extraCostTotal = useMemo(
@@ -250,14 +262,18 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
         if (row.rowId !== rowId) return row;
         const updated: BaseRow = {
           ...row,
-          [key]: key === "quantity" || key === "unitPrice" ? Number(value) || 0 : value,
+          [key]: value,
         } as BaseRow;
         if (key === "quantity" || key === "unitPrice") {
-          updated.amount = (Number(updated.quantity) || 0) * (Number(updated.unitPrice) || 0);
+          updated.amount = toNumber(updated.quantity) * toNumber(updated.unitPrice);
         }
         return updated;
       }),
     );
+  };
+
+  const commitNumericField = (rowId: string, key: "quantity" | "unitPrice" | "remainingDebt", value: string) => {
+    handleChange(rowId, key, normalizeNumericInput(value));
   };
 
   const handleAddRow = () => {
@@ -269,8 +285,8 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
         maker: "",
         machineName: "",
         type: "",
-        quantity: 1,
-        unitPrice: 0,
+        quantity: "1",
+        unitPrice: "",
         amount: 0,
       },
     ]);
@@ -329,7 +345,9 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
     });
   };
 
-  const SortableHallRow = ({ row }: { row: BaseRow }) => {
+  // eslint-disable-next-line react/display-name
+  const SortableHallRow = useMemo(() => ({ row }: { row: BaseRow }) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
       id: row.rowId,
     });
@@ -392,17 +410,23 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
         </td>
         <td className="border border-black px-1 py-1">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={row.quantity}
             onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "quantity", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "quantity", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} rounded-none text-right`}
           />
         </td>
         <td className="border border-black px-1 py-1">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={row.unitPrice}
             onChange={(e) => handleChange(row.rowId, "unitPrice", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "unitPrice", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "unitPrice", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} rounded-none text-right`}
           />
         </td>
@@ -411,9 +435,12 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
         </td>
         <td className="border border-black px-1 py-1">
           <input
-            type="number"
-            value={row.remainingDebt ?? 0}
+            type="text"
+            inputMode="numeric"
+            value={row.remainingDebt ?? ""}
             onChange={(e) => handleChange(row.rowId, "remainingDebt", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "remainingDebt", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "remainingDebt", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} rounded-none text-right`}
           />
         </td>
@@ -428,9 +455,11 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
         </td>
       </tr>
     );
-  };
+  }, []);
 
-  const SortableVendorRow = ({ row }: { row: BaseRow }) => {
+  // eslint-disable-next-line react/display-name
+  const SortableVendorRow = useMemo(() => ({ row }: { row: BaseRow }) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
       id: row.rowId,
     });
@@ -492,17 +521,23 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
         </td>
         <td className="border border-black px-1 py-1">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={row.quantity}
             onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "quantity", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "quantity", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} rounded-none text-right`}
           />
         </td>
         <td className="border border-black px-1 py-1">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={row.unitPrice}
             onChange={(e) => handleChange(row.rowId, "unitPrice", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "unitPrice", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "unitPrice", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} rounded-none text-right`}
           />
         </td>
@@ -511,9 +546,12 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
         </td>
         <td className="border border-black px-1 py-1">
           <input
-            type="number"
-            value={row.remainingDebt ?? 0}
+            type="text"
+            inputMode="numeric"
+            value={row.remainingDebt ?? ""}
             onChange={(e) => handleChange(row.rowId, "remainingDebt", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "remainingDebt", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "remainingDebt", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} rounded-none text-right`}
           />
         </td>
@@ -549,7 +587,7 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
         </td>
       </tr>
     );
-  };
+  }, []);
 
   const handleSubmit = () => {
     if (!window.confirm("よろしいですか？")) return;
@@ -563,10 +601,10 @@ export function PurchaseInvoiceLegacyForm({ type, draftId, inventories }: Props)
       maker: row.maker,
       machineName: row.machineName,
       type: row.type,
-      quantity: Number(row.quantity) || 0,
-      unitPrice: Number(row.unitPrice) || 0,
+      quantity: toNumber(row.quantity),
+      unitPrice: toNumber(row.unitPrice),
       amount: row.amount,
-      remainingDebt: row.remainingDebt,
+      remainingDebt: row.remainingDebt ? toNumber(row.remainingDebt) : undefined,
       storeName: row.storeName,
       supplierName: inventories[0]?.supplier ?? inventories[0]?.supplierCorporate ?? undefined,
       note: row.note,
