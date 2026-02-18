@@ -176,7 +176,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     setDocumentArrivalDate("");
     setStorageLocation("倉庫A");
     setRemarks("特記事項があれば入力してください");
-  }, [buildRowsFromInventory, inventories, masterData.suppliers]);
+  }, [buildRowsFromInventory, inventories]);
 
   useEffect(() => {
     resetForm();

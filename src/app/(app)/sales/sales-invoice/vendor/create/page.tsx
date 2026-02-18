@@ -8,8 +8,10 @@ import { SalesInvoiceLegacyVendorForm } from "../_components/SalesInvoiceLegacyV
 function VendorSalesInvoiceCreateContent() {
   const searchParams = useSearchParams();
 
+  const idsParam = searchParams?.get("ids") ?? "";
+
   const requestedIds = useMemo(() => {
-    const raw = searchParams?.get("ids");
+    const raw = idsParam;
     if (!raw) return [] as string[];
 
     const unique: string[] = [];
@@ -25,7 +27,7 @@ function VendorSalesInvoiceCreateContent() {
         }
       });
     return unique;
-  }, [searchParams]);
+  }, [idsParam]);
 
   return <SalesInvoiceLegacyVendorForm selectedIds={requestedIds} />;
 }
