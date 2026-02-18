@@ -14,6 +14,7 @@ type DetailRow = {
 
 type Props = {
   title: string;
+  copyLabel?: string;
   issuedDateLabel: string;
   recipientLine: string;
   sellerInvoiceNumber: string;
@@ -31,6 +32,7 @@ const formatYen = (value: number): string => `${value.toLocaleString("ja-JP")}å†
 
 export const PurchaseContractInvoiceSheet = ({
   title,
+  copyLabel,
   issuedDateLabel,
   recipientLine,
   sellerInvoiceNumber,
@@ -45,7 +47,8 @@ export const PurchaseContractInvoiceSheet = ({
 }: Props) => {
   return (
     <div className="space-y-4 text-[12px] text-neutral-900">
-      <div className="grid grid-cols-[1fr_1.5fr_1fr] items-start">
+      <div className="relative grid grid-cols-[1fr_1.5fr_1fr] items-start pt-3">
+        {copyLabel && <div className="absolute right-0 top-0 text-[10px] font-semibold text-neutral-700">{copyLabel}</div>}
         <div />
         <div className="text-center text-lg font-semibold">{title}</div>
         <div className="text-right text-[12px]">{issuedDateLabel}</div>

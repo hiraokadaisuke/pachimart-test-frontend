@@ -143,6 +143,7 @@ export default function SerialInputPanel({
   const bulkInputRefs = useRef<Array<HTMLInputElement | null>>([]);
   const kentuuInputRef = useRef<HTMLInputElement | null>(null);
   const tekkyoInputRef = useRef<HTMLInputElement | null>(null);
+  const kakuninshoInputRef = useRef<HTMLInputElement | null>(null);
 
   const machineName = inventory?.machineName ?? "";
   const machineKind = useMemo(() => {
@@ -154,6 +155,7 @@ export default function SerialInputPanel({
   const attachments = inventory?.attachments ?? {};
   const hasKentuu = Boolean(attachments.kentuuAttachmentId);
   const hasTekkyo = Boolean(attachments.tekkyoAttachmentId);
+  const hasKakuninsho = Boolean(attachments.kakuninshoAttachmentId);
   const selectedCandidateCount = selectedCandidateIds.size;
 
   useEffect(() => {
@@ -421,7 +423,11 @@ export default function SerialInputPanel({
       const updated = updateInventoryRecord(inventoryId, {
         attachments: {
           ...(inventory?.attachments ?? {}),
-          ...(kind === "kentuu" ? { kentuuAttachmentId: attachmentId } : { tekkyoAttachmentId: attachmentId }),
+          ...(kind === "kentuu"
+            ? { kentuuAttachmentId: attachmentId }
+            : kind === "tekkyo"
+              ? { tekkyoAttachmentId: attachmentId }
+              : { kakuninshoAttachmentId: attachmentId }),
         },
       });
       const nextRecord = updated.find((item) => item.id === inventoryId) ?? inventory;
@@ -452,17 +458,24 @@ export default function SerialInputPanel({
 
   const handleDeleteAttachment = async (kind: AttachmentKind) => {
     if (!inventoryId) return;
-    const attachmentId = kind === "kentuu" ? attachments.kentuuAttachmentId : attachments.tekkyoAttachmentId;
+    const attachmentId =
+      kind === "kentuu"
+        ? attachments.kentuuAttachmentId
+        : kind === "tekkyo"
+          ? attachments.tekkyoAttachmentId
+          : attachments.kakuninshoAttachmentId;
     if (!attachmentId) return;
-    const label = kind === "kentuu" ? "検通" : "撤明";
+    const label = kind === "kentuu" ? "検通" : kind === "tekkyo" ? "撤明" : "確認書";
     if (!confirm(`${label}PDFを削除します。よろしいですか？`)) return;
     try {
       await deleteAttachment(attachmentId);
       const nextAttachments = { ...(inventory?.attachments ?? {}) };
       if (kind === "kentuu") {
         delete nextAttachments.kentuuAttachmentId;
-      } else {
+      } else if (kind === "tekkyo") {
         delete nextAttachments.tekkyoAttachmentId;
+      } else {
+        delete nextAttachments.kakuninshoAttachmentId;
       }
       const updated = updateInventoryRecord(inventoryId, {
         attachments: Object.keys(nextAttachments).length > 0 ? nextAttachments : undefined,
@@ -739,6 +752,28 @@ export default function SerialInputPanel({
               ) : (
                 <span className="text-neutral-500">-</span>
               )}
+              <span className="ml-2">確認書</span>
+              {hasKakuninsho ? (
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    title="PDFを開く"
+                    onClick={() => handleOpenAttachment(attachments.kakuninshoAttachmentId)}
+                    className="cursor-pointer text-[12px] font-semibold text-emerald-700 hover:text-emerald-900"
+                  >
+                    ●
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDeleteAttachment("kakuninsho")}
+                    className="border border-black bg-white px-1 py-0.5 text-[10px] font-semibold text-neutral-700 hover:bg-neutral-100"
+                  >
+                    削除
+                  </button>
+                </div>
+              ) : (
+                <span className="text-neutral-500">-</span>
+              )}
             </div>
             <button
               type="button"
@@ -755,6 +790,14 @@ export default function SerialInputPanel({
               className="border border-black bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {uploadingKind === "tekkyo" ? "撤明アップ中" : "撤明 ⬆"}
+            </button>
+            <button
+              type="button"
+              onClick={() => kakuninshoInputRef.current?.click()}
+              disabled={uploadingKind === "kakuninsho"}
+              className="border border-black bg-white px-2 py-1 text-[11px] font-semibold hover:bg-neutral-100 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {uploadingKind === "kakuninsho" ? "確認書アップ中" : "確認書 ⬆"}
             </button>
             <button
               type="button"
@@ -779,6 +822,13 @@ export default function SerialInputPanel({
           accept="application/pdf"
           className="hidden"
           onChange={(event) => handleAttachmentFileChange("tekkyo", event)}
+        />
+        <input
+          ref={kakuninshoInputRef}
+          type="file"
+          accept="application/pdf"
+          className="hidden"
+          onChange={(event) => handleAttachmentFileChange("kakuninsho", event)}
         />
 
         <div className="border border-black bg-white">
