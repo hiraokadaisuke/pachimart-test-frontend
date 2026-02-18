@@ -16,6 +16,7 @@ import {
   type MasterData,
 } from "@/lib/demo-data/demoMasterData";
 import { splitInventoryForSales } from "@/lib/inventory/salesInvoiceSplit";
+import { normalizeNumericInput } from "@/lib/inputNormalization";
 import type { SerialInputRow } from "@/lib/serialInputStorage";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
@@ -57,7 +58,7 @@ const hallStyleGrayInput =
   "w-full bg-[#f4f0e6] border border-[#333] px-2 py-[6px] text-[13px] leading-tight focus:outline-none";
 
 const toNumber = (value: string | number | undefined) => {
-  const normalized = typeof value === "string" ? value.replace(/,/g, "").trim() : value;
+  const normalized = typeof value === "string" ? normalizeNumericInput(value) : value;
   const num = Number(normalized);
   return Number.isNaN(num) ? 0 : num;
 };
@@ -289,6 +290,10 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     });
   };
 
+  const commitNumericField = (rowId: string, key: "quantity" | "unitPrice" | "remainingDebt", value: string) => {
+    handleChange(rowId, key, normalizeNumericInput(value));
+  };
+
   const handleAddRow = () => {
     setRows((prev) => [
       ...prev,
@@ -319,7 +324,9 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     });
   };
 
-  const SortableRow = ({ row }: { row: BaseRow }) => {
+  // eslint-disable-next-line react/display-name
+  const SortableRow = useMemo(() => ({ row }: { row: BaseRow }) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
       id: row.rowId,
     });
@@ -399,6 +406,8 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
             <select
               value={row.quantity}
               onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+              onBlur={(e) => commitNumericField(row.rowId, "quantity", e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "quantity", (e.target as HTMLInputElement).value); }}
               className={`${yellowInput} text-right`}
             >
               {Array.from({ length: row.maxQuantity }, (_, i) => i + 1).map((value) => (
@@ -412,15 +421,20 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               type="number"
               value={row.quantity}
               onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+              onBlur={(e) => commitNumericField(row.rowId, "quantity", e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "quantity", (e.target as HTMLInputElement).value); }}
               className={`${yellowInput} text-right`}
             />
           )}
         </td>
         <td className="border border-black px-1 py-1">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={row.unitPrice}
             onChange={(e) => handleChange(row.rowId, "unitPrice", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "unitPrice", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "unitPrice", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} text-right`}
           />
         </td>
@@ -429,9 +443,12 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
         </td>
         <td className="border border-black px-1 py-1">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={row.remainingDebt ?? ""}
             onChange={(e) => handleChange(row.rowId, "remainingDebt", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "remainingDebt", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "remainingDebt", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} text-right`}
           />
         </td>
@@ -461,7 +478,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
         </td>
       </tr>
     );
-  };
+  }, []);
 
   const handleSubmit = () => {
     if (error) return;

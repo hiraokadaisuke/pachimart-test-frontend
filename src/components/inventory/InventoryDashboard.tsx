@@ -25,6 +25,7 @@ import {
 } from "./columnSettings";
 import { loadAllInventory } from "@/lib/inventory/storage";
 import { openAttachmentInNewTab } from "@/lib/attachments/attachmentStore";
+import { normalizeSearchToken } from "@/lib/inputNormalization";
 
 const PAGE_SIZE = 20;
 const COLUMN_PREFS_KEY = "inventory_column_prefs_v1";
@@ -691,7 +692,7 @@ export function InventoryDashboard() {
     };
   }, [isCsvMenuOpen]);
 
-  const keywordQuery = searchParams?.get("keyword")?.trim().toLowerCase() ?? "";
+  const keywordQuery = useMemo(() => normalizeSearchToken(searchParams?.get("keyword") ?? ""), [searchParams]);
   const makerFilters = useMemo(() => searchParams?.getAll("maker") ?? [], [searchParams]);
   const statusFilter = useMemo(
     () => (searchParams?.getAll("state") as InventoryStatus[]) ?? [],
@@ -731,7 +732,7 @@ export function InventoryDashboard() {
           item.salePriceExTax != null ? String(item.salePriceExTax) : null,
         ]
           .filter(Boolean)
-          .map((field) => String(field).toLowerCase());
+          .map((field) => normalizeSearchToken(String(field)));
 
         const hit = searchFields.some((field) => field.includes(keywordQuery));
         if (!hit) return false;
