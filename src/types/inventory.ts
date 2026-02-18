@@ -44,6 +44,7 @@ export interface InventoryItem {
 export type InventoryAttachmentRefs = {
   kentuuAttachmentId?: string;
   tekkyoAttachmentId?: string;
+  kakuninshoAttachmentId?: string;
 };
 
 export type InventoryDocumentKind =

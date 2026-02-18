@@ -1698,6 +1698,7 @@ export default function InventoryPage() {
                   <th className="w-[64px] border border-gray-300 px-1 py-1 text-center">販伝票</th>
                   <th className="w-[56px] border border-gray-300 px-1 py-1 text-center">検通</th>
                   <th className="w-[56px] border border-gray-300 px-1 py-1 text-center">撤明</th>
+                  <th className="w-[56px] border border-gray-300 px-1 py-1 text-center">確認書</th>
                   <th className="w-[56px] border border-gray-300 px-1 py-1" />
                 </tr>
               </thead>
@@ -1717,6 +1718,7 @@ export default function InventoryPage() {
                     const isDeletionBlocked = isSalesInvoiced;
                     const kentuuAttachmentId = normalizeAttachmentId(item.attachments?.kentuuAttachmentId);
                     const tekkyoAttachmentId = normalizeAttachmentId(item.attachments?.tekkyoAttachmentId);
+                    const kakuninshoAttachmentId = normalizeAttachmentId(item.attachments?.kakuninshoAttachmentId);
                     const isSelected = selectedIds.has(item.id);
                     const baseRowClass = isSalesInvoiced ? "bg-gray-100" : "bg-white";
                     const hoverClass = "group-hover:bg-[#fffbe6]";
@@ -1876,6 +1878,27 @@ export default function InventoryPage() {
                           <button
                             type="button"
                             onClick={() => void openAttachmentInNewTab(tekkyoAttachmentId)}
+                            className="w-full text-center text-[13px] font-semibold text-emerald-700 hover:text-emerald-800"
+                          >
+                            ●
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => openInventoryDetail(item.id)}
+                            className="w-full text-center text-[11px] font-semibold text-neutral-500 hover:text-neutral-700"
+                          >
+                            未
+                          </button>
+                        )}
+                      </td>
+                      <td
+                        className={`w-[56px] border border-gray-300 px-1 py-0.5 text-center ${rowBgClass} ${hoverClass}`}
+                      >
+                        {kakuninshoAttachmentId ? (
+                          <button
+                            type="button"
+                            onClick={() => void openAttachmentInNewTab(kakuninshoAttachmentId)}
                             className="w-full text-center text-[13px] font-semibold text-emerald-700 hover:text-emerald-800"
                           >
                             ●
