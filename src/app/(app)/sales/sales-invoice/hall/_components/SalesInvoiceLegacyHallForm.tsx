@@ -19,6 +19,7 @@ import {
 } from "@/lib/demo-data/demoMasterData";
 import type { SerialInputRow } from "@/lib/serialInputStorage";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
+import { normalizeNumericInput } from "@/lib/inputNormalization";
 
 const yellowInput =
   "w-full bg-[#fff6cc] border border-[#333] px-2 py-[6px] text-[13px] leading-tight focus:outline-none";
@@ -32,7 +33,7 @@ const toDateInputValue = (value?: string) => {
 };
 
 const toNumber = (value: string | number | undefined) => {
-  const normalized = typeof value === "string" ? value.replace(/,/g, "").trim() : value;
+  const normalized = typeof value === "string" ? normalizeNumericInput(value) : value;
   const num = Number(normalized);
   return Number.isNaN(num) ? 0 : num;
 };
@@ -263,6 +264,10 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     );
   };
 
+  const commitNumericField = (rowId: string, key: "quantity" | "unitPrice" | "remainingDebt", value: string) => {
+    handleChange(rowId, key, normalizeNumericInput(value));
+  };
+
   const handleAddRow = () => {
     setRows((prev) => [
       ...prev,
@@ -394,7 +399,9 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     });
   };
 
-  const SortableRow = ({ row }: { row: BaseRow }) => {
+  // eslint-disable-next-line react/display-name
+  const SortableRow = useMemo(() => ({ row }: { row: BaseRow }) => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
       id: row.rowId,
     });
@@ -477,6 +484,8 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
             <select
               value={row.quantity}
               onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+              onBlur={(e) => commitNumericField(row.rowId, "quantity", e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "quantity", (e.target as HTMLInputElement).value); }}
               className={`${yellowInput} text-right`}
             >
               {Array.from({ length: row.maxQuantity }, (_, i) => i + 1).map((value) => (
@@ -490,15 +499,20 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
               type="number"
               value={row.quantity}
               onChange={(e) => handleChange(row.rowId, "quantity", e.target.value)}
+              onBlur={(e) => commitNumericField(row.rowId, "quantity", e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "quantity", (e.target as HTMLInputElement).value); }}
               className={`${yellowInput} text-right`}
             />
           )}
         </td>
         <td className="border border-[#333] px-1 py-1">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={row.unitPrice}
             onChange={(e) => handleChange(row.rowId, "unitPrice", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "unitPrice", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "unitPrice", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} text-right`}
           />
         </td>
@@ -507,9 +521,12 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
         </td>
         <td className="border border-[#333] px-1 py-1">
           <input
-            type="number"
+            type="text"
+            inputMode="numeric"
             value={row.remainingDebt ?? ""}
             onChange={(e) => handleChange(row.rowId, "remainingDebt", e.target.value)}
+            onBlur={(e) => commitNumericField(row.rowId, "remainingDebt", e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") commitNumericField(row.rowId, "remainingDebt", (e.target as HTMLInputElement).value); }}
             className={`${yellowInput} text-right`}
           />
         </td>
@@ -539,7 +556,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
         </td>
       </tr>
     );
-  };
+  }, []);
 
   return (
     <div className="flex justify-center bg-[#e5e5e5] py-4 text-[13px] text-[#222]">
@@ -734,9 +751,12 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="w-24 font-semibold">運送保険(税込)</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={insurance}
                       onChange={(e) => setInsurance(e.target.value)}
+                      onBlur={(e) => setInsurance(normalizeNumericInput(e.target.value))}
+                      onKeyDown={(e) => { if (e.key === "Enter") setInsurance(normalizeNumericInput((e.target as HTMLInputElement).value)); }}
                       className={`${yellowInput} w-36 text-right`}
                     />
                   </div>
@@ -781,9 +801,12 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
                   <div className="flex items-center gap-2">
                     <span className="w-24">支払金額</span>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       value={paymentAmount}
                       onChange={(e) => setPaymentAmount(e.target.value)}
+                      onBlur={(e) => setPaymentAmount(normalizeNumericInput(e.target.value))}
+                      onKeyDown={(e) => { if (e.key === "Enter") setPaymentAmount(normalizeNumericInput((e.target as HTMLInputElement).value)); }}
                       className={`${yellowInput} w-40 text-right`}
                     />
                     <span className="border border-[#333] px-3 py-1">円</span>
