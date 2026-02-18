@@ -8,6 +8,7 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
+    "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "smoke": "ts-node scripts/smoke.ts",
     "migrate:storage-locations": "ts-node scripts/migrate-storage-locations.ts",

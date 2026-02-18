@@ -14,6 +14,7 @@ import {
   addSalesInvoiceGroup,
   generateSalesInvoiceGroupId,
   loadSalesInvoiceGroups,
+  saveSalesInvoiceGroups,
 } from "@/lib/demo-data/salesInvoiceGroups";
 import type { SalesInvoice, SalesInvoiceGroup } from "@/types/salesInvoices";
 import { formatShortId } from "@/lib/inventory/idDisplay";
@@ -262,6 +263,27 @@ export default function SalesInvoiceListPage() {
     return filtered.slice(0, limit);
   }, [appliedFilters, rows]);
 
+
+  const groupMap = useMemo(() => new Map(groups.map((group) => [group.id, group])), [groups]);
+
+  const resolveInvoiceIdsForRow = (row: SalesInvoiceRow): string[] => {
+    if (row.rowType === "invoice") return [row.id];
+    return groupMap.get(row.id)?.invoiceIds ?? [];
+  };
+
+  const resolveSelectedInvoiceIds = (selected: Set<string> | SalesInvoiceRow[]): string[] => {
+    const targetRows =
+      selected instanceof Set
+        ? rows.filter((row) => selected.has(row.id))
+        : selected;
+
+    const ids = new Set<string>();
+    targetRows.forEach((row) => {
+      resolveInvoiceIdsForRow(row).forEach((id) => ids.add(id));
+    });
+    return Array.from(ids);
+  };
+
   const toggleSelect = (id: string, checked: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -275,7 +297,7 @@ export default function SalesInvoiceListPage() {
   };
 
   const handleSelectPage = () => {
-    setSelectedIds(new Set(filteredInvoices.filter((row) => row.rowType === "invoice").map((invoice) => invoice.id)));
+    setSelectedIds(new Set(filteredInvoices.map((row) => row.id)));
   };
 
   const handleClearSelection = () => {
@@ -284,14 +306,34 @@ export default function SalesInvoiceListPage() {
 
   const handleDelete = () => {
     if (selectedIds.size === 0) return;
-    deleteSalesInvoices(Array.from(selectedIds));
-    setInvoices((prev) => prev.filter((invoice) => !selectedIds.has(invoice.invoiceId)));
+    const invoiceIdsToDelete = resolveSelectedInvoiceIds(selectedIds);
+    if (invoiceIdsToDelete.length === 0) return;
+
+    deleteSalesInvoices(invoiceIdsToDelete);
+    const targets = new Set(invoiceIdsToDelete);
+    const removedGroups = groups.filter((group) => group.invoiceIds.some((id) => targets.has(id)));
+    const removedGroupIds = new Set(removedGroups.map((group) => group.id));
+    const nextGroups = groups.filter((group) => !removedGroupIds.has(group.id));
+    saveSalesInvoiceGroups(nextGroups);
+
+    const storedInvoices = loadSalesInvoices();
+    if (storedInvoices.length > 0) {
+      const updatedStored = storedInvoices.map((invoice) =>
+        removedGroupIds.has(invoice.mergedGroupId ?? "") ? { ...invoice, mergedGroupId: undefined } : invoice,
+      );
+      saveSalesInvoices(updatedStored);
+    }
+
+    setGroups(nextGroups);
+    setInvoices(loadAllSalesInvoices());
     setSelectedIds(new Set());
   };
 
   const handleMerge = () => {
     if (selectedIds.size < 2) return;
-    const selectedInvoices = invoices.filter((invoice) => selectedIds.has(invoice.invoiceId));
+    const selectedInvoiceIds = resolveSelectedInvoiceIds(selectedIds);
+    if (selectedInvoiceIds.length < 2) return;
+    const selectedInvoices = invoices.filter((invoice) => selectedInvoiceIds.includes(invoice.invoiceId));
     if (selectedInvoices.length < 2) return;
     const salesToKey = resolveSalesToKey(selectedInvoices[0]);
     if (!salesToKey || selectedInvoices.some((invoice) => resolveSalesToKey(invoice) !== salesToKey)) {
@@ -317,7 +359,7 @@ export default function SalesInvoiceListPage() {
     const storedInvoices = loadSalesInvoices();
     if (storedInvoices.length > 0) {
       const updatedStored = storedInvoices.map((invoice) =>
-        selectedIds.has(invoice.invoiceId) ? { ...invoice, mergedGroupId: groupId } : invoice,
+        selectedInvoiceIds.includes(invoice.invoiceId) ? { ...invoice, mergedGroupId: groupId } : invoice,
       );
       saveSalesInvoices(updatedStored);
     }
@@ -587,16 +629,12 @@ export default function SalesInvoiceListPage() {
                     {formatCurrency(invoice.totalAmount)}
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-center">
-                    {invoice.rowType === "invoice" ? (
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.has(invoice.id)}
-                        onChange={(e) => toggleSelect(invoice.id, e.target.checked)}
-                        className="h-4 w-4"
-                      />
-                    ) : (
-                      <span className="text-slate-500">-</span>
-                    )}
+                    <input
+                      type="checkbox"
+                      checked={selectedIds.has(invoice.id)}
+                      onChange={(e) => toggleSelect(invoice.id, e.target.checked)}
+                      className="h-4 w-4"
+                    />
                   </td>
                   <td className="border border-gray-300 px-3 py-2 text-center">
                     <Link

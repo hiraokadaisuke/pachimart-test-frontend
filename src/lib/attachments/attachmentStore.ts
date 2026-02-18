@@ -1,4 +1,4 @@
-export type AttachmentKind = "kentuu" | "tekkyo";
+export type AttachmentKind = "kentuu" | "tekkyo" | "kakuninsho";
 
 export type AttachmentRecord = {
   attachmentId: string;
