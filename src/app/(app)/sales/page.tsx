@@ -183,6 +183,11 @@ const parseNonNegativeInteger = (value: string) => {
   return { normalized, parsed: Number(normalized), error: "" };
 };
 
+const normalizeForNumberSearch = (value: unknown) => {
+  if (value == null) return "";
+  return String(value).trim().normalize("NFKC").toLowerCase();
+};
+
 const compareInventoryRecordsByNewest = (a: InventoryRecord, b: InventoryRecord) => {
   const createdAtDiff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   if (createdAtDiff !== 0) return createdAtDiff;
@@ -371,10 +376,27 @@ export default function InventoryPage() {
     ) as string[];
   }, [records, searchDraft.maker]);
 
+  const normalizedSerialRowsMap = useMemo(
+    () =>
+      new Map(
+        records.map((record) => {
+          const rows = loadSerialRowsSync(record.id);
+          return [
+            record.id,
+            rows.map((row) => ({
+              board: normalizeForNumberSearch(row.board),
+              frame: normalizeForNumberSearch(row.frame),
+            })),
+          ] as const;
+        }),
+      ),
+    [records],
+  );
+
   const filteredRecords = useMemo(() => {
     const keywordMaker = searchFilters.maker.trim().toLowerCase();
     const keywordModel = searchFilters.model.trim().toLowerCase();
-    const serialQuery = searchFilters.serialQuery.trim().toLowerCase();
+    const serialQuery = normalizeForNumberSearch(searchFilters.serialQuery);
     const serialBoard = searchFilters.serialBoard;
     const serialFrame = searchFilters.serialFrame;
     const keywordSupplier = searchFilters.supplier.trim().toLowerCase();
@@ -429,17 +451,15 @@ export default function InventoryPage() {
       if (!matchesDateRange(stockInValue, searchFilters.stockInDate)) return false;
 
       if (serialQuery && (serialBoard || serialFrame)) {
-        const rows = loadSerialRowsSync(item.id);
-        const matchesBoard =
-          serialBoard && rows.some((row) => (row.board ?? "").toLowerCase().includes(serialQuery));
-        const matchesFrame =
-          serialFrame && rows.some((row) => (row.frame ?? "").toLowerCase().includes(serialQuery));
+        const rows = normalizedSerialRowsMap.get(item.id) ?? [];
+        const matchesBoard = serialBoard && rows.some((row) => row.board.includes(serialQuery));
+        const matchesFrame = serialFrame && rows.some((row) => row.frame.includes(serialQuery));
         if (!matchesBoard && !matchesFrame) return false;
       }
 
       return true;
     });
-  }, [records, searchFilters]);
+  }, [normalizedSerialRowsMap, records, searchFilters]);
 
   const displayRecords = filteredRecords;
 
