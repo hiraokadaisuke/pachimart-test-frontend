@@ -184,8 +184,7 @@ const parseNonNegativeInteger = (value: string) => {
 };
 
 const normalizeForNumberSearch = (value: unknown) => {
-  if (value == null) return "";
-  return String(value).trim().normalize("NFKC").toLowerCase();
+  return String(value ?? "").trim().normalize("NFKC").toLowerCase();
 };
 
 const compareInventoryRecordsByNewest = (a: InventoryRecord, b: InventoryRecord) => {
