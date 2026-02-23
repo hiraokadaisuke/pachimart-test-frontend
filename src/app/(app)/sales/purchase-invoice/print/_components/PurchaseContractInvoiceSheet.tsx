@@ -47,15 +47,13 @@ export const PurchaseContractInvoiceSheet = ({
 }: Props) => {
   return (
     <div className="space-y-4 text-[12px] text-neutral-900">
-      <div className="relative grid grid-cols-[1fr_1.5fr_1fr] items-start">
-        {copyLabel && (
-          <div className="absolute right-0 top-0 text-[10px] font-semibold text-neutral-700 print:text-[10px]">
-            （{copyLabel}）
-          </div>
-        )}
+      <div className="grid grid-cols-[1fr_1.5fr_1fr] items-start">
         <div />
         <div className="text-center text-lg font-semibold">{title}</div>
-        <div className="text-right text-[12px]">{issuedDateLabel}</div>
+        <div className="flex flex-col items-end gap-0.5 text-right leading-tight">
+          {copyLabel && <div className="text-[10px] font-semibold text-neutral-700 print:text-[10px]">（{copyLabel}）</div>}
+          <div className="text-[12px]">{issuedDateLabel}</div>
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
