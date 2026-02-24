@@ -21,10 +21,13 @@ import type { SalesInvoice } from "@/types/salesInvoices";
 import InventoryEditTable from "@/components/inventory/InventoryEditTable";
 import { buildEditForm, buildPayload } from "@/lib/inventory/editUtils";
 import {
+  clearSerialDraft,
   loadSerialDraft,
   loadSerialInput,
   loadSerialRows,
   loadSerialRowsSync,
+  saveSerialInput,
+  saveSerialRows,
   type SerialInputRow,
 } from "@/lib/serialInputStorage";
 import { formatCompactId } from "@/lib/inventory/idDisplay";
@@ -76,6 +79,22 @@ const NUMERIC_COLUMNS: Array<Column["key"]> = ["quantity", "unitPrice", "saleUni
 const DATE_COLUMNS: Array<Column["key"]> = ["createdAt", "stockInDate", "removeDate"];
 const WRAP_COLUMNS: Array<Column["key"]> = ["maker", "model", "warehouse", "supplier", "staff", "note"];
 const REQUIRED_SERIAL_KEYS: Array<keyof SerialInputRow> = ["board"];
+
+const buildDecomposeSerialRows = (
+  rows: SerialInputRow[],
+): { cellRows: SerialInputRow[]; frameRows: SerialInputRow[] } => ({
+  cellRows: rows.map((row, index) => ({
+    ...row,
+    p: index + 1,
+    frame: "",
+  })),
+  frameRows: rows.map((row, index) => ({
+    ...row,
+    p: index + 1,
+    board: "",
+    main: "",
+  })),
+});
 
 const INITIAL_COLUMNS: Column[] = [
   { key: "id", label: "管理ID", width: 64, minWidth: 52, visible: true },
@@ -731,13 +750,6 @@ export default function InventoryPage() {
       return;
     }
 
-    const serialInput = loadSerialInput(target.id) ?? loadSerialDraft(target.id);
-    const serialRows = await loadSerialRows(target.id);
-    if (serialInput || serialRows.length > 0) {
-      alert("番号入力済みのため分解できません。");
-      return;
-    }
-
     openDecomposeModal(target);
   };
 
@@ -975,6 +987,20 @@ export default function InventoryPage() {
     });
     saveInventoryRecords(updatedRecords);
     setRecords(updatedRecords);
+
+    const sourceSerialInput = loadSerialInput(decomposeTarget.id) ?? loadSerialDraft(decomposeTarget.id);
+    const sourceRows = sourceSerialInput?.rows ?? loadSerialRowsSync(decomposeTarget.id);
+    if (sourceSerialInput || sourceRows.length > 0) {
+      const { cellRows, frameRows } = buildDecomposeSerialRows(sourceRows);
+      const updatedAt = new Date().toISOString();
+      saveSerialInput({ inventoryId: cellId, units: cellRows.length, rows: cellRows, updatedAt });
+      saveSerialInput({ inventoryId: frameId, units: frameRows.length, rows: frameRows, updatedAt });
+      void saveSerialRows(cellId, cellRows);
+      void saveSerialRows(frameId, frameRows);
+      clearSerialDraft(cellId);
+      clearSerialDraft(frameId);
+    }
+
     updatePurchaseInvoicesForInventorySplit(decomposeTarget.id, [cellId, frameId]);
     setSelectedIds(new Set());
     closeDecomposeModal();
