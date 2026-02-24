@@ -66,7 +66,7 @@ export const splitInventoryForSales = (rows: SalesSplitRow[]): SalesSplitResult 
       ...target,
       id: newInventoryId,
       createdAt: now,
-      quantity: saleQuantity,
+      quantity: 0,
       status: "売却済",
       stockStatus: "売却済",
       listingStatus: "sold",

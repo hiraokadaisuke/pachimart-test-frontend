@@ -103,7 +103,7 @@ const INITIAL_COLUMNS: Column[] = [
   { key: "model", label: "機種名", width: 160, minWidth: 140, visible: true },
   { key: "kind", label: "種別", width: 48, minWidth: 44, visible: true },
   { key: "type", label: "タイプ", width: 54, minWidth: 48, visible: true },
-  { key: "quantity", label: "仕入数", width: 68, minWidth: 56, visible: true },
+  { key: "quantity", label: "台数", width: 68, minWidth: 56, visible: true },
   { key: "unitPrice", label: "仕単", width: 70, minWidth: 60, visible: true },
   { key: "saleUnitPrice", label: "販単", width: 70, minWidth: 60, visible: true },
   { key: "hasRemainingDebt", label: "残債", width: 54, minWidth: 48, visible: true },
