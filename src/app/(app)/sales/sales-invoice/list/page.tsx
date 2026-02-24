@@ -37,6 +37,17 @@ interface SalesInvoiceRow {
   transferDate?: string;
 }
 
+interface SalesInvoiceFilters {
+  id: string;
+  maker: string;
+  model: string;
+  issueDateFrom: string;
+  issueDateTo: string;
+  staff: string;
+  customer: string;
+  displayCount: string;
+}
+
 const inputCell =
   "w-full rounded-none border border-gray-300 bg-white px-2 py-1.5 text-sm text-slate-800 focus:outline-none focus:ring-1 focus:ring-slate-600";
 
@@ -52,6 +63,27 @@ const formatDate = (value?: string) => {
 };
 
 const formatCurrency = (value: number) => value.toLocaleString("ja-JP");
+
+const toInputDate = (value: Date) => {
+  const localDate = new Date(value.getTime() - value.getTimezoneOffset() * 60 * 1000);
+  return localDate.toISOString().slice(0, 10);
+};
+
+const createInitialFilters = (): SalesInvoiceFilters => {
+  const today = new Date();
+  const monthAgo = new Date(today);
+  monthAgo.setMonth(monthAgo.getMonth() - 1);
+  return {
+    id: "",
+    maker: "",
+    model: "",
+    issueDateFrom: toInputDate(monthAgo),
+    issueDateTo: toInputDate(today),
+    staff: "",
+    customer: "",
+    displayCount: "50",
+  };
+};
 
 const resolveInvoiceSubtotal = (invoice: SalesInvoice): number => {
   if (invoice.subtotal != null) return invoice.subtotal;
@@ -129,16 +161,8 @@ export default function SalesInvoiceListPage() {
   const [invoices, setInvoices] = useState<SalesInvoice[]>([]);
   const [groups, setGroups] = useState<SalesInvoiceGroup[]>([]);
   const [inventories, setInventories] = useState<InventoryRecord[]>([]);
-  const [formValues, setFormValues] = useState({
-    id: "",
-    maker: "",
-    model: "",
-    issueDate: "",
-    staff: "",
-    customer: "",
-    displayCount: "50",
-  });
-  const [appliedFilters, setAppliedFilters] = useState(formValues);
+  const [formValues, setFormValues] = useState<SalesInvoiceFilters>(() => createInitialFilters());
+  const [appliedFilters, setAppliedFilters] = useState<SalesInvoiceFilters>(() => createInitialFilters());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -265,9 +289,19 @@ export default function SalesInvoiceListPage() {
       .filter((invoice) => invoice.customer.toLowerCase().includes(appliedFilters.customer.toLowerCase()))
       .filter((invoice) => invoice.staff.toLowerCase().includes(appliedFilters.staff.toLowerCase()))
       .filter((invoice) => {
-        if (!appliedFilters.issueDate) return true;
-        return invoice.issueDate === appliedFilters.issueDate;
+        if (!appliedFilters.issueDateFrom) return true;
+        return invoice.issueDate >= appliedFilters.issueDateFrom;
+      })
+      .filter((invoice) => {
+        if (!appliedFilters.issueDateTo) return true;
+        return invoice.issueDate <= appliedFilters.issueDateTo;
       });
+
+    filtered.sort((left, right) => {
+      const issueDateCompare = right.issueDate.localeCompare(left.issueDate);
+      if (issueDateCompare !== 0) return issueDateCompare;
+      return right.id.localeCompare(left.id);
+    });
 
     const limit = Number(appliedFilters.displayCount) || filtered.length;
     return filtered.slice(0, limit);
@@ -357,7 +391,8 @@ export default function SalesInvoiceListPage() {
       id: "",
       maker: "",
       model: "",
-      issueDate: "",
+      issueDateFrom: "",
+      issueDateTo: "",
       staff: "",
       customer: "",
       displayCount: "50",
@@ -465,12 +500,23 @@ export default function SalesInvoiceListPage() {
                 </select>
               </td>
               <td className={searchRowClass}>
-                <input
-                  type="date"
-                  value={formValues.issueDate}
-                  onChange={(e) => setFormValues((prev) => ({ ...prev, issueDate: e.target.value }))}
-                  className={inputCell}
-                />
+                <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                  <input
+                    type="date"
+                    value={formValues.issueDateFrom}
+                    onChange={(e) => setFormValues((prev) => ({ ...prev, issueDateFrom: e.target.value }))}
+                    className={inputCell}
+                    aria-label="伝票発行日From"
+                  />
+                  <span className="text-xs text-slate-700">〜</span>
+                  <input
+                    type="date"
+                    value={formValues.issueDateTo}
+                    onChange={(e) => setFormValues((prev) => ({ ...prev, issueDateTo: e.target.value }))}
+                    className={inputCell}
+                    aria-label="伝票発行日To"
+                  />
+                </div>
               </td>
               <td className={searchRowClass}>
                 <select
