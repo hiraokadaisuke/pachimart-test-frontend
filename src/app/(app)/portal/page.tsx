@@ -26,11 +26,6 @@ const PORTAL_MODULES = [
     description: "経営指標の分析・レポート",
     href: "/analytics",
   },
-  {
-    title: "売買（パチマート）",
-    description: "商品一覧・出品・ナビをまとめて表示",
-    href: "/market/products",
-  },
 ] as const;
 
 export default function PortalPage() {
