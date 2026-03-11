@@ -24,7 +24,7 @@ export default function InventoryHeader() {
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
         <div className="flex items-center gap-6">
           <Link href="/inventory" className="text-base font-semibold tracking-wide text-white">
-            在庫管理（出入番頭）
+            在庫管理
           </Link>
           <nav className="flex items-center gap-2 text-xs font-semibold">
             {navItems.map((item) => {
