@@ -3,41 +3,21 @@ import Link from "next/link";
 const PORTAL_MODULES = [
   {
     title: "販売管理",
-    description: "在庫や売買の実績管理を行います",
+    description: "売買の実績管理を行います",
     href: "/sales",
   },
   {
     title: "倉庫・在庫",
-    description: "倉庫や在庫の管理モジュール",
+    description: "在庫管理や倉庫での入庫出庫を行います",
     href: "/inventory",
-  },
-  {
-    title: "新台代理業",
-    description: "新台の代理業務を管理するモジュール",
-    href: "/agency",
-  },
-  {
-    title: "経理",
-    description: "請求・精算など経理関連の管理",
-    href: "/accounting",
-  },
-  {
-    title: "経営指標分析",
-    description: "経営指標の分析・レポート",
-    href: "/analytics",
   },
 ] as const;
 
 export default function PortalPage() {
   return (
-    <div className="bg-[#F5F8FB]">
-      <div className="mx-auto w-full max-w-6xl px-6 py-14">
-        <div className="space-y-3">
-          <h1 className="text-3xl font-semibold text-slate-900">ポータル</h1>
-          <p className="text-sm text-slate-600">各モジュールの入口をまとめています。</p>
-        </div>
-
-        <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="flex min-h-screen items-center justify-center bg-[#F5F8FB] px-6 py-14">
+      <div className="w-full max-w-4xl">
+        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
           {PORTAL_MODULES.map((module) => (
             <Link
               href={module.href}
