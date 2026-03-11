@@ -20,19 +20,22 @@ export default function InventoryItemsClient() {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-6 py-6">
-      <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
-        <Input className="h-8 w-48 rounded-none" placeholder="検索キーワード" />
-        <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
-          検索
-        </Button>
-        <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
-          CSV出力
-        </Button>
-        <Link href="/inventory/import">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <h1 className="text-sm font-semibold text-slate-800">在庫物件一覧</h1>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Input className="h-8 w-[240px] rounded-none md:w-[280px]" placeholder="検索キーワード" />
           <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
-            取込へ
+            検索
           </Button>
-        </Link>
+          <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
+            CSV出力
+          </Button>
+          <Link href="/inventory/import">
+            <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
+              取込へ
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <InventoryPanel>
