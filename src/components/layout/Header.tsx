@@ -18,6 +18,11 @@ const navLinks: { label: string; href: string; matchPrefixes?: string[] }[] = [
     href: "/market/mypage/exhibits",
     matchPrefixes: ["/market/mypage/exhibits", "/sell"],
   },
+  {
+    label: "簡単見積り",
+    href: "/estimate",
+    matchPrefixes: ["/estimate"],
+  },
   { label: "ナビ管理", href: "/market/navi" },
   {
     label: "決済管理",
