@@ -164,7 +164,7 @@ export default function ProductListPage() {
   const [machineModels, setMachineModels] = useState<MachineModelOption[]>([]);
   const [filters, setFilters] = useState({ makerId: "", machineModelId: "", frameOnly: false });
   const [draftFilters, setDraftFilters] = useState({ makerId: "", machineModelId: "", frameOnly: false });
-  const [sortKey, setSortKey] = useState<SortKey>("newest");
+  const [sortKey, setSortKey] = useState<SortKey>("cheapest");
   const router = useRouter();
   const searchParams = useSearchParams();
   const estimateMachineName = (searchParams?.get("estimateMachineName") ?? "").trim();
@@ -174,6 +174,11 @@ export default function ProductListPage() {
   useEffect(() => {
     if (estimateSort === "price_desc") {
       setSortKey("expensive");
+      return;
+    }
+
+    if (estimateSort === "price_asc") {
+      setSortKey("cheapest");
     }
   }, [estimateSort]);
 
@@ -502,12 +507,13 @@ export default function ProductListPage() {
       </div>
 
       <div className="w-full max-w-[1400px] mx-auto px-4 xl:px-8 py-6 space-y-4 bg-white">
-        {(estimateMachineName || estimateMaker || estimateSort === "price_desc") && (
+        {(estimateMachineName || estimateMaker || estimateSort === "price_desc" || estimateSort === "price_asc") && (
           <div className="rounded-md border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-900">
             簡単見積りからの参照：
             {estimateMachineName ? ` 機種「${estimateMachineName}」` : ""}
             {estimateMaker ? ` メーカー「${estimateMaker}」` : ""}
             {estimateSort === "price_desc" ? " / 価格が高い順" : ""}
+            {estimateSort === "price_asc" ? " / 価格が安い順" : ""}
           </div>
         )}
         <div className="space-y-1">
