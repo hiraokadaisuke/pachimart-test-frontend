@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
-import { downloadEstimateXlsx } from "@/lib/estimate/xlsx";
+import { downloadEstimateXlsx, parseEstimateImportFile } from "@/lib/estimate/xlsx";
 
 type EstimateRow = {
   id: number;
@@ -63,40 +63,6 @@ function downloadTemplateWorkbook(dataRows: string[][], fileName: string) {
     rows: dataRows,
     columnWidths: templateColumnWidths,
   });
-}
-
-function EstimateImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  if (!open) return null;
-
-  return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-900/30 px-4">
-      <div className="w-full max-w-md rounded-md border border-slate-200 bg-white p-5 shadow-xl">
-        <h2 className="text-base font-semibold text-slate-900">取込み</h2>
-        <div className="mt-4 space-y-2">
-          <label htmlFor="dummy-file" className="text-sm text-slate-700">
-            ファイルを選択
-          </label>
-          <input id="dummy-file" type="file" className="block w-full rounded-md border border-slate-300 text-sm file:mr-3 file:border-0 file:bg-slate-100 file:px-3 file:py-2" />
-        </div>
-        <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
-          >
-            キャンセル
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex h-9 items-center rounded-md border border-blue-600 bg-blue-600 px-3 text-sm text-white hover:bg-blue-700"
-          >
-            取込み
-          </button>
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function MachineSearchModal({
@@ -162,7 +128,8 @@ function MachineSearchModal({
 export default function EstimatePage() {
   const [rows, setRows] = useState<EstimateRow[]>(() => createInitialRows(12));
   const [selectedFileName, setSelectedFileName] = useState("ファイル未選択");
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importMessage, setImportMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchTargetRowId, setSearchTargetRowId] = useState<number | null>(null);
@@ -243,6 +210,47 @@ export default function EstimatePage() {
     downloadTemplateWorkbook(exportRows, "estimate-export.xlsx");
   };
 
+  const resetRowsWithImportedData = (importRows: Array<{ manufacturer: string; machineName: string; quantity: string; memo: string }>) => {
+    setRows((currentRows) => {
+      const nextLength = Math.max(currentRows.length, importRows.length || currentRows.length);
+      return Array.from({ length: nextLength }, (_, index) => {
+        const imported = importRows[index];
+        return {
+          id: index + 1,
+          manufacturer: imported?.manufacturer ?? "",
+          machineName: imported?.machineName ?? "",
+          quantity: imported?.quantity ?? "",
+          price: "",
+          memo: imported?.memo ?? "",
+        };
+      });
+    });
+  };
+
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    setImportMessage(null);
+
+    if (!file) {
+      setSelectedFileName("ファイル未選択");
+      return;
+    }
+
+    setSelectedFileName(file.name);
+    setIsImporting(true);
+
+    try {
+      const importedRows = await parseEstimateImportFile(file);
+      resetRowsWithImportedData(importedRows);
+      setImportMessage({ type: "success", text: `${importedRows.length}件取り込みました` });
+    } catch {
+      setImportMessage({ type: "error", text: "取込みに失敗しました。テンプレート形式をご確認ください。" });
+    } finally {
+      setIsImporting(false);
+      event.target.value = "";
+    }
+  };
+
   return (
     <main className="mx-auto w-full max-w-[1440px] px-4 py-8 text-neutral-900">
       <header className="mb-4">
@@ -267,27 +275,20 @@ export default function EstimatePage() {
             >
               テンプレDL
             </button>
-            <button
-              type="button"
-              onClick={() => setIsImportModalOpen(true)}
-              className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              取込み
-            </button>
           </div>
           <div className="flex items-center gap-2">
             <input
               ref={fileInputRef}
               type="file"
+              accept=".xlsx,.xls"
               className="hidden"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                setSelectedFileName(file?.name ?? "ファイル未選択");
-              }}
+              onChange={handleFileSelect}
+              disabled={isImporting}
             />
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
+              disabled={isImporting}
               className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
             >
               ファイルを選択
@@ -298,14 +299,16 @@ export default function EstimatePage() {
             >
               <span className="truncate">{selectedFileName}</span>
             </span>
-            <button
-              type="button"
-              onClick={() => setIsImportModalOpen(true)}
-              className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
-            >
-              取込み
-            </button>
           </div>
+          {(isImporting || importMessage) && (
+            <div className="w-full text-sm">
+              {isImporting ? (
+                <p className="text-slate-600">取込中...</p>
+              ) : importMessage ? (
+                <p className={importMessage.type === "error" ? "text-red-600" : "text-emerald-600"}>{importMessage.text}</p>
+              ) : null}
+            </div>
+          )}
         </div>
 
         <div className="overflow-x-auto rounded-md border border-slate-200">
@@ -456,7 +459,6 @@ export default function EstimatePage() {
         </div>
       </section>
 
-      <EstimateImportModal open={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
       <MachineSearchModal
         open={isSearchModalOpen}
         keyword={searchKeyword}
