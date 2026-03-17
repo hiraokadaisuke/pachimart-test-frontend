@@ -200,7 +200,7 @@ export default function EstimatePage() {
   };
 
   const handleOpenProductPage = (row: EstimateRow) => {
-    const params = new URLSearchParams({ sort: "price_desc" });
+    const params = new URLSearchParams({ sort: "price_asc" });
     if (row.machineName.trim()) {
       params.set("estimateMachineName", row.machineName.trim());
     }
@@ -284,7 +284,7 @@ export default function EstimatePage() {
                 <th className="w-24 border-b border-slate-200 px-2 py-2 font-semibold">台数</th>
                 <th className="w-36 border-b border-slate-200 px-2 py-2 font-semibold">価格</th>
                 <th className="min-w-72 border-b border-slate-200 px-2 py-2 font-semibold">メモ</th>
-                <th className="w-32 border-b border-slate-200 px-2 py-2 font-semibold">出品ページ</th>
+                <th className="w-32 border-b border-slate-200 px-2 py-2 font-semibold">相場確認</th>
               </tr>
             </thead>
             <tbody>
@@ -370,7 +370,7 @@ export default function EstimatePage() {
                       onClick={() => handleOpenProductPage(row)}
                       className="inline-flex h-7 items-center rounded-md border border-sky-300 bg-white px-2.5 text-xs font-medium text-sky-700 transition hover:bg-sky-50"
                     >
-                      出品ページ
+                      相場確認
                     </button>
                   </td>
                 </tr>
