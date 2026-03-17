@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
 
 type EstimateRow = {
@@ -37,10 +37,13 @@ function createInitialRows(count: number): EstimateRow[] {
 }
 
 const tableInputClass =
-  "w-full rounded-sm border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 outline-none transition hover:border-slate-400 focus:border-sky-400 focus:bg-white";
+  "w-full rounded-sm border border-slate-300 bg-white px-2 py-1 text-sm text-slate-800 outline-none transition hover:border-slate-400 focus:border-sky-400 focus:bg-white";
 
 const hasRowInput = (row: EstimateRow) =>
   Boolean(row.manufacturer.trim() || row.machineName.trim() || row.quantity.trim() || row.price.trim() || row.memo.trim());
+
+const enterNavigationFields = ["manufacturer", "machineName", "quantity", "price", "memo"] as const;
+type EnterNavigationField = (typeof enterNavigationFields)[number];
 
 function EstimateImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
@@ -141,7 +144,9 @@ export default function EstimatePage() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [activeRowId, setActiveRowId] = useState<number | null>(null);
+  const [searchTargetRowId, setSearchTargetRowId] = useState<number | null>(null);
+  const [focusedRowId, setFocusedRowId] = useState<number | null>(null);
+  const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const updateRow = <K extends keyof EstimateRow>(rowId: number, key: K, value: EstimateRow[K]) => {
     setRows((currentRows) => currentRows.map((row) => (row.id === rowId ? { ...row, [key]: value } : row)));
@@ -155,19 +160,41 @@ export default function EstimatePage() {
   };
 
   const openSearchModal = (rowId: number) => {
-    setActiveRowId(rowId);
+    setSearchTargetRowId(rowId);
     setSearchKeyword("");
     setIsSearchModalOpen(true);
   };
 
   const applyMachineToRow = (machine: MachineOption) => {
-    if (activeRowId === null) return;
+    if (searchTargetRowId === null) return;
     setRows((currentRows) =>
       currentRows.map((row) =>
-        row.id === activeRowId ? { ...row, machineName: machine.machineName, manufacturer: machine.manufacturer } : row,
+        row.id === searchTargetRowId ? { ...row, machineName: machine.machineName, manufacturer: machine.manufacturer } : row,
       ),
     );
     setIsSearchModalOpen(false);
+  };
+
+  const setFieldRef = (rowId: number, field: EnterNavigationField, element: HTMLInputElement | null) => {
+    fieldRefs.current[`${rowId}:${field}`] = element;
+  };
+
+  const handleCellKeyDown = (event: React.KeyboardEvent<HTMLInputElement>, rowIndex: number, field: EnterNavigationField) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+
+    const currentFieldIndex = enterNavigationFields.indexOf(field);
+    const nextField = enterNavigationFields[currentFieldIndex + 1];
+
+    if (nextField) {
+      const nextTarget = fieldRefs.current[`${rows[rowIndex]?.id}:${nextField}`];
+      nextTarget?.focus();
+      return;
+    }
+
+    const nextRow = rows[rowIndex + 1];
+    if (!nextRow) return;
+    fieldRefs.current[`${nextRow.id}:manufacturer`]?.focus();
   };
 
   return (
@@ -228,64 +255,85 @@ export default function EstimatePage() {
             </thead>
             <tbody>
               {rows.map((row, index) => (
-                <tr key={row.id} className={`border-b border-slate-200 last:border-0 ${hasRowInput(row) ? "bg-sky-100/60" : "bg-white"}`}>
-                  <td className="px-2 py-2 text-slate-600">{index + 1}</td>
-                  <td className="px-2 py-2">
+                <tr
+                  key={row.id}
+                  onFocusCapture={() => setFocusedRowId(row.id)}
+                  onBlurCapture={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                      setFocusedRowId(null);
+                    }
+                  }}
+                  className={`border-b border-slate-200 last:border-0 ${
+                    focusedRowId === row.id ? "bg-sky-200/60" : hasRowInput(row) ? "bg-sky-100" : "bg-white"
+                  }`}
+                >
+                  <td className="px-1.5 py-1.5 text-slate-600">{index + 1}</td>
+                  <td className="px-1.5 py-1.5">
                     <input
                       type="text"
+                      ref={(element) => setFieldRef(row.id, "manufacturer", element)}
                       value={row.manufacturer}
                       onChange={(event) => updateRow(row.id, "manufacturer", event.target.value)}
+                      onKeyDown={(event) => handleCellKeyDown(event, index, "manufacturer")}
                       className={tableInputClass}
                     />
                   </td>
-                  <td className="px-2 py-2">
-                    <div className="flex gap-2">
+                  <td className="px-1.5 py-1.5">
+                    <div className="flex gap-1.5">
                       <input
                         type="text"
+                        ref={(element) => setFieldRef(row.id, "machineName", element)}
                         value={row.machineName}
                         onChange={(event) => updateRow(row.id, "machineName", event.target.value)}
+                        onKeyDown={(event) => handleCellKeyDown(event, index, "machineName")}
                         className={tableInputClass}
                       />
                       <button
                         type="button"
                         onClick={() => openSearchModal(row.id)}
-                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                        className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-sky-200 bg-sky-50 text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-100"
                         aria-label="機種検索"
                       >
                         <Search className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1.5 py-1.5">
                     <input
                       type="number"
                       min={1}
+                      ref={(element) => setFieldRef(row.id, "quantity", element)}
                       value={row.quantity}
                       onChange={(event) => updateRow(row.id, "quantity", event.target.value)}
+                      onKeyDown={(event) => handleCellKeyDown(event, index, "quantity")}
                       className={`${tableInputClass} w-16`}
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1.5 py-1.5">
                     <input
                       type="number"
                       placeholder="価格入力"
+                      ref={(element) => setFieldRef(row.id, "price", element)}
                       value={row.price}
                       onChange={(event) => updateRow(row.id, "price", event.target.value)}
+                      onKeyDown={(event) => handleCellKeyDown(event, index, "price")}
                       className={`${tableInputClass} text-right`}
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1.5 py-1.5">
                     <input
                       type="text"
+                      ref={(element) => setFieldRef(row.id, "memo", element)}
                       value={row.memo}
                       onChange={(event) => updateRow(row.id, "memo", event.target.value)}
+                      onKeyDown={(event) => handleCellKeyDown(event, index, "memo")}
                       className={tableInputClass}
                     />
                   </td>
-                  <td className="px-2 py-2">
+                  <td className="px-1.5 py-1.5">
                     <button
                       type="button"
-                      className="inline-flex h-8 items-center rounded-sm border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                      className="inline-flex h-7 items-center rounded-md border border-sky-300 bg-white px-2.5 text-xs font-medium text-sky-700 transition hover:bg-sky-50"
                     >
                       出品ページ
                     </button>
