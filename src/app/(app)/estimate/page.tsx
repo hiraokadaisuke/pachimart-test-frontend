@@ -1,12 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Search } from "lucide-react";
 
 type EstimateRow = {
   id: number;
   manufacturer: string;
   machineName: string;
-  quantity: number;
+  quantity: string;
   price: string;
   memo: string;
 };
@@ -29,11 +30,17 @@ function createInitialRows(count: number): EstimateRow[] {
     id: index + 1,
     manufacturer: index === 0 ? "銀座" : "",
     machineName: index === 0 ? "P真北斗無双3ジャギの逆襲GEE" : "",
-    quantity: 1,
+    quantity: index === 0 ? "1" : "",
     price: "",
     memo: "",
   }));
 }
+
+const tableInputClass =
+  "w-full border border-transparent bg-transparent px-2 py-1.5 text-sm text-slate-800 outline-none transition focus:border-sky-200 focus:bg-white";
+
+const hasRowInput = (row: EstimateRow) =>
+  Boolean(row.manufacturer.trim() || row.machineName.trim() || row.quantity.trim() || row.price.trim() || row.memo.trim());
 
 function EstimateImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
@@ -143,7 +150,7 @@ export default function EstimatePage() {
   const handleAddRow = () => {
     setRows((currentRows) => [
       ...currentRows,
-      { id: currentRows.length + 1, manufacturer: "", machineName: "", quantity: 1, price: "", memo: "" },
+      { id: currentRows.length + 1, manufacturer: "", machineName: "", quantity: "", price: "", memo: "" },
     ]);
   };
 
@@ -221,14 +228,14 @@ export default function EstimatePage() {
             </thead>
             <tbody>
               {rows.map((row, index) => (
-                <tr key={row.id} className="border-b border-slate-200 last:border-0">
+                <tr key={row.id} className={`border-b border-slate-200 last:border-0 ${hasRowInput(row) ? "bg-sky-50/50" : "bg-white"}`}>
                   <td className="px-2 py-2 text-slate-600">{index + 1}</td>
                   <td className="px-2 py-2">
                     <input
                       type="text"
                       value={row.manufacturer}
                       onChange={(event) => updateRow(row.id, "manufacturer", event.target.value)}
-                      className="w-full rounded-md border border-slate-300 px-2 py-1.5"
+                      className={tableInputClass}
                     />
                   </td>
                   <td className="px-2 py-2">
@@ -237,14 +244,15 @@ export default function EstimatePage() {
                         type="text"
                         value={row.machineName}
                         onChange={(event) => updateRow(row.id, "machineName", event.target.value)}
-                        className="w-full rounded-md border border-slate-300 px-2 py-1.5"
+                        className={tableInputClass}
                       />
                       <button
                         type="button"
                         onClick={() => openSearchModal(row.id)}
-                        className="inline-flex h-8 shrink-0 items-center rounded-md border border-slate-300 bg-white px-3 text-xs text-slate-700 hover:bg-slate-50"
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-sm border border-slate-300 bg-white text-slate-600 hover:bg-slate-50"
+                        aria-label="機種検索"
                       >
-                        検索
+                        <Search className="h-4 w-4" />
                       </button>
                     </div>
                   </td>
@@ -253,8 +261,8 @@ export default function EstimatePage() {
                       type="number"
                       min={1}
                       value={row.quantity}
-                      onChange={(event) => updateRow(row.id, "quantity", Number(event.target.value) || 1)}
-                      className="w-20 rounded-md border border-slate-300 px-2 py-1.5"
+                      onChange={(event) => updateRow(row.id, "quantity", event.target.value)}
+                      className={`${tableInputClass} w-16`}
                     />
                   </td>
                   <td className="px-2 py-2">
@@ -263,7 +271,7 @@ export default function EstimatePage() {
                       placeholder="価格入力"
                       value={row.price}
                       onChange={(event) => updateRow(row.id, "price", event.target.value)}
-                      className="w-full rounded-md border border-slate-300 px-2 py-1.5 text-right"
+                      className={`${tableInputClass} text-right`}
                     />
                   </td>
                   <td className="px-2 py-2">
@@ -271,7 +279,7 @@ export default function EstimatePage() {
                       type="text"
                       value={row.memo}
                       onChange={(event) => updateRow(row.id, "memo", event.target.value)}
-                      className="w-full rounded-md border border-slate-300 px-2 py-1.5"
+                      className={tableInputClass}
                     />
                   </td>
                   <td className="px-2 py-2">
