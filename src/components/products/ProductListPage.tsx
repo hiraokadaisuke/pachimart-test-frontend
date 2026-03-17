@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { NaviTable, type NaviTableColumn } from "@/components/transactions/NaviTable";
 import type { Exhibit } from "@/lib/exhibits/types";
@@ -166,6 +166,16 @@ export default function ProductListPage() {
   const [draftFilters, setDraftFilters] = useState({ makerId: "", machineModelId: "", frameOnly: false });
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const estimateMachineName = (searchParams.get("estimateMachineName") ?? "").trim();
+  const estimateMaker = (searchParams.get("estimateMaker") ?? "").trim();
+  const estimateSort = (searchParams.get("sort") ?? "").trim();
+
+  useEffect(() => {
+    if (estimateSort === "price_desc") {
+      setSortKey("expensive");
+    }
+  }, [estimateSort]);
 
   useEffect(() => {
     const normalizeExhibit = (exhibit: unknown): Exhibit | null => {
@@ -254,6 +264,9 @@ export default function ProductListPage() {
   );
 
   const filteredExhibits = useMemo(() => {
+    const machineKeyword = estimateMachineName.toLowerCase();
+    const makerKeyword = estimateMaker.toLowerCase();
+
     return exhibits
       .filter((exhibit) => exhibit.type === selectedType)
       .filter((exhibit) => {
@@ -265,9 +278,23 @@ export default function ProductListPage() {
         ) {
           return false;
         }
+        if (machineKeyword && !(exhibit.machineName ?? "").toLowerCase().includes(machineKeyword)) {
+          return false;
+        }
+        if (makerKeyword && !(exhibit.maker ?? "").toLowerCase().includes(makerKeyword)) {
+          return false;
+        }
         return true;
       });
-  }, [appliedMachineName, appliedMakerName, filters.frameOnly, exhibits, selectedType]);
+  }, [
+    appliedMachineName,
+    appliedMakerName,
+    estimateMachineName,
+    estimateMaker,
+    filters.frameOnly,
+    exhibits,
+    selectedType,
+  ]);
 
   const sortedExhibits = useMemo(() => {
     const base = [...filteredExhibits];
@@ -475,6 +502,14 @@ export default function ProductListPage() {
       </div>
 
       <div className="w-full max-w-[1400px] mx-auto px-4 xl:px-8 py-6 space-y-4 bg-white">
+        {(estimateMachineName || estimateMaker || estimateSort === "price_desc") && (
+          <div className="rounded-md border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-900">
+            簡単見積りからの参照：
+            {estimateMachineName ? ` 機種「${estimateMachineName}」` : ""}
+            {estimateMaker ? ` メーカー「${estimateMaker}」` : ""}
+            {estimateSort === "price_desc" ? " / 価格が高い順" : ""}
+          </div>
+        )}
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
             <span className="text-lg font-semibold text-[#0f2d62]">

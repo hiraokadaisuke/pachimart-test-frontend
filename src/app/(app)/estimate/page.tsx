@@ -141,11 +141,13 @@ function MachineSearchModal({
 
 export default function EstimatePage() {
   const [rows, setRows] = useState<EstimateRow[]>(() => createInitialRows(12));
+  const [selectedFileName, setSelectedFileName] = useState("ファイル未選択");
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchTargetRowId, setSearchTargetRowId] = useState<number | null>(null);
   const [focusedRowId, setFocusedRowId] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const updateRow = <K extends keyof EstimateRow>(rowId: number, key: K, value: EstimateRow[K]) => {
@@ -197,6 +199,17 @@ export default function EstimatePage() {
     fieldRefs.current[`${nextRow.id}:manufacturer`]?.focus();
   };
 
+  const handleOpenProductPage = (row: EstimateRow) => {
+    const params = new URLSearchParams({ sort: "price_desc" });
+    if (row.machineName.trim()) {
+      params.set("estimateMachineName", row.machineName.trim());
+    }
+    if (row.manufacturer.trim()) {
+      params.set("estimateMaker", row.manufacturer.trim());
+    }
+    window.open(`/market/products?${params.toString()}`, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <main className="mx-auto w-full max-w-[1440px] px-4 py-8 text-neutral-900">
       <header className="mb-4">
@@ -229,7 +242,28 @@ export default function EstimatePage() {
             </button>
           </div>
           <div className="flex items-center gap-2">
-            <input type="file" className="max-w-52 text-sm" />
+            <input
+              ref={fileInputRef}
+              type="file"
+              className="hidden"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                setSelectedFileName(file?.name ?? "ファイル未選択");
+              }}
+            />
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
+            >
+              ファイルを選択
+            </button>
+            <span
+              className="inline-flex h-9 min-w-[20rem] max-w-[34rem] items-center rounded-md border border-slate-300 bg-slate-50 px-3 text-sm text-slate-700"
+              title={selectedFileName}
+            >
+              <span className="truncate">{selectedFileName}</span>
+            </span>
             <button
               type="button"
               onClick={() => setIsImportModalOpen(true)}
@@ -333,6 +367,7 @@ export default function EstimatePage() {
                   <td className="px-1.5 py-1.5">
                     <button
                       type="button"
+                      onClick={() => handleOpenProductPage(row)}
                       className="inline-flex h-7 items-center rounded-md border border-sky-300 bg-white px-2.5 text-xs font-medium text-sky-700 transition hover:bg-sky-50"
                     >
                       出品ページ
@@ -368,6 +403,20 @@ export default function EstimatePage() {
             className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
           >
             掲載新規登録
+          </button>
+          <button
+            type="button"
+            disabled
+            className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-slate-100 px-4 text-sm text-slate-400"
+          >
+            見積書作成（今後対応予定）
+          </button>
+          <button
+            type="button"
+            disabled
+            className="inline-flex h-9 items-center rounded-md border border-slate-200 bg-slate-100 px-4 text-sm text-slate-400"
+          >
+            請求書作成（今後対応予定）
           </button>
         </div>
       </section>
