@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { Search } from "lucide-react";
+import { downloadEstimateXlsx } from "@/lib/estimate/xlsx";
 
 type EstimateRow = {
   id: number;
@@ -44,6 +45,25 @@ const hasRowInput = (row: EstimateRow) =>
 
 const enterNavigationFields = ["manufacturer", "machineName", "quantity", "price", "memo"] as const;
 type EnterNavigationField = (typeof enterNavigationFields)[number];
+
+const templateHeaders = ["№", "メーカー名", "機種名", "数量", "メモ"];
+const templateSheetName = "テンプレート";
+const templateRowCount = 50;
+
+const templateColumnWidths = [6, 18, 30, 10, 36];
+
+const hasTemplateExportInput = (row: EstimateRow) =>
+  Boolean(row.manufacturer.trim() || row.machineName.trim() || row.quantity.trim() || row.memo.trim());
+
+function downloadTemplateWorkbook(dataRows: string[][], fileName: string) {
+  downloadEstimateXlsx({
+    fileName,
+    sheetName: templateSheetName,
+    headers: templateHeaders,
+    rows: dataRows,
+    columnWidths: templateColumnWidths,
+  });
+}
 
 function EstimateImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   if (!open) return null;
@@ -210,6 +230,19 @@ export default function EstimatePage() {
     window.open(`/market/products?${params.toString()}`, "_blank", "noopener,noreferrer");
   };
 
+  const handleDownloadTemplate = () => {
+    const dataRows = Array.from({ length: templateRowCount }, (_, index) => [String(index + 1), "", "", "", ""]);
+    downloadTemplateWorkbook(dataRows, "estimate-template.xlsx");
+  };
+
+  const handleExportExcel = () => {
+    const exportRows = rows
+      .filter(hasTemplateExportInput)
+      .map((row, index) => [String(index + 1), row.manufacturer.trim(), row.machineName.trim(), row.quantity.trim(), row.memo.trim()]);
+
+    downloadTemplateWorkbook(exportRows, "estimate-export.xlsx");
+  };
+
   return (
     <main className="mx-auto w-full max-w-[1440px] px-4 py-8 text-neutral-900">
       <header className="mb-4">
@@ -229,6 +262,7 @@ export default function EstimatePage() {
             </button>
             <button
               type="button"
+              onClick={handleDownloadTemplate}
               className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
             >
               テンプレDL
@@ -394,6 +428,7 @@ export default function EstimatePage() {
           </button>
           <button
             type="button"
+            onClick={handleExportExcel}
             className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-4 text-sm text-slate-700 hover:bg-slate-50"
           >
             Excel出力
