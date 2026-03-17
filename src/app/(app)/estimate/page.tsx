@@ -37,7 +37,7 @@ function createInitialRows(count: number): EstimateRow[] {
 }
 
 const tableInputClass =
-  "w-full border border-transparent bg-transparent px-2 py-1.5 text-sm text-slate-800 outline-none transition focus:border-sky-200 focus:bg-white";
+  "w-full rounded-sm border border-slate-300 bg-white px-2 py-1.5 text-sm text-slate-800 outline-none transition hover:border-slate-400 focus:border-sky-400 focus:bg-white";
 
 const hasRowInput = (row: EstimateRow) =>
   Boolean(row.manufacturer.trim() || row.machineName.trim() || row.quantity.trim() || row.price.trim() || row.memo.trim());
@@ -228,7 +228,7 @@ export default function EstimatePage() {
             </thead>
             <tbody>
               {rows.map((row, index) => (
-                <tr key={row.id} className={`border-b border-slate-200 last:border-0 ${hasRowInput(row) ? "bg-sky-50/50" : "bg-white"}`}>
+                <tr key={row.id} className={`border-b border-slate-200 last:border-0 ${hasRowInput(row) ? "bg-sky-100/60" : "bg-white"}`}>
                   <td className="px-2 py-2 text-slate-600">{index + 1}</td>
                   <td className="px-2 py-2">
                     <input
@@ -283,7 +283,10 @@ export default function EstimatePage() {
                     />
                   </td>
                   <td className="px-2 py-2">
-                    <button type="button" className="text-sm text-blue-700 hover:underline">
+                    <button
+                      type="button"
+                      className="inline-flex h-8 items-center rounded-sm border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 hover:bg-slate-50"
+                    >
                       出品ページ
                     </button>
                   </td>
