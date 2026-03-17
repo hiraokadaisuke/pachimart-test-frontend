@@ -167,9 +167,9 @@ export default function ProductListPage() {
   const [sortKey, setSortKey] = useState<SortKey>("newest");
   const router = useRouter();
   const searchParams = useSearchParams();
-  const estimateMachineName = (searchParams.get("estimateMachineName") ?? "").trim();
-  const estimateMaker = (searchParams.get("estimateMaker") ?? "").trim();
-  const estimateSort = (searchParams.get("sort") ?? "").trim();
+  const estimateMachineName = (searchParams?.get("estimateMachineName") ?? "").trim();
+  const estimateMaker = (searchParams?.get("estimateMaker") ?? "").trim();
+  const estimateSort = (searchParams?.get("sort") ?? "").trim();
 
   useEffect(() => {
     if (estimateSort === "price_desc") {
