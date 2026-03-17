@@ -267,3 +267,196 @@ export function downloadEstimateXlsx({
   link.click();
   URL.revokeObjectURL(url);
 }
+
+type ImportedEstimateRow = {
+  manufacturer: string;
+  machineName: string;
+  quantity: string;
+  memo: string;
+};
+
+type ZipEntryMeta = {
+  compressionMethod: number;
+  compressedSize: number;
+  localHeaderOffset: number;
+};
+
+const requiredTemplateHeaders = ["メーカー名", "機種名", "数量", "メモ"] as const;
+
+const normalizeCellValue = (value: unknown) => {
+  if (value === undefined || value === null) return "";
+  return String(value).trim();
+};
+
+const decodeZipText = new TextDecoder("utf-8");
+
+const inflateRaw = async (data: Uint8Array) => {
+  const stream = new DecompressionStream("deflate-raw");
+  const writer = stream.writable.getWriter();
+  writer.write(data);
+  writer.close();
+  const decompressed = await new Response(stream.readable).arrayBuffer();
+  return new Uint8Array(decompressed);
+};
+
+const findZipEntries = (bytes: Uint8Array) => {
+  let endOffset = -1;
+  for (let offset = bytes.length - 22; offset >= 0; offset -= 1) {
+    const signature = new DataView(bytes.buffer, bytes.byteOffset + offset, 4).getUint32(0, true);
+    if (signature === ZIP_END_OF_CENTRAL_DIRECTORY_SIGNATURE) {
+      endOffset = offset;
+      break;
+    }
+  }
+
+  if (endOffset < 0) {
+    throw new Error("テンプレート形式ではありません");
+  }
+
+  const endView = new DataView(bytes.buffer, bytes.byteOffset + endOffset, 22);
+  const centralDirectoryOffset = endView.getUint32(16, true);
+  const totalEntries = endView.getUint16(10, true);
+
+  const entries = new Map<string, ZipEntryMeta>();
+  let pointer = centralDirectoryOffset;
+
+  for (let i = 0; i < totalEntries; i += 1) {
+    const view = new DataView(bytes.buffer, bytes.byteOffset + pointer, 46);
+    if (view.getUint32(0, true) !== ZIP_CENTRAL_DIRECTORY_SIGNATURE) {
+      throw new Error("テンプレート形式ではありません");
+    }
+
+    const compressionMethod = view.getUint16(10, true);
+    const compressedSize = view.getUint32(20, true);
+    const fileNameLength = view.getUint16(28, true);
+    const extraFieldLength = view.getUint16(30, true);
+    const fileCommentLength = view.getUint16(32, true);
+    const localHeaderOffset = view.getUint32(42, true);
+
+    const nameStart = pointer + 46;
+    const nameEnd = nameStart + fileNameLength;
+    const fileName = decodeZipText.decode(bytes.slice(nameStart, nameEnd));
+
+    entries.set(fileName, { compressionMethod, compressedSize, localHeaderOffset });
+
+    pointer = nameEnd + extraFieldLength + fileCommentLength;
+  }
+
+  return entries;
+};
+
+const getZipEntryData = async (bytes: Uint8Array, entries: Map<string, ZipEntryMeta>, name: string) => {
+  const entry = entries.get(name);
+  if (!entry) {
+    return null;
+  }
+
+  const headerView = new DataView(bytes.buffer, bytes.byteOffset + entry.localHeaderOffset, 30);
+  if (headerView.getUint32(0, true) !== ZIP_LOCAL_FILE_HEADER_SIGNATURE) {
+    throw new Error("テンプレート形式ではありません");
+  }
+
+  const fileNameLength = headerView.getUint16(26, true);
+  const extraFieldLength = headerView.getUint16(28, true);
+  const dataStart = entry.localHeaderOffset + 30 + fileNameLength + extraFieldLength;
+  const compressed = bytes.slice(dataStart, dataStart + entry.compressedSize);
+
+  if (entry.compressionMethod === 0) {
+    return compressed;
+  }
+  if (entry.compressionMethod === 8) {
+    return inflateRaw(compressed);
+  }
+
+  throw new Error("テンプレート形式ではありません");
+};
+
+const getSheetRows = (sheetXml: string, sharedStrings: string[]) => {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(sheetXml, "application/xml");
+  const rows = Array.from(doc.getElementsByTagName("row"));
+
+  return rows.map((rowNode) => {
+    const row: string[] = [];
+    const cells = Array.from(rowNode.getElementsByTagName("c"));
+
+    for (const cell of cells) {
+      const ref = cell.getAttribute("r") ?? "";
+      const letters = ref.match(/^[A-Z]+/)?.[0] ?? "A";
+      let columnIndex = 0;
+      for (const char of letters) {
+        columnIndex = columnIndex * 26 + (char.charCodeAt(0) - 64);
+      }
+      columnIndex -= 1;
+
+      const cellType = cell.getAttribute("t");
+      const valueNode = cell.getElementsByTagName("v")[0];
+      const inlineNode = cell.getElementsByTagName("t")[0];
+
+      let value = "";
+      if (cellType === "s") {
+        const index = Number.parseInt(valueNode?.textContent ?? "", 10);
+        value = Number.isFinite(index) ? sharedStrings[index] ?? "" : "";
+      } else if (cellType === "inlineStr") {
+        value = inlineNode?.textContent ?? "";
+      } else {
+        value = valueNode?.textContent ?? "";
+      }
+
+      row[columnIndex] = normalizeCellValue(value);
+    }
+
+    return row;
+  });
+};
+
+const getSharedStrings = (xml: string | null) => {
+  if (!xml) return [];
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(xml, "application/xml");
+  return Array.from(doc.getElementsByTagName("si")).map((node) =>
+    normalizeCellValue(
+      Array.from(node.getElementsByTagName("t"))
+        .map((textNode) => textNode.textContent ?? "")
+        .join(""),
+    ),
+  );
+};
+
+export async function parseEstimateImportFile(file: File): Promise<ImportedEstimateRow[]> {
+  const buffer = await file.arrayBuffer();
+  const bytes = new Uint8Array(buffer);
+  const entries = findZipEntries(bytes);
+
+  const sheetData = await getZipEntryData(bytes, entries, "xl/worksheets/sheet1.xml");
+  if (!sheetData) {
+    throw new Error("テンプレート形式ではありません");
+  }
+
+  const sharedStringsData = await getZipEntryData(bytes, entries, "xl/sharedStrings.xml");
+  const sharedStrings = getSharedStrings(sharedStringsData ? decodeZipText.decode(sharedStringsData) : null);
+  const rows = getSheetRows(decodeZipText.decode(sheetData), sharedStrings);
+
+  if (rows.length === 0) return [];
+
+  const headerRow = rows[0].map((cell) => normalizeCellValue(cell));
+  const headerMap = new Map<string, number>();
+  headerRow.forEach((header, index) => {
+    if (header) headerMap.set(header, index);
+  });
+
+  const missingHeader = requiredTemplateHeaders.find((header) => !headerMap.has(header));
+  if (missingHeader) {
+    throw new Error("テンプレート形式ではありません");
+  }
+
+  return rows
+    .slice(1)
+    .map((row) => ({
+      manufacturer: normalizeCellValue(row[headerMap.get("メーカー名") ?? -1]),
+      machineName: normalizeCellValue(row[headerMap.get("機種名") ?? -1]),
+      quantity: normalizeCellValue(row[headerMap.get("数量") ?? -1]),
+      memo: normalizeCellValue(row[headerMap.get("メモ") ?? -1]),
+    }))
+    .filter((row) => Boolean(row.manufacturer || row.machineName || row.quantity || row.memo));
+}
