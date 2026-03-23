@@ -226,6 +226,7 @@ export default function EstimatePage() {
     type: 'success' | 'error';
     text: string;
   } | null>(null);
+  const [listToastMessage, setListToastMessage] = useState<string | null>(null);
   const [isSearchModalOpen, setIsSearchModalOpen] = useState(false);
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchTargetRowId, setSearchTargetRowId] = useState<number | null>(
@@ -304,6 +305,16 @@ export default function EstimatePage() {
       }),
     );
   }, [currentEstimateId, estimateTitle, rows, isStorageReady]);
+
+  useEffect(() => {
+    if (!listToastMessage) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setListToastMessage(null);
+    }, 2500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [listToastMessage]);
 
   const buildSavedRows = () =>
     rows
@@ -568,6 +579,50 @@ export default function EstimatePage() {
       text: `「${record.title}」を読み込みました`,
     });
     setActiveTab('register');
+  };
+
+  const handleDuplicateEstimate = (record: EstimateRecord) => {
+    const duplicatedRecord: EstimateRecord = {
+      ...record,
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      title: `${record.title}（コピー）`,
+      rows: normalizeSavedRows(record.rows),
+    };
+
+    setEstimateRecords((currentRecords) => [
+      duplicatedRecord,
+      ...currentRecords,
+    ]);
+    setListToastMessage('コピーを作成しました');
+    setStatusMessage({
+      type: 'success',
+      text: `「${duplicatedRecord.title}」を複製しました`,
+    });
+  };
+
+  const handleDeleteEstimate = (record: EstimateRecord) => {
+    if (!window.confirm('この見積りを削除しますか？')) return;
+
+    setEstimateRecords((currentRecords) =>
+      currentRecords.filter((currentRecord) => currentRecord.id !== record.id),
+    );
+
+    if (currentEstimateId === record.id) {
+      resetEditor();
+      setStatusMessage({
+        type: 'success',
+        text: '削除した見積りの編集中データをリセットしました',
+      });
+    } else {
+      setStatusMessage({
+        type: 'success',
+        text: `「${record.title}」を削除しました`,
+      });
+    }
+
+    setListToastMessage('削除しました');
   };
 
   return (
@@ -897,9 +952,16 @@ export default function EstimatePage() {
 
       {activeTab === 'list' && (
         <section className="rounded-md border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="mb-3 text-base font-semibold text-slate-900">
-            登録済み見積り一覧
-          </h2>
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+            <h2 className="text-base font-semibold text-slate-900">
+              登録済み見積り一覧
+            </h2>
+            {listToastMessage ? (
+              <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-medium text-emerald-700">
+                {listToastMessage}
+              </p>
+            ) : null}
+          </div>
           {estimateRecords.length === 0 ? (
             <p className="rounded-md border border-dashed border-slate-300 bg-slate-50 px-4 py-6 text-sm text-slate-500">
               データはありません
@@ -918,7 +980,7 @@ export default function EstimatePage() {
                     <th className="border-b border-slate-200 px-3 py-2 font-semibold">
                       タイトル
                     </th>
-                    <th className="w-24 border-b border-slate-200 px-3 py-2 font-semibold">
+                    <th className="w-48 border-b border-slate-200 px-3 py-2 font-semibold">
                       操作
                     </th>
                   </tr>
@@ -939,13 +1001,29 @@ export default function EstimatePage() {
                         {record.title}
                       </td>
                       <td className="px-3 py-2">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEstimate(record)}
-                          className="inline-flex h-7 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
-                        >
-                          開く
-                        </button>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEstimate(record)}
+                            className="inline-flex h-7 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                          >
+                            開く
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDuplicateEstimate(record)}
+                            className="inline-flex h-7 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                          >
+                            複製
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteEstimate(record)}
+                            className="inline-flex h-7 items-center rounded-md border border-rose-300 bg-white px-2.5 text-xs font-medium text-rose-700 transition hover:bg-rose-50"
+                          >
+                            削除
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
