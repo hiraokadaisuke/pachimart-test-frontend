@@ -527,7 +527,8 @@ hover:shadow-[0_18px_44px_rgba(15,23,42,0.19)]"
 
       {/* コスト */}
       <section
-        className="relative border-t border-slate-200/70"
+        id="pricing"
+        className="relative scroll-mt-28 border-t border-slate-200/70 lg:scroll-mt-32"
         style={{
           backgroundImage: "url('/lp/cost-bg.jpg')",
           backgroundSize: 'cover',
