@@ -1,7 +1,23 @@
 'use client';
 
+import {
+  closestCenter,
+  DndContext,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { GripVertical, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search } from 'lucide-react';
 import {
   downloadEstimateXlsx,
   parseEstimateImportFile,
@@ -39,6 +55,33 @@ type EstimateRecord = {
 };
 
 type EstimateTabKey = 'register' | 'list';
+
+type EstimateSortableRowProps = {
+  row: EstimateRow;
+  index: number;
+  isSelected: boolean;
+  isFocused: boolean;
+  onFocusRow: (rowId: number) => void;
+  onBlurRow: (event: React.FocusEvent<HTMLTableRowElement>) => void;
+  onToggleRowSelection: (rowId: number, checked: boolean) => void;
+  onUpdateRow: <K extends keyof EstimateRow>(
+    rowId: number,
+    key: K,
+    value: EstimateRow[K],
+  ) => void;
+  onOpenSearchModal: (rowId: number) => void;
+  onOpenProductPage: (row: EstimateRow) => void;
+  onHandleCellKeyDown: (
+    event: React.KeyboardEvent<HTMLInputElement>,
+    rowIndex: number,
+    field: EnterNavigationField,
+  ) => void;
+  onSetFieldRef: (
+    rowId: number,
+    field: EnterNavigationField,
+    element: HTMLInputElement | null,
+  ) => void;
+};
 
 const machineOptions: MachineOption[] = [
   { manufacturer: 'サミー', machineName: 'P北斗無双' },
@@ -164,6 +207,23 @@ function normalizeRowsForDisplay(
   return appendBlankRows(rows, Math.max(minimumCount, rows.length));
 }
 
+function reorderEstimateRows(
+  rows: EstimateRow[],
+  activeId: number,
+  overId: number,
+) {
+  const oldIndex = rows.findIndex((row) => row.id === activeId);
+  const newIndex = rows.findIndex((row) => row.id === overId);
+
+  if (oldIndex < 0 || newIndex < 0) return rows;
+
+  const reorderedRows = arrayMove(rows, oldIndex, newIndex);
+  const filledRows = reorderedRows.filter(hasRowInput);
+  const blankRows = reorderedRows.filter((row) => !hasRowInput(row));
+
+  return [...filledRows, ...blankRows];
+}
+
 function MachineSearchModal({
   open,
   keyword,
@@ -235,6 +295,168 @@ function MachineSearchModal({
   );
 }
 
+function EstimateSortableRow({
+  row,
+  index,
+  isSelected,
+  isFocused,
+  onFocusRow,
+  onBlurRow,
+  onToggleRowSelection,
+  onUpdateRow,
+  onOpenSearchModal,
+  onOpenProductPage,
+  onHandleCellKeyDown,
+  onSetFieldRef,
+}: EstimateSortableRowProps) {
+  const {
+    attributes,
+    listeners,
+    setActivatorNodeRef,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id });
+
+  const style = useMemo(
+    () => ({
+      transform: CSS.Transform.toString(transform),
+      transition,
+    }),
+    [transform, transition],
+  );
+
+  return (
+    <tr
+      ref={setNodeRef}
+      style={style}
+      onFocusCapture={() => onFocusRow(row.id)}
+      onBlurCapture={onBlurRow}
+      className={`border-b border-slate-200 last:border-0 ${
+        isDragging
+          ? 'relative z-10 bg-sky-100 shadow-[0_10px_30px_rgba(14,165,233,0.18)] opacity-95'
+          : isFocused
+            ? 'bg-sky-200/60'
+            : hasRowInput(row)
+              ? 'bg-sky-100'
+              : 'bg-white'
+      }`}
+    >
+      <td className="px-2 py-1.5 text-center">
+        <input
+          type="checkbox"
+          aria-label={`${index + 1}行目を選択`}
+          checked={isSelected}
+          onChange={(event) =>
+            onToggleRowSelection(row.id, event.target.checked)
+          }
+          className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+        />
+      </td>
+      <td className="px-1.5 py-1.5 text-slate-600">{index + 1}</td>
+      <td className="px-1.5 py-1.5">
+        <input
+          type="text"
+          ref={(element) => onSetFieldRef(row.id, 'manufacturer', element)}
+          value={row.manufacturer}
+          onChange={(event) =>
+            onUpdateRow(row.id, 'manufacturer', event.target.value)
+          }
+          onKeyDown={(event) =>
+            onHandleCellKeyDown(event, index, 'manufacturer')
+          }
+          className={tableInputClass}
+        />
+      </td>
+      <td className="px-1.5 py-1.5">
+        <div className="flex gap-1.5">
+          <input
+            type="text"
+            ref={(element) => onSetFieldRef(row.id, 'machineName', element)}
+            value={row.machineName}
+            onChange={(event) =>
+              onUpdateRow(row.id, 'machineName', event.target.value)
+            }
+            onKeyDown={(event) =>
+              onHandleCellKeyDown(event, index, 'machineName')
+            }
+            className={tableInputClass}
+          />
+          <button
+            type="button"
+            onClick={() => onOpenSearchModal(row.id)}
+            className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-sky-200 bg-sky-50 text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-100"
+            aria-label="機種検索"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+        </div>
+      </td>
+      <td className="px-1.5 py-1.5">
+        <input
+          type="number"
+          min={1}
+          ref={(element) => onSetFieldRef(row.id, 'quantity', element)}
+          value={row.quantity}
+          onChange={(event) =>
+            onUpdateRow(row.id, 'quantity', event.target.value)
+          }
+          onKeyDown={(event) => onHandleCellKeyDown(event, index, 'quantity')}
+          className={`${tableInputClass} w-16`}
+        />
+      </td>
+      <td className="px-1.5 py-1.5">
+        <input
+          type="number"
+          placeholder="価格入力"
+          ref={(element) => onSetFieldRef(row.id, 'price', element)}
+          value={row.price}
+          onChange={(event) => onUpdateRow(row.id, 'price', event.target.value)}
+          onKeyDown={(event) => onHandleCellKeyDown(event, index, 'price')}
+          className={`${tableInputClass} text-right`}
+        />
+      </td>
+      <td className="px-1.5 py-1.5">
+        <input
+          type="text"
+          ref={(element) => onSetFieldRef(row.id, 'memo', element)}
+          value={row.memo}
+          onChange={(event) => onUpdateRow(row.id, 'memo', event.target.value)}
+          onKeyDown={(event) => onHandleCellKeyDown(event, index, 'memo')}
+          className={tableInputClass}
+        />
+      </td>
+      <td className="px-1.5 py-1.5">
+        <button
+          type="button"
+          onClick={() => onOpenProductPage(row)}
+          className="inline-flex h-7 items-center rounded-md border border-sky-300 bg-white px-2.5 text-xs font-medium text-sky-700 transition hover:bg-sky-50"
+        >
+          相場確認
+        </button>
+      </td>
+      <td className="px-1.5 py-1.5 text-center align-middle">
+        <button
+          ref={setActivatorNodeRef}
+          type="button"
+          {...attributes}
+          {...listeners}
+          className={`inline-flex h-9 w-9 items-center justify-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 ${
+            isDragging
+              ? 'cursor-grabbing bg-slate-100 text-slate-800'
+              : 'cursor-grab'
+          }`}
+          aria-label={`${index + 1}行目をドラッグして並び替え`}
+          title="ドラッグして並び替え"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+      </td>
+    </tr>
+  );
+}
+
 export default function EstimatePage() {
   const [rows, setRows] = useState<EstimateRow[]>(() =>
     createInitialRows(minimumRegisterRowCount),
@@ -262,6 +484,17 @@ export default function EstimatePage() {
   const [isStorageReady, setIsStorageReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 8 },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 180,
+        tolerance: 6,
+      },
+    }),
+  );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -430,25 +663,14 @@ export default function EstimatePage() {
     });
   };
 
-  const moveRow = (rowId: number, direction: 'up' | 'down') => {
-    setRows((currentRows) => {
-      const currentIndex = currentRows.findIndex((row) => row.id === rowId);
-      if (currentIndex < 0) return currentRows;
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-      const targetIndex =
-        direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-
-      if (targetIndex < 0 || targetIndex >= currentRows.length) {
-        return currentRows;
-      }
-
-      const nextRows = [...currentRows];
-      const [movedRow] = nextRows.splice(currentIndex, 1);
-      nextRows.splice(targetIndex, 0, movedRow);
-
-      return nextRows;
-    });
-    setFocusedRowId(rowId);
+    setRows((currentRows) =>
+      reorderEstimateRows(currentRows, Number(active.id), Number(over.id)),
+    );
+    setFocusedRowId(Number(active.id));
   };
 
   const openSearchModal = (rowId: number) => {
@@ -811,208 +1033,93 @@ export default function EstimatePage() {
             )}
           </div>
 
+          <p className="mb-2 text-xs text-slate-500">
+            行右端のハンドルをドラッグして並び替えできます。
+          </p>
+
           <div className="overflow-x-auto rounded-md border border-slate-200">
-            <table className="min-w-full border-collapse text-left text-sm">
-              <thead className="bg-slate-50 text-slate-700">
-                <tr>
-                  <th className="w-12 border-b border-slate-200 px-2 py-2 text-center font-semibold">
-                    <input
-                      type="checkbox"
-                      aria-label="すべての行を選択"
-                      checked={
-                        rows.length > 0 && selectedRowIds.length === rows.length
-                      }
-                      onChange={(event) =>
-                        handleToggleSelectAllRows(event.target.checked)
-                      }
-                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                    />
-                  </th>
-                  <th className="w-20 border-b border-slate-200 px-2 py-2 text-center font-semibold">
-                    並び替え
-                  </th>
-                  <th className="w-16 border-b border-slate-200 px-2 py-2 font-semibold">
-                    番号
-                  </th>
-                  <th className="w-36 border-b border-slate-200 px-2 py-2 font-semibold">
-                    メーカー
-                  </th>
-                  <th className="min-w-80 border-b border-slate-200 px-2 py-2 font-semibold">
-                    機種名
-                  </th>
-                  <th className="w-24 border-b border-slate-200 px-2 py-2 font-semibold">
-                    台数
-                  </th>
-                  <th className="w-36 border-b border-slate-200 px-2 py-2 font-semibold">
-                    価格
-                  </th>
-                  <th className="min-w-72 border-b border-slate-200 px-2 py-2 font-semibold">
-                    メモ
-                  </th>
-                  <th className="w-32 border-b border-slate-200 px-2 py-2 font-semibold">
-                    相場確認
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, index) => (
-                  <tr
-                    key={row.id}
-                    onFocusCapture={() => setFocusedRowId(row.id)}
-                    onBlurCapture={(event) => {
-                      if (
-                        !event.currentTarget.contains(
-                          event.relatedTarget as Node | null,
-                        )
-                      ) {
-                        setFocusedRowId(null);
-                      }
-                    }}
-                    className={`border-b border-slate-200 last:border-0 ${
-                      focusedRowId === row.id
-                        ? 'bg-sky-200/60'
-                        : hasRowInput(row)
-                          ? 'bg-sky-100'
-                          : 'bg-white'
-                    }`}
-                  >
-                    <td className="px-2 py-1.5 text-center">
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <table className="min-w-full border-collapse text-left text-sm">
+                <thead className="bg-slate-50 text-slate-700">
+                  <tr>
+                    <th className="w-12 border-b border-slate-200 px-2 py-2 text-center font-semibold">
                       <input
                         type="checkbox"
-                        aria-label={`${index + 1}行目を選択`}
-                        checked={selectedRowIds.includes(row.id)}
+                        aria-label="すべての行を選択"
+                        checked={
+                          rows.length > 0 &&
+                          selectedRowIds.length === rows.length
+                        }
                         onChange={(event) =>
-                          handleToggleRowSelection(row.id, event.target.checked)
+                          handleToggleSelectAllRows(event.target.checked)
                         }
                         className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
                       />
-                    </td>
-                    <td className="px-1.5 py-1.5">
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          type="button"
-                          onClick={() => moveRow(row.id, 'up')}
-                          disabled={index === 0}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-                          aria-label={`${index + 1}行目を上へ移動`}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => moveRow(row.id, 'down')}
-                          disabled={index === rows.length - 1}
-                          className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
-                          aria-label={`${index + 1}行目を下へ移動`}
-                        >
-                          ↓
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-1.5 py-1.5 text-slate-600">
-                      {index + 1}
-                    </td>
-                    <td className="px-1.5 py-1.5">
-                      <input
-                        type="text"
-                        ref={(element) =>
-                          setFieldRef(row.id, 'manufacturer', element)
-                        }
-                        value={row.manufacturer}
-                        onChange={(event) =>
-                          updateRow(row.id, 'manufacturer', event.target.value)
-                        }
-                        onKeyDown={(event) =>
-                          handleCellKeyDown(event, index, 'manufacturer')
-                        }
-                        className={tableInputClass}
-                      />
-                    </td>
-                    <td className="px-1.5 py-1.5">
-                      <div className="flex gap-1.5">
-                        <input
-                          type="text"
-                          ref={(element) =>
-                            setFieldRef(row.id, 'machineName', element)
-                          }
-                          value={row.machineName}
-                          onChange={(event) =>
-                            updateRow(row.id, 'machineName', event.target.value)
-                          }
-                          onKeyDown={(event) =>
-                            handleCellKeyDown(event, index, 'machineName')
-                          }
-                          className={tableInputClass}
-                        />
-                        <button
-                          type="button"
-                          onClick={() => openSearchModal(row.id)}
-                          className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-sky-200 bg-sky-50 text-sky-700 shadow-sm transition hover:border-sky-300 hover:bg-sky-100"
-                          aria-label="機種検索"
-                        >
-                          <Search className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-1.5 py-1.5">
-                      <input
-                        type="number"
-                        min={1}
-                        ref={(element) =>
-                          setFieldRef(row.id, 'quantity', element)
-                        }
-                        value={row.quantity}
-                        onChange={(event) =>
-                          updateRow(row.id, 'quantity', event.target.value)
-                        }
-                        onKeyDown={(event) =>
-                          handleCellKeyDown(event, index, 'quantity')
-                        }
-                        className={`${tableInputClass} w-16`}
-                      />
-                    </td>
-                    <td className="px-1.5 py-1.5">
-                      <input
-                        type="number"
-                        placeholder="価格入力"
-                        ref={(element) => setFieldRef(row.id, 'price', element)}
-                        value={row.price}
-                        onChange={(event) =>
-                          updateRow(row.id, 'price', event.target.value)
-                        }
-                        onKeyDown={(event) =>
-                          handleCellKeyDown(event, index, 'price')
-                        }
-                        className={`${tableInputClass} text-right`}
-                      />
-                    </td>
-                    <td className="px-1.5 py-1.5">
-                      <input
-                        type="text"
-                        ref={(element) => setFieldRef(row.id, 'memo', element)}
-                        value={row.memo}
-                        onChange={(event) =>
-                          updateRow(row.id, 'memo', event.target.value)
-                        }
-                        onKeyDown={(event) =>
-                          handleCellKeyDown(event, index, 'memo')
-                        }
-                        className={tableInputClass}
-                      />
-                    </td>
-                    <td className="px-1.5 py-1.5">
-                      <button
-                        type="button"
-                        onClick={() => handleOpenProductPage(row)}
-                        className="inline-flex h-7 items-center rounded-md border border-sky-300 bg-white px-2.5 text-xs font-medium text-sky-700 transition hover:bg-sky-50"
-                      >
-                        相場確認
-                      </button>
-                    </td>
+                    </th>
+                    <th className="w-16 border-b border-slate-200 px-2 py-2 font-semibold">
+                      番号
+                    </th>
+                    <th className="w-36 border-b border-slate-200 px-2 py-2 font-semibold">
+                      メーカー
+                    </th>
+                    <th className="min-w-80 border-b border-slate-200 px-2 py-2 font-semibold">
+                      機種名
+                    </th>
+                    <th className="w-24 border-b border-slate-200 px-2 py-2 font-semibold">
+                      台数
+                    </th>
+                    <th className="w-36 border-b border-slate-200 px-2 py-2 font-semibold">
+                      価格
+                    </th>
+                    <th className="min-w-72 border-b border-slate-200 px-2 py-2 font-semibold">
+                      メモ
+                    </th>
+                    <th className="w-32 border-b border-slate-200 px-2 py-2 font-semibold">
+                      相場確認
+                    </th>
+                    <th className="w-16 border-b border-slate-200 px-2 py-2 text-center font-semibold">
+                      移動
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <SortableContext
+                  items={rows.map((row) => row.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <tbody>
+                    {rows.map((row, index) => (
+                      <EstimateSortableRow
+                        key={row.id}
+                        row={row}
+                        index={index}
+                        isSelected={selectedRowIds.includes(row.id)}
+                        isFocused={focusedRowId === row.id}
+                        onFocusRow={setFocusedRowId}
+                        onBlurRow={(event) => {
+                          if (
+                            !event.currentTarget.contains(
+                              event.relatedTarget as Node | null,
+                            )
+                          ) {
+                            setFocusedRowId(null);
+                          }
+                        }}
+                        onToggleRowSelection={handleToggleRowSelection}
+                        onUpdateRow={updateRow}
+                        onOpenSearchModal={openSearchModal}
+                        onOpenProductPage={handleOpenProductPage}
+                        onHandleCellKeyDown={handleCellKeyDown}
+                        onSetFieldRef={setFieldRef}
+                      />
+                    ))}
+                  </tbody>
+                </SortableContext>
+              </table>
+            </DndContext>
           </div>
 
           <div className="mt-4 flex flex-wrap items-end gap-3">
