@@ -15,7 +15,7 @@ import {
   useSortable,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { CSS, type Transform } from '@dnd-kit/utilities';
 import { GripVertical, Search } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -224,6 +224,15 @@ function reorderEstimateRows(
   return [...filledRows, ...blankRows];
 }
 
+function toVerticalOnlyTransform(transform: Transform | null) {
+  if (!transform) return null;
+
+  return {
+    ...transform,
+    x: 0,
+  };
+}
+
 function MachineSearchModal({
   open,
   keyword,
@@ -319,12 +328,18 @@ function EstimateSortableRow({
     isDragging,
   } = useSortable({ id: row.id });
 
+  const verticalTransform = useMemo(
+    () => toVerticalOnlyTransform(transform),
+    [transform],
+  );
+
   const style = useMemo(
     () => ({
-      transform: CSS.Transform.toString(transform),
+      transform: CSS.Transform.toString(verticalTransform),
       transition,
+      willChange: isDragging ? 'transform' : undefined,
     }),
-    [transform, transition],
+    [verticalTransform, transition, isDragging],
   );
 
   return (
@@ -442,6 +457,7 @@ function EstimateSortableRow({
           type="button"
           {...attributes}
           {...listeners}
+          style={{ touchAction: 'none' }}
           className={`inline-flex h-9 w-9 items-center justify-center rounded-md border border-transparent text-slate-500 transition hover:border-slate-300 hover:bg-slate-50 hover:text-slate-700 ${
             isDragging
               ? 'cursor-grabbing bg-slate-100 text-slate-800'
@@ -1037,7 +1053,7 @@ export default function EstimatePage() {
             行右端のハンドルをドラッグして並び替えできます。
           </p>
 
-          <div className="overflow-x-auto rounded-md border border-slate-200">
+          <div className="overflow-x-auto overscroll-x-contain rounded-md border border-slate-200">
             <DndContext
               sensors={sensors}
               collisionDetection={closestCenter}
