@@ -139,6 +139,31 @@ function buildEditableRows(
   });
 }
 
+function appendBlankRows(rows: EstimateRow[], targetCount: number) {
+  if (rows.length >= targetCount) return rows;
+
+  const nextIdBase = rows.reduce((maxId, row) => Math.max(maxId, row.id), 0);
+
+  return [
+    ...rows,
+    ...Array.from({ length: targetCount - rows.length }, (_, index) => ({
+      id: nextIdBase + index + 1,
+      manufacturer: '',
+      machineName: '',
+      quantity: '',
+      price: '',
+      memo: '',
+    })),
+  ];
+}
+
+function normalizeRowsForDisplay(
+  rows: EstimateRow[],
+  minimumCount = minimumRegisterRowCount,
+) {
+  return appendBlankRows(rows, Math.max(minimumCount, rows.length));
+}
+
 function MachineSearchModal({
   open,
   keyword,
@@ -233,6 +258,7 @@ export default function EstimatePage() {
     null,
   );
   const [focusedRowId, setFocusedRowId] = useState<number | null>(null);
+  const [selectedRowIds, setSelectedRowIds] = useState<number[]>([]);
   const [isStorageReady, setIsStorageReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -331,6 +357,7 @@ export default function EstimatePage() {
     setCurrentEstimateId(null);
     setEstimateTitle('');
     setRows(createInitialRows(minimumRegisterRowCount));
+    setSelectedRowIds([]);
   };
 
   const createEstimateRecord = (
@@ -358,17 +385,70 @@ export default function EstimatePage() {
   };
 
   const handleAddRow = () => {
-    setRows((currentRows) => [
-      ...currentRows,
-      {
-        id: currentRows.length + 1,
-        manufacturer: '',
-        machineName: '',
-        quantity: '',
-        price: '',
-        memo: '',
-      },
-    ]);
+    setRows((currentRows) =>
+      normalizeRowsForDisplay([
+        ...currentRows,
+        {
+          id:
+            currentRows.reduce((maxId, row) => Math.max(maxId, row.id), 0) + 1,
+          manufacturer: '',
+          machineName: '',
+          quantity: '',
+          price: '',
+          memo: '',
+        },
+      ]),
+    );
+  };
+
+  const handleToggleRowSelection = (rowId: number, checked: boolean) => {
+    setSelectedRowIds((currentIds) =>
+      checked
+        ? Array.from(new Set([...currentIds, rowId])).sort((a, b) => a - b)
+        : currentIds.filter((id) => id !== rowId),
+    );
+  };
+
+  const handleToggleSelectAllRows = (checked: boolean) => {
+    setSelectedRowIds(checked ? rows.map((row) => row.id) : []);
+  };
+
+  const handleDeleteSelectedRows = () => {
+    if (selectedRowIds.length === 0) return;
+    if (!window.confirm('選択した行を削除しますか？')) return;
+
+    setRows((currentRows) =>
+      normalizeRowsForDisplay(
+        currentRows.filter((row) => !selectedRowIds.includes(row.id)),
+      ),
+    );
+    setSelectedRowIds([]);
+    setFocusedRowId(null);
+    setStatusMessage({
+      type: 'success',
+      text: `${selectedRowIds.length}行を削除しました`,
+    });
+  };
+
+  const moveRow = (rowId: number, direction: 'up' | 'down') => {
+    setRows((currentRows) => {
+      const currentIndex = currentRows.findIndex((row) => row.id === rowId);
+      if (currentIndex < 0) return currentRows;
+
+      const targetIndex =
+        direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+
+      if (targetIndex < 0 || targetIndex >= currentRows.length) {
+        return currentRows;
+      }
+
+      const nextRows = [...currentRows];
+      const [movedRow] = nextRows.splice(currentIndex, 1);
+      nextRows.splice(targetIndex, 0, movedRow);
+
+      return nextRows;
+    });
+    setFocusedRowId(rowId);
   };
 
   const openSearchModal = (rowId: number) => {
@@ -555,6 +635,7 @@ export default function EstimatePage() {
       const importedRows = await parseEstimateImportFile(file);
       resetRowsWithImportedData(importedRows);
       setCurrentEstimateId(null);
+      setSelectedRowIds([]);
       setStatusMessage({
         type: 'success',
         text: `${importedRows.length}件取り込みました`,
@@ -574,6 +655,7 @@ export default function EstimatePage() {
     setCurrentEstimateId(record.id);
     setEstimateTitle(record.title);
     setRows(buildEditableRows(record.rows));
+    setSelectedRowIds([]);
     setStatusMessage({
       type: 'success',
       text: `「${record.title}」を読み込みました`,
@@ -672,6 +754,14 @@ export default function EstimatePage() {
               </button>
               <button
                 type="button"
+                onClick={handleDeleteSelectedRows}
+                disabled={selectedRowIds.length === 0}
+                className="inline-flex h-9 items-center rounded-md border border-rose-300 bg-white px-3 text-sm text-rose-700 hover:bg-rose-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+              >
+                選択削除
+              </button>
+              <button
+                type="button"
                 onClick={handleDownloadTemplate}
                 className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3 text-sm text-slate-700 hover:bg-slate-50"
               >
@@ -725,6 +815,22 @@ export default function EstimatePage() {
             <table className="min-w-full border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-slate-700">
                 <tr>
+                  <th className="w-12 border-b border-slate-200 px-2 py-2 text-center font-semibold">
+                    <input
+                      type="checkbox"
+                      aria-label="すべての行を選択"
+                      checked={
+                        rows.length > 0 && selectedRowIds.length === rows.length
+                      }
+                      onChange={(event) =>
+                        handleToggleSelectAllRows(event.target.checked)
+                      }
+                      className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                    />
+                  </th>
+                  <th className="w-20 border-b border-slate-200 px-2 py-2 text-center font-semibold">
+                    並び替え
+                  </th>
                   <th className="w-16 border-b border-slate-200 px-2 py-2 font-semibold">
                     番号
                   </th>
@@ -770,6 +876,39 @@ export default function EstimatePage() {
                           : 'bg-white'
                     }`}
                   >
+                    <td className="px-2 py-1.5 text-center">
+                      <input
+                        type="checkbox"
+                        aria-label={`${index + 1}行目を選択`}
+                        checked={selectedRowIds.includes(row.id)}
+                        onChange={(event) =>
+                          handleToggleRowSelection(row.id, event.target.checked)
+                        }
+                        className="h-4 w-4 rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                      />
+                    </td>
+                    <td className="px-1.5 py-1.5">
+                      <div className="flex items-center justify-center gap-1">
+                        <button
+                          type="button"
+                          onClick={() => moveRow(row.id, 'up')}
+                          disabled={index === 0}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                          aria-label={`${index + 1}行目を上へ移動`}
+                        >
+                          ↑
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => moveRow(row.id, 'down')}
+                          disabled={index === rows.length - 1}
+                          className="inline-flex h-7 w-7 items-center justify-center rounded border border-slate-300 bg-white text-xs text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:bg-slate-100 disabled:text-slate-400"
+                          aria-label={`${index + 1}行目を下へ移動`}
+                        >
+                          ↓
+                        </button>
+                      </div>
+                    </td>
                     <td className="px-1.5 py-1.5 text-slate-600">
                       {index + 1}
                     </td>
