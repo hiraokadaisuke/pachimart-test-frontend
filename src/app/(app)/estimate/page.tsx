@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Search } from 'lucide-react';
 import {
   downloadEstimateXlsx,
@@ -21,11 +21,17 @@ type MachineOption = {
   machineName: string;
 };
 
+type SavedEstimateRow = Pick<
+  EstimateRow,
+  'manufacturer' | 'machineName' | 'quantity' | 'price' | 'memo'
+>;
+
 type EstimateRecord = {
   id: number;
-  createdAt: Date;
+  createdAt: string;
   template: string;
   title: string;
+  rows: SavedEstimateRow[];
 };
 
 type EstimateTabKey = 'register' | 'list';
@@ -73,6 +79,9 @@ type EnterNavigationField = (typeof enterNavigationFields)[number];
 const templateHeaders = ['№', 'メーカー名', '機種名', '数量', 'メモ'];
 const templateSheetName = 'テンプレート';
 const templateRowCount = 50;
+const minimumRegisterRowCount = 12;
+const estimateRecordsStorageKey = 'estimate:records';
+const estimateDraftStorageKey = 'estimate:draft';
 
 const templateColumnWidths = [6, 18, 30, 10, 36];
 
@@ -91,6 +100,36 @@ function downloadTemplateWorkbook(dataRows: string[][], fileName: string) {
     headers: templateHeaders,
     rows: dataRows,
     columnWidths: templateColumnWidths,
+  });
+}
+
+function normalizeSavedRows(rows: SavedEstimateRow[]) {
+  return rows.map((row) => ({
+    manufacturer: row.manufacturer ?? '',
+    machineName: row.machineName ?? '',
+    quantity: row.quantity ?? '',
+    price: row.price ?? '',
+    memo: row.memo ?? '',
+  }));
+}
+
+function buildEditableRows(
+  savedRows: SavedEstimateRow[],
+  minimumCount = minimumRegisterRowCount,
+) {
+  const normalizedRows = normalizeSavedRows(savedRows);
+  const nextLength = Math.max(minimumCount, normalizedRows.length);
+
+  return Array.from({ length: nextLength }, (_, index) => {
+    const row = normalizedRows[index];
+    return {
+      id: index + 1,
+      manufacturer: row?.manufacturer ?? '',
+      machineName: row?.machineName ?? '',
+      quantity: row?.quantity ?? '',
+      price: row?.price ?? '',
+      memo: row?.memo ?? '',
+    };
   });
 }
 
@@ -166,13 +205,16 @@ function MachineSearchModal({
 }
 
 export default function EstimatePage() {
-  const [rows, setRows] = useState<EstimateRow[]>(() => createInitialRows(12));
+  const [rows, setRows] = useState<EstimateRow[]>(() =>
+    createInitialRows(minimumRegisterRowCount),
+  );
   const [activeTab, setActiveTab] = useState<EstimateTabKey>('register');
   const [estimateTitle, setEstimateTitle] = useState('');
   const [estimateRecords, setEstimateRecords] = useState<EstimateRecord[]>([]);
+  const [activeEstimateId, setActiveEstimateId] = useState<number | null>(null);
   const [selectedFileName, setSelectedFileName] = useState('ファイル未選択');
   const [isImporting, setIsImporting] = useState(false);
-  const [importMessage, setImportMessage] = useState<{
+  const [statusMessage, setStatusMessage] = useState<{
     type: 'success' | 'error';
     text: string;
   } | null>(null);
@@ -182,8 +224,73 @@ export default function EstimatePage() {
     null,
   );
   const [focusedRowId, setFocusedRowId] = useState<number | null>(null);
+  const [isStorageReady, setIsStorageReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const fieldRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      const storedRecords = window.localStorage.getItem(
+        estimateRecordsStorageKey,
+      );
+      if (storedRecords) {
+        const parsedRecords = JSON.parse(storedRecords) as EstimateRecord[];
+        setEstimateRecords(
+          parsedRecords.map((record) => ({
+            ...record,
+            rows: normalizeSavedRows(record.rows ?? []),
+          })),
+        );
+      }
+
+      const storedDraft = window.localStorage.getItem(estimateDraftStorageKey);
+      if (storedDraft) {
+        const parsedDraft = JSON.parse(storedDraft) as {
+          activeEstimateId: number | null;
+          estimateTitle: string;
+          rows: SavedEstimateRow[];
+        };
+        setActiveEstimateId(parsedDraft.activeEstimateId ?? null);
+        setEstimateTitle(parsedDraft.estimateTitle ?? '');
+        setRows(buildEditableRows(parsedDraft.rows ?? []));
+      }
+    } catch {
+      window.localStorage.removeItem(estimateRecordsStorageKey);
+      window.localStorage.removeItem(estimateDraftStorageKey);
+    } finally {
+      setIsStorageReady(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isStorageReady || typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      estimateRecordsStorageKey,
+      JSON.stringify(estimateRecords),
+    );
+  }, [estimateRecords, isStorageReady]);
+
+  useEffect(() => {
+    if (!isStorageReady || typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      estimateDraftStorageKey,
+      JSON.stringify({
+        activeEstimateId,
+        estimateTitle,
+        rows: rows.map(
+          ({ manufacturer, machineName, quantity, price, memo }) => ({
+            manufacturer,
+            machineName,
+            quantity,
+            price,
+            memo,
+          }),
+        ),
+      }),
+    );
+  }, [activeEstimateId, estimateTitle, rows, isStorageReady]);
 
   const updateRow = <K extends keyof EstimateRow>(
     rowId: number,
@@ -198,6 +305,7 @@ export default function EstimatePage() {
   };
 
   const handleAddRow = () => {
+    setActiveEstimateId(null);
     setRows((currentRows) => [
       ...currentRows,
       {
@@ -219,6 +327,7 @@ export default function EstimatePage() {
 
   const applyMachineToRow = (machine: MachineOption) => {
     if (searchTargetRowId === null) return;
+    setActiveEstimateId(null);
     setRows((currentRows) =>
       currentRows.map((row) =>
         row.id === searchTargetRowId
@@ -307,16 +416,29 @@ export default function EstimatePage() {
   const handleRegisterEstimate = () => {
     if (!estimateTitle.trim()) return;
 
-    setEstimateRecords((currentRecords) => [
-      {
-        id: Date.now(),
-        createdAt: new Date(),
-        template: '簡単見積りテンプレート',
-        title: estimateTitle.trim(),
-      },
-      ...currentRecords,
-    ]);
-    setEstimateTitle('');
+    const savedRows = rows
+      .filter(hasRowInput)
+      .map(({ manufacturer, machineName, quantity, price, memo }) => ({
+        manufacturer: manufacturer.trim(),
+        machineName: machineName.trim(),
+        quantity: quantity.trim(),
+        price: price.trim(),
+        memo: memo.trim(),
+      }));
+    const nextRecord: EstimateRecord = {
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      template: '簡単見積りテンプレート',
+      title: estimateTitle.trim(),
+      rows: savedRows,
+    };
+
+    setEstimateRecords((currentRecords) => [nextRecord, ...currentRecords]);
+    setActiveEstimateId(nextRecord.id);
+    setStatusMessage({
+      type: 'success',
+      text: `「${nextRecord.title}」を登録しました`,
+    });
     setActiveTab('list');
   };
 
@@ -328,30 +450,24 @@ export default function EstimatePage() {
       memo: string;
     }>,
   ) => {
-    setRows((currentRows) => {
-      const nextLength = Math.max(
-        currentRows.length,
-        importRows.length || currentRows.length,
-      );
-      return Array.from({ length: nextLength }, (_, index) => {
-        const imported = importRows[index];
-        return {
-          id: index + 1,
-          manufacturer: imported?.manufacturer ?? '',
-          machineName: imported?.machineName ?? '',
-          quantity: imported?.quantity ?? '',
+    setRows(
+      buildEditableRows(
+        importRows.map((row) => ({
+          manufacturer: row.manufacturer,
+          machineName: row.machineName,
+          quantity: row.quantity,
           price: '',
-          memo: imported?.memo ?? '',
-        };
-      });
-    });
+          memo: row.memo,
+        })),
+      ),
+    );
   };
 
   const handleFileSelect = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = event.target.files?.[0];
-    setImportMessage(null);
+    setStatusMessage(null);
 
     if (!file) {
       setSelectedFileName('ファイル未選択');
@@ -364,12 +480,13 @@ export default function EstimatePage() {
     try {
       const importedRows = await parseEstimateImportFile(file);
       resetRowsWithImportedData(importedRows);
-      setImportMessage({
+      setActiveEstimateId(null);
+      setStatusMessage({
         type: 'success',
         text: `${importedRows.length}件取り込みました`,
       });
     } catch {
-      setImportMessage({
+      setStatusMessage({
         type: 'error',
         text: '取込みに失敗しました。テンプレート形式をご確認ください。',
       });
@@ -377,6 +494,17 @@ export default function EstimatePage() {
       setIsImporting(false);
       event.target.value = '';
     }
+  };
+
+  const handleOpenEstimate = (record: EstimateRecord) => {
+    setActiveEstimateId(record.id);
+    setEstimateTitle(record.title);
+    setRows(buildEditableRows(record.rows));
+    setStatusMessage({
+      type: 'success',
+      text: `「${record.title}」を読み込みました`,
+    });
+    setActiveTab('register');
   };
 
   return (
@@ -456,19 +584,19 @@ export default function EstimatePage() {
                 <span className="truncate">{selectedFileName}</span>
               </span>
             </div>
-            {(isImporting || importMessage) && (
+            {(isImporting || statusMessage) && (
               <div className="w-full text-sm">
                 {isImporting ? (
                   <p className="text-slate-600">取込中...</p>
-                ) : importMessage ? (
+                ) : statusMessage ? (
                   <p
                     className={
-                      importMessage.type === 'error'
+                      statusMessage.type === 'error'
                         ? 'text-red-600'
                         : 'text-emerald-600'
                     }
                   >
-                    {importMessage.text}
+                    {statusMessage.text}
                   </p>
                 ) : null}
               </div>
@@ -641,6 +769,11 @@ export default function EstimatePage() {
                 className="h-9 rounded-md border border-slate-300 px-3 text-sm text-slate-800 outline-none transition focus:border-sky-400"
               />
             </label>
+            {activeEstimateId !== null && (
+              <p className="pb-2 text-xs text-slate-500">
+                一覧から開いた見積りを編集中
+              </p>
+            )}
             <button
               type="button"
               onClick={handleRegisterEstimate}
@@ -709,6 +842,9 @@ export default function EstimatePage() {
                     <th className="border-b border-slate-200 px-3 py-2 font-semibold">
                       タイトル
                     </th>
+                    <th className="w-24 border-b border-slate-200 px-3 py-2 font-semibold">
+                      操作
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -718,13 +854,22 @@ export default function EstimatePage() {
                       className="border-b border-slate-200 last:border-0"
                     >
                       <td className="px-3 py-2 text-slate-700">
-                        {record.createdAt.toLocaleString('ja-JP')}
+                        {new Date(record.createdAt).toLocaleString('ja-JP')}
                       </td>
                       <td className="px-3 py-2 text-slate-700">
                         {record.template}
                       </td>
                       <td className="px-3 py-2 text-slate-900">
                         {record.title}
+                      </td>
+                      <td className="px-3 py-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEstimate(record)}
+                          className="inline-flex h-7 items-center rounded-md border border-slate-300 bg-white px-2.5 text-xs font-medium text-slate-700 transition hover:bg-slate-50"
+                        >
+                          開く
+                        </button>
                       </td>
                     </tr>
                   ))}
