@@ -857,7 +857,7 @@ export default function LpPage() {
   <div className="mx-auto w-full max-w-7xl px-6 py-24 lg:py-28">
     <div className="max-w-3xl" data-reveal>
       <h2 className="mt-3 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">
-        導入フロー
+        導入の流れ
       </h2>
       <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
         登録から取引開始まではシンプルな3ステップで始められます。
