@@ -1,51 +1,11 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useState } from 'react';
-import {
-  UserPlus,
-  ClipboardList,
-  Handshake,
-  Search,
-  Phone,
-  Files,
-  MessageSquare,
-  Zap,
-  Check,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { useEffect } from 'react';
+import { UserPlus,ClipboardList,Handshake,Search,Phone, Files,MessageSquare,Zap,Check} from 'lucide-react';
 
-const HERO_SLIDES = [
-  {
-    image: '/lp/office1.png',
-    alt: 'オフィス風景',
-    eyebrow: '取引をもっと見やすく',
-    title: '掲載・問い合わせ・進行管理を\nひとつの流れで',
-    body: '電話中心の運用はそのままに、必要な情報だけを整理して見やすくまとめます。',
-  },
-  {
-    image: '/lp/souko.png',
-    alt: '倉庫風景',
-    eyebrow: '現場の動きもつながる',
-    title: '倉庫・在庫の流れも\nイメージしやすく',
-    body: '売買だけでなく、その先の現場運用も見据えた使いやすさを目指しています。',
-  },
-  {
-    image: '/lp/listings.png',
-    alt: 'パチマート画面',
-    eyebrow: '画面からすぐ確認',
-    title: '出品一覧や取引状況を\n分かりやすく表示',
-    body: '必要な情報を探しやすく、比較しやすいUIで日々の確認をスムーズにします。',
-  },
-  {
-    image: '/lp/campaign.png',
-    alt: 'パチマート画面',
-    eyebrow: '画面からすぐ確認',
-    title: '出品一覧や取引状況を\n分かりやすく表示',
-    body: '必要な情報を探しやすく、比較しやすいUIで日々の確認をスムーズにします。',
-  },
-] as const;
+const HERO_IMAGE_SRC = '/lp/hero.jpg';
+const HERO_VIDEO_SRC = '/lp/hero.mp4';
 
 const NEWS_ITEMS = [
   {
@@ -130,39 +90,29 @@ const COST_CARDS = [
 
 const FLOW_STEPS = [
   {
-    step: 1,
+    step: '1',
     title: 'Webで無料登録',
-    description:
-      '新規登録ボタンをクリック',
     Icon: UserPlus,
     tone: {
-      fg: 'text-emerald-600',
-      bg: 'bg-emerald-50/70',
-      border: 'border-emerald-100',
+      bg: 'bg-emerald-50',
+      fg: 'text-emerald-700',
+      ring: 'ring-emerald-200/70',
     },
   },
   {
-    step: 2,
+    step: '2',
     title: '基本情報を入力',
-    description:
-      '担当者や企業情報を入力のうえ、登録申請',
     Icon: ClipboardList,
-    tone: {
-      fg: 'text-sky-600',
-      bg: 'bg-sky-50/70',
-      border: 'border-sky-100',
-    },
+    tone: { bg: 'bg-sky-50', fg: 'text-sky-700', ring: 'ring-sky-200/70' },
   },
   {
-    step: 3,
+    step: '3',
     title: '取引を始める',
-    description:
-      '承認後、取引を進められます。',
     Icon: Handshake,
     tone: {
-      fg: 'text-amber-600',
-      bg: 'bg-amber-50/70',
-      border: 'border-amber-100',
+      bg: 'bg-amber-50',
+      fg: 'text-amber-800',
+      ring: 'ring-amber-200/70',
     },
   },
 ] as const;
@@ -290,7 +240,6 @@ function DotPattern() {
 }
 
 export default function LpPage() {
-  const [activeHeroSlide, setActiveHeroSlide] = useState(0);
   useEffect(() => {
     const targets = document.querySelectorAll<HTMLElement>('[data-reveal]');
     const observer = new IntersectionObserver(
@@ -308,52 +257,48 @@ export default function LpPage() {
     targets.forEach((target) => observer.observe(target));
     return () => observer.disconnect();
   }, []);
-  useEffect(() => {
-    const timer = window.setInterval(() => {
-      setActiveHeroSlide((prev) => (prev + 1) % HERO_SLIDES.length);
-    }, 4500);
 
-    return () => window.clearInterval(timer);
-  }, []);
   return (
     <div className="text-slate-900">
 
 
-        {/* HERO */}
-      <section className="relative overflow-hidden bg-[#F4F5F7]">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.95),rgba(244,245,247,0.9)_45%,rgba(244,245,247,1)_100%)]" />
-        <div className="relative mx-auto grid w-full max-w-7xl items-center gap-8 px-6 py-8 lg:grid-cols-2 lg:gap-10 lg:py-10">   
-         
-         {/* 左カラム */}
-          <div className="max-w-2xl space-y-8" data-reveal>
-            <div className="space-y-3">
-              <p className="text-xl font-bold tracking-tight text-slate-700 sm:text-2xl">
-                中古遊技機 売買サイト
-              </p>
+      {/* HERO */}
+<section className="relative overflow-hidden bg-[#F4F5F7]">
+  <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.95),rgba(244,245,247,0.9)_45%,rgba(244,245,247,1)_100%)]" />
 
-              <img
-                src="/lp/logo.png"
-                alt="パチマート"
-                className="h-14 sm:h-16 lg:h-44 w-auto -ml-6"
-              />
-<br />
-              <h1 className="text-4xl font-semibold leading-tight text-slate-900 sm:text-5xl lg:text-6xl">
-                <span className="relative inline-block">
-                  中古機流通を
-                  <span className="absolute left-0 -bottom-1 h-2 w-[95%] bg-[#FFE066] -z-10" />
-                </span>
-                <br />
-                <span className="relative inline-block">
-                  よりスムーズに。
-                  <span className="absolute left-0 -bottom-1 h-2 w-[90%] bg-[#FFE066] -z-10" />
-                </span>
-              </h1>
+<div className="relative mx-auto grid w-full max-w-7xl items-center gap-10 px-6 py-10 lg:grid-cols-[0.95fr_1.05fr] lg:py-12">    {/* 左カラム */}
+    <div className="max-w-2xl space-y-8" data-reveal>
+      <div className="space-y-3">
+        <p className="text-xl sm:text-2xl font-bold tracking-tight text-slate-700">
+          中古遊技機 売買サイト
+        </p>
 
-              <p className="text-xl font-bold tracking-tight text-slate-700 sm:text-2xl">
-                誰もが安心して使える取引環境へ。
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-4">
+        <img
+          src="/lp/logo.png"
+          alt="パチマート"
+          className="h-16 sm:h-20 lg:h-60 -ml-10 sm:-ml-10 lg:-ml-10"
+        />
+
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold leading-tight text-slate-900">
+  <span className="relative inline-block">
+    中古機流通を
+    <span className="absolute left-0 -bottom-1 w-[95%] h-2 bg-[#FFE066] -z-10"></span>
+  </span>
+  <br />
+  <span className="relative inline-block">
+    よりスムーズに。
+    <span className="absolute left-0 -bottom-1 w-[90%] h-2 bg-[#FFE066] -z-10"></span>
+  </span>
+</h1>
+
+        <p className="text-xl sm:text-2xl font-bold tracking-tight text-slate-700">
+          誰もが安心して使える取引環境へ。
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-4">
+        <div className="flex flex-wrap gap-4">
+  {/* 新規登録（メインCTA） */}
   <a
     href="/register"
     className="inline-flex items-center justify-center rounded-full bg-gradient-to-b from-[#3BB4C6] to-[#2A8FA0] px-8 py-4 text-base font-semibold text-white shadow-lg shadow-black/10 transition hover:-translate-y-0.5"
@@ -361,6 +306,7 @@ export default function LpPage() {
     いますぐ新規登録
   </a>
 
+  {/* お問い合わせ（オレンジ） */}
   <a
     href="/contact"
     className="inline-flex items-center justify-center rounded-full bg-[#F39A2D] px-8 py-4 text-base font-semibold text-white shadow-md transition hover:-translate-y-0.5 hover:opacity-90"
@@ -368,79 +314,47 @@ export default function LpPage() {
     お問い合わせ
   </a>
 </div>
-          </div>
-
-          {/* 右カラム：スライド */}
-<div className="relative lg:h-full" data-reveal>
-  <div className="relative h-[420px] overflow-hidden rounded-[10px] border border-white/70 bg-white/70 shadow-[0_24px_56px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:h-[460px] lg:h-[520px]">
-    <div className="relative h-full w-full">
-      {HERO_SLIDES.map((slide, index) => (
-        <div
-          key={slide.alt}
-          className={[
-            'absolute inset-0 transition-all duration-700',
-            index === activeHeroSlide
-              ? 'translate-x-0 opacity-100'
-              : 'pointer-events-none translate-x-6 opacity-0',
-          ].join(' ')}
-        >
-          <Image
-            src={slide.image}
-            alt={slide.alt}
-            fill
-            className="object-cover"
-            priority={index === 0}
-          />
-        </div>
-      ))}
+      </div>
     </div>
 
-    {/* 矢印 */}
-    <button
-      type="button"
-      aria-label="前のスライド"
-      onClick={() =>
-        setActiveHeroSlide((prev) =>
-          prev === 0 ? HERO_SLIDES.length - 1 : prev - 1,
-        )
-      }
-      className="absolute left-4 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/90 p-3 text-slate-700 shadow-md transition hover:bg-white lg:inline-flex"
-    >
-      <ChevronLeft className="h-5 w-5" />
-    </button>
-
-    <button
-      type="button"
-      aria-label="次のスライド"
-      onClick={() =>
-        setActiveHeroSlide((prev) => (prev + 1) % HERO_SLIDES.length)
-      }
-      className="absolute right-4 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/90 p-3 text-slate-700 shadow-md transition hover:bg-white lg:inline-flex"
-    >
-      <ChevronRight className="h-5 w-5" />
-    </button>
-
-    {/* ドット */}
-    <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-      {HERO_SLIDES.map((_, index) => (
-        <button
-          key={index}
-          type="button"
-          aria-label={`スライド${index + 1}`}
-          onClick={() => setActiveHeroSlide(index)}
-          className={[
-            'h-2.5 rounded-full transition-all',
-            index === activeHeroSlide
-              ? 'w-8 bg-white'
-              : 'w-2.5 bg-white/55',
-          ].join(' ')}
-        />
-      ))}
-    </div>
+    {/* 右カラム：コラージュ */}
+<div className="relative hidden min-h-[430px] lg:block" data-reveal>
+  {/* 左上カード */}
+  <div className="absolute left-5 -top-10 z-10 h-[195px] w-[260px] overflow-hidden rounded-[36px] bg-white shadow-[0_16px_40px_rgba(15,23,42,0.10)]">
+    <Image
+      src="/lp/souko.png"
+      alt="倉庫風景"
+      fill
+      className="object-cover"
+    />
   </div>
+
+  {/* 右大カード */}
+  <div className="absolute right-0 top-20 z-20 h-[380px] w-[520px] overflow-hidden rounded-[56px] bg-white shadow-[0_24px_56px_rgba(15,23,42,0.14)]">
+    <Image
+      src="/lp/office1.png"
+      alt="オフィス風景"
+      fill
+      className="object-cover"
+    />
+  </div>
+
+  {/* 左下カード */}
+  <div className="absolute left-90 -bottom-20 z-30 h-[165px] w-[250px] overflow-hidden rounded-[36px] bg-white shadow-[0_16px_40px_rgba(15,23,42,0.10)]">
+    <Image
+      src="/lp/listings.png"
+      alt="パチマート画面"
+      fill
+      className="object-cover"
+    />
+  </div>
+
+  {/* 装飾用の薄い円 */}
+  <div className="absolute right-10 top-0 h-20 w-20 rounded-full bg-[#E8F4F6]" />
+  <div className="absolute bottom-0 right-8 h-16 w-16 rounded-full bg-[#FCE7D6]" />
 </div>
-        </div>
-      </section>
+  </div>
+</section>
 
       {/* 最新情報（Hero直下） */}
       <section className="border-b border-slate-200/70 bg-white">
@@ -611,7 +525,7 @@ export default function LpPage() {
   <div className="relative mx-auto w-full max-w-7xl space-y-12 px-6 py-20 sm:py-24 lg:py-28">
     <div className="max-w-3xl space-y-4" data-reveal>
       <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
-        取引のきっかけを逃さないための選択肢も
+        取引のきっかけを逃さないために
       </h2>
       <p className="text-base leading-relaxed text-slate-700 sm:text-lg">
         取引は今まで通り電話が中心。
@@ -684,7 +598,7 @@ export default function LpPage() {
       {/* 見出し */}
       <div className="max-w-3xl space-y-4" data-reveal>
         <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
-          通知機能を使うと情報が届きます
+          探さなくても情報が届きます
         </h2>
         <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
           新着出品・成約情報をLINEで受け取れる機能『パチ通知』搭載
@@ -729,319 +643,271 @@ export default function LpPage() {
   </div>
 </section>
 
-       {/* 料金・決済セクション */}
-<section className="border-t border-slate-200 bg-[#cae8f1]">
-  <div className="mx-auto w-full max-w-7xl px-6 py-24 lg:py-28">
-    <div className="text-center" data-reveal>
-      <h2 className="text-4xl font-bold text-slate-900 sm:text-4xl">
-        料金について
-      </h2>
-      <div className="mx-auto mt-5 h-1 w-28 rounded-full bg-[#52a7c1]" />
-    </div>
-
-    <div className="mt-14 space-y-10">
-      {/* 料金プランカード */}
-      <div
-        className="overflow-hidden rounded-[40px] bg-white px-8 py-10 shadow-[0_24px_60px_rgba(15,23,42,0.10)] sm:px-10 sm:py-12 lg:px-14 lg:py-16"
-        data-reveal
+      {/* コスト */}
+      <section
+        id="pricing"
+        className="relative scroll-mt-28 border-t border-slate-200/70 lg:scroll-mt-32"
+        style={{
+          backgroundImage: "url('/lp/cost-bg.jpg')",
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
       >
-        <div className="grid gap-10 lg:grid-cols-[180px_1fr] lg:gap-14">
-          {/* 左番号 */}
-          <div className="flex items-start lg:justify-center">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#52a7c1] text-4xl font-semibold text-[#52a7c1]">
-              01
-            </div>
+        {/* オーバーレイ */}
+        <div className="absolute inset-0 bg-[#F7FBFD]/10" />
+
+        <div className="relative mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-28">
+          <div className="max-w-3xl space-y-4" data-reveal>
+            <h2 className="text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">
+              導入コスト0円ですぐに使えます
+            </h2>
+            <p className="text-lg leading-relaxed text-slate-900 sm:text-lg">
+              登録・導入・初期設定にかかる費用は一切ありません。
+              <br />
+              まずはお試しください。
+            </p>
           </div>
 
-          {/* 右本文 */}
-          <div>
-            <h3 className="inline-block border-b-[6px] border-[#fed169] text-4xl font-semibold leading-tight text-slate-900">
-              月額料金制のサービスですが、
-              <br className="hidden sm:block" />
-              現在は無料でご利用いただけます
-            </h3>
-
-            <div className="mt-10 mx-auto grid max-w-5xl gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-              {/* テキスト */}
-              <div>
-                <p className="mt-6 text-xl leading-relaxed text-slate-700 sm:text-xl">
-                  登録・導入・初期設定にかかる費用は一切ありません。
-                  <br />
-                  <br />まずは実際に使っていただき、取引の現場で本当に役に立つ形へ
-                  育てていくことを優先しています。
-                  <br />
-                  <br />※将来的に有料化する場合も、事前にご案内します。
+          <div className="grid gap-8 lg:grid-cols-3" data-reveal>
+            {COST_CARDS.map((card) => (
+              <div
+                key={card.title}
+                className="rounded-2xl border border-slate-200 bg-white p-10 shadow-sm"
+              >
+                <p className="text-base font-semibold text-slate-500">
+                  {card.title}
                 </p>
-
-                <div className="mt-8 space-y-4 text-slate-700">
-                </div>
+                <p className="mt-6 text-5xl font-semibold text-slate-900">
+                  {card.value}
+                </p>
               </div>
+            ))}
+          </div>
 
-              {/* イラスト */}
-              <div className="flex justify-center">
-                <img
-                  src="/lp/plan.png"
-                  alt="料金プランのイメージ"
-                  className="w-full max-w-md object-contain"
-                />
+          <p className="text-lg text-slate-900" data-reveal>
+            ※ 現在、サービス拡大のため無料で提供しています。
+          </p>
+        </div>
+      </section>
+
+      {/* なぜ無料なのか */}
+      <section className="bg-white border-t border-slate-200/70">
+        <div className="mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-28">
+          <div className="max-w-3xl space-y-4" data-reveal>
+            <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
+              なぜ、無料で提供できるのか
+            </h2>
+            <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
+              「まずは使っていただくこと」を最優先にしています。
+              <br />
+              取引の現場で“本当に役に立つ形”に育てるため、今は無料で提供しています。
+            </p>
+          </div>
+
+          <div className="grid gap-8 lg:grid-cols-2" data-reveal>
+            {WHY_FREE_POINTS.map((p) => (
+              <div
+                key={p.title}
+                className="rounded-2xl border border-slate-200 bg-[#F7FBFD] p-10 shadow-sm"
+              >
+                <p className="text-xl font-semibold text-slate-900">
+                  {p.title}
+                </p>
+                <p className="mt-4 text-base leading-relaxed text-slate-700">
+                  {p.body}
+                </p>
+                <p className="mt-4 text-sm text-slate-500">{p.note}</p>
+
+                {/* さりげない “比較の匂い” を出したいならここをON */}
+                {/* <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4 text-sm text-slate-600">
+            競合は月額の値上げ・決済手数料（330〜660円/台）が発生するケースがあります。
+          </div> */}
               </div>
-            </div>
+            ))}
           </div>
         </div>
-      </div>
-
-      {/* あんしん決済カード */}
-      <div
-        className="overflow-hidden rounded-[40px] bg-white px-8 py-10 shadow-[0_24px_60px_rgba(15,23,42,0.10)] sm:px-10 sm:py-12 lg:px-14 lg:py-16"
-        data-reveal
-      >
-        <div className="grid gap-10 lg:grid-cols-[180px_1fr] lg:gap-14">
-          {/* 左番号 */}
-          <div className="flex items-start lg:justify-center">
-            <div className="flex h-24 w-24 items-center justify-center rounded-full border-2 border-[#52a7c1] text-4xl font-semibold text-[#52a7c1]">
-              02
-            </div>
-          </div>
-
-          {/* 右本文 */}
-          <div>
-            <h3 className="inline-block border-b-[6px] border-[#fed169] text-4xl font-semibold leading-tight text-slate-900">
-              安全に取引を進めるための
-              <br className="hidden sm:block" />
-              あんしん決済も無料です
-            </h3>
-
-            <div className="mt-10 mx-auto grid max-w-5xl gap-10 lg:grid-cols-[1.2fr_0.8fr] lg:items-center">
-              {/* テキスト */}
-              <div>
-                <div className="mt-8 space-y-4 text-slate-700">
-                  <div>
-                    <p className="mt-1 text-xl leading-relaxed">
-                      GMOあおぞらネット銀行と連携することで
-                      <br />
-                      あんしん決済サービスを無料で提供することを実現しております。
-                    </p>
-                  </div>
-
-                  <div>
-                    <p className="mt-1 text-xl leading-relaxed">
-                      普段こうしたサービスをご利用の業者様にとっては、<br />
-                      決済関連コストの見直しにつながる可能性があります。
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* イラスト */}
-              <div className="flex justify-center">
-                <img
-                  src="/lp/bank.png"
-                  alt="あんしん決済のイメージ"
-                  className="w-full max-w-md object-contain"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <p className="px-2 text-lg leading-relaxed text-slate-700">
-        ※ 掲載内容は現在の提供内容に基づいています。今後料金体系を変更する場合は、事前にご案内します。
-      </p>
-    </div>
-  </div>
-</section>
+      </section>
 
       {/* フロー */}
-<section className="border-t border-slate-200/70 bg-white">
-  <div className="mx-auto w-full max-w-7xl px-6 py-24 lg:py-28">
-    <div className="max-w-3xl" data-reveal>
-      <h2 className="mt-3 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">
-        導入フロー
-      </h2>
-      <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
-        登録から取引開始まではシンプルな3ステップで始められます。
-      </p>
-    </div>
+      <section className="relative overflow-hidden bg-white border-t border-slate-200/70">
+        {/* ほんのり背景（やりすぎない） */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden="true"
+        >
+          <div className="absolute -right-40 top-12 h-[520px] w-[520px] rounded-full bg-[#E6F2F7]/45 blur-3xl" />
+          <div className="absolute -left-32 bottom-0 h-[420px] w-[420px] rounded-full bg-slate-100/60 blur-3xl" />
+        </div>
 
-    <div className="mt-16" data-reveal>
-      <div className="grid gap-12 lg:grid-cols-3">
-        {FLOW_STEPS.map((step) => {
-          const Icon = step.Icon;
+        <div className="relative mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-28">
+          <div className="max-w-3xl space-y-3" data-reveal>
+            <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
+              導入フロー
+            </h2>
+            <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
+              登録から取引開始まで特別な準備は必要ありません。
+            </p>
+          </div>
 
-          return (
-            <div key={step.step} className="relative">
-              {/* 番号＋アイコン */}
-              <div className="flex items-center gap-5">
-                <span className="text-4xl font-bold leading-none tracking-tight text-slate-500 sm:text-5xl">
-                  0{step.step}
-                </span>
+          {/* Steps */}
+          <div className="relative" data-reveal>
+            <div className="mx-auto flex max-w-5xl flex-col gap-10 text-center lg:flex-row lg:items-start lg:justify-between lg:gap-0">
+              {FLOW_STEPS.map((step) => {
+                const Icon = step.Icon;
+                return (
+                  <div
+                    key={step.step}
+                    className="flex w-full flex-col items-center lg:w-1/3"
+                  >
+                    {/* icon chip */}
+                    <div
+                      className={[
+                        'flex h-14 w-14 items-center justify-center rounded-2xl',
+                        'bg-gradient-to-b from-white to-slate-50',
+                        'ring-1 shadow-[0_10px_26px_rgba(15,23,42,0.10)]',
+                        step.tone.bg,
+                        step.tone.ring,
+                      ].join(' ')}
+                    >
+                      <Icon className={['h-7 w-7', step.tone.fg].join(' ')} />
+                    </div>
 
-                <div
-                  className={[
-                    'flex h-16 w-16 items-center justify-center rounded-2xl border-2',
-                    step.tone.bg,
-                    step.tone.border,
-                  ].join(' ')}
-                >
-                  <Icon className={['h-8 w-8', step.tone.fg].join(' ')} />
+                    <div className="mt-4 flex items-center gap-2 text-xs font-semibold text-slate-500">
+                      <span className="inline-flex h-6 w-6 items-center justify-center rounded-full border border-slate-200 bg-white">
+                        {step.step}
+                      </span>
+                      <span>STEP</span>
+                    </div>
+
+                    <p className="mt-3 text-base font-semibold text-slate-900 sm:text-lg">
+                      {step.title}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* コネクタ（PCだけ、ステップ間だけ） */}
+            <div
+              className="pointer-events-none absolute left-0 right-0 top-[28px] hidden lg:block"
+              aria-hidden="true"
+            >
+              <div className="mx-auto flex max-w-5xl items-center justify-between px-[16.66%]">
+                {/* 1→2 */}
+                <div className="flex items-center">
+                  <div className="h-px w-20 bg-slate-200/80" />
+                  <div className="ml-2 h-2 w-2 rotate-45 border-r-2 border-t-2 border-slate-200/80" />
+                </div>
+                {/* 2→3 */}
+                <div className="flex items-center">
+                  <div className="h-px w-20 bg-slate-200/80" />
+                  <div className="ml-2 h-2 w-2 rotate-45 border-r-2 border-t-2 border-slate-200/80" />
                 </div>
               </div>
-
-              {/* タイトル */}
-              <h3 className="mt-7 text-2xl font-semibold leading-snug text-slate-900">
-                {step.title}
-              </h3>
-
-              {/* 説明 */}
-              <p className="mt-4 text-base leading-8 text-slate-600">
-                {step.description}
-              </p>
-
-              {/* 下線 */}
-              <div
-                className={[
-                  'mt-8 h-1.5 w-full rounded-full',
-                  step.step === 1 && 'bg-emerald-200',
-                  step.step === 2 && 'bg-sky-200',
-                  step.step === 3 && 'bg-amber-200',
-                ]
-                  .filter(Boolean)
-                  .join(' ')}
-              />
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  </div>
-</section>
-
-     {/* キャンペーン */}
-<section
-  id="campaign"
-  className="relative overflow-hidden border-t border-slate-200/70"
->
-  {/* 背景画像 */}
-  <div className="absolute inset-0">
-    <img
-      src="/lp/campaign-haikei.png" // ←用意した画像
-      alt=""
-      className="w-full h-full object-cover"
-    />
-
-    {/* 白オーバーレイ（重要） */}
-    <div className="absolute inset-0 bg-white/60" />
-
-    {/* ほんのり色味（任意） */}
-    <div className="absolute inset-0 bg-[#F9C97B]/20 mix-blend-multiply" />
-  </div>
-
-  <div className="relative mx-auto w-full max-w-7xl px-6 py-20 lg:py-24">
-    <div
-      className="relative mx-auto max-w-5xl overflow-hidden rounded-[36px] border border-white/80 bg-white/80 px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.12)] backdrop-blur-sm sm:px-10 sm:py-10 lg:px-14 lg:py-12"
-      data-reveal
-    >
-      {/* 内側のうっすら光 */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(255,255,255,0.72)_42%,rgba(255,255,255,0.38)_100%)]" />
-
-      <div className="relative">
-        {/* 上部ラベルエリア */}
-<div className="relative flex flex-col items-center justify-center text-center">
-  {/* クラッカー（左上・大きめ・浮遊アニメーション） */}
-  <img
-    src="/lp/kurakka-.png"
-    alt=""
-    className="
-      pointer-events-none absolute
-      -left-20 -top-2
-      w-40 sm:w-48 lg:w-80
-      rotate-[-14deg]
-      drop-shadow-[0_20px_40px_rgba(15,23,42,0.28)]
-      animate-[campaignFloat_3.2s_ease-in-out_infinite]
-    "
-  />
-
-
-  {/* 横並びラベル */}
- <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
-
-  <span className="
-    inline-flex items-center
-    rounded-full
-    bg-gradient-to-b from-[#E79B2E] to-[#C97514]
-    
-    px-8 py-4
-    sm:px-10 sm:py-5
-    
-    text-xl sm:text-2xl lg:text-3xl
-    font-bold
-    tracking-tight
-    
-    text-white
-    
-    shadow-[0_12px_30px_rgba(201,117,20,0.35)]
-    
-    transition
-  ">
-    体験キャンペーン開催中
-  </span>
-
-</div>
-</div>
-
-        {/* メインコピー */}
-<div className="mt-10 text-center">
-  <p className="
-  text-[clamp(1.8rem,3.5vw,3rem)]
-  font-bold
-  leading-tight
-  tracking-tight
-  text-slate-700
-">
-  売っても買っても
-</p>
-
-  <p className="mt-3 flex flex-wrap items-end justify-center gap-x-2 gap-y-1 text-slate-700">
-    <span className="text-[clamp(1.9rem,3.2vw,3.1rem)] font-bold leading-none">
-      1台ごとに
-    </span>
-
-    <span className="bg-gradient-to-b from-[#F8C54B] to-[#E39A17] bg-clip-text text-[clamp(3.3rem,7vw,6rem)] font-black leading-none text-transparent">
-      2,000円
-    </span>
-
-    <span className="text-[clamp(1.9rem,3.2vw,3.1rem)] font-bold leading-none">
-      プレゼント
-    </span>
-  </p>
-</div>
-
-        {/* 補足情報 */}
-        <div className="mt-10 flex justify-center">
-          <div className="max-w-2xl rounded-2xl bg-white/72 px-6 py-5 text-left text-sm leading-relaxed text-slate-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:text-base">
-            <div className="space-y-3">
-              <p>
-                <span className="font-semibold text-slate-700">条件：</span>
-                本体5万円以上の取引で、取引が最後まで完了していること。
-              </p>
-
-              <p>
-                <span className="font-semibold text-slate-700">お支払い：</span>
-                月末締め／翌月20日に指定口座へお振込みします。
-              </p>
-
-              <p>
-                <span className="font-semibold text-slate-700">終了条件：</span>
-                予算上限に達し次第、終了となります。
-              </p>
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  </div>
-</section>
+      </section>
+
+      {/* キャンペーン（強調版） */}
+      <section className="relative overflow-hidden border-t border-slate-200/70 bg-gradient-to-b from-[#E6F2F7] via-white to-[#F7FBFD]">
+        {/* 装飾レイヤー */}
+        <div
+          className="pointer-events-none absolute inset-0"
+          aria-hidden="true"
+        >
+          <div className="absolute -top-40 left-1/2 h-[640px] w-[640px] -translate-x-1/2 rounded-full bg-[#2A8FA0]/20 blur-3xl" />
+          <div className="absolute -bottom-40 right-[-120px] h-[520px] w-[520px] rounded-full bg-[#3BB4C6]/25 blur-3xl" />
+        </div>
+
+        <div className="relative mx-auto w-full max-w-7xl space-y-16 px-6 py-32 lg:py-36">
+          {/* ヘッダー */}
+          <div className="mx-auto max-w-3xl text-center space-y-6" data-reveal>
+            <div
+              className="inline-flex items-center gap-3 rounded-full 
+                bg-[#2A8FA0] px-8 py-3 
+                text-base font-semibold text-white 
+                shadow-lg shadow-[#2A8FA0]/30"
+            >
+              体験キャンペーン実施中
+            </div>
+
+            <h2 className="text-balance text-4xl font-semibold leading-tight text-slate-900 sm:text-5xl">
+              対象取引 <span className="text-[#2A8FA0]">1台につき</span>
+              <br />
+              <span className="text-5xl sm:text-6xl">2,000円</span> を進呈
+            </h2>
+
+            <p className="text-base leading-relaxed text-slate-700 sm:text-lg">
+              パチマートの取引フローを、実際の取引で体験していただくための
+              <br className="hidden sm:block" />
+              期間限定キャンペーンです。
+            </p>
+          </div>
+
+          {/* コンテンツ */}
+          <div className="grid gap-10 lg:grid-cols-2" data-reveal>
+            {/* 左：条件 */}
+            <div className="rounded-3xl border border-slate-200 bg-white/95 p-10 shadow-lg backdrop-blur-[2px]">
+              <h3 className="text-lg font-semibold text-slate-900">
+                キャンペーン概要
+              </h3>
+
+              <dl className="mt-6 space-y-5">
+                {CAMPAIGN_POINTS.map((p) => (
+                  <div key={p.title}>
+                    <dt className="text-sm font-semibold text-slate-500">
+                      {p.title}
+                    </dt>
+                    <dd className="mt-1 text-base text-slate-900">{p.body}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+
+            {/* 右：数字＋CTA（重複ゼロ版） */}
+            <div className="rounded-3xl border border-[#2A8FA0]/30 bg-white/95 p-10 shadow-xl backdrop-blur-[2px]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-s font-semibold text-slate-500">
+                    キャンペーン特典
+                  </p>
+                </div>
+
+                {/* バッジ（目立つけど煽らない） */}
+                <span className="rounded-full bg-[#2A8FA0] px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                  期間限定
+                </span>
+              </div>
+
+              {/* 金額 */}
+              <div className="mt-7 flex items-end gap-3">
+                <span className="text-6xl font-semibold tracking-tight text-[#2A8FA0]">
+                  2,000
+                </span>
+                <span className="mb-2 text-lg font-semibold text-slate-700">
+                  円 / 1台
+                </span>
+              </div>
+
+              {/* CTA */}
+              <div className="mt-10 flex flex-wrap gap-4">
+                <a
+                  href="/signup"
+                  className="inline-flex items-center justify-center rounded-full bg-gradient-to-b from-[#3BB4C6] to-[#2A8FA0] px-10 py-4 text-base font-semibold text-white shadow-lg shadow-black/15 transition hover:-translate-y-0.5"
+                >
+                  いますぐ新規登録
+                </a>
+              </div>
+
+              {/* 注釈（終了条件だけ） */}
+              <div className="mt-7 rounded-2xl bg-[#F7FBFD] p-4 text-s leading-relaxed text-slate-600">
+                ※ 予算上限に達し次第、終了となります。
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Proof（Step4：最終版） */}
       <section className="border-t border-slate-200/70 bg-[#eaeef6]">
