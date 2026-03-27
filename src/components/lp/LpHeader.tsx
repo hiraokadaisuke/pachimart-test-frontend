@@ -3,13 +3,20 @@
 import Image from 'next/image';
 import Link from 'next/link';
 
-const navLinks = [
+type NavLink = {
+  label: string;
+  href: string;
+  variant?: 'featured';
+};
+
+const navLinks: NavLink[] = [
   { label: 'ホーム', href: '/' },
-  { label: '料金体系', href: '#pricing' },
   {
     label: '出品一覧',
     href: 'https://pachimart.jp/search/exhibit?kind=1&sort%5Btarget%5D=updated_at&sort%5Bdesc_order%5D=1',
+    variant: 'featured',
   },
+  { label: '料金体系', href: '#pricing' },
   {
     label: '登録業者様一覧',
     href: 'https://pachimart.com/registered-sellers/',
@@ -21,19 +28,36 @@ const navLinks = [
     href: 'https://pachimart.jp/login?redirectTo=/mypage/exhibits',
   },
   { label: '新規登録', href: 'https://pachimart.jp/register' },
-] as const;
+];
 
 const ctaLink = {
   label: 'お問い合わせ',
   href: 'https://pachimart.com/contact/',
 } as const;
 
-function HeaderLink({ href, label }: { href: string; label: string }) {
+function HeaderLink({
+  href,
+  label,
+  variant,
+}: {
+  href: string;
+  label: string;
+  variant?: 'featured';
+}) {
+  const baseClassName =
+    'transition-colors duration-200 hover:text-slate-950';
+
+const featuredClassName =
+  'inline-flex h-10 items-center justify-center rounded-full bg-[#52a7c1] px-4 text-[13px] font-bold text-white shadow-md transition duration-200 hover:bg-[#3e8fa6] hover:shadow-[0_12px_24px_-14px_rgba(82,167,193,0.9)] xl:text-sm';
+ 
+  const className =
+    variant === 'featured' ? featuredClassName : baseClassName;
+
   if (href === '#pricing') {
     return (
       <a
         href={href}
-        className="transition-colors duration-200 hover:text-slate-950"
+        className={className}
         onClick={(event) => {
           event.preventDefault();
           const pricingSection = document.getElementById('pricing');
@@ -42,10 +66,12 @@ function HeaderLink({ href, label }: { href: string; label: string }) {
           const prefersReducedMotion = window.matchMedia(
             '(prefers-reduced-motion: reduce)',
           ).matches;
+
           pricingSection.scrollIntoView({
             behavior: prefersReducedMotion ? 'auto' : 'smooth',
             block: 'start',
           });
+
           window.history.replaceState(null, '', '#pricing');
         }}
       >
@@ -55,21 +81,20 @@ function HeaderLink({ href, label }: { href: string; label: string }) {
   }
 
   if (href.startsWith('http')) {
-    return (
-      <a
-        href={href}
-        className="transition-colors duration-200 hover:text-slate-950"
-      >
-        {label}
-      </a>
-    );
-  }
+  return (
+    <a
+      href={href}
+      className={className}
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      {label}
+    </a>
+  );
+}
 
   return (
-    <Link
-      href={href}
-      className="transition-colors duration-200 hover:text-slate-950"
-    >
+    <Link href={href} className={className}>
       {label}
     </Link>
   );
@@ -104,7 +129,11 @@ export function LpHeader() {
                   key={`${link.label}-${link.href}`}
                   className="whitespace-nowrap"
                 >
-                  <HeaderLink href={link.href} label={link.label} />
+                  <HeaderLink
+                    href={link.href}
+                    label={link.label}
+                    variant={link.variant}
+                  />
                 </li>
               ))}
             </ul>
@@ -112,6 +141,8 @@ export function LpHeader() {
 
           <a
             href={ctaLink.href}
+            target="_blank"
+            rel="noreferrer"
             className="inline-flex h-11 shrink-0 items-center justify-center self-start rounded-full bg-[#f7941d] px-6 text-sm font-bold text-white shadow-[0_12px_24px_-14px_rgba(247,148,29,0.95)] transition duration-200 hover:-translate-y-0.5 hover:bg-[#ef8610] hover:shadow-[0_18px_30px_-16px_rgba(247,148,29,0.95)] lg:self-auto"
           >
             {ctaLink.label}

@@ -234,12 +234,12 @@ const GROWTH_STATS = [
 const PROOF_LITE = [
   {
     src: '/lp/navi-list.png',
-    title: '取引ナビ',
-    body: '進捗や条件を、取引ごとに確認できます。',
+    title: 'ナビ作成ページ',
+    body: '電話での合意内容をまとめて取引先に送信します。',
   },
   {
     src: '/lp/listings.png',
-    title: '出品一覧',
+    title: '商品一覧ページ',
     body: '探す・比較する・問い合わせまでをシンプルに。',
   },
 ] as const;
@@ -508,25 +508,24 @@ export default function LpPage() {
       </section>
 
      {/* 取引フロー + ナビ機能 */}
-<section
-  id="navi"
-  className="relative overflow-hidden border-b border-slate-200/70 bg-gradient-to-b from-white to-[#F7FBFD]"
->
-  <div
-    className="pointer-events-none absolute inset-0"
-    aria-hidden="true"
-  >
-    <div className="absolute right-[-120px] top-10 h-[320px] w-[320px] rounded-full bg-[#E6F2F7]/70 blur-3xl" />
-    <div className="absolute left-[-100px] bottom-0 h-[260px] w-[260px] rounded-full bg-slate-100/80 blur-3xl" />
-  </div>
+<section className="border-t border-slate-200/70 bg-[linear-gradient(180deg,#f8fcff_0%,#ffffff_100%)]">
+  <div className="mx-auto w-full max-w-7xl px-6 py-24 lg:py-28">
 
-  <div className="relative mx-auto w-full max-w-7xl px-6 py-20 sm:py-24 lg:py-28">
-    {/* 見出し */}
-    <div className="mx-auto max-w-4xl text-center" data-reveal>
-      <h2 className="text-xl font-bold tracking-tight text-slate-900 sm:text-4xl lg:text-4xl">
-        業界で慣れている取引フローをベースに設計
+    {/* タイトル */}
+    <div className="text-center" data-reveal>
+      <h2 className="text-4xl font-bold text-slate-900 sm:text-4xl">
+        パチマートの取引方法
       </h2>
-      <p className="mt-5 text-base leading-relaxed text-slate-600 sm:text-lg">
+      <div className="mx-auto mt-5 h-1 w-28 rounded-full bg-[#52a7c1]" />
+    </div>
+
+    {/* 説明 */}
+    <div className="mx-auto mt-10 max-w-4xl text-center" data-reveal>
+      <h3 className="text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">
+        業界で使い慣れているナビ機能を実装
+      </h3>
+
+      <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
         掲載情報を見て、電話で問い合わせ、ナビでやり取りを整理。
         <br className="hidden sm:block" />
         これまでの進め方を変えすぎず、必要な情報だけ見やすくまとめています。
@@ -579,93 +578,23 @@ export default function LpPage() {
     
 </section>
 
-      {/* きっかけ（画像背景） */}
-<section className="relative overflow-hidden border-t border-slate-200/70 lg:min-h-[80vh]">
-  {/* 背景画像 */}
-  <div className="absolute inset-0">
-    <Image
-      src="/lp/MTG.png"
-      alt=""
-      fill
-      className="object-cover object-[62%_center]"
-      priority={false}
-    />
-
-    {/* 全体をしっかり白寄せ */}
-    <div className="absolute inset-0 bg-white/86" />
-
-    {/* 左側の文字エリアをさらに読みやすく */}
-    <div className="absolute inset-0 bg-gradient-to-r from-white/92 via-white/68 to-white/28" />
-
-    {/* ほんのり空気感だけ足す */}
-    <div className="absolute inset-0 bg-[#EAF4F7]/18" />
-  </div>
-
-{/* 白ベース強化 */}
-<div className="absolute inset-0 bg-white/92" />
-
-{/* 左だけさらに白 */}
-<div className="absolute inset-0 bg-gradient-to-r from-white via-white/98 to-transparent" />
-
-  {/* 中身 */}
-  <div className="relative mx-auto w-full max-w-7xl space-y-12 px-6 py-20 sm:py-24 lg:py-28">
-    <div className="max-w-3xl space-y-4" data-reveal>
-      <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
-        取引のきっかけを逃さないための選択肢も
-      </h2>
-      <p className="text-base leading-relaxed text-slate-700 sm:text-lg">
-        取引は今まで通り電話が中心。
-        <br />
-        必要な場面だけ使える新しい取引の選択肢もご用意しています。
-      </p>
-    </div>
-
-    <div className="grid gap-10 lg:grid-cols-2" data-reveal>
-      {OPPORTUNITY_CARDS.map((card) => (
-        <div
-          key={card.title}
-          className="group rounded-2xl border border-slate-200 bg-white/95 p-10
-            shadow-[0_14px_36px_rgba(15,23,42,0.10)]
-            backdrop-blur-sm
-            transition hover:-translate-y-0.5 hover:border-slate-300
-            hover:shadow-[0_18px_44px_rgba(15,23,42,0.12)]"
-        >
-          <div className="flex items-center gap-3 border-b border-[#E6F2F7] pb-4">
-            <div className={`h-6 w-1.5 rounded-full ${card.tone.accent}`} />
-            <h3 className="text-3xl font-bold tracking-tight text-slate-900">
-              {card.title}
-            </h3>
-          </div>
-
-          <p className="mt-5 text-base font-semibold leading-relaxed text-slate-700 sm:text-lg">
-            {card.lead}
-          </p>
-
-          <ul className="mt-6 space-y-4 text-base leading-relaxed text-slate-700">
-            {card.points.map((p) => (
-              <li key={p} className="flex items-start gap-3">
-                <span
-                  className="mt-0.5 inline-flex h-6 w-6 flex-none items-center justify-center rounded-full bg-[#EAF4F7] text-[#2A8FA0] ring-1 ring-[#D7E8EE]"
-                  aria-hidden="true"
-                >
-                  <Check className="h-4 w-4 stroke-[2.5]" />
-                </span>
-                <span>{p}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
-    </div>
-  </div>
-</section>
+      
 
       {/* 通知（LINE風） */}
 <section className="relative overflow-hidden border-t border-slate-200/70 bg-white">
   <div className="mx-auto w-full max-w-7xl px-6 py-24 lg:py-28">
-    {/* 右：人物画像（背景寄りに配置） */}
+
+    {/* タイトル */}
+    <div className="text-center" data-reveal>
+      <h2 className="text-4xl font-bold text-slate-900 sm:text-4xl">
+        パチマートのLINE通知機能
+      </h2>
+      <div className="mx-auto mt-5 h-1 w-28 rounded-full bg-[#52a7c1]" />
+    </div>
+
+    {/* 右：人物画像 */}
     <div
-      className="pointer-events-none absolute right-[6%] top-[140px] hidden lg:block"
+      className="pointer-events-none absolute right-[6%] top-[180px] hidden lg:block"
       data-reveal
       aria-hidden="true"
     >
@@ -680,12 +609,13 @@ export default function LpPage() {
     </div>
 
     {/* 左コンテンツ */}
-    <div className="relative z-10 max-w-[720px]">
+    <div className="relative z-10 mt-12 max-w-[720px]">
+
       {/* 見出し */}
       <div className="max-w-3xl space-y-4" data-reveal>
-        <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
+        <h3 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
           通知機能を使うと情報が届きます
-        </h2>
+        </h3>
         <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
           新着出品・成約情報をLINEで受け取れる機能『パチ通知』搭載
         </p>
@@ -855,16 +785,24 @@ export default function LpPage() {
       {/* フロー */}
 <section className="border-t border-slate-200/70 bg-white">
   <div className="mx-auto w-full max-w-7xl px-6 py-24 lg:py-28">
-    <div className="max-w-3xl" data-reveal>
-      <h2 className="mt-3 text-3xl font-bold leading-tight text-slate-900 sm:text-4xl">
+
+    {/* タイトル */}
+    <div className="text-center" data-reveal>
+      <h2 className="text-4xl font-bold text-slate-900 sm:text-4xl">
         導入までの流れ
       </h2>
-      <p className="mt-4 text-base leading-relaxed text-slate-600 sm:text-lg">
+      <div className="mx-auto mt-5 h-1 w-28 rounded-full bg-[#52a7c1]" />
+    </div>
+
+    {/* 説明 */}
+    <div className="mx-auto mt-10 max-w-3xl text-center" data-reveal>
+      <p className="text-base leading-relaxed text-slate-600 sm:text-lg">
         登録から取引開始まではシンプルな3ステップで始められます。
       </p>
     </div>
 
-    <div className="mt-16" data-reveal>
+    {/* ステップ */}
+    <div className="mt-14" data-reveal>
       <div className="grid gap-12 lg:grid-cols-3">
         {FLOW_STEPS.map((step) => {
           const Icon = step.Icon;
@@ -914,10 +852,11 @@ export default function LpPage() {
         })}
       </div>
     </div>
+
   </div>
 </section>
 
-     {/* キャンペーン */}
+    {/* キャンペーン */}
 <section
   id="campaign"
   className="relative overflow-hidden border-t border-slate-200/70"
@@ -925,161 +864,169 @@ export default function LpPage() {
   {/* 背景画像 */}
   <div className="absolute inset-0">
     <img
-      src="/lp/campaign-haikei.png" // ←用意した画像
+      src="/lp/campaign-haikei.png"
       alt=""
-      className="w-full h-full object-cover"
+      className="h-full w-full object-cover"
     />
-
-    {/* 白オーバーレイ（重要） */}
     <div className="absolute inset-0 bg-white/60" />
-
-    {/* ほんのり色味（任意） */}
     <div className="absolute inset-0 bg-[#F9C97B]/20 mix-blend-multiply" />
   </div>
 
-  <div className="relative mx-auto w-full max-w-7xl px-6 py-20 lg:py-24">
-    <div
-      className="relative mx-auto max-w-5xl overflow-hidden rounded-[36px] border border-white/80 bg-white/80 px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.12)] backdrop-blur-sm sm:px-10 sm:py-10 lg:px-14 lg:py-12"
-      data-reveal
-    >
-      {/* 内側のうっすら光 */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(255,255,255,0.72)_42%,rgba(255,255,255,0.38)_100%)]" />
+  <div className="relative">
+    {/* タイトル */}
+    <div className="mx-auto w-full max-w-7xl px-6 pt-20 text-center lg:pt-24" data-reveal>
+      <h2 className="text-4xl font-bold text-slate-900 sm:text-4xl">
+        キャンペーン
+      </h2>
+      <div className="mx-auto mt-5 h-1 w-28 rounded-full bg-[#52a7c1]" />
+    </div>
 
-      <div className="relative">
-        {/* 上部ラベルエリア */}
-<div className="relative flex flex-col items-center justify-center text-center">
-  {/* クラッカー（左上・大きめ・浮遊アニメーション） */}
-  <img
-    src="/lp/kurakka-.png"
-    alt=""
-    className="
-      pointer-events-none absolute
-      -left-20 -top-2
-      w-40 sm:w-48 lg:w-80
-      rotate-[-14deg]
-      drop-shadow-[0_20px_40px_rgba(15,23,42,0.28)]
-      animate-[campaignFloat_3.2s_ease-in-out_infinite]
-    "
-  />
+    {/* カード本体 */}
+    <div className="mx-auto w-full max-w-7xl px-6 pb-20 pt-12 lg:pb-24 lg:pt-14">
+      <div
+        className="relative mx-auto max-w-5xl overflow-hidden rounded-[36px] border border-white/80 bg-white/80 px-6 py-8 shadow-[0_24px_80px_rgba(0,0,0,0.12)] backdrop-blur-sm sm:px-10 sm:py-10 lg:px-14 lg:py-12"
+        data-reveal
+      >
+        {/* 内側のうっすら光 */}
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(255,255,255,0.72)_42%,rgba(255,255,255,0.38)_100%)]" />
 
+        <div className="relative">
+          {/* 上部ラベルエリア */}
+          <div className="relative flex flex-col items-center justify-center text-center">
+            <img
+              src="/lp/kurakka-.png"
+              alt=""
+              className="
+                pointer-events-none absolute
+                -left-20 -top-2
+                w-40 sm:w-48 lg:w-80
+                rotate-[-14deg]
+                drop-shadow-[0_20px_40px_rgba(15,23,42,0.28)]
+                animate-[campaignFloat_3.2s_ease-in-out_infinite]
+              "
+            />
 
-  {/* 横並びラベル */}
- <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6">
+              <span
+                className="
+                  inline-flex items-center
+                  rounded-full
+                  bg-gradient-to-b from-[#E79B2E] to-[#C97514]
+                  px-8 py-4
+                  text-xl font-bold tracking-tight text-white
+                  shadow-[0_12px_30px_rgba(201,117,20,0.35)]
+                  sm:px-10 sm:py-5 sm:text-2xl
+                  lg:text-3xl
+                "
+              >
+                体験キャンペーン開催中
+              </span>
+            </div>
+          </div>
 
-  <span className="
-    inline-flex items-center
-    rounded-full
-    bg-gradient-to-b from-[#E79B2E] to-[#C97514]
-    
-    px-8 py-4
-    sm:px-10 sm:py-5
-    
-    text-xl sm:text-2xl lg:text-3xl
-    font-bold
-    tracking-tight
-    
-    text-white
-    
-    shadow-[0_12px_30px_rgba(201,117,20,0.35)]
-    
-    transition
-  ">
-    体験キャンペーン開催中
-  </span>
+          {/* メインコピー */}
+          <div className="mt-10 text-center">
+            <p className="text-[clamp(1.8rem,3.5vw,3rem)] font-bold leading-tight tracking-tight text-slate-700">
+              売っても買っても
+            </p>
 
-</div>
-</div>
+            <p className="mt-3 flex flex-wrap items-end justify-center gap-x-2 gap-y-1 text-slate-700">
+              <span className="text-[clamp(1.9rem,3.2vw,3.1rem)] font-bold leading-none">
+                1台ごとに
+              </span>
 
-        {/* メインコピー */}
-<div className="mt-10 text-center">
-  <p className="
-  text-[clamp(1.8rem,3.5vw,3rem)]
-  font-bold
-  leading-tight
-  tracking-tight
-  text-slate-700
-">
-  売っても買っても
-</p>
+              <span className="bg-gradient-to-b from-[#F8C54B] to-[#E39A17] bg-clip-text text-[clamp(3.3rem,7vw,6rem)] font-black leading-none text-transparent">
+                2,000円
+              </span>
 
-  <p className="mt-3 flex flex-wrap items-end justify-center gap-x-2 gap-y-1 text-slate-700">
-    <span className="text-[clamp(1.9rem,3.2vw,3.1rem)] font-bold leading-none">
-      1台ごとに
-    </span>
+              <span className="text-[clamp(1.9rem,3.2vw,3.1rem)] font-bold leading-none">
+                プレゼント
+              </span>
+            </p>
+          </div>
 
-    <span className="bg-gradient-to-b from-[#F8C54B] to-[#E39A17] bg-clip-text text-[clamp(3.3rem,7vw,6rem)] font-black leading-none text-transparent">
-      2,000円
-    </span>
+          {/* 補足情報 */}
+          <div className="mt-10 flex justify-center">
+            <div className="max-w-2xl rounded-2xl bg-white/72 px-6 py-5 text-left text-sm leading-relaxed text-slate-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:text-base">
+              <div className="space-y-3">
+                <p>
+                  <span className="font-semibold text-slate-700">条件：</span>
+                  本体5万円以上の取引で、取引が最後まで完了していること。
+                </p>
 
-    <span className="text-[clamp(1.9rem,3.2vw,3.1rem)] font-bold leading-none">
-      プレゼント
-    </span>
-  </p>
-</div>
+                <p>
+                  <span className="font-semibold text-slate-700">お支払い：</span>
+                  月末締め／翌月20日に指定口座へお振込みします。
+                </p>
 
-        {/* 補足情報 */}
-        <div className="mt-10 flex justify-center">
-          <div className="max-w-2xl rounded-2xl bg-white/72 px-6 py-5 text-left text-sm leading-relaxed text-slate-600 shadow-[0_8px_24px_rgba(15,23,42,0.06)] backdrop-blur-sm sm:text-base">
-            <div className="space-y-3">
-              <p>
-                <span className="font-semibold text-slate-700">条件：</span>
-                本体5万円以上の取引で、取引が最後まで完了していること。
-              </p>
-
-              <p>
-                <span className="font-semibold text-slate-700">お支払い：</span>
-                月末締め／翌月20日に指定口座へお振込みします。
-              </p>
-
-              <p>
-                <span className="font-semibold text-slate-700">終了条件：</span>
-                予算上限に達し次第、終了となります。
-              </p>
+                <p>
+                  <span className="font-semibold text-slate-700">終了条件：</span>
+                  予算上限に達し次第、終了となります。
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </div>
     </div>
+
   </div>
 </section>
 
-      {/* Proof（Step4：最終版） */}
       <section className="border-t border-slate-200/70 bg-[#eaeef6]">
-        <div className="mx-auto w-full max-w-7xl space-y-12 px-6 py-24 lg:py-28">
-          <div className="max-w-3xl space-y-3" data-reveal>
-            <h2 className="text-3xl font-semibold leading-tight text-slate-900 sm:text-4xl">
-              実際の画面イメージ
-            </h2>
+  <div className="mx-auto w-full max-w-7xl space-y-8 px-6 py-16 lg:py-20">
+
+    {/* 見出し */}
+    <div className="text-center space-y-4" data-reveal>
+      <h2 className="text-3xl font-bold text-slate-900 sm:text-4xl">
+        実際の画面イメージ
+      </h2>
+      <div className="mx-auto h-1 w-20 rounded-full bg-[#52a7c1]" />
+      <p className="text-sm text-slate-600 sm:text-base">
+        実際の取引の流れや操作画面を一部ご紹介します
+      </p>
+    </div>
+
+    {/* カード */}
+    <div className="grid gap-6 lg:grid-cols-2" data-reveal>
+      {PROOF_LITE.map((item) => (
+        <div
+          key={item.title}
+          className="
+            group
+            overflow-hidden
+            rounded-2xl
+            border border-slate-200
+            bg-white
+            shadow-sm
+            transition
+            duration-300
+            hover:-translate-y-1
+            hover:shadow-[0_18px_40px_rgba(15,23,42,0.12)]
+          "
+        >
+          <div className="relative aspect-[16/9] bg-slate-50 overflow-hidden">
+            <Image
+              src={item.src}
+              alt={item.title}
+              fill
+              className="object-cover transition duration-500 group-hover:scale-[1.04]"
+            />
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-2" data-reveal>
-            {PROOF_LITE.map((item) => (
-              <div
-                key={item.title}
-                className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"
-              >
-                <div className="relative aspect-[16/9] bg-slate-50">
-                  <Image
-                    src={item.src}
-                    alt={item.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-
-                <div className="space-y-1 p-6">
-                  <p className="text-base font-semibold text-slate-900">
-                    {item.title}
-                  </p>
-                  <p className="text-sm leading-relaxed text-slate-600">
-                    {item.body}
-                  </p>
-                </div>
-              </div>
-            ))}
+          <div className="space-y-2 px-5 py-4">
+            <p className="text-xl font-bold text-slate-900">
+              {item.title}
+            </p>
+            <p className="text-base leading-relaxed text-slate-600">
+              {item.body}
+            </p>
           </div>
         </div>
-      </section>
+      ))}
+    </div>
+  </div>
+</section>
 
       {/* 登録が増えているイメージ */}
       <section className="border-t border-slate-200/70 bg-white">
