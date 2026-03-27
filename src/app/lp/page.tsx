@@ -370,77 +370,44 @@ export default function LpPage() {
 </div>
           </div>
 
-          {/* 右カラム：スライド */}
-<div className="relative lg:h-full" data-reveal>
-  <div className="relative h-[420px] overflow-hidden rounded-[10px] border border-white/70 bg-white/70 shadow-[0_24px_56px_rgba(15,23,42,0.12)] backdrop-blur-sm sm:h-[460px] lg:h-[520px]">
-    <div className="relative h-full w-full">
-      {HERO_SLIDES.map((slide, index) => (
-        <div
-          key={slide.alt}
-          className={[
-            'absolute inset-0 transition-all duration-700',
-            index === activeHeroSlide
-              ? 'translate-x-0 opacity-100'
-              : 'pointer-events-none translate-x-6 opacity-0',
-          ].join(' ')}
-        >
-          <Image
-            src={slide.image}
-            alt={slide.alt}
-            fill
-            className="object-cover"
-            priority={index === 0}
-          />
-        </div>
-      ))}
-    </div>
-
-    {/* 矢印 */}
-    <button
-      type="button"
-      aria-label="前のスライド"
-      onClick={() =>
-        setActiveHeroSlide((prev) =>
-          prev === 0 ? HERO_SLIDES.length - 1 : prev - 1,
-        )
-      }
-      className="absolute left-4 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/90 p-3 text-slate-700 shadow-md transition hover:bg-white lg:inline-flex"
-    >
-      <ChevronLeft className="h-5 w-5" />
-    </button>
-
-    <button
-      type="button"
-      aria-label="次のスライド"
-      onClick={() =>
-        setActiveHeroSlide((prev) => (prev + 1) % HERO_SLIDES.length)
-      }
-      className="absolute right-4 top-1/2 z-20 hidden -translate-y-1/2 items-center justify-center rounded-full bg-white/90 p-3 text-slate-700 shadow-md transition hover:bg-white lg:inline-flex"
-    >
-      <ChevronRight className="h-5 w-5" />
-    </button>
-
-    {/* ドット */}
-    <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 gap-2">
-      {HERO_SLIDES.map((_, index) => (
-        <button
-          key={index}
-          type="button"
-          aria-label={`スライド${index + 1}`}
-          onClick={() => setActiveHeroSlide(index)}
-          className={[
-            'h-2.5 rounded-full transition-all',
-            index === activeHeroSlide
-              ? 'w-8 bg-white'
-              : 'w-2.5 bg-white/55',
-          ].join(' ')}
-        />
-      ))}
-    </div>
-  </div>
-</div>
-        </div>
-      </section>
+          {/* 右カラム：コラージュ */}
+          <div className="relative hidden min-h-[430px] lg:block" data-reveal>
+            {/* 左上カード */}
+            <div className="absolute left-5 -top-10 z-10 h-[195px] w-[260px] overflow-hidden rounded-[36px] bg-white shadow-[0_16px_40px_rgba(15,23,42,0.10)]">
+              <Image
+                src="/lp/souko.png"
+                alt="倉庫風景"
+                fill
+                className="object-cover"
+              />
+            </div>
+          
+            {/* 右大カード */}
+            <div className="absolute right-0 top-20 z-20 h-[380px] w-[520px] overflow-hidden rounded-[56px] bg-white shadow-[0_24px_56px_rgba(15,23,42,0.14)]">
+              <Image
+                src="/lp/office1.png"
+                alt="オフィス風景"
+                fill
+                className="object-cover"
+              />
+            </div>
+          
+            {/* 左下カード */}
+            <div className="absolute left-100 -bottom-10 z-20 h-[165px] w-[250px] overflow-hidden rounded-[36px] bg-white shadow-[0_16px_40px_rgba(15,23,42,0.10)]">
+              <Image
+                src="/lp/listings.png"
+                alt="パチマート画面"
+                fill
+                className="object-cover"
+              />
+            </div>
+          
+            {/* 装飾用の薄い円 */}
+            <div className="absolute right-10 top-0 h-20 w-20 rounded-full bg-[#E8F4F6]" />
+            <div className="absolute bottom-0 right-8 h-16 w-16 rounded-full bg-[#FCE7D6]" />
+          </div>
+            </div>
+          </section>
 
       {/* 最新情報（Hero直下） */}
       <section className="border-b border-slate-200/70 bg-white">
