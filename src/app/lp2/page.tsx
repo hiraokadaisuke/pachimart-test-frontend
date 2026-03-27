@@ -276,9 +276,9 @@ export default function LpPage() {
         <img
           src="/lp/logo.png"
           alt="パチマート"
-          className="h-16 sm:h-20 lg:h-60 -ml-10 sm:-ml-10 lg:-ml-10"
+          className="h-14 sm:h-16 lg:h-44 w-auto -ml-6"
         />
-
+　　　　　<br />
         <h1 className="text-4xl sm:text-5xl lg:text-6xl font-semibold leading-tight text-slate-900">
   <span className="relative inline-block">
     中古機流通を
