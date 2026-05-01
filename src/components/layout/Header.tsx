@@ -64,24 +64,24 @@ export default function Header() {
 
   return (
     <header className="w-full border-b border-gray-200 bg-white">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-4 px-4 py-3 md:flex-nowrap md:py-4">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-wrap items-center gap-3 px-3 py-2.5 md:flex-nowrap md:py-3">
         <div className="flex items-center gap-6">
           <Link href="/market/products" className="flex items-center whitespace-nowrap">
-            <span className="text-xl font-bold text-[#0070a8]">パチマート</span>
+            <span className="text-lg font-bold tracking-tight text-[#0f2d62]">パチマート</span>
           </Link>
         </div>
 
         <nav className="flex w-full flex-1 items-center md:w-auto">
-          <ul className="flex w-full gap-2 overflow-x-auto whitespace-nowrap text-sm font-semibold text-neutral-900">
+          <ul className="flex w-full gap-1.5 overflow-x-auto whitespace-nowrap text-[13px] font-semibold text-slate-800">
             {navLinks.map((link) => {
               const active = isActiveLink(pathname, link.href, link.matchPrefixes);
               return (
                 <li key={link.href}>
                   <Link
                     href={link.href}
-                    className={`inline-flex h-10 items-center rounded-md px-3 transition ${
+                    className={`inline-flex h-8 items-center rounded-sm px-2.5 transition ${
                       active
-                        ? "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200"
+                        ? "bg-slate-100 text-[#0f2d62] ring-1 ring-inset ring-slate-300"
                         : "hover:bg-slate-100"
                     }`}
                   >
@@ -101,7 +101,7 @@ export default function Header() {
           </div>
         )}
 
-        <div className="ml-auto flex w-full flex-1 flex-wrap items-center justify-end gap-4 whitespace-nowrap md:w-auto md:flex-none">
+        <div className="ml-auto flex w-full flex-1 flex-wrap items-center justify-end gap-3 whitespace-nowrap md:w-auto md:flex-none">
           {!isProd && (
             <div className="flex items-center text-[12px] leading-tight text-gray-600">
               <div className="rounded border border-gray-300 bg-gray-50 px-2 py-1">
@@ -110,7 +110,7 @@ export default function Header() {
             </div>
           )}
           <div className="flex items-center gap-3 whitespace-nowrap">
-            <div className="text-right text-[11px] leading-tight text-neutral-900">
+            <div className="text-right text-[10px] leading-tight text-slate-700">
               <div className="font-semibold text-slate-900">
                 購入予定金額 <span className="text-red-600">{formatCurrency(balanceSummary.plannedPurchase)}</span>
               </div>
@@ -120,11 +120,11 @@ export default function Header() {
             <div className="flex items-center gap-2">
               <Link
                 href="/mypage/inquiry-messages"
-                className="flex h-9 items-center rounded border border-blue-600 bg-white px-3 text-sm text-blue-600 transition hover:bg-blue-50"
+                className="flex h-8 items-center rounded-sm border border-blue-600 bg-white px-2.5 text-[13px] text-blue-600 transition hover:bg-blue-50"
               >
                 お問い合わせ
               </Link>
-              <Link href="/sales" className="text-sm font-semibold text-neutral-800 transition hover:text-blue-700">
+              <Link href="/sales" className="text-[13px] font-semibold text-slate-800 transition hover:text-blue-700">
                 在庫管理 →
               </Link>
             </div>
