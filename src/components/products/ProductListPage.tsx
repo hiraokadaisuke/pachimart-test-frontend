@@ -344,7 +344,7 @@ export default function ProductListPage() {
         width: "72px",
         render: (row: Exhibit) =>
           row.status === "SOLD" ? (
-            <span className="rounded border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] text-neutral-700">
+            <span className="rounded bg-slate-100 px-2 py-[2px] text-[11px] font-medium text-slate-600">
               成約済
             </span>
           ) : (
@@ -363,7 +363,7 @@ export default function ProductListPage() {
         label: "機種名",
         width: "210px",
         render: (row: Exhibit) => (
-          <span className="text-sm font-semibold text-[#1e5aad] underline">
+          <span className="font-medium text-sky-600 hover:underline">
             {row.machineName ?? "機種名未設定"}
           </span>
         ),
@@ -419,7 +419,7 @@ export default function ProductListPage() {
   const renderSortLink = (label: string, key: SortKey) => (
     <button
       type="button"
-      className={`text-sm underline-offset-4 hover:underline ${
+      className={`text-[13px] underline-offset-2 hover:underline ${
         sortKey === key ? "font-semibold text-[#0f2d62]" : "text-slate-700"
       }`}
       onClick={() => setSortKey(key)}
@@ -429,17 +429,17 @@ export default function ProductListPage() {
   );
 
   return (
-    <div className="w-full bg-white">
-      <div className="w-full bg-[#0f2d62] text-white">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-3 px-4 py-4 xl:px-8">
-          <div className="flex items-center gap-2 rounded-md bg-white/5 p-1">
+    <div className="w-full bg-white text-[13px] text-slate-600">
+      <div className="w-full border-y border-[#0b2148] bg-[#102a57] text-white">
+        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-3 py-3 xl:px-6">
+          <div className="flex items-center gap-1 rounded-sm border border-white/25 bg-[#0b2148] p-0.5">
             {(Object.keys(EXHIBIT_TYPE_LABELS) as ExhibitType[]).map((type) => (
               <button
                 key={type}
                 type="button"
-                className={`rounded px-4 py-2 text-sm font-semibold transition ${
+                className={`rounded-sm px-3 py-1.5 text-[13px] font-semibold leading-5 transition ${
                   selectedType === type
-                    ? "bg-white text-[#0f2d62] shadow"
+                    ? "bg-white text-[#102a57]"
                     : "text-white hover:bg-white/10"
                 }`}
                 onClick={() => setSelectedType(type)}
@@ -450,7 +450,7 @@ export default function ProductListPage() {
           </div>
 
           <select
-            className="min-w-[200px] rounded border border-white/30 bg-white px-3 py-2 text-sm font-medium text-slate-900"
+            className="h-8 min-w-[180px] rounded-sm border border-white/35 bg-white px-2.5 text-[13px] text-slate-800"
             value={draftFilters.makerId}
             onChange={(event) => handleMakerChange(event.target.value)}
           >
@@ -463,7 +463,7 @@ export default function ProductListPage() {
           </select>
 
           <select
-            className="min-w-[220px] rounded border border-white/30 bg-white px-3 py-2 text-sm font-medium text-slate-900"
+            className="h-8 min-w-[210px] rounded-sm border border-white/35 bg-white px-2.5 text-[13px] text-slate-800"
             value={draftFilters.machineModelId}
             onChange={(event) =>
               setDraftFilters({ ...draftFilters, machineModelId: event.target.value })
@@ -477,7 +477,7 @@ export default function ProductListPage() {
             ))}
           </select>
 
-          <label className="flex items-center gap-2 text-sm font-semibold text-white">
+          <label className="flex items-center gap-2 text-[13px] font-semibold text-white">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border-white/30 bg-transparent text-[#0f2d62] focus:ring-white"
@@ -491,14 +491,14 @@ export default function ProductListPage() {
 
           <button
             type="button"
-            className="rounded border border-white/50 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10"
+            className="h-8 rounded-sm border border-white/40 px-3 text-[13px] font-semibold text-white hover:bg-white/10"
           >
             絞り込み条件を追加
           </button>
 
           <button
             type="button"
-            className="rounded bg-blue-600 px-5 py-2 text-sm font-semibold text-white shadow hover:bg-blue-700"
+            className="h-8 rounded-sm bg-[#2b66b8] px-4 text-[13px] font-semibold text-white hover:bg-[#2458a0]"
             onClick={handleSearch}
           >
             検索
@@ -506,9 +506,9 @@ export default function ProductListPage() {
         </div>
       </div>
 
-      <div className="w-full max-w-[1400px] mx-auto px-4 xl:px-8 py-6 space-y-4 bg-white">
+      <div className="mx-auto w-full max-w-[1400px] space-y-3 bg-white px-3 py-4 xl:px-6">
         {(estimateMachineName || estimateMaker || estimateSort === "price_desc" || estimateSort === "price_asc") && (
-          <div className="rounded-md border border-sky-200 bg-sky-50 px-4 py-2 text-sm text-sky-900">
+          <div className="rounded-sm border border-sky-200 bg-sky-50 px-3 py-1.5 text-[12px] text-sky-900">
             簡単見積りからの参照：
             {estimateMachineName ? ` 機種「${estimateMachineName}」` : ""}
             {estimateMaker ? ` メーカー「${estimateMaker}」` : ""}
@@ -517,15 +517,15 @@ export default function ProductListPage() {
           </div>
         )}
         <div className="space-y-1">
-          <div className="flex flex-wrap items-center gap-3 text-sm text-slate-700">
-            <span className="text-lg font-semibold text-[#0f2d62]">
+          <div className="flex flex-wrap items-center gap-2 text-[13px] text-slate-600">
+            <span className="text-base font-semibold text-slate-800">
               {EXHIBIT_TYPE_LABELS[selectedType]}商品一覧
             </span>
-            <span className="text-sm">対象機種：{filteredExhibits.length}件</span>
+            <span className="text-[13px]">対象機種：{filteredExhibits.length}件</span>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-4 text-sm">
+        <div className="flex items-center justify-end gap-3 text-[13px]">
           {renderSortLink("古い順", "oldest")}
           <span className="text-slate-300">|</span>
           {renderSortLink("新しい順", "newest")}
