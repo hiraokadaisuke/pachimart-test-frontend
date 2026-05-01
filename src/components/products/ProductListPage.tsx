@@ -344,7 +344,7 @@ export default function ProductListPage() {
         width: "72px",
         render: (row: Exhibit) =>
           row.status === "SOLD" ? (
-            <span className="rounded bg-slate-100 px-2 py-[2px] text-[11px] font-medium text-slate-600">
+            <span className="rounded-sm bg-slate-100 px-1.5 py-px text-[10px] font-normal text-slate-500">
               成約済
             </span>
           ) : (
@@ -357,13 +357,13 @@ export default function ProductListPage() {
         width: "92px",
         render: (row: Exhibit) => extractPrefecture(row),
       },
-      { key: "maker", label: "メーカー", width: "140px" },
+      { key: "maker", label: "メーカー", width: "120px" },
       {
         key: "machineName",
         label: "機種名",
-        width: "210px",
+        width: "240px",
         render: (row: Exhibit) => (
-          <span className="font-medium text-sky-600 hover:underline">
+          <span className="font-medium text-blue-600 hover:underline">
             {row.machineName ?? "機種名未設定"}
           </span>
         ),
@@ -371,37 +371,37 @@ export default function ProductListPage() {
       {
         key: "type",
         label: "タイプ",
-        width: "90px",
+        width: "74px",
         render: () => "-",
       },
       {
         key: "quantity",
         label: "台数",
-        width: "70px",
+        width: "56px",
         render: (row: Exhibit) => row.quantity,
       },
       {
         key: "unitPriceExclTax",
         label: "価格",
-        width: "110px",
-        render: (row: Exhibit) => formatPrice(row),
+        width: "96px",
+        render: (row: Exhibit) => <span className="font-semibold text-slate-800">{formatPrice(row)}</span>,
       },
       {
         key: "removalDate",
         label: "撤去日",
-        width: "110px",
+        width: "86px",
         render: (row: Exhibit) => resolveRemovalLabel(row),
       },
       {
         key: "seller",
         label: "出品者",
-        width: "170px",
+        width: "150px",
         render: (row: Exhibit) => getSellerCompanyName(row.sellerUserId),
       },
       {
         key: "note",
         label: "備考",
-        width: "200px",
+        width: "180px",
         render: (row: Exhibit) => row.note ?? "",
       },
     ],
@@ -429,15 +429,15 @@ export default function ProductListPage() {
   );
 
   return (
-    <div className="w-full bg-white text-[13px] text-slate-600">
+    <div className="w-full bg-white text-[12px] text-slate-700">
       <div className="w-full border-y border-[#0b2148] bg-[#102a57] text-white">
-        <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-2 px-3 py-3 xl:px-6">
-          <div className="flex items-center gap-1 rounded-sm border border-white/25 bg-[#0b2148] p-0.5">
+        <div className="mx-auto flex max-w-[1500px] flex-wrap items-center gap-1.5 px-2 py-2 xl:px-4">
+          <div className="flex items-center gap-1 border border-white/25 bg-[#0b2148] p-0.5">
             {(Object.keys(EXHIBIT_TYPE_LABELS) as ExhibitType[]).map((type) => (
               <button
                 key={type}
                 type="button"
-                className={`rounded-sm px-3 py-1.5 text-[13px] font-semibold leading-5 transition ${
+                className={`px-3 py-1 text-[12px] font-semibold leading-5 transition ${
                   selectedType === type
                     ? "bg-white text-[#102a57]"
                     : "text-white hover:bg-white/10"
@@ -450,7 +450,7 @@ export default function ProductListPage() {
           </div>
 
           <select
-            className="h-8 min-w-[180px] rounded-sm border border-white/35 bg-white px-2.5 text-[13px] text-slate-800"
+            className="h-7 min-w-[170px] border border-white/35 bg-white px-2 text-[12px] text-slate-800"
             value={draftFilters.makerId}
             onChange={(event) => handleMakerChange(event.target.value)}
           >
@@ -463,7 +463,7 @@ export default function ProductListPage() {
           </select>
 
           <select
-            className="h-8 min-w-[210px] rounded-sm border border-white/35 bg-white px-2.5 text-[13px] text-slate-800"
+            className="h-7 min-w-[200px] border border-white/35 bg-white px-2 text-[12px] text-slate-800"
             value={draftFilters.machineModelId}
             onChange={(event) =>
               setDraftFilters({ ...draftFilters, machineModelId: event.target.value })
@@ -477,7 +477,7 @@ export default function ProductListPage() {
             ))}
           </select>
 
-          <label className="flex items-center gap-2 text-[13px] font-semibold text-white">
+          <label className="flex items-center gap-1.5 text-[12px] font-semibold text-white">
             <input
               type="checkbox"
               className="h-4 w-4 rounded border-white/30 bg-transparent text-[#0f2d62] focus:ring-white"
@@ -491,14 +491,14 @@ export default function ProductListPage() {
 
           <button
             type="button"
-            className="h-8 rounded-sm border border-white/40 px-3 text-[13px] font-semibold text-white hover:bg-white/10"
+            className="h-7 border border-white/40 px-2.5 text-[12px] font-semibold text-white hover:bg-white/10"
           >
             絞り込み条件を追加
           </button>
 
           <button
             type="button"
-            className="h-8 rounded-sm bg-[#2b66b8] px-4 text-[13px] font-semibold text-white hover:bg-[#2458a0]"
+            className="h-7 bg-[#2b66b8] px-3 text-[12px] font-semibold text-white hover:bg-[#2458a0]"
             onClick={handleSearch}
           >
             検索
@@ -506,7 +506,7 @@ export default function ProductListPage() {
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-[1400px] space-y-3 bg-white px-3 py-4 xl:px-6">
+      <div className="mx-auto w-full max-w-[1500px] space-y-2 bg-white px-2 py-3 xl:px-4">
         {(estimateMachineName || estimateMaker || estimateSort === "price_desc" || estimateSort === "price_asc") && (
           <div className="rounded-sm border border-sky-200 bg-sky-50 px-3 py-1.5 text-[12px] text-sky-900">
             簡単見積りからの参照：
@@ -516,9 +516,9 @@ export default function ProductListPage() {
             {estimateSort === "price_asc" ? " / 価格が安い順" : ""}
           </div>
         )}
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <div className="flex flex-wrap items-center gap-2 text-[13px] text-slate-600">
-            <span className="text-base font-semibold text-slate-800">
+            <span className="text-[15px] font-semibold text-slate-800">
               {EXHIBIT_TYPE_LABELS[selectedType]}商品一覧
             </span>
             <span className="text-[13px]">対象機種：{filteredExhibits.length}件</span>
