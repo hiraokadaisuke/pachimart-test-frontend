@@ -43,6 +43,10 @@ export async function getInventoryItemById(id: string) {
       machineModel: true,
       storageLocation: true,
       movements: { orderBy: [{ committedAt: "desc" }, { createdAt: "desc" }] },
+      externalLinks: {
+        where: { linkType: "EXHIBIT" },
+        orderBy: { createdAt: "desc" },
+      },
     },
   });
 }

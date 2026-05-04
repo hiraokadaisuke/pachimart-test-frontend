@@ -1,4 +1,14 @@
-import { ExhibitStatus, ExhibitType, Prisma, RemovalStatus } from "@prisma/client";
+import {
+  ExhibitStatus,
+  ExhibitType,
+  InventoryExternalLinkType,
+  InventoryExternalRelationRole,
+  InventoryExternalSyncStatus,
+  InventoryStatus,
+  Prisma,
+  PrismaClient,
+  RemovalStatus,
+} from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -68,6 +78,7 @@ type ExhibitDto = {
 };
 
 const exhibitClient = prisma.exhibit;
+const prismaClient = prisma as PrismaClient;
 
 const createListingSchema = z
   .object({
@@ -95,6 +106,7 @@ const createListingSchema = z
     pickupAvailable: z.boolean().optional(),
     status: z.nativeEnum(ExhibitStatus).optional(),
     isVisible: z.boolean().optional(),
+    inventoryItemId: z.string().trim().min(1).optional(),
   })
   .refine(
     (data) =>
@@ -416,6 +428,70 @@ export async function POST(request: Request) {
         note: data.note ?? null,
       } as any,
     });
+
+    if (data.inventoryItemId) {
+      try {
+        const inventoryItem = await prismaClient.inventoryItem.findFirst({
+          where: { id: data.inventoryItemId, ownerUserId: sellerUserId },
+        });
+        if (!inventoryItem) {
+          console.warn("[inventory-link] inventory item not found or not owned", { inventoryItemId: data.inventoryItemId, sellerUserId });
+        } else if (inventoryItem.ownerUserId !== created.sellerUserId) {
+          console.warn("[inventory-link] owner mismatch", { inventoryOwnerUserId: inventoryItem.ownerUserId, sellerUserId: created.sellerUserId });
+        } else {
+          await prismaClient.inventoryExternalLink.upsert({
+            where: {
+              ownerUserId_linkType_externalId_relationRole: {
+                ownerUserId: sellerUserId,
+                linkType: InventoryExternalLinkType.EXHIBIT,
+                externalId: created.id,
+                relationRole: InventoryExternalRelationRole.SOURCE,
+              },
+            },
+            create: {
+              ownerUserId: sellerUserId,
+              inventoryItemId: inventoryItem.id,
+              linkType: InventoryExternalLinkType.EXHIBIT,
+              externalId: created.id,
+              relationRole: InventoryExternalRelationRole.SOURCE,
+              syncStatus: InventoryExternalSyncStatus.ACTIVE,
+              payloadSnapshot: {
+                exhibitId: created.id,
+                inventoryItemId: inventoryItem.id,
+                quantity: created.quantity,
+                unitPriceExclTax: created.unitPriceExclTax,
+              },
+              syncedAt: new Date(),
+            },
+            update: {
+              inventoryItemId: inventoryItem.id,
+              syncStatus: InventoryExternalSyncStatus.ACTIVE,
+              payloadSnapshot: {
+                exhibitId: created.id,
+                inventoryItemId: inventoryItem.id,
+                quantity: created.quantity,
+                unitPriceExclTax: created.unitPriceExclTax,
+              },
+              syncedAt: new Date(),
+            },
+          });
+
+          const listingUpdatable =
+            inventoryItem.quantityOnHand > 0 &&
+            inventoryItem.inventoryStatus !== InventoryStatus.SOLD &&
+            inventoryItem.inventoryStatus !== InventoryStatus.ARCHIVED &&
+            inventoryItem.listingStatus !== "CONTRACTED";
+          if (listingUpdatable) {
+            await prismaClient.inventoryItem.update({
+              where: { id: inventoryItem.id },
+              data: { listingStatus: "LISTED" },
+            });
+          }
+        }
+      } catch (linkError) {
+        console.error("[inventory-link] failed to link inventory and exhibit", linkError);
+      }
+    }
 
     return NextResponse.json(toDto(toRecord(created)), { status: 201 });
   } catch (error) {
