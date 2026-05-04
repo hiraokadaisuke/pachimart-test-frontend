@@ -17,7 +17,7 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
   const marginRate = item.plannedSaleUnitPrice ? Math.round((margin / item.plannedSaleUnitPrice) * 1000) / 10 : 0;
 
   return <div className="mx-auto max-w-6xl px-4 py-8 md:px-6"><InventoryTabs /><Link href="/inventory/items" className="text-sm text-blue-600 underline">← 在庫一覧へ戻る</Link>
-    <h1 className="mt-3 text-2xl font-bold">在庫詳細 {item.id}</h1>
+    <div className="mt-3 flex flex-wrap items-center justify-between gap-3"><h1 className="text-2xl font-bold">在庫詳細 {item.id}</h1><Link href={`/inventory/items/${item.id}/edit`} className="inline-flex rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700">在庫情報を編集</Link></div>
     <InventorySectionCard title="概要" className="mt-5" description="販売管理・倉庫管理に必要な情報を同時に確認できます。">
       <div className="grid gap-3 text-sm md:grid-cols-3">{[["機種名", item.machineModel?.name ?? item.modelNameSnapshot], ["メーカー", item.maker?.name ?? item.makerNameSnapshot ?? "-"], ["台数", formatQuantity(item.quantityOnHand)], ["保管場所", item.storageLocation?.name ?? "-"]].map(([k, v]) => <div key={k}><p className="text-slate-500">{k}</p><p className="font-medium">{v}</p></div>)}<div><p className="text-slate-500">ステータス</p><InventoryStatusBadge status={inventoryStatusLabel(item.inventoryStatus)} /></div><div><p className="text-slate-500">出品状態</p><InventoryStatusBadge status={inventoryListingStatusLabel(item.listingStatus)} /></div></div>
     </InventorySectionCard>
