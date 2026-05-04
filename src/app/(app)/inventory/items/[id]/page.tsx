@@ -1,3 +1,4 @@
+import type { InventoryMovement } from "@prisma/client";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -11,7 +12,7 @@ import { getInventoryItemById } from "@/features/inventory/server";
 export default async function InventoryDetailPage({ params }: { params: { id: string } }) {
   const item = await getInventoryItemById(params.id);
   if (!item) notFound();
-  const activities = item.movements.map((m) => `${(m.committedAt ?? m.scheduledAt ?? m.createdAt).toISOString().slice(0,10)} ${inventoryMovementTypeLabel(m.movementType)}(${inventoryMovementStatusLabel(m.status)}) ${m.quantityDelta > 0 ? "+" : ""}${m.quantityDelta}台`);
+  const activities = item.movements.map((m: InventoryMovement) => `${(m.committedAt ?? m.scheduledAt ?? m.createdAt).toISOString().slice(0,10)} ${inventoryMovementTypeLabel(m.movementType)}(${inventoryMovementStatusLabel(m.status)}) ${m.quantityDelta > 0 ? "+" : ""}${m.quantityDelta}台`);
   const margin = (item.plannedSaleUnitPrice ?? 0) - (item.purchaseUnitPrice ?? 0);
   const marginRate = item.plannedSaleUnitPrice ? Math.round((margin / item.plannedSaleUnitPrice) * 1000) / 10 : 0;
 
