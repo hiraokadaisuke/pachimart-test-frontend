@@ -8,6 +8,13 @@ import {
   NaviStatus,
   NaviType,
   DealingStatus,
+  InventoryItemType,
+  InventoryOwnershipType,
+  InventoryStatus,
+  InventoryListingStatus,
+  InventoryMovementType,
+  InventoryMovementStatus,
+  InventoryMovementSourceType,
 } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -889,6 +896,36 @@ async function seedBuyerShippingAddresses() {
   }
 }
 
+
+async function seedInventoryCore() {
+  const ownerUserId = "dev_user_1";
+  await prisma.inventoryMovement.deleteMany({ where: { ownerUserId } });
+  await prisma.inventoryItem.deleteMany({ where: { ownerUserId } });
+
+  const makers = await prisma.maker.findMany({ where: { name: { in: ["三共", "北電子", "三洋", "山佐", "京楽", "大都技研"] } } });
+  const makerMap = new Map(makers.map((m) => [m.name, m.id]));
+  const models = await prisma.machineModel.findMany();
+  const modelMap = new Map(models.map((m) => [m.name, m.id]));
+
+  const items = [
+    ["inv_core_0001", "三共", "eフィーバーからくりサーカス2", "PACHINKO", 3, "IN_STOCK", "NOT_LISTED", "location_dev_user_1_1", 180000, 230000],
+    ["inv_core_0002", "北電子", "SアイムジャグラーEX", "SLOT", 10, "IN_STOCK", "LISTED", "location_dev_user_1_2", 80000, 105000],
+    ["inv_core_0003", "三洋", "P大海物語5", "PACHINKO", 5, "NEGOTIATING", "LISTED", "location_dev_user_1_1", 120000, 158000],
+    ["inv_core_0004", "山佐", "LモンキーターンV", "SLOT", 2, "OUTBOUND_SCHEDULED", "CONTRACTED", "location_dev_user_1_1", 350000, 420000],
+    ["inv_core_0005", "京楽", "P仮面ライダー電王", "PACHINKO", 4, "IN_STOCK", "NOT_LISTED", "location_dev_user_1_2", 140000, 182000],
+    ["inv_core_0006", "大都技研", "L押忍!番長4", "SLOT", 3, "NEGOTIATING", "LISTED", "location_dev_user_1_1", 260000, 320000],
+  ] as const;
+
+  for (const entry of items) {
+    const [id, makerName, modelName, itemType, qty, invStatus, listingStatus, locId, purchase, sale] = entry;
+    await prisma.inventoryItem.create({ data: { id, ownerUserId, makerId: makerMap.get(makerName), machineModelId: modelMap.get(modelName), makerNameSnapshot: makerName, modelNameSnapshot: modelName, itemType: itemType as InventoryItemType, ownershipType: InventoryOwnershipType.STOCK, inventoryStatus: invStatus as InventoryStatus, quantityOnHand: qty, storageLocationId: locId, purchaseUnitPrice: purchase, plannedSaleUnitPrice: sale, listingStatus: listingStatus as InventoryListingStatus } });
+    await prisma.inventoryMovement.createMany({ data: [
+      { ownerUserId, inventoryItemId: id, movementType: InventoryMovementType.INBOUND, status: InventoryMovementStatus.COMMITTED, quantityDelta: qty, sourceType: InventoryMovementSourceType.SEED, sourceId: `${id}-in`, dedupeKey: `${id}-in`, committedAt: new Date('2026-04-28') },
+      { ownerUserId, inventoryItemId: id, movementType: InventoryMovementType.ADJUSTMENT, status: InventoryMovementStatus.PLANNED, quantityDelta: 0, sourceType: InventoryMovementSourceType.SEED, sourceId: `${id}-pl`, dedupeKey: `${id}-pl`, scheduledAt: new Date('2026-05-10') },
+    ] });
+  }
+  console.log(`Seeded ${items.length} inventory items and movements.`);
+}
 async function seedOnlineInquiries(listings: ListingSeed[]) {
   const listingMap = new Map(listings.map((listing) => [listing.id, listing]));
   const comparisonListing = listingMap.get("listing_dev_comparison_buyer");
@@ -1148,6 +1185,7 @@ async function main() {
   await seedMakersAndModels();
   await seedBuyerShippingAddresses();
   const listings = await seedListings();
+  await seedInventoryCore();
   await seedOnlineInquiries(listings);
   const { navis, trades } = await seedNavis(listings);
 

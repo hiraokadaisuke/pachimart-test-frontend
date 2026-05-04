@@ -1,7 +1,4 @@
-"use client";
-
 import Link from "next/link";
-import { useMemo, useState } from "react";
 
 import { InventorySummaryCard } from "@/components/inventory-demo/InventoryDemoPrimitives";
 import { InventoryStatusBadge } from "@/components/inventory-demo/InventoryStatusBadge";
@@ -9,25 +6,26 @@ import { InventoryTabs } from "@/components/inventory-demo/InventoryTabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { formatCurrency, formatQuantity, inventoryItems } from "@/features/inventory/mock";
+import { getInventoryItems } from "@/features/inventory/server";
+import { formatCurrency, formatQuantity, inventoryItemTypeLabel, inventoryListingStatusLabel, inventoryStatusLabel } from "@/features/inventory/labels";
 
-export default function InventoryItemsPage() {
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("全て");
+import ItemsClient from "./ItemsClient";
 
-  const rows = useMemo(() => inventoryItems.filter((item) => (status === "全て" || item.status === status) && `${item.manufacturer}${item.modelName}`.toLowerCase().includes(query.toLowerCase())), [query, status]);
-  const total = inventoryItems.reduce((acc, item) => acc + item.quantity, 0);
-  const summary = [
-    ["在庫", `${inventoryItems.filter((i) => i.status === "在庫").reduce((a, i) => a + i.quantity, 0)}台`],
-    ["商談中", `${inventoryItems.filter((i) => i.status === "商談中").reduce((a, i) => a + i.quantity, 0)}台`],
-    ["発送予定", `${inventoryItems.filter((i) => i.status === "発送予定").reduce((a, i) => a + i.quantity, 0)}台`],
-    ["出品中", `${inventoryItems.filter((i) => i.listingStatus === "出品中").reduce((a, i) => a + i.quantity, 0)}台`],
-  ] as const;
+export default async function InventoryItemsPage() {
+  const items = await getInventoryItems();
+  const rows = items.map((item) => ({
+    id: item.id,
+    type: inventoryItemTypeLabel(item.itemType),
+    manufacturer: item.maker?.name ?? item.makerNameSnapshot ?? "-",
+    modelName: item.machineModel?.name ?? item.modelNameSnapshot,
+    frameColor: item.frameColor ?? "-",
+    quantity: item.quantityOnHand,
+    storageLocation: item.storageLocation?.name ?? "-",
+    purchasePrice: item.purchaseUnitPrice ?? 0,
+    plannedSalePrice: item.plannedSaleUnitPrice ?? 0,
+    status: inventoryStatusLabel(item.inventoryStatus),
+    listingStatus: inventoryListingStatusLabel(item.listingStatus),
+  }));
 
-  return <div className="mx-auto max-w-6xl px-4 py-8 md:px-6"><InventoryTabs /><h1 className="text-2xl font-bold">在庫物件一覧</h1><p className="mt-2 text-sm text-slate-600">在庫からそのまま出品できる導線を想定し、購入・販売・倉庫の情報をまとめて確認します（全{total}台）。</p>
-    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{summary.map(([l, v]) => <InventorySummaryCard key={l} label={l} value={v} />)}</div>
-    <Card className="mt-4"><CardHeader><CardTitle className="text-base">検索・フィルター</CardTitle></CardHeader><CardContent><div className="flex flex-col gap-3 sm:flex-row"><Input placeholder="メーカー・機種名で検索" value={query} onChange={(e) => setQuery(e.target.value)} className="bg-white" /><Select value={status} onChange={(e) => setStatus(e.target.value)} className="sm:w-48">{["全て", "在庫", "商談中", "発送予定", "売却済"].map((option) => <option key={option} value={option}>{option}</option>)}</Select></div></CardContent></Card>
-
-    <div className="mt-4 overflow-x-auto rounded-lg border bg-white"><table className="w-full min-w-[1120px] text-sm"><thead className="bg-slate-50 text-left"><tr>{["在庫ID", "種別", "メーカー", "機種名", "枠色", "台数", "保管場所", "仕入価格", "販売予定価格", "ステータス", "出品状態", "詳細"].map((header) => <th key={header} className="px-4 py-3">{header}</th>)}</tr></thead><tbody>{rows.map((item) => <tr key={item.id} className="border-t align-middle"><td className="px-4 py-3 font-semibold">{item.id}</td><td className="px-4 py-3">{item.type}</td><td className="px-4 py-3">{item.manufacturer}</td><td className="px-4 py-3">{item.modelName}</td><td className="px-4 py-3">{item.frameColor}</td><td className="px-4 py-3 font-medium">{formatQuantity(item.quantity)}</td><td className="px-4 py-3">{item.storageLocation}</td><td className="px-4 py-3 font-medium">{formatCurrency(item.purchasePrice)}</td><td className="px-4 py-3 font-medium">{formatCurrency(item.plannedSalePrice)}</td><td className="px-4 py-3"><InventoryStatusBadge status={item.status} /></td><td className="px-4 py-3"><InventoryStatusBadge status={item.listingStatus} /></td><td className="px-4 py-3"><Link href={`/inventory/items/${item.id}`} className="inline-flex rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">詳細を見る</Link></td></tr>)}</tbody></table></div>
-  </div>;
+  return <ItemsClient rows={rows} total={items.reduce((a,i)=>a+i.quantityOnHand,0)} />;
 }
