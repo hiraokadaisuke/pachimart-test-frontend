@@ -1,66 +1,40 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { label: "取込", href: "/inventory/import" },
-  { label: "在庫物件", href: "/inventory/items?type=stock", type: "stock" },
-  { label: "非在庫物件", href: "/inventory/items?type=inactive", type: "inactive" },
-  { label: "設置物件", href: "/inventory/items?type=installed", type: "installed" },
-  { label: "QR取込", href: "/inventory/import/qr", className: "hidden md:inline-flex" },
-  { label: "設定", href: "/inventory/settings" },
+  { label: "在庫管理", href: "/inventory" },
+  { label: "在庫一覧", href: "/inventory/items" },
+  { label: "入庫予定", href: "/inventory/inbound" },
+  { label: "発送予定", href: "/inventory/outbound" },
 ];
 
 export default function InventoryHeader() {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const activeType = searchParams?.get("type") ?? "stock";
 
   return (
-    <header className="w-full border-b border-slate-700 bg-slate-800 text-white">
+    <header className="w-full border-b border-slate-200 bg-white text-slate-900">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-3">
-        <div className="flex items-center gap-6">
-          <Link href="/inventory" className="text-base font-semibold tracking-wide text-white">
-            在庫管理
-          </Link>
-          <nav className="flex items-center gap-2 text-xs font-semibold">
-            {navItems.map((item) => {
-              const isActive =
-                item.type
-                  ? pathname === "/inventory/items" && activeType === item.type
-                  : pathname?.startsWith(item.href);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "border border-transparent px-3 py-1",
-                    isActive
-                      ? "border-white bg-white/10 text-white"
-                      : "text-slate-200 hover:border-white/40 hover:bg-white/5",
-                    item.className,
-                  )}
-                >
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
-        <div className="flex items-center gap-3">
-          <Link
-            href="/inventory/import/qr"
-            className="inline-flex items-center rounded-md border border-white/50 bg-white px-3 py-1 text-xs font-bold text-slate-900 shadow-sm md:hidden"
-          >
-            QR取込
-          </Link>
-          <Link href="/portal" className="text-xs font-semibold text-slate-200 hover:text-white">
-            /portalへ戻る
-          </Link>
-        </div>
+        <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold">
+          {navItems.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                "rounded-md border px-3 py-1.5",
+                pathname === item.href ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 hover:bg-slate-50",
+              )}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </nav>
+        <Link href="/portal" className="text-xs font-semibold text-slate-600 hover:text-slate-900">
+          /portalへ戻る
+        </Link>
       </div>
     </header>
   );
