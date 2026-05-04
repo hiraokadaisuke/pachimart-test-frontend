@@ -469,6 +469,109 @@ export async function updateOutboundSchedule(scheduleId: string, formData: FormD
   revalidatePath("/inventory/outbound");
 }
 
+
+export async function cancelCompletedInboundSchedule(scheduleId: string) {
+  const ownerUserId = await resolveCurrentUserId();
+
+  const result = await prismaClient.$transaction(async (tx) => {
+    const schedule = await tx.inboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
+    if (!schedule) throw new Error("入庫予定が見つかりません。");
+    if (schedule.status === "CANCELED") return { inventoryItemId: schedule.inventoryItemId };
+    if (schedule.status !== "RECEIVED") throw new Error("入庫完了済みの予定のみ取消できます。");
+    if (!schedule.inventoryItemId) throw new Error("紐付け在庫が見つかりません。");
+
+    const originalMovement = await tx.inventoryMovement.findUnique({ where: { dedupeKey: `inbound:${schedule.id}:received` } });
+    if (!originalMovement) throw new Error("元の入庫履歴が見つからないため取消できません。");
+
+    const reverseDedupeKey = `inbound:${schedule.id}:received:reverse`;
+    const reverseMovement = await tx.inventoryMovement.findUnique({ where: { dedupeKey: reverseDedupeKey } });
+    if (reverseMovement) {
+      await tx.inboundSchedule.update({ where: { id: schedule.id }, data: { status: "CANCELED" } });
+      return { inventoryItemId: schedule.inventoryItemId };
+    }
+
+    const item = await tx.inventoryItem.findFirst({ where: { id: schedule.inventoryItemId, ownerUserId } });
+    if (!item) throw new Error("紐付け在庫が見つかりません。");
+    if (item.quantityOnHand < schedule.quantity) throw new Error("この入庫分は既に出庫されているため取消できません。");
+
+    const nextQuantity = item.quantityOnHand - schedule.quantity;
+    await tx.inventoryItem.update({ where: { id: item.id }, data: { quantityOnHand: nextQuantity, inventoryStatus: nextQuantity === 0 ? "ARCHIVED" : item.inventoryStatus } });
+
+    await tx.inventoryMovement.create({
+      data: {
+        ownerUserId,
+        inventoryItemId: item.id,
+        movementType: "ADJUSTMENT",
+        status: "COMMITTED",
+        quantityDelta: -schedule.quantity,
+        committedAt: new Date(),
+        sourceType: "MANUAL",
+        sourceId: schedule.id,
+        dedupeKey: reverseDedupeKey,
+        note: "入庫完了取消による在庫戻し",
+        createdByUserId: ownerUserId,
+      },
+    });
+
+    await tx.inboundSchedule.update({ where: { id: schedule.id }, data: { status: "CANCELED" } });
+    return { inventoryItemId: item.id };
+  });
+
+  revalidatePath("/inventory/inbound");
+  revalidatePath("/inventory/items");
+  if (result.inventoryItemId) revalidatePath(`/inventory/items/${result.inventoryItemId}`);
+}
+
+export async function cancelCompletedOutboundSchedule(scheduleId: string) {
+  const ownerUserId = await resolveCurrentUserId();
+
+  const result = await prismaClient.$transaction(async (tx) => {
+    const schedule = await tx.outboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
+    if (!schedule) throw new Error("発送予定が見つかりません。");
+    if (schedule.status === "CANCELED") return { inventoryItemId: schedule.inventoryItemId };
+    if (!["SHIPPED", "DELIVERED"].includes(schedule.status)) throw new Error("発送完了済みの予定のみ取消できます。");
+    if (!schedule.inventoryItemId) throw new Error("紐付け在庫が見つかりません。");
+
+    const originalMovement = await tx.inventoryMovement.findUnique({ where: { dedupeKey: `outbound:${schedule.id}:shipped` } });
+    if (!originalMovement) throw new Error("元の発送履歴が見つからないため取消できません。");
+
+    const reverseDedupeKey = `outbound:${schedule.id}:shipped:reverse`;
+    const reverseMovement = await tx.inventoryMovement.findUnique({ where: { dedupeKey: reverseDedupeKey } });
+    if (reverseMovement) {
+      await tx.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "CANCELED" } });
+      return { inventoryItemId: schedule.inventoryItemId };
+    }
+
+    const item = await tx.inventoryItem.findFirst({ where: { id: schedule.inventoryItemId, ownerUserId } });
+    if (!item) throw new Error("紐付け在庫が見つかりません。");
+
+    await tx.inventoryItem.update({ where: { id: item.id }, data: { quantityOnHand: item.quantityOnHand + schedule.quantity, inventoryStatus: "IN_STOCK", listingStatus: "NOT_LISTED" } });
+
+    await tx.inventoryMovement.create({
+      data: {
+        ownerUserId,
+        inventoryItemId: item.id,
+        movementType: "ADJUSTMENT",
+        status: "COMMITTED",
+        quantityDelta: schedule.quantity,
+        committedAt: new Date(),
+        sourceType: "MANUAL",
+        sourceId: schedule.id,
+        dedupeKey: reverseDedupeKey,
+        note: "発送完了取消による在庫戻し",
+        createdByUserId: ownerUserId,
+      },
+    });
+
+    await tx.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "CANCELED" } });
+    return { inventoryItemId: item.id };
+  });
+
+  revalidatePath("/inventory/outbound");
+  revalidatePath("/inventory/items");
+  if (result.inventoryItemId) revalidatePath(`/inventory/items/${result.inventoryItemId}`);
+}
+
 export async function cancelInboundSchedule(scheduleId: string) {
   const ownerUserId = await resolveCurrentUserId();
   const schedule = await prismaClient.inboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
