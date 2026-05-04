@@ -103,7 +103,7 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
               <InventoryPlannedBadge label="STEP2-G1" />
             </li>
             <li>メーカー・機種名・台数・保管場所・販売予定価格を初期値として引き継ぎます</li>
-            <li>出品後の在庫連携は次STEPで実装予定です</li>
+            <li>出品作成後、在庫との紐付けを自動で作成します</li>
           </ul>
         </InventorySectionCard>
 
@@ -126,6 +126,25 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
 
       <InventorySectionCard title="関連する動き" className="mt-5">
         <InventoryTimeline items={activities.length ? activities : ["履歴はありません"]} />
+      </InventorySectionCard>
+
+      <InventorySectionCard title="出品紐付け情報" className="mt-5">
+        {item.externalLinks.length > 0 ? (
+          <div className="space-y-3 text-sm">
+            <p className="font-medium text-emerald-700">この在庫はパチマート出品と紐付いています。</p>
+            <ul className="space-y-2">
+              {item.externalLinks.map((link) => (
+                <li key={link.id} className="rounded border border-slate-200 p-3">
+                  <p>Exhibit ID: {link.externalId}</p>
+                  <p>作成日: {link.createdAt.toISOString().slice(0, 10)}</p>
+                  <p>同期状態: {link.syncStatus}</p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <p className="text-sm text-slate-500">出品との紐付けはまだありません。</p>
+        )}
       </InventorySectionCard>
 
       <div className="mt-5 space-y-2">

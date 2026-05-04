@@ -1,4 +1,13 @@
-import { ExhibitStatus, ExhibitType, Prisma, RemovalStatus } from "@prisma/client";
+import {
+  ExhibitStatus,
+  ExhibitType,
+  InventoryExternalLinkType,
+  InventoryExternalRelationRole,
+  InventoryExternalSyncStatus,
+  InventoryStatus,
+  Prisma,
+  RemovalStatus,
+} from "@prisma/client";
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
@@ -95,6 +104,7 @@ const createListingSchema = z
     pickupAvailable: z.boolean().optional(),
     status: z.nativeEnum(ExhibitStatus).optional(),
     isVisible: z.boolean().optional(),
+    inventoryItemId: z.string().trim().min(1).optional(),
   })
   .refine(
     (data) =>
@@ -387,34 +397,104 @@ export async function POST(request: Request) {
       data.storageLocation ?? storageLocation.addressLine ?? ""
     );
 
-    const created = await exhibitClient.create({
-      data: {
-        sellerUserId,
-        status: data.status ?? ExhibitStatus.DRAFT,
-        isVisible: data.isVisible ?? true,
-        type: data.type,
-        kind: data.kind,
-        maker: data.maker ?? null,
-        machineName: data.machineName ?? null,
-        quantity: data.quantity,
-        unitPriceExclTax: data.isNegotiable ? null : (data.unitPriceExclTax ?? null),
-        isNegotiable: data.isNegotiable,
-        removalStatus: data.removalStatus ?? RemovalStatus.SCHEDULED,
-        removalDate:
-          data.removalStatus === RemovalStatus.SCHEDULED && data.removalDate
-            ? new Date(data.removalDate)
-            : null,
-        hasNailSheet: data.hasNailSheet ?? false,
-        hasManual: data.hasManual ?? false,
-        pickupAvailable: data.pickupAvailable ?? false,
-        storageLocation: storageLocationLabel,
-        storageLocationId: storageLocationSnapshot.id,
-        storageLocationSnapshot,
-        shippingFeeCount: data.shippingFeeCount,
-        handlingFeeCount: data.handlingFeeCount,
-        allowPartial: data.allowPartial,
-        note: data.note ?? null,
-      } as any,
+    const created = await prisma.$transaction(async (tx) => {
+      const exhibit = await tx.exhibit.create({
+        data: {
+          sellerUserId,
+          status: data.status ?? ExhibitStatus.DRAFT,
+          isVisible: data.isVisible ?? true,
+          type: data.type,
+          kind: data.kind,
+          maker: data.maker ?? null,
+          machineName: data.machineName ?? null,
+          quantity: data.quantity,
+          unitPriceExclTax: data.isNegotiable ? null : (data.unitPriceExclTax ?? null),
+          isNegotiable: data.isNegotiable,
+          removalStatus: data.removalStatus ?? RemovalStatus.SCHEDULED,
+          removalDate:
+            data.removalStatus === RemovalStatus.SCHEDULED && data.removalDate
+              ? new Date(data.removalDate)
+              : null,
+          hasNailSheet: data.hasNailSheet ?? false,
+          hasManual: data.hasManual ?? false,
+          pickupAvailable: data.pickupAvailable ?? false,
+          storageLocation: storageLocationLabel,
+          storageLocationId: storageLocationSnapshot.id,
+          storageLocationSnapshot,
+          shippingFeeCount: data.shippingFeeCount,
+          handlingFeeCount: data.handlingFeeCount,
+          allowPartial: data.allowPartial,
+          note: data.note ?? null,
+        } as any,
+      });
+
+      if (!data.inventoryItemId) return exhibit;
+
+      const inventoryItem = await tx.inventoryItem.findFirst({
+        where: { id: data.inventoryItemId, ownerUserId: sellerUserId },
+      });
+
+      if (!inventoryItem) {
+        console.warn("[inventory-link] inventory item not found or not owned", { inventoryItemId: data.inventoryItemId, sellerUserId });
+        return exhibit;
+      }
+
+      if (inventoryItem.ownerUserId !== exhibit.sellerUserId) {
+        console.warn("[inventory-link] owner mismatch", { inventoryOwnerUserId: inventoryItem.ownerUserId, sellerUserId: exhibit.sellerUserId });
+        return exhibit;
+      }
+
+      await tx.inventoryExternalLink.upsert({
+        where: {
+          ownerUserId_linkType_externalId_relationRole: {
+            ownerUserId: sellerUserId,
+            linkType: InventoryExternalLinkType.EXHIBIT,
+            externalId: exhibit.id,
+            relationRole: InventoryExternalRelationRole.SOURCE,
+          },
+        },
+        create: {
+          ownerUserId: sellerUserId,
+          inventoryItemId: inventoryItem.id,
+          linkType: InventoryExternalLinkType.EXHIBIT,
+          externalId: exhibit.id,
+          relationRole: InventoryExternalRelationRole.SOURCE,
+          syncStatus: InventoryExternalSyncStatus.ACTIVE,
+          payloadSnapshot: {
+            exhibitId: exhibit.id,
+            inventoryItemId: inventoryItem.id,
+            quantity: exhibit.quantity,
+            unitPriceExclTax: exhibit.unitPriceExclTax,
+          },
+          syncedAt: new Date(),
+        },
+        update: {
+          inventoryItemId: inventoryItem.id,
+          syncStatus: InventoryExternalSyncStatus.ACTIVE,
+          payloadSnapshot: {
+            exhibitId: exhibit.id,
+            inventoryItemId: inventoryItem.id,
+            quantity: exhibit.quantity,
+            unitPriceExclTax: exhibit.unitPriceExclTax,
+          },
+          syncedAt: new Date(),
+        },
+      });
+
+      const listingUpdatable =
+        inventoryItem.quantityOnHand > 0 &&
+        inventoryItem.inventoryStatus !== InventoryStatus.SOLD &&
+        inventoryItem.inventoryStatus !== InventoryStatus.ARCHIVED &&
+        inventoryItem.listingStatus !== "CONTRACTED";
+
+      if (listingUpdatable) {
+        await tx.inventoryItem.update({
+          where: { id: inventoryItem.id },
+          data: { listingStatus: "LISTED" },
+        });
+      }
+
+      return exhibit;
     });
 
     return NextResponse.json(toDto(toRecord(created)), { status: 201 });

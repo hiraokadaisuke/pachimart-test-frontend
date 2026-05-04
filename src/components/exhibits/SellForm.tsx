@@ -382,6 +382,7 @@ export function SellForm({ showHeader = true, exhibitType, mode = "create", init
                 },
                 body: JSON.stringify({
                   ...payload,
+                  inventoryItemId: inventoryItemId.trim() || undefined,
                   status: "PUBLISHED",
                   isVisible: true,
                 }),
