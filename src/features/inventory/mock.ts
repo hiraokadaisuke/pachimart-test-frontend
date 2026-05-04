@@ -23,7 +23,7 @@ export const outboundSchedules: OutboundSchedule[] = [
   { id: "OUT-0001", expectedDate: "2026-05-09", buyer: "株式会社D社", type: "パチスロ", manufacturer: "北電子", modelName: "SアイムジャグラーEX", quantity: 3, origin: "大阪倉庫", shippingMethod: "元払い", status: "発送準備中" },
   { id: "OUT-0002", expectedDate: "2026-05-11", buyer: "株式会社E社", type: "パチンコ", manufacturer: "SANKYO", modelName: "eフィーバーからくりサーカス2", quantity: 1, origin: "名古屋倉庫", shippingMethod: "着払い", status: "未発送" },
   { id: "OUT-0003", expectedDate: "2026-05-13", buyer: "株式会社F社", type: "パチスロ", manufacturer: "山佐", modelName: "LモンキーターンV", quantity: 2, origin: "名古屋倉庫", shippingMethod: "元払い", status: "発送済" },
-  { id: "OUT-0004", expectedDate: "2026-05-14", buyer: "株式会社H社", type: "パチンコ", manufacturer: "京楽", modelName: "P仮面ライダー電王", quantity: 2, origin: "福岡倉庫", shippingMethod: "チャーター便", status: "発送準備中" },
+  { id: "OUT-0004", expectedDate: "2026-05-14", buyer: "株式会社H社", type: "パチンコ", manufacturer: "京楽", modelName: "P仮面ライダー電王", quantity: 2, origin: "福岡倉庫", shippingMethod: "元払い", status: "発送準備中" },
 ];
 
 export const recentActivities: InventoryActivity[] = [
