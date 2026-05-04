@@ -1,19 +1,23 @@
-import Link from "next/link";
+import type { InventoryItem, Maker, MachineModel, StorageLocation } from "@prisma/client";
 
-import { InventorySummaryCard } from "@/components/inventory-demo/InventoryDemoPrimitives";
-import { InventoryStatusBadge } from "@/components/inventory-demo/InventoryStatusBadge";
-import { InventoryTabs } from "@/components/inventory-demo/InventoryTabs";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
 import { getInventoryItems } from "@/features/inventory/server";
-import { formatCurrency, formatQuantity, inventoryItemTypeLabel, inventoryListingStatusLabel, inventoryStatusLabel } from "@/features/inventory/labels";
+import {
+  inventoryItemTypeLabel,
+  inventoryListingStatusLabel,
+  inventoryStatusLabel,
+} from "@/features/inventory/labels";
 
 import ItemsClient from "./ItemsClient";
 
+type InventoryItemWithRelations = InventoryItem & {
+  maker: Maker | null;
+  machineModel: MachineModel | null;
+  storageLocation: StorageLocation | null;
+};
+
 export default async function InventoryItemsPage() {
-  const items = await getInventoryItems();
-  const rows = items.map((item) => ({
+  const items = (await getInventoryItems()) as InventoryItemWithRelations[];
+  const rows = items.map((item: InventoryItemWithRelations) => ({
     id: item.id,
     type: inventoryItemTypeLabel(item.itemType),
     manufacturer: item.maker?.name ?? item.makerNameSnapshot ?? "-",
@@ -27,5 +31,5 @@ export default async function InventoryItemsPage() {
     listingStatus: inventoryListingStatusLabel(item.listingStatus),
   }));
 
-  return <ItemsClient rows={rows} total={items.reduce((a,i)=>a+i.quantityOnHand,0)} />;
+  return <ItemsClient rows={rows} total={items.reduce((acc, item) => acc + item.quantityOnHand, 0)} />;
 }
