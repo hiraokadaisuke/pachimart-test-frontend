@@ -1,6 +1,9 @@
 import type {
+  InboundStatus,
+  InventoryShippingMethod,
   InventoryItemType,
   InventoryListingStatus,
+  OutboundStatus,
   InventoryOwnershipType,
   InventoryStatus,
   PrismaClient,
@@ -80,6 +83,27 @@ const LISTING_STATUS_MAP: Record<string, InventoryListingStatus> = {
   成約済: "CONTRACTED",
   停止中: "SUSPENDED",
   終了: "CLOSED",
+};
+const INBOUND_STATUS_MAP: Record<string, InboundStatus> = {
+  未入庫: "PLANNED",
+  入庫待ち: "ARRIVAL_WAITING",
+  一部入庫: "PARTIALLY_RECEIVED",
+  入庫済: "RECEIVED",
+  取消: "CANCELED",
+};
+const OUTBOUND_STATUS_MAP: Record<string, OutboundStatus> = {
+  未発送: "PLANNED",
+  ピッキング中: "PICKING",
+  発送準備中: "READY_TO_SHIP",
+  発送済: "SHIPPED",
+  納品済: "DELIVERED",
+  取消: "CANCELED",
+};
+const SHIPPING_METHOD_MAP: Record<string, InventoryShippingMethod> = {
+  元払い: "PREPAID",
+  着払い: "COLLECT",
+  チャーター便: "CHARTER",
+  その他: "OTHER",
 };
 
 export type InventoryFormInput = {
@@ -174,5 +198,84 @@ export async function updateInventoryItem(id: string, input: InventoryFormInput)
       });
     }
     return updated;
+  });
+}
+
+export async function getInboundSchedules() {
+  const ownerUserId = await resolveCurrentUserId();
+  return prismaClient.inboundSchedule.findMany({
+    where: { ownerUserId },
+    include: { inventoryItem: true, destinationLocation: true },
+    orderBy: { expectedDate: "asc" },
+  });
+}
+
+export async function getOutboundSchedules() {
+  const ownerUserId = await resolveCurrentUserId();
+  return prismaClient.outboundSchedule.findMany({
+    where: { ownerUserId },
+    include: { inventoryItem: true, originLocation: true },
+    orderBy: { expectedDate: "asc" },
+  });
+}
+
+const summarizeByStatus = <T extends { status: string; quantity: number }>(rows: T[]) =>
+  rows.reduce<Record<string, { count: number; quantity: number }>>((acc, row) => {
+    const current = acc[row.status] ?? { count: 0, quantity: 0 };
+    acc[row.status] = { count: current.count + 1, quantity: current.quantity + row.quantity };
+    return acc;
+  }, {});
+
+export async function getInboundScheduleSummary() {
+  return summarizeByStatus(await getInboundSchedules());
+}
+export async function getOutboundScheduleSummary() {
+  return summarizeByStatus(await getOutboundSchedules());
+}
+
+export async function createInboundSchedule(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const expectedDate = new Date(String(formData.get("expectedDate") ?? ""));
+  const modelNameSnapshot = String(formData.get("modelNameSnapshot") ?? "").trim();
+  const quantity = Number(formData.get("quantity"));
+  const itemType = ITEM_TYPE_MAP[String(formData.get("itemType") ?? "")];
+  const status = INBOUND_STATUS_MAP[String(formData.get("status") ?? "")];
+  if (!modelNameSnapshot || Number.isNaN(expectedDate.getTime()) || !Number.isInteger(quantity) || quantity < 1 || !itemType || !status) {
+    throw new Error("入力内容が不正です。");
+  }
+  await prismaClient.inboundSchedule.create({
+    data: {
+      ownerUserId, expectedDate, modelNameSnapshot, quantity, itemType, status,
+      supplierName: String(formData.get("supplierName") ?? "").trim() || null,
+      makerNameSnapshot: String(formData.get("makerNameSnapshot") ?? "").trim() || null,
+      frameColor: String(formData.get("frameColor") ?? "").trim() || null,
+      destinationLocationId: String(formData.get("destinationLocationId") ?? "").trim() || null,
+      inventoryItemId: String(formData.get("inventoryItemId") ?? "").trim() || null,
+      note: String(formData.get("note") ?? "").trim() || null,
+    },
+  });
+}
+
+export async function createOutboundSchedule(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const expectedDate = new Date(String(formData.get("expectedDate") ?? ""));
+  const modelNameSnapshot = String(formData.get("modelNameSnapshot") ?? "").trim();
+  const quantity = Number(formData.get("quantity"));
+  const itemType = ITEM_TYPE_MAP[String(formData.get("itemType") ?? "")];
+  const status = OUTBOUND_STATUS_MAP[String(formData.get("status") ?? "")];
+  const shippingMethod = SHIPPING_METHOD_MAP[String(formData.get("shippingMethod") ?? "")];
+  if (!modelNameSnapshot || Number.isNaN(expectedDate.getTime()) || !Number.isInteger(quantity) || quantity < 1 || !itemType || !status || !shippingMethod) {
+    throw new Error("入力内容が不正です。");
+  }
+  await prismaClient.outboundSchedule.create({
+    data: {
+      ownerUserId, expectedDate, modelNameSnapshot, quantity, itemType, status, shippingMethod,
+      buyerName: String(formData.get("buyerName") ?? "").trim() || null,
+      makerNameSnapshot: String(formData.get("makerNameSnapshot") ?? "").trim() || null,
+      frameColor: String(formData.get("frameColor") ?? "").trim() || null,
+      originLocationId: String(formData.get("originLocationId") ?? "").trim() || null,
+      inventoryItemId: String(formData.get("inventoryItemId") ?? "").trim() || null,
+      note: String(formData.get("note") ?? "").trim() || null,
+    },
   });
 }

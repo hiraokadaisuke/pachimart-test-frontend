@@ -1,8 +1,11 @@
 import type {
+  InboundStatus,
+  InventoryShippingMethod,
   InventoryItemType,
   InventoryListingStatus,
   InventoryMovementStatus,
   InventoryMovementType,
+  OutboundStatus,
   InventoryStatus,
 } from "@prisma/client";
 
@@ -53,3 +56,27 @@ export const inventoryMovementTypeLabel = (value: InventoryMovementType) => {
   };
   return map[value];
 };
+
+export const inboundStatusLabel = (value: InboundStatus) => ({
+  PLANNED: "未入庫",
+  ARRIVAL_WAITING: "入庫待ち",
+  PARTIALLY_RECEIVED: "一部入庫",
+  RECEIVED: "入庫済",
+  CANCELED: "取消",
+})[value];
+
+export const outboundStatusLabel = (value: OutboundStatus) => ({
+  PLANNED: "未発送",
+  PICKING: "ピッキング中",
+  READY_TO_SHIP: "発送準備中",
+  SHIPPED: "発送済",
+  DELIVERED: "納品済",
+  CANCELED: "取消",
+})[value];
+
+export const shippingMethodLabel = (value: InventoryShippingMethod) => ({
+  PREPAID: "元払い",
+  COLLECT: "着払い",
+  CHARTER: "チャーター便",
+  OTHER: "その他",
+})[value];
