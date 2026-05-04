@@ -335,13 +335,13 @@ export default function ProductListPage() {
       {
         key: "updatedAt",
         label: "更新日",
-        width: "82px",
+        width: "90px",
         render: (row: Exhibit) => formatDate(row.updatedAt),
       },
       {
         key: "status",
         label: "状況",
-        width: "72px",
+        width: "80px",
         render: (row: Exhibit) =>
           row.status === "SOLD" ? (
             <span className="rounded-sm bg-slate-100 px-1.5 py-px text-[10px] font-normal text-slate-500">
@@ -354,14 +354,14 @@ export default function ProductListPage() {
       {
         key: "previousLocation",
         label: "前設置",
-        width: "92px",
+        width: "98px",
         render: (row: Exhibit) => extractPrefecture(row),
       },
-      { key: "maker", label: "メーカー", width: "120px" },
+      { key: "maker", label: "メーカー", width: "126px" },
       {
         key: "machineName",
         label: "機種名",
-        width: "240px",
+        width: "360px",
         render: (row: Exhibit) => (
           <span className="font-medium text-blue-600 hover:underline">
             {row.machineName ?? "機種名未設定"}
@@ -371,37 +371,37 @@ export default function ProductListPage() {
       {
         key: "type",
         label: "タイプ",
-        width: "74px",
+        width: "78px",
         render: () => "-",
       },
       {
         key: "quantity",
         label: "台数",
-        width: "56px",
+        width: "62px",
         render: (row: Exhibit) => row.quantity,
       },
       {
         key: "unitPriceExclTax",
         label: "価格",
-        width: "96px",
+        width: "108px",
         render: (row: Exhibit) => <span className="font-semibold text-slate-800">{formatPrice(row)}</span>,
       },
       {
         key: "removalDate",
         label: "撤去日",
-        width: "86px",
+        width: "94px",
         render: (row: Exhibit) => resolveRemovalLabel(row),
       },
       {
         key: "seller",
         label: "出品者",
-        width: "150px",
+        width: "220px",
         render: (row: Exhibit) => getSellerCompanyName(row.sellerUserId),
       },
       {
         key: "note",
         label: "備考",
-        width: "180px",
+        width: "270px",
         render: (row: Exhibit) => row.note ?? "",
       },
     ],

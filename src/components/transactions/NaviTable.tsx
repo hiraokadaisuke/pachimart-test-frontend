@@ -41,10 +41,10 @@ export function NaviTable({
   const skeletonRows = Array.from({ length: 5 }, (_, index) => index);
 
   return (
-    <div className="mt-2 overflow-x-auto border border-gray-300 bg-white">
-      <table className="min-w-[1320px] table-fixed border-collapse text-[12px] leading-4 text-slate-700">
-        <thead className="bg-[#f3f4f6] text-[12px] font-medium text-slate-700">
-          <tr className="border-b border-gray-200">
+    <div className="mt-2 w-full overflow-x-auto bg-white">
+      <table className="w-full min-w-[1420px] table-fixed border-collapse text-[13px] leading-5 text-slate-700">
+        <thead className="bg-[#fafafa] text-[13px] font-semibold text-slate-600">
+          <tr className="border-b border-slate-300">
             {columns.map((column) => {
               const isSorted = sortState?.key === column.key;
               const sortable = column.sortable && onSortChange;
@@ -52,13 +52,13 @@ export function NaviTable({
               return (
                 <th
                   key={column.key}
-                  className="border-r border-gray-200 px-2 py-[3px] text-left last:border-r-0"
+                  className="px-3 py-2.5 text-left"
                   style={column.width ? { width: column.width } : undefined}
                 >
                   {sortable ? (
                     <button
                       type="button"
-                      className="flex items-center gap-1 text-left text-[12px] font-medium text-slate-700 hover:text-[#0f2d62]"
+                      className="flex items-center gap-1 text-left text-[13px] font-semibold text-slate-600 hover:text-[#0f2d62]"
                       onClick={() => onSortChange?.(column.key)}
                     >
                       <span>{column.label}</span>
@@ -81,7 +81,7 @@ export function NaviTable({
                 {columns.map((column, columnIndex) => (
                   <td
                     key={`${column.key}-${columnIndex}`}
-                    className="border-r border-gray-200 px-2 py-[3px] align-top last:border-r-0"
+                    className="px-3 py-2.5 align-top"
                     style={column.width ? { width: column.width } : undefined}
                   >
                     <div className="h-3 w-full animate-pulse rounded bg-slate-200" />
@@ -91,7 +91,7 @@ export function NaviTable({
             ))
           ) : safeRows.length === 0 ? (
             <tr>
-              <td colSpan={colSpan} className="px-2 py-2">
+              <td colSpan={colSpan} className="px-3 py-4">
                 <EmptyState
                   message={emptyMessage ?? "該当する取引はありません。条件を変えて再度お試しください。"}
                 />
@@ -101,7 +101,7 @@ export function NaviTable({
             safeRows.map((row, index) => (
               <tr
                 key={getRowKey?.(row, index) ?? row.id ?? index}
-                className={`border-b border-gray-200 hover:bg-[#f8fafc] ${
+                className={`border-b border-slate-200 hover:bg-[#f8fafc] ${
                   onRowClick ? "cursor-pointer" : ""
                 } ${getRowClassName?.(row) ?? ""}`}
                 onClick={() => {
@@ -112,7 +112,7 @@ export function NaviTable({
                 {columns.map((column) => (
                   <td
                     key={column.key}
-                    className="max-w-[180px] whitespace-nowrap truncate border-r border-gray-200 px-2 py-[3px] align-top text-[12px] leading-4 text-slate-700 last:border-r-0"
+                    className="max-w-[260px] whitespace-nowrap truncate px-3 py-2.5 align-middle text-[13px] leading-5 text-slate-700"
                     style={column.width ? { width: column.width } : undefined}
                   >
                     {column.render ? column.render(row) : (row as Record<string, React.ReactNode>)[column.key]}
