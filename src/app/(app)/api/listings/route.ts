@@ -6,6 +6,7 @@ import {
   InventoryExternalSyncStatus,
   InventoryStatus,
   Prisma,
+  PrismaClient,
   RemovalStatus,
 } from "@prisma/client";
 import { NextResponse } from "next/server";
@@ -77,6 +78,7 @@ type ExhibitDto = {
 };
 
 const exhibitClient = prisma.exhibit;
+const prismaClient = prisma as PrismaClient;
 
 const createListingSchema = z
   .object({
@@ -429,7 +431,7 @@ export async function POST(request: Request) {
 
     if (data.inventoryItemId) {
       try {
-        const inventoryItem = await prisma.inventoryItem.findFirst({
+        const inventoryItem = await prismaClient.inventoryItem.findFirst({
           where: { id: data.inventoryItemId, ownerUserId: sellerUserId },
         });
         if (!inventoryItem) {
@@ -437,7 +439,7 @@ export async function POST(request: Request) {
         } else if (inventoryItem.ownerUserId !== created.sellerUserId) {
           console.warn("[inventory-link] owner mismatch", { inventoryOwnerUserId: inventoryItem.ownerUserId, sellerUserId: created.sellerUserId });
         } else {
-          await prisma.inventoryExternalLink.upsert({
+          await prismaClient.inventoryExternalLink.upsert({
             where: {
               ownerUserId_linkType_externalId_relationRole: {
                 ownerUserId: sellerUserId,
@@ -480,7 +482,7 @@ export async function POST(request: Request) {
             inventoryItem.inventoryStatus !== InventoryStatus.ARCHIVED &&
             inventoryItem.listingStatus !== "CONTRACTED";
           if (listingUpdatable) {
-            await prisma.inventoryItem.update({
+            await prismaClient.inventoryItem.update({
               where: { id: inventoryItem.id },
               data: { listingStatus: "LISTED" },
             });
