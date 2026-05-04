@@ -13,6 +13,16 @@ type SellFormProps = {
   exhibitType: ExhibitType;
   mode?: "create" | "edit";
   initialExhibit?: Exhibit | null;
+  initialFromInventory?: {
+    inventoryItemId?: string;
+    maker?: string;
+    machineName?: string;
+    frameColor?: string;
+    quantity?: number;
+    unitPriceExclTax?: number;
+    storageLocationId?: string;
+    note?: string;
+  };
 };
 
 type ExhibitType = "PACHINKO" | "SLOT";
@@ -90,7 +100,7 @@ const parseNote = (value: string | null) => {
   return { frameColor, note };
 };
 
-export function SellForm({ showHeader = true, exhibitType, mode = "create", initialExhibit }: SellFormProps) {
+export function SellForm({ showHeader = true, exhibitType, mode = "create", initialExhibit, initialFromInventory }: SellFormProps) {
   const router = useRouter();
   const currentUser = useCurrentDevUser();
   const hasInitialized = useRef(false);
@@ -121,6 +131,7 @@ export function SellForm({ showHeader = true, exhibitType, mode = "create", init
   const [allowPartial, setAllowPartial] = useState<boolean>(true);
 
   const [note, setNote] = useState("");
+  const [inventoryItemId, setInventoryItemId] = useState("");
 
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -150,16 +161,34 @@ export function SellForm({ showHeader = true, exhibitType, mode = "create", init
     hasInitialized.current = true;
   }, [initialExhibit]);
 
+
+  useEffect(() => {
+    if (mode !== "create" || !initialFromInventory || hasInitialized.current) return;
+
+    setInventoryItemId(initialFromInventory.inventoryItemId ?? "");
+    setMachineName(initialFromInventory.machineName ?? "");
+    setFrameColor(initialFromInventory.frameColor ?? "");
+    setQuantity(initialFromInventory.quantity ?? 1);
+    setPrice(initialFromInventory.unitPriceExclTax ?? "");
+    setSelectedStorageLocationId(initialFromInventory.storageLocationId ?? "");
+    setNote(initialFromInventory.note ?? "");
+
+    hasInitialized.current = true;
+  }, [initialFromInventory, mode]);
+
   useEffect(() => {
     if (!initialExhibit || hasInitializedMaker.current) return;
     if (makers.length === 0) return;
 
-    const matchedMaker = makers.find((makerOption) => makerOption.name === initialExhibit.maker) ?? null;
+    const targetMakerName = initialExhibit?.maker ?? initialFromInventory?.maker;
+    const matchedMaker = targetMakerName
+      ? makers.find((makerOption) => makerOption.name === targetMakerName) ?? null
+      : null;
     if (matchedMaker) {
       setMakerId(matchedMaker.id);
     }
     hasInitializedMaker.current = true;
-  }, [initialExhibit, makers]);
+  }, [initialExhibit, initialFromInventory, makers]);
 
   const totals = useMemo(() => {
     const qty = typeof quantity === "number" ? quantity : 0;
@@ -393,6 +422,7 @@ export function SellForm({ showHeader = true, exhibitType, mode = "create", init
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
         <div className="flex-1 space-y-6">
           <form onSubmit={handleSubmit} className="space-y-6">
+            <input type="hidden" name="inventoryItemId" value={inventoryItemId} readOnly />
             <Section title="基本情報">
               <FieldRow label="遊技種別" required>
                 <div className="w-full rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-900">

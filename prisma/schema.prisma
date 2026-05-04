@@ -161,6 +161,27 @@ enum InventoryShippingMethod {
   OTHER
 }
 
+
+enum InventoryExternalLinkType {
+  EXHIBIT
+  NAVI
+  DEALING
+  ONLINE_INQUIRY
+}
+
+enum InventoryExternalRelationRole {
+  SOURCE
+  DESTINATION
+  RELATED
+}
+
+enum InventoryExternalSyncStatus {
+  ACTIVE
+  STALE
+  ERROR
+  CLOSED
+}
+
 model User {
   id               String            @id
   devUserId        String?           @unique
@@ -179,7 +200,9 @@ model User {
   inventoryMovementsCreated InventoryMovement[] @relation("InventoryMovementCreatedBy")
   inboundSchedulesOwned InboundSchedule[] @relation("InboundScheduleOwner")
   outboundSchedulesOwned OutboundSchedule[] @relation("OutboundScheduleOwner")
+  inventoryExternalLinksOwned InventoryExternalLink[] @relation("InventoryExternalLinkOwner")
 }
+
 
 model Navi {
   id              Int        @id @default(autoincrement())
@@ -388,9 +411,32 @@ model InventoryItem {
   movements       InventoryMovement[]
   inboundSchedules InboundSchedule[] @relation("InboundScheduleInventoryItem")
   outboundSchedules OutboundSchedule[] @relation("OutboundScheduleInventoryItem")
+  externalLinks    InventoryExternalLink[]
 
   @@index([ownerUserId, inventoryStatus, updatedAt])
   @@index([ownerUserId, listingStatus])
+}
+
+
+model InventoryExternalLink {
+  id              String                        @id @default(cuid())
+  ownerUserId     String
+  inventoryItemId String
+  linkType        InventoryExternalLinkType
+  externalId      String
+  relationRole    InventoryExternalRelationRole
+  syncStatus      InventoryExternalSyncStatus
+  payloadSnapshot Json?
+  syncedAt        DateTime?
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+
+  ownerUser     User          @relation("InventoryExternalLinkOwner", fields: [ownerUserId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@unique([ownerUserId, linkType, externalId, relationRole])
+  @@index([inventoryItemId, linkType])
+  @@index([ownerUserId, syncStatus])
 }
 
 model InboundSchedule {
