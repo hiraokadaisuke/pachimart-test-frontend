@@ -1,96 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useMemo, useState } from "react";
 
-import InventoryPanel from "@/components/inventory/InventoryPanel";
-import InventoryTable from "@/components/inventory/InventoryTable";
-import { Button } from "@/components/ui/button";
+import { InventorySummaryCard } from "@/components/inventory-demo/InventoryDemoPrimitives";
+import { InventoryStatusBadge } from "@/components/inventory-demo/InventoryStatusBadge";
+import { InventoryTabs } from "@/components/inventory-demo/InventoryTabs";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { listItems, type InventoryStatus } from "@/lib/inventory/mock";
+import { Select } from "@/components/ui/select";
+import { formatCurrency, formatQuantity } from "@/features/inventory/labels";
 
-const typeOptions: InventoryStatus[] = ["stock", "installed", "inactive"];
+type Row = { id:string; type:string; manufacturer:string; modelName:string; frameColor:string; quantity:number; storageLocation:string; purchasePrice:number; plannedSalePrice:number; status:string; listingStatus:string };
 
-export default function InventoryItemsClient() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-  const typeParam = (searchParams?.get("type") as InventoryStatus) ?? "stock";
-  const type = typeOptions.includes(typeParam) ? typeParam : "stock";
-  const items = listItems(type);
+export default function ItemsClient({ rows: allRows, total }: { rows: Row[]; total:number }) {
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("全て");
+  const rows = useMemo(() => allRows.filter((item) => (status === "全て" || item.status === status) && `${item.manufacturer}${item.modelName}`.toLowerCase().includes(query.toLowerCase())), [allRows, query, status]);
+  const summary = [["在庫", `${allRows.filter((i) => i.status === "在庫").reduce((a, i) => a + i.quantity, 0)}台`],["商談中", `${allRows.filter((i) => i.status === "商談中").reduce((a, i) => a + i.quantity, 0)}台`],["発送予定", `${allRows.filter((i) => i.status === "発送予定").reduce((a, i) => a + i.quantity, 0)}台`],["出品中", `${allRows.filter((i) => i.listingStatus === "出品中").reduce((a, i) => a + i.quantity, 0)}台`],] as const;
 
-  return (
-    <div className="mx-auto w-full max-w-6xl px-6 py-6">
-      <div className="mb-2 flex flex-wrap items-center gap-2">
-        <h1 className="text-sm font-semibold text-slate-800">在庫物件一覧</h1>
-        <div className="ml-auto flex flex-wrap items-center gap-2">
-          <Input className="h-8 w-[240px] rounded-none md:w-[280px]" placeholder="検索キーワード" />
-          <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
-            検索
-          </Button>
-          <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
-            CSV出力
-          </Button>
-          <Link href="/inventory/import">
-            <Button variant="outline" className="h-8 rounded-none px-3 text-xs">
-              取込へ
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      <InventoryPanel>
-        <InventoryTable
-          headers={[
-            "",
-            "管理ID",
-            "入庫日",
-            "メーカー",
-            "機種名",
-            "種別",
-            "タイプ",
-            "保管先",
-            "保管場所",
-            "外れ店",
-            "外れ日",
-            "撤去日",
-            "担当",
-            "備考",
-          ]}
-          emptyMessage={items.length === 0 ? "該当データがありません。" : undefined}
-          emptyColSpan={14}
-        >
-          {items.map((item, index) => {
-            const kind = index % 2 === 0 ? "P" : "S";
-            const typeLabel = index % 3 === 0 ? "本体" : index % 3 === 1 ? "枠" : "セル";
-            return (
-              <tr
-                key={item.id}
-                className={index % 2 === 0 ? "bg-white" : "bg-slate-50"}
-                onClick={() => router.push(`/inventory/items/${item.id}`)}
-              >
-                <td className="border border-slate-200 px-2 py-1">
-                  <input type="checkbox" aria-label={`${item.id}を選択`} />
-                </td>
-                <td className="border border-slate-200 px-2 py-1">{item.id}</td>
-                <td className="border border-slate-200 px-2 py-1">{item.stockedAt}</td>
-                <td className="border border-slate-200 px-2 py-1">{item.maker}</td>
-                <td className="border border-slate-200 px-2 py-1">{item.model}</td>
-                <td className="border border-slate-200 px-2 py-1">{kind}</td>
-                <td className="border border-slate-200 px-2 py-1">{typeLabel}</td>
-                <td className="border border-slate-200 px-2 py-1">{item.storageHub}</td>
-                <td className="border border-slate-200 px-2 py-1">{item.storageLocation}</td>
-                <td className="border border-slate-200 px-2 py-1">{item.partner}</td>
-                <td className="border border-slate-200 px-2 py-1">{item.removedAt || "-"}</td>
-                <td className="border border-slate-200 px-2 py-1">
-                  {item.status === "installed" ? "-" : item.removedAt || "-"}
-                </td>
-                <td className="border border-slate-200 px-2 py-1">{item.reader ?? "未設定"}</td>
-                <td className="border border-slate-200 px-2 py-1">-</td>
-              </tr>
-            );
-          })}
-        </InventoryTable>
-      </InventoryPanel>
-    </div>
-  );
+  return <div className="mx-auto max-w-6xl px-4 py-8 md:px-6"><InventoryTabs /><h1 className="text-2xl font-bold">在庫物件一覧</h1><p className="mt-2 text-sm text-slate-600">在庫からそのまま出品できる導線を想定し、購入・販売・倉庫の情報をまとめて確認します（全{total}台）。</p>
+    <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{summary.map(([l, v]) => <InventorySummaryCard key={l} label={l} value={v} />)}</div>
+    <Card className="mt-4"><CardHeader><CardTitle className="text-base">検索・フィルター</CardTitle></CardHeader><CardContent><div className="flex flex-col gap-3 sm:flex-row"><Input placeholder="メーカー・機種名で検索" value={query} onChange={(e) => setQuery(e.target.value)} className="bg-white" /><Select value={status} onChange={(e) => setStatus(e.target.value)} className="sm:w-48">{"全て,在庫,商談中,発送予定,売却済".split(",").map((option) => <option key={option} value={option}>{option}</option>)}</Select></div></CardContent></Card>
+    <div className="mt-4 overflow-x-auto rounded-lg border bg-white"><table className="w-full min-w-[1120px] text-sm"><thead className="bg-slate-50 text-left"><tr>{["在庫ID", "種別", "メーカー", "機種名", "枠色", "台数", "保管場所", "仕入価格", "販売予定価格", "ステータス", "出品状態", "詳細"].map((header) => <th key={header} className="px-4 py-3">{header}</th>)}</tr></thead><tbody>{rows.map((item) => <tr key={item.id} className="border-t align-middle"><td className="px-4 py-3 font-semibold">{item.id}</td><td className="px-4 py-3">{item.type}</td><td className="px-4 py-3">{item.manufacturer}</td><td className="px-4 py-3">{item.modelName}</td><td className="px-4 py-3">{item.frameColor}</td><td className="px-4 py-3 font-medium">{formatQuantity(item.quantity)}</td><td className="px-4 py-3">{item.storageLocation}</td><td className="px-4 py-3 font-medium">{formatCurrency(item.purchasePrice)}</td><td className="px-4 py-3 font-medium">{formatCurrency(item.plannedSalePrice)}</td><td className="px-4 py-3"><InventoryStatusBadge status={item.status} /></td><td className="px-4 py-3"><InventoryStatusBadge status={item.listingStatus} /></td><td className="px-4 py-3"><Link href={`/inventory/items/${item.id}`} className="inline-flex rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">詳細を見る</Link></td></tr>)}</tbody></table></div>
+  </div>;
 }

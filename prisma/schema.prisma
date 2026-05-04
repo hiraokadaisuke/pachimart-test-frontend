@@ -82,6 +82,61 @@ enum OnlineInquiryStatus {
   CANCELED
 }
 
+enum InventoryItemType {
+  PACHINKO
+  SLOT
+}
+
+enum InventoryOwnershipType {
+  STOCK
+  INSTALLED
+  NON_STOCK
+}
+
+enum InventoryStatus {
+  DRAFT
+  IN_STOCK
+  NEGOTIATING
+  RESERVED
+  OUTBOUND_SCHEDULED
+  SOLD
+  INSTALLED
+  NON_STOCK
+  ARCHIVED
+}
+
+enum InventoryListingStatus {
+  NOT_LISTED
+  LISTED
+  NEGOTIATING
+  CONTRACTED
+  SUSPENDED
+  CLOSED
+}
+
+enum InventoryMovementType {
+  INBOUND
+  OUTBOUND
+  ADJUSTMENT
+  TRANSFER
+}
+
+enum InventoryMovementStatus {
+  PLANNED
+  COMMITTED
+  CANCELED
+}
+
+enum InventoryMovementSourceType {
+  MANUAL
+  PURCHASE_RECORD
+  SALES_RECORD
+  EXHIBIT
+  DEALING
+  NAVI
+  SEED
+}
+
 model User {
   id               String            @id
   devUserId        String?           @unique
@@ -95,6 +150,9 @@ model User {
   dealingsAsBuyer  Dealing[]         @relation("TradeBuyer")
   messagesSent     Message[]         @relation("Sender")
   storageLocations StorageLocation[]
+  inventoryItemsOwned InventoryItem[]     @relation("InventoryItemOwner")
+  inventoryMovementsOwned InventoryMovement[] @relation("InventoryMovementOwner")
+  inventoryMovementsCreated InventoryMovement[] @relation("InventoryMovementCreatedBy")
 }
 
 model Navi {
@@ -236,6 +294,7 @@ model Maker {
   id            String         @id @default(cuid())
   name          String         @unique
   machineModels MachineModel[]
+  inventoryItems InventoryItem[]
 }
 
 model MachineModel {
@@ -245,6 +304,7 @@ model MachineModel {
   name    String
 
   maker Maker @relation(fields: [makerId], references: [id])
+  inventoryItems InventoryItem[]
 
   @@unique([makerId, type, name])
   @@index([type])
@@ -266,10 +326,67 @@ model StorageLocation {
 
   ownerUser User      @relation(fields: [ownerUserId], references: [id])
   exhibits  Exhibit[]
+  inventoryItems InventoryItem[]
 
   @@unique([name, ownerUserId])
   @@index([ownerUserId])
   @@index([isActive])
+}
+
+model InventoryItem {
+  id                  String                 @id @default(cuid())
+  ownerUserId         String
+  makerId             String?
+  machineModelId      String?
+  makerNameSnapshot   String?
+  modelNameSnapshot   String
+  itemType            InventoryItemType
+  frameColor          String?
+  ownershipType       InventoryOwnershipType
+  inventoryStatus     InventoryStatus
+  quantityOnHand      Int
+  storageLocationId   String?
+  purchaseUnitPrice   Int?
+  plannedSaleUnitPrice Int?
+  listingStatus       InventoryListingStatus
+  note                String?
+  createdAt           DateTime               @default(now())
+  updatedAt           DateTime               @updatedAt
+
+  ownerUser       User             @relation("InventoryItemOwner", fields: [ownerUserId], references: [id])
+  maker           Maker?           @relation(fields: [makerId], references: [id])
+  machineModel    MachineModel?    @relation(fields: [machineModelId], references: [id])
+  storageLocation StorageLocation? @relation(fields: [storageLocationId], references: [id])
+  movements       InventoryMovement[]
+
+  @@index([ownerUserId, inventoryStatus, updatedAt])
+  @@index([ownerUserId, listingStatus])
+}
+
+model InventoryMovement {
+  id              String                      @id @default(cuid())
+  ownerUserId     String
+  inventoryItemId String
+  movementType    InventoryMovementType
+  status          InventoryMovementStatus
+  quantityDelta   Int
+  scheduledAt     DateTime?
+  committedAt     DateTime?
+  sourceType      InventoryMovementSourceType?
+  sourceId        String?
+  dedupeKey       String?                     @unique
+  note            String?
+  createdByUserId String?
+  createdAt       DateTime                    @default(now())
+  updatedAt       DateTime                    @updatedAt
+
+  ownerUser     User          @relation("InventoryMovementOwner", fields: [ownerUserId], references: [id])
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  createdByUser User?         @relation("InventoryMovementCreatedBy", fields: [createdByUserId], references: [id])
+
+  @@index([inventoryItemId, committedAt])
+  @@index([ownerUserId, status, createdAt])
+  @@index([sourceType, sourceId])
 }
 
 model BuyerShippingAddress {
