@@ -43,7 +43,7 @@ export type OutboundSchedule = {
 
 export type InventoryActivity = {
   date: string;
-  category: "入庫" | "出品" | "発送" | "商談";
+  category: "入庫" | "出品" | "発送" | "商談" | "購入";
   modelName: string;
   quantity: number;
   location: string;
