@@ -130,9 +130,13 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
 
       <div className="mt-5 space-y-2">
         <div className="flex flex-wrap items-center gap-3">
-          <Button asChild disabled={!canList}>
-            <Link href={`/market/mypage/exhibits/new/${exhibitType}?${query.toString()}`}>パチマートに出品する</Link>
-          </Button>
+          {canList ? (
+            <Link href={`/market/mypage/exhibits/new/${exhibitType}?${query.toString()}`}>
+              <Button>パチマートに出品する</Button>
+            </Link>
+          ) : (
+            <Button disabled>パチマートに出品する</Button>
+          )}
         </div>
         {!canList ? <p className="text-sm text-rose-600">在庫数が0台、または売却済み/アーカイブ済みの在庫は出品できません。</p> : null}
         {showDuplicateWarning ? (
