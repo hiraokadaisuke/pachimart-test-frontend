@@ -220,6 +220,16 @@ export async function getOutboundSchedules() {
   });
 }
 
+export async function getInboundScheduleById(id: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  return prismaClient.inboundSchedule.findFirst({ where: { id, ownerUserId } });
+}
+
+export async function getOutboundScheduleById(id: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  return prismaClient.outboundSchedule.findFirst({ where: { id, ownerUserId } });
+}
+
 const summarizeByStatus = <T extends { status: string; quantity: number }>(rows: T[]) =>
   rows.reduce<Record<string, { count: number; quantity: number }>>((acc, row) => {
     const current = acc[row.status] ?? { count: 0, quantity: 0 };
@@ -426,4 +436,53 @@ export async function completeOutboundSchedule(scheduleId: string) {
   revalidatePath("/inventory/outbound");
   revalidatePath("/inventory/items");
   if (result.inventoryItemId) revalidatePath(`/inventory/items/${result.inventoryItemId}`);
+}
+
+export async function updateInboundSchedule(scheduleId: string, formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const schedule = await prismaClient.inboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
+  if (!schedule) throw new Error("入庫予定が見つかりません。");
+  if (["RECEIVED", "CANCELED"].includes(schedule.status)) throw new Error("完了済みまたは取消済みの予定は編集できません");
+  const expectedDate = new Date(String(formData.get("expectedDate") ?? ""));
+  const modelNameSnapshot = String(formData.get("modelNameSnapshot") ?? "").trim();
+  const quantity = Number(formData.get("quantity"));
+  const itemType = ITEM_TYPE_MAP[String(formData.get("itemType") ?? "")];
+  const status = INBOUND_STATUS_MAP[String(formData.get("status") ?? "")];
+  if (!modelNameSnapshot || Number.isNaN(expectedDate.getTime()) || !Number.isInteger(quantity) || quantity < 1 || !itemType || !status) throw new Error("入力内容が不正です。");
+  await prismaClient.inboundSchedule.update({ where: { id: scheduleId }, data: { expectedDate, modelNameSnapshot, quantity, itemType, status, supplierName: String(formData.get("supplierName") ?? "").trim() || null, makerNameSnapshot: String(formData.get("makerNameSnapshot") ?? "").trim() || null, frameColor: String(formData.get("frameColor") ?? "").trim() || null, destinationLocationId: String(formData.get("destinationLocationId") ?? "").trim() || null, inventoryItemId: String(formData.get("inventoryItemId") ?? "").trim() || null, note: String(formData.get("note") ?? "").trim() || null } });
+  revalidatePath("/inventory/inbound");
+}
+
+export async function updateOutboundSchedule(scheduleId: string, formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const schedule = await prismaClient.outboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
+  if (!schedule) throw new Error("発送予定が見つかりません。");
+  if (["SHIPPED", "DELIVERED", "CANCELED"].includes(schedule.status)) throw new Error("完了済みまたは取消済みの予定は編集できません");
+  const expectedDate = new Date(String(formData.get("expectedDate") ?? ""));
+  const modelNameSnapshot = String(formData.get("modelNameSnapshot") ?? "").trim();
+  const quantity = Number(formData.get("quantity"));
+  const itemType = ITEM_TYPE_MAP[String(formData.get("itemType") ?? "")];
+  const status = OUTBOUND_STATUS_MAP[String(formData.get("status") ?? "")];
+  const shippingMethod = SHIPPING_METHOD_MAP[String(formData.get("shippingMethod") ?? "")];
+  if (!modelNameSnapshot || Number.isNaN(expectedDate.getTime()) || !Number.isInteger(quantity) || quantity < 1 || !itemType || !status || !shippingMethod) throw new Error("入力内容が不正です。");
+  await prismaClient.outboundSchedule.update({ where: { id: scheduleId }, data: { expectedDate, modelNameSnapshot, quantity, itemType, status, shippingMethod, buyerName: String(formData.get("buyerName") ?? "").trim() || null, makerNameSnapshot: String(formData.get("makerNameSnapshot") ?? "").trim() || null, frameColor: String(formData.get("frameColor") ?? "").trim() || null, originLocationId: String(formData.get("originLocationId") ?? "").trim() || null, inventoryItemId: String(formData.get("inventoryItemId") ?? "").trim() || null, note: String(formData.get("note") ?? "").trim() || null } });
+  revalidatePath("/inventory/outbound");
+}
+
+export async function cancelInboundSchedule(scheduleId: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  const schedule = await prismaClient.inboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
+  if (!schedule) throw new Error("入庫予定が見つかりません。");
+  if (schedule.status === "RECEIVED") throw new Error("完了済みは取消できません。");
+  if (schedule.status !== "CANCELED") await prismaClient.inboundSchedule.update({ where: { id: schedule.id }, data: { status: "CANCELED" } });
+  revalidatePath("/inventory/inbound");
+}
+
+export async function cancelOutboundSchedule(scheduleId: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  const schedule = await prismaClient.outboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
+  if (!schedule) throw new Error("発送予定が見つかりません。");
+  if (["SHIPPED", "DELIVERED"].includes(schedule.status)) throw new Error("完了済みは取消できません。");
+  if (schedule.status !== "CANCELED") await prismaClient.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "CANCELED" } });
+  revalidatePath("/inventory/outbound");
 }
