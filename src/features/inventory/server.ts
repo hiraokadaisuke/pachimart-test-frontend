@@ -9,6 +9,7 @@ import type {
   PrismaClient,
 } from "@prisma/client";
 import { cookies } from "next/headers";
+import { revalidatePath } from "next/cache";
 
 import { DEV_USERS } from "@/lib/dev-user/users";
 import { prisma } from "@/lib/server/prisma";
@@ -278,4 +279,151 @@ export async function createOutboundSchedule(formData: FormData) {
       note: String(formData.get("note") ?? "").trim() || null,
     },
   });
+}
+
+export async function completeInboundSchedule(scheduleId: string) {
+  const ownerUserId = await resolveCurrentUserId();
+
+  const result = await prismaClient.$transaction(async (tx) => {
+    const schedule = await tx.inboundSchedule.findFirst({
+      where: { id: scheduleId, ownerUserId },
+    });
+    if (!schedule) throw new Error("入庫予定が見つかりません。");
+    if (schedule.status === "RECEIVED" || schedule.status === "CANCELED") {
+      throw new Error("この入庫予定は完了できません。");
+    }
+
+    const existingMovement = await tx.inventoryMovement.findUnique({
+      where: { dedupeKey: `inbound:${schedule.id}:received` },
+    });
+    if (existingMovement) {
+      await tx.inboundSchedule.update({ where: { id: schedule.id }, data: { status: "RECEIVED" } });
+      return { inventoryItemId: schedule.inventoryItemId };
+    }
+
+    let inventoryItemId = schedule.inventoryItemId;
+    if (inventoryItemId) {
+      const existingItem = await tx.inventoryItem.findFirst({ where: { id: inventoryItemId, ownerUserId } });
+      if (!existingItem) throw new Error("紐付け在庫が見つかりません。");
+      await tx.inventoryItem.update({
+        where: { id: inventoryItemId },
+        data: {
+          quantityOnHand: existingItem.quantityOnHand + schedule.quantity,
+          inventoryStatus: "IN_STOCK",
+          storageLocationId: schedule.destinationLocationId ?? existingItem.storageLocationId,
+        },
+      });
+    } else {
+      const createdItem = await tx.inventoryItem.create({
+        data: {
+          ownerUserId,
+          makerNameSnapshot: schedule.makerNameSnapshot,
+          modelNameSnapshot: schedule.modelNameSnapshot,
+          itemType: schedule.itemType,
+          frameColor: schedule.frameColor,
+          ownershipType: "STOCK",
+          inventoryStatus: "IN_STOCK",
+          quantityOnHand: schedule.quantity,
+          storageLocationId: schedule.destinationLocationId,
+          purchaseUnitPrice: null,
+          plannedSaleUnitPrice: null,
+          listingStatus: "NOT_LISTED",
+          note: schedule.note,
+        },
+      });
+      inventoryItemId = createdItem.id;
+    }
+
+    await tx.inventoryMovement.create({
+      data: {
+        ownerUserId,
+        inventoryItemId: inventoryItemId!,
+        movementType: "INBOUND",
+        status: "COMMITTED",
+        quantityDelta: schedule.quantity,
+        committedAt: new Date(),
+        sourceType: "MANUAL",
+        sourceId: schedule.id,
+        dedupeKey: `inbound:${schedule.id}:received`,
+        note: "入庫予定の完了により在庫反映",
+        createdByUserId: ownerUserId,
+      },
+    });
+
+    await tx.inboundSchedule.update({
+      where: { id: schedule.id },
+      data: { status: "RECEIVED", inventoryItemId },
+    });
+    return { inventoryItemId };
+  });
+
+  revalidatePath("/inventory/inbound");
+  revalidatePath("/inventory/items");
+  if (result.inventoryItemId) revalidatePath(`/inventory/items/${result.inventoryItemId}`);
+}
+
+export async function completeOutboundSchedule(scheduleId: string) {
+  const ownerUserId = await resolveCurrentUserId();
+
+  const result = await prismaClient.$transaction(async (tx) => {
+    const schedule = await tx.outboundSchedule.findFirst({
+      where: { id: scheduleId, ownerUserId },
+    });
+    if (!schedule) throw new Error("発送予定が見つかりません。");
+    if (["SHIPPED", "DELIVERED", "CANCELED"].includes(schedule.status)) {
+      throw new Error("この発送予定は完了できません。");
+    }
+    if (!schedule.inventoryItemId) {
+      throw new Error("紐付け在庫がないため発送完了できません。");
+    }
+
+    const existingMovement = await tx.inventoryMovement.findUnique({
+      where: { dedupeKey: `outbound:${schedule.id}:shipped` },
+    });
+    if (existingMovement) {
+      await tx.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "SHIPPED" } });
+      return { inventoryItemId: schedule.inventoryItemId };
+    }
+
+    const item = await tx.inventoryItem.findFirst({
+      where: { id: schedule.inventoryItemId, ownerUserId },
+    });
+    if (!item) throw new Error("紐付け在庫が見つかりません。");
+    if (item.quantityOnHand < schedule.quantity) {
+      throw new Error("在庫不足のため発送完了できません。");
+    }
+
+    const nextQuantity = item.quantityOnHand - schedule.quantity;
+    await tx.inventoryItem.update({
+      where: { id: item.id },
+      data: {
+        quantityOnHand: nextQuantity,
+        inventoryStatus: nextQuantity === 0 ? "SOLD" : "IN_STOCK",
+        listingStatus: nextQuantity === 0 ? "CONTRACTED" : item.listingStatus,
+      },
+    });
+
+    await tx.inventoryMovement.create({
+      data: {
+        ownerUserId,
+        inventoryItemId: item.id,
+        movementType: "OUTBOUND",
+        status: "COMMITTED",
+        quantityDelta: -schedule.quantity,
+        committedAt: new Date(),
+        sourceType: "MANUAL",
+        sourceId: schedule.id,
+        dedupeKey: `outbound:${schedule.id}:shipped`,
+        note: "発送予定の完了により在庫反映",
+        createdByUserId: ownerUserId,
+      },
+    });
+
+    await tx.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "SHIPPED" } });
+    return { inventoryItemId: item.id };
+  });
+
+  revalidatePath("/inventory/outbound");
+  revalidatePath("/inventory/items");
+  if (result.inventoryItemId) revalidatePath(`/inventory/items/${result.inventoryItemId}`);
 }
