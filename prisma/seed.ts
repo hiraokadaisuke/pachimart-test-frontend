@@ -15,6 +15,9 @@ import {
   InventoryMovementType,
   InventoryMovementStatus,
   InventoryMovementSourceType,
+  InboundStatus,
+  OutboundStatus,
+  InventoryShippingMethod,
 } from "@prisma/client";
 
 const prisma = new PrismaClient();
@@ -926,6 +929,27 @@ async function seedInventoryCore() {
   }
   console.log(`Seeded ${items.length} inventory items and movements.`);
 }
+
+async function seedInventorySchedules() {
+  const ownerUserId = "dev_user_1";
+  await prisma.inboundSchedule.deleteMany({ where: { ownerUserId } });
+  await prisma.outboundSchedule.deleteMany({ where: { ownerUserId } });
+  const inventoryItems = await prisma.inventoryItem.findMany({ where: { ownerUserId } });
+  const itemByModel = new Map(inventoryItems.map((i) => [i.modelNameSnapshot, i]));
+
+  await prisma.inboundSchedule.createMany({ data: [
+    { ownerUserId, expectedDate: new Date("2026-05-09"), supplierName: "株式会社A社", itemType: InventoryItemType.PACHINKO, makerNameSnapshot: "平和", modelNameSnapshot: "P烈火の炎3", quantity: 2, destinationLocationId: "location_dev_user_1_1", status: InboundStatus.PLANNED },
+    { ownerUserId, expectedDate: new Date("2026-05-10"), supplierName: "株式会社B社", itemType: InventoryItemType.SLOT, makerNameSnapshot: "サミー", modelNameSnapshot: "L北斗の拳", quantity: 4, destinationLocationId: "location_dev_user_1_2", status: InboundStatus.ARRIVAL_WAITING },
+    { ownerUserId, expectedDate: new Date("2026-05-11"), supplierName: "株式会社C社", itemType: InventoryItemType.PACHINKO, makerNameSnapshot: "三洋", modelNameSnapshot: "P大海物語5", quantity: 5, destinationLocationId: "location_dev_user_1_1", status: InboundStatus.PARTIALLY_RECEIVED, inventoryItemId: itemByModel.get("P大海物語5")?.id },
+    { ownerUserId, expectedDate: new Date("2026-05-12"), supplierName: "株式会社G社", itemType: InventoryItemType.SLOT, makerNameSnapshot: "大都技研", modelNameSnapshot: "L押忍!番長4", quantity: 2, destinationLocationId: "location_dev_user_1_1", status: InboundStatus.RECEIVED, inventoryItemId: itemByModel.get("L押忍!番長4")?.id },
+  ]});
+  await prisma.outboundSchedule.createMany({ data: [
+    { ownerUserId, expectedDate: new Date("2026-05-09"), buyerName: "株式会社D社", itemType: InventoryItemType.SLOT, makerNameSnapshot: "北電子", modelNameSnapshot: "SアイムジャグラーEX", quantity: 3, originLocationId: "location_dev_user_1_2", shippingMethod: InventoryShippingMethod.PREPAID, status: OutboundStatus.READY_TO_SHIP, inventoryItemId: itemByModel.get("SアイムジャグラーEX")?.id },
+    { ownerUserId, expectedDate: new Date("2026-05-10"), buyerName: "株式会社E社", itemType: InventoryItemType.PACHINKO, makerNameSnapshot: "三共", modelNameSnapshot: "eフィーバーからくりサーカス2", quantity: 1, originLocationId: "location_dev_user_1_1", shippingMethod: InventoryShippingMethod.COLLECT, status: OutboundStatus.PLANNED, inventoryItemId: itemByModel.get("eフィーバーからくりサーカス2")?.id },
+    { ownerUserId, expectedDate: new Date("2026-05-11"), buyerName: "株式会社F社", itemType: InventoryItemType.SLOT, makerNameSnapshot: "山佐", modelNameSnapshot: "LモンキーターンV", quantity: 2, originLocationId: "location_dev_user_1_1", shippingMethod: InventoryShippingMethod.CHARTER, status: OutboundStatus.SHIPPED, inventoryItemId: itemByModel.get("LモンキーターンV")?.id },
+    { ownerUserId, expectedDate: new Date("2026-05-12"), buyerName: "株式会社H社", itemType: InventoryItemType.PACHINKO, makerNameSnapshot: "京楽", modelNameSnapshot: "P仮面ライダー電王", quantity: 1, originLocationId: "location_dev_user_1_2", shippingMethod: InventoryShippingMethod.OTHER, status: OutboundStatus.PICKING, inventoryItemId: itemByModel.get("P仮面ライダー電王")?.id },
+  ]});
+}
 async function seedOnlineInquiries(listings: ListingSeed[]) {
   const listingMap = new Map(listings.map((listing) => [listing.id, listing]));
   const comparisonListing = listingMap.get("listing_dev_comparison_buyer");
@@ -1186,6 +1210,7 @@ async function main() {
   await seedBuyerShippingAddresses();
   const listings = await seedListings();
   await seedInventoryCore();
+  await seedInventorySchedules();
   await seedOnlineInquiries(listings);
   const { navis, trades } = await seedNavis(listings);
 

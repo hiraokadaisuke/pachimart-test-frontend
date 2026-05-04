@@ -137,6 +137,30 @@ enum InventoryMovementSourceType {
   SEED
 }
 
+enum InboundStatus {
+  PLANNED
+  ARRIVAL_WAITING
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELED
+}
+
+enum OutboundStatus {
+  PLANNED
+  PICKING
+  READY_TO_SHIP
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
+enum InventoryShippingMethod {
+  PREPAID
+  COLLECT
+  CHARTER
+  OTHER
+}
+
 model User {
   id               String            @id
   devUserId        String?           @unique
@@ -153,6 +177,8 @@ model User {
   inventoryItemsOwned InventoryItem[]     @relation("InventoryItemOwner")
   inventoryMovementsOwned InventoryMovement[] @relation("InventoryMovementOwner")
   inventoryMovementsCreated InventoryMovement[] @relation("InventoryMovementCreatedBy")
+  inboundSchedulesOwned InboundSchedule[] @relation("InboundScheduleOwner")
+  outboundSchedulesOwned OutboundSchedule[] @relation("OutboundScheduleOwner")
 }
 
 model Navi {
@@ -327,6 +353,8 @@ model StorageLocation {
   ownerUser User      @relation(fields: [ownerUserId], references: [id])
   exhibits  Exhibit[]
   inventoryItems InventoryItem[]
+  inboundDestinations InboundSchedule[] @relation("InboundDestinationLocation")
+  outboundOrigins OutboundSchedule[] @relation("OutboundOriginLocation")
 
   @@unique([name, ownerUserId])
   @@index([ownerUserId])
@@ -358,9 +386,62 @@ model InventoryItem {
   machineModel    MachineModel?    @relation(fields: [machineModelId], references: [id])
   storageLocation StorageLocation? @relation(fields: [storageLocationId], references: [id])
   movements       InventoryMovement[]
+  inboundSchedules InboundSchedule[] @relation("InboundScheduleInventoryItem")
+  outboundSchedules OutboundSchedule[] @relation("OutboundScheduleInventoryItem")
 
   @@index([ownerUserId, inventoryStatus, updatedAt])
   @@index([ownerUserId, listingStatus])
+}
+
+model InboundSchedule {
+  id                    String            @id @default(cuid())
+  ownerUserId           String
+  inventoryItemId       String?
+  expectedDate          DateTime
+  supplierName          String?
+  itemType              InventoryItemType
+  makerNameSnapshot     String?
+  modelNameSnapshot     String
+  frameColor            String?
+  quantity              Int
+  destinationLocationId String?
+  status                InboundStatus
+  note                  String?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  ownerUser User @relation("InboundScheduleOwner", fields: [ownerUserId], references: [id])
+  inventoryItem InventoryItem? @relation("InboundScheduleInventoryItem", fields: [inventoryItemId], references: [id])
+  destinationLocation StorageLocation? @relation("InboundDestinationLocation", fields: [destinationLocationId], references: [id])
+
+  @@index([ownerUserId, status, expectedDate])
+  @@index([inventoryItemId, expectedDate])
+}
+
+model OutboundSchedule {
+  id               String                  @id @default(cuid())
+  ownerUserId      String
+  inventoryItemId  String?
+  expectedDate     DateTime
+  buyerName        String?
+  itemType         InventoryItemType
+  makerNameSnapshot String?
+  modelNameSnapshot String
+  frameColor       String?
+  quantity         Int
+  originLocationId String?
+  shippingMethod   InventoryShippingMethod
+  status           OutboundStatus
+  note             String?
+  createdAt        DateTime                @default(now())
+  updatedAt        DateTime                @updatedAt
+
+  ownerUser User @relation("OutboundScheduleOwner", fields: [ownerUserId], references: [id])
+  inventoryItem InventoryItem? @relation("OutboundScheduleInventoryItem", fields: [inventoryItemId], references: [id])
+  originLocation StorageLocation? @relation("OutboundOriginLocation", fields: [originLocationId], references: [id])
+
+  @@index([ownerUserId, status, expectedDate])
+  @@index([inventoryItemId, expectedDate])
 }
 
 model InventoryMovement {
