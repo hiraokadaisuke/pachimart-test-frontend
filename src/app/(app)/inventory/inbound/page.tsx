@@ -15,13 +15,53 @@ import {
   getInboundSchedules,
 } from "@/features/inventory/server";
 
-export default async function InboundSchedulesPage() {
-  const [schedules, summary] = await Promise.all([getInboundSchedules(), getInboundScheduleSummary()]);
+type FilterType = "all" | "destination-missing";
+
+function isDestinationMissingOpenSchedule(schedule: { destinationLocationId: string | null; status: string }) {
+  return schedule.destinationLocationId === null && schedule.status !== "RECEIVED" && schedule.status !== "CANCELED";
+}
+
+export default async function InboundSchedulesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ filter?: string }>;
+}) {
+  const [schedules, summary, params] = await Promise.all([getInboundSchedules(), getInboundScheduleSummary(), searchParams]);
+  const filter: FilterType = params?.filter === "destination-missing" ? "destination-missing" : "all";
+
+  const destinationMissingCount = schedules.filter((schedule) => isDestinationMissingOpenSchedule(schedule)).length;
+  const filteredSchedules =
+    filter === "destination-missing"
+      ? schedules.filter((schedule) => isDestinationMissingOpenSchedule(schedule))
+      : schedules;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
       <InventoryTabs />
-      <h1 className="text-2xl font-bold">入庫予定</h1>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <h1 className="text-2xl font-bold">入庫予定</h1>
+        <p className="text-sm text-slate-700">未設定：{destinationMissingCount}件 / 全体：{schedules.length}件</p>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <Link
+          href="/inventory/inbound"
+          className={`rounded-md border px-3 py-1.5 text-sm ${
+            filter === "all" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          全て
+        </Link>
+        <Link
+          href="/inventory/inbound?filter=destination-missing"
+          className={`rounded-md border px-3 py-1.5 text-sm ${
+            filter === "destination-missing"
+              ? "border-slate-900 bg-slate-900 text-white"
+              : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+          }`}
+        >
+          入庫先未設定のみ（{destinationMissingCount}）
+        </Link>
+      </div>
       <div className="mt-4">
         <Link href="/inventory/inbound/new" className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800">
           入庫予定を登録
@@ -42,7 +82,7 @@ export default async function InboundSchedulesPage() {
             </tr>
           </thead>
           <tbody>
-            {schedules.map((s) => {
+            {filteredSchedules.map((s) => {
               const autoCreated = getAutoCreatedInboundInfo({ sourceType: s.sourceType, sourceId: s.sourceId, note: s.note });
               const destinationMissing = !s.destinationLocationId;
               const isOpenSchedule = s.status !== "RECEIVED" && s.status !== "CANCELED";
