@@ -56,8 +56,8 @@ export function InventoryItemForm({ action, makers, machineModels, storageLocati
       <label className="grid gap-1 text-sm">出品状態<Select name="listingStatus" defaultValue={item ? listingStatusValueMap[item.listingStatus] : "未出品"}>{listingStatuses.map((v) => <option key={v}>{v}</option>)}</Select></label>
     </CardContent></Card>
     <Card><CardHeader><CardTitle className="text-base">金額情報</CardTitle></CardHeader><CardContent className="grid gap-4 md:grid-cols-2">
-      <label className="grid gap-1 text-sm">仕入単価<Input type="number" min={0} name="purchaseUnitPrice" defaultValue={item?.purchaseUnitPrice ?? ""} /></label>
-      <label className="grid gap-1 text-sm">販売予定単価<Input type="number" min={0} name="plannedSaleUnitPrice" defaultValue={item?.plannedSaleUnitPrice ?? ""} /></label>
+      <label className="grid gap-1 text-sm">仕入単価（税抜）<Input type="number" min={0} name="purchaseUnitPrice" defaultValue={item?.purchaseUnitPrice ?? ""} /><span className="text-xs text-slate-500">見込み粗利の計算に使用します。税抜単価で入力してください。</span></label>
+      <label className="grid gap-1 text-sm">販売予定単価（税抜）<Input type="number" min={0} name="plannedSaleUnitPrice" defaultValue={item?.plannedSaleUnitPrice ?? ""} /><span className="text-xs text-slate-500">見込み粗利の計算に使用します。税抜単価で入力してください。</span></label>
     </CardContent></Card>
     <Card><CardHeader><CardTitle className="text-base">備考</CardTitle></CardHeader><CardContent><textarea name="note" defaultValue={item?.note ?? ""} className="min-h-24 w-full rounded-md border p-2 text-sm" /></CardContent></Card>
     <div className="flex gap-3"><Button type="submit">{submitLabel}</Button></div>

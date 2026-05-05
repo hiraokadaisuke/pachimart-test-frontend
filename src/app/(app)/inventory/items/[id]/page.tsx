@@ -37,8 +37,18 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
         m.movementType
       )}(${inventoryMovementStatusLabel(m.status)}) ${m.quantityDelta > 0 ? "+" : ""}${m.quantityDelta}台`
   );
-  const margin = (item.plannedSaleUnitPrice ?? 0) - (item.purchaseUnitPrice ?? 0);
-  const marginRate = item.plannedSaleUnitPrice ? Math.round((margin / item.plannedSaleUnitPrice) * 1000) / 10 : 0;
+  const estimatedRevenue = item.plannedSaleUnitPrice != null ? item.plannedSaleUnitPrice * item.quantityOnHand : null;
+  const estimatedCost = item.purchaseUnitPrice != null ? item.purchaseUnitPrice * item.quantityOnHand : null;
+  const estimatedGrossProfit = estimatedRevenue != null && estimatedCost != null ? estimatedRevenue - estimatedCost : null;
+  const estimatedGrossProfitRate =
+    estimatedGrossProfit != null &&
+    estimatedRevenue != null &&
+    item.purchaseUnitPrice != null &&
+    item.plannedSaleUnitPrice != null &&
+    item.quantityOnHand > 0 &&
+    estimatedRevenue > 0
+      ? Math.round((estimatedGrossProfit / estimatedRevenue) * 1000) / 10
+      : null;
 
   const exhibitStatuses = await getExhibitStatusesByIds(item.externalLinks.map((link) => link.externalId));
 
@@ -110,19 +120,32 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
           </ul>
         </InventorySectionCard>
 
-        <InventorySectionCard title="利益見込み">
+        <InventorySectionCard title="利益見込み" description="税抜基準の参考値です。価格入力で見込み粗利を確認できます。">
           <div className="grid gap-3 text-sm sm:grid-cols-2">
-            {[
-              ["仕入価格", formatCurrency(item.purchaseUnitPrice)],
-              ["販売予定価格", formatCurrency(item.plannedSaleUnitPrice)],
-              ["粗利見込み", formatCurrency(margin)],
-              ["粗利率", `${marginRate}%`],
-            ].map(([k, v]) => (
-              <div key={k}>
-                <p className="text-slate-500">{k}</p>
-                <p className="font-semibold">{v}</p>
-              </div>
-            ))}
+            <div>
+              <p className="text-slate-500">仕入単価（税抜）</p>
+              <p className="text-lg font-semibold">{item.purchaseUnitPrice != null ? formatCurrency(item.purchaseUnitPrice) : "原価未入力"}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">販売予定単価（税抜）</p>
+              <p className="text-lg font-semibold">{item.plannedSaleUnitPrice != null ? formatCurrency(item.plannedSaleUnitPrice) : "販売予定価格未入力"}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">見込み売上</p>
+              <p className="text-lg font-semibold">{estimatedRevenue != null ? formatCurrency(estimatedRevenue) : "販売予定価格未入力"}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">見込み原価</p>
+              <p className="text-lg font-semibold">{estimatedCost != null ? formatCurrency(estimatedCost) : "原価未入力"}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">見込み粗利</p>
+              <p className="text-xl font-bold">{estimatedGrossProfit != null ? formatCurrency(estimatedGrossProfit) : "価格入力で表示"}</p>
+            </div>
+            <div>
+              <p className="text-slate-500">見込み粗利率</p>
+              <p className="text-xl font-bold">{estimatedGrossProfitRate != null ? `${estimatedGrossProfitRate}%` : "-"}</p>
+            </div>
           </div>
         </InventorySectionCard>
       </div>
