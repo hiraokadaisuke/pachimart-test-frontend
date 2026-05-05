@@ -21,6 +21,32 @@ export type InventoryActivity = {
   relatedItemName?: string;
 };
 
+export const INVENTORY_ACTIVITY_TYPE_FILTERS = [
+  { value: "ALL", label: "全て" },
+  { value: "INBOUND_SCHEDULE_CREATED", label: "入庫予定" },
+  { value: "OUTBOUND_SCHEDULE_CREATED", label: "発送予定" },
+  { value: "INBOUND_COMPLETED", label: "入庫完了" },
+  { value: "OUTBOUND_COMPLETED", label: "発送完了" },
+  { value: "CANCELED", label: "取消" },
+  { value: "MANUAL_ADJUSTMENT", label: "調整" },
+] as const;
+
+export const INVENTORY_ACTIVITY_RANGE_FILTERS = [
+  { value: "ALL", label: "全期間", days: null },
+  { value: "7D", label: "7日以内", days: 7 },
+  { value: "30D", label: "30日以内", days: 30 },
+  { value: "90D", label: "90日以内", days: 90 },
+] as const;
+
+export type InventoryActivityTypeFilter = (typeof INVENTORY_ACTIVITY_TYPE_FILTERS)[number]["value"];
+export type InventoryActivityRangeFilter = (typeof INVENTORY_ACTIVITY_RANGE_FILTERS)[number]["value"];
+
+const CANCELED_ACTIVITY_TYPES: InventoryActivity["type"][] = [
+  "INBOUND_COMPLETION_CANCELED",
+  "OUTBOUND_COMPLETION_CANCELED",
+  "SCHEDULE_CANCELED",
+];
+
 type MovementWithItem = InventoryMovement & {
   inventoryItem: {
     id: string;
@@ -184,4 +210,30 @@ export const getInventoryActivityFeed = ({
   return [...movementActivities, ...inboundActivities, ...outboundActivities]
     .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
     .slice(0, take);
+};
+
+export const filterInventoryActivities = ({
+  activities,
+  typeFilter,
+  rangeFilter,
+  now = new Date(),
+}: {
+  activities: InventoryActivity[];
+  typeFilter: InventoryActivityTypeFilter;
+  rangeFilter: InventoryActivityRangeFilter;
+  now?: Date;
+}) => {
+  const range = INVENTORY_ACTIVITY_RANGE_FILTERS.find((item) => item.value === rangeFilter) ?? INVENTORY_ACTIVITY_RANGE_FILTERS[0];
+  const threshold = range.days == null ? null : new Date(now.getTime() - range.days * 24 * 60 * 60 * 1000);
+
+  return activities.filter((activity) => {
+    const typeMatched =
+      typeFilter === "ALL" ||
+      (typeFilter === "CANCELED"
+        ? CANCELED_ACTIVITY_TYPES.includes(activity.type)
+        : activity.type === typeFilter);
+    if (!typeMatched) return false;
+    if (!threshold) return true;
+    return activity.occurredAt.getTime() >= threshold.getTime();
+  });
 };

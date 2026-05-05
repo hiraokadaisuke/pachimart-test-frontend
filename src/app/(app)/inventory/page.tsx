@@ -51,6 +51,11 @@ export default async function InventoryPage() {
       </InventorySectionCard>
 
       <InventorySectionCard title="最近の在庫の動き" className="mt-6" description="入庫予定・発送予定・完了・取消を統合したイベントフィードです。">
+        <div className="mb-3 flex justify-end">
+          <Link href="/inventory/activity" className="text-sm font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-800">
+            すべて見る
+          </Link>
+        </div>
         <ul className="divide-y rounded-lg border bg-white">
           {recentActivities.map((activity) => (
             <li key={activity.id} className="flex items-center justify-between gap-3 p-4">
