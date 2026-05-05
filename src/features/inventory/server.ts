@@ -282,6 +282,74 @@ export async function getOutboundScheduleSummary() {
   return summarizeByStatus(await getOutboundSchedules());
 }
 
+export async function getInventoryDashboardData() {
+  const ownerUserId = await resolveCurrentUserId();
+
+  const [inventoryItems, inboundSchedules, outboundSchedules, recentMovements] = await Promise.all([
+    prismaClient.inventoryItem.findMany({
+      where: {
+        ownerUserId,
+        inventoryStatus: { notIn: ["SOLD", "ARCHIVED"] },
+      },
+      select: {
+        id: true,
+        quantityOnHand: true,
+        purchaseUnitPrice: true,
+        plannedSaleUnitPrice: true,
+      },
+    }),
+    prismaClient.inboundSchedule.findMany({
+      where: {
+        ownerUserId,
+        status: { notIn: ["RECEIVED", "CANCELED"] },
+      },
+      select: {
+        id: true,
+        status: true,
+        destinationLocationId: true,
+      },
+    }),
+    prismaClient.outboundSchedule.findMany({
+      where: {
+        ownerUserId,
+        status: { notIn: ["SHIPPED", "DELIVERED", "CANCELED"] },
+      },
+      select: { id: true },
+    }),
+    prismaClient.inventoryMovement.findMany({
+      where: { ownerUserId },
+      orderBy: [{ committedAt: "desc" }, { createdAt: "desc" }],
+      take: 8,
+      include: {
+        inventoryItem: {
+          include: {
+            storageLocation: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  const inventoryUnitCount = inventoryItems.reduce((sum, item) => sum + item.quantityOnHand, 0);
+  const destinationMissingCount = inboundSchedules.filter((schedule) => schedule.destinationLocationId === null).length;
+  const projectedGrossProfitTotal = inventoryItems.reduce((sum, item) => {
+    if (item.purchaseUnitPrice == null || item.plannedSaleUnitPrice == null) return sum;
+    return sum + (item.plannedSaleUnitPrice - item.purchaseUnitPrice) * item.quantityOnHand;
+  }, 0);
+
+  return {
+    kpi: {
+      inventoryCount: inventoryItems.length,
+      inventoryUnitCount,
+      inboundOpenCount: inboundSchedules.length,
+      outboundOpenCount: outboundSchedules.length,
+      inboundDestinationMissingCount: destinationMissingCount,
+      projectedGrossProfitTotal,
+    },
+    recentMovements,
+  };
+}
+
 export async function createInboundSchedule(formData: FormData) {
   const ownerUserId = await resolveCurrentUserId();
   const expectedDate = new Date(String(formData.get("expectedDate") ?? ""));
