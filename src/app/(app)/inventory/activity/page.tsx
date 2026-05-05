@@ -11,11 +11,15 @@ import { getInventoryActivityData } from "@/features/inventory/server";
 
 const toDate = (value: Date) => value.toISOString().slice(0, 10);
 
-const isTypeFilter = (value: string): value is InventoryActivityTypeFilter =>
-  INVENTORY_ACTIVITY_TYPE_FILTERS.some((filter) => filter.value === value);
+const parseTypeFilter = (value?: string): InventoryActivityTypeFilter => {
+  const matched = INVENTORY_ACTIVITY_TYPE_FILTERS.find((filter) => filter.value === value);
+  return matched?.value ?? "ALL";
+};
 
-const isRangeFilter = (value: string): value is InventoryActivityRangeFilter =>
-  INVENTORY_ACTIVITY_RANGE_FILTERS.some((filter) => filter.value === value);
+const parseRangeFilter = (value?: string): InventoryActivityRangeFilter => {
+  const matched = INVENTORY_ACTIVITY_RANGE_FILTERS.find((filter) => filter.value === value);
+  return matched?.value ?? "ALL";
+};
 
 export default async function InventoryActivityPage({
   searchParams,
@@ -23,8 +27,8 @@ export default async function InventoryActivityPage({
   searchParams: Promise<{ type?: string; range?: string }>;
 }) {
   const params = await searchParams;
-  const typeFilter = isTypeFilter(params.type ?? "") ? params.type : "ALL";
-  const rangeFilter = isRangeFilter(params.range ?? "") ? params.range : "ALL";
+  const typeFilter = parseTypeFilter(params.type);
+  const rangeFilter = parseRangeFilter(params.range);
 
   const { activities, filteredCount } = await getInventoryActivityData({
     typeFilter,
