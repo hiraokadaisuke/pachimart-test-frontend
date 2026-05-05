@@ -57,12 +57,13 @@ export async function createInboundScheduleFromDealing(dealingId: number | strin
     const parsedExpectedDate = extractExpectedDate(payload);
     const expectedDate = parsedExpectedDate ?? new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
+    const destinationLocationId = dealing.buyerUser.defaultStorageLocationId ?? null;
     const noteParts = [
       "パチマート購入から自動作成",
       `inbound-from-dealing:${dealing.id}`,
       `dealingId: ${dealing.id}`,
       `exhibitId: ${exhibit.id}`,
-      "入庫先未設定",
+      destinationLocationId ? "既定倉庫を入庫先に自動設定" : "入庫先未設定",
     ];
     if (!parsedExpectedDate) noteParts.push("入庫予定日未確定(暫定+7日)");
 
@@ -77,7 +78,7 @@ export async function createInboundScheduleFromDealing(dealingId: number | strin
         modelNameSnapshot: exhibit.machineName || "商品",
         frameColor: null,
         quantity: exhibit.quantity,
-        destinationLocationId: null,
+        destinationLocationId,
         status: InboundStatus.PLANNED,
         sourceType: "DEALING",
         sourceId: String(dealing.id),
