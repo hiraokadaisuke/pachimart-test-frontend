@@ -308,6 +308,9 @@ export async function completeInboundSchedule(scheduleId: string) {
     if (schedule.status === "RECEIVED" || schedule.status === "CANCELED") {
       throw new Error("この入庫予定は完了できません。");
     }
+    if (!schedule.destinationLocationId) {
+      throw new Error("入庫先が未設定のため、入庫完了できません");
+    }
 
     const existingMovement = await tx.inventoryMovement.findUnique({
       where: { dedupeKey: `inbound:${schedule.id}:received` },
