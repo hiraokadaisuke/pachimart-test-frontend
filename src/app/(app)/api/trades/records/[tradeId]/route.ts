@@ -10,6 +10,7 @@ import {
   resolveActorRole,
 } from "@/lib/dealings/statusMachine";
 import { recordLedgerForStatus, validateTradeLedgerConsistency } from "@/lib/server/ledger";
+import { createOutboundScheduleFromDealing } from "@/features/inventory/outbound-sync";
 
 const toDate = (value: unknown, fallback?: Date): Date => {
   if (value instanceof Date) return value;
@@ -190,6 +191,7 @@ export async function PATCH(request: Request, { params }: { params: { tradeId: s
     });
 
     const updatedRecord = toRecord(updated);
+    await createOutboundScheduleFromDealing(updatedRecord.id);
     await recordLedgerForStatus(record.status, targetStatus, updatedRecord, currentUserId);
     const warnings = await validateTradeLedgerConsistency(updatedRecord.id);
 
