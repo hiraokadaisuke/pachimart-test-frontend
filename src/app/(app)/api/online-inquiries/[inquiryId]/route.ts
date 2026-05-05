@@ -6,6 +6,7 @@ import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
+import { syncInventoryListingStatusFromExhibit } from "@/features/inventory/listing-sync";
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -284,6 +285,7 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
 
       if (listing && listing.status !== ExhibitStatus.SOLD) {
         await db.exhibit.update({ where: { id: listing.id }, data: { status: ExhibitStatus.SOLD } });
+        await syncInventoryListingStatusFromExhibit(listing.id);
       }
 
       return updated;
