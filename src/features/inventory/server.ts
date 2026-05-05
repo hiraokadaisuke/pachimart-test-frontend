@@ -15,6 +15,8 @@ import { DEV_USERS } from "@/lib/dev-user/users";
 import { prisma } from "@/lib/server/prisma";
 import { resyncInventoryExternalLink } from "@/features/inventory/listing-sync";
 import { getInventoryActivityFeed } from "@/features/inventory/activity-feed";
+import { filterInventoryActivities } from "@/features/inventory/activity-feed";
+import type { InventoryActivityRangeFilter, InventoryActivityTypeFilter } from "@/features/inventory/activity-feed";
 
 const DEV_USER_COOKIE_KEY = "dev_user_id";
 
@@ -374,6 +376,46 @@ export async function getInventoryDashboardData() {
     },
     recentMovements,
     recentActivities,
+  };
+}
+
+export async function getInventoryActivityData({
+  typeFilter,
+  rangeFilter,
+  take = 50,
+}: {
+  typeFilter: InventoryActivityTypeFilter;
+  rangeFilter: InventoryActivityRangeFilter;
+  take?: number;
+}) {
+  const ownerUserId = await resolveCurrentUserId();
+  const [movements, inboundSchedules, outboundSchedules] = await Promise.all([
+    prismaClient.inventoryMovement.findMany({
+      where: { ownerUserId },
+      orderBy: [{ committedAt: "desc" }, { createdAt: "desc" }],
+      take: 200,
+      include: { inventoryItem: { select: { id: true, modelNameSnapshot: true } } },
+    }),
+    prismaClient.inboundSchedule.findMany({
+      where: { ownerUserId },
+      orderBy: { updatedAt: "desc" },
+      take: 200,
+      include: { inventoryItem: { select: { id: true, modelNameSnapshot: true } } },
+    }),
+    prismaClient.outboundSchedule.findMany({
+      where: { ownerUserId },
+      orderBy: { updatedAt: "desc" },
+      take: 200,
+      include: { inventoryItem: { select: { id: true, modelNameSnapshot: true } } },
+    }),
+  ]);
+
+  const allActivities = getInventoryActivityFeed({ movements, inboundSchedules, outboundSchedules, take: 1000 });
+  const filteredActivities = filterInventoryActivities({ activities: allActivities, typeFilter, rangeFilter });
+
+  return {
+    filteredCount: filteredActivities.length,
+    activities: filteredActivities.slice(0, take),
   };
 }
 
