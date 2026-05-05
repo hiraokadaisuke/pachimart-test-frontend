@@ -382,10 +382,14 @@ export async function getInventoryDashboardData() {
 export async function getInventoryActivityData({
   typeFilter,
   rangeFilter,
+  page,
+  pageSize = 50,
   take = 50,
 }: {
   typeFilter: InventoryActivityTypeFilter;
   rangeFilter: InventoryActivityRangeFilter;
+  page: number;
+  pageSize?: number;
   take?: number;
 }) {
   const ownerUserId = await resolveCurrentUserId();
@@ -412,10 +416,16 @@ export async function getInventoryActivityData({
 
   const allActivities = getInventoryActivityFeed({ movements, inboundSchedules, outboundSchedules, take: 1000 });
   const filteredActivities = filterInventoryActivities({ activities: allActivities, typeFilter, rangeFilter });
+  const totalPages = Math.max(1, Math.ceil(filteredActivities.length / pageSize));
+  const currentPage = Math.min(Math.max(page, 1), totalPages);
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
 
   return {
     filteredCount: filteredActivities.length,
-    activities: filteredActivities.slice(0, take),
+    activities: filteredActivities.slice(start, end).slice(0, take),
+    currentPage,
+    totalPages,
   };
 }
 

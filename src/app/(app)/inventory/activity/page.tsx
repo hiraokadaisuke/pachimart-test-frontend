@@ -21,20 +21,30 @@ const parseRangeFilter = (value?: string): InventoryActivityRangeFilter => {
   return matched?.value ?? "ALL";
 };
 
+const parsePage = (value?: string): number => {
+  const parsed = Number.parseInt(value ?? "", 10);
+  if (!Number.isFinite(parsed) || parsed < 1) return 1;
+  return parsed;
+};
+
 export default async function InventoryActivityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string; range?: string }>;
+  searchParams: Promise<{ type?: string; range?: string; page?: string }>;
 }) {
   const params = await searchParams;
   const typeFilter = parseTypeFilter(params.type);
   const rangeFilter = parseRangeFilter(params.range);
+  const page = parsePage(params.page);
 
-  const { activities, filteredCount } = await getInventoryActivityData({
+  const { activities, filteredCount, currentPage, totalPages } = await getInventoryActivityData({
     typeFilter,
     rangeFilter,
-    take: 50,
+    page,
+    pageSize: 50,
   });
+  const prevPage = Math.max(1, currentPage - 1);
+  const nextPage = Math.min(totalPages, currentPage + 1);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
@@ -47,7 +57,7 @@ export default async function InventoryActivityPage({
         <div className="mt-2 flex flex-wrap gap-2">
           {INVENTORY_ACTIVITY_TYPE_FILTERS.map((filter) => {
             const isActive = typeFilter === filter.value;
-            const href = `/inventory/activity?type=${filter.value}&range=${rangeFilter}`;
+            const href = `/inventory/activity?type=${filter.value}&range=${rangeFilter}&page=1`;
             return (
               <Link key={filter.value} href={href} className={`rounded-md border px-3 py-1 text-sm ${isActive ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
                 {filter.label}
@@ -60,7 +70,7 @@ export default async function InventoryActivityPage({
         <div className="mt-2 flex flex-wrap gap-2">
           {INVENTORY_ACTIVITY_RANGE_FILTERS.map((filter) => {
             const isActive = rangeFilter === filter.value;
-            const href = `/inventory/activity?type=${typeFilter}&range=${filter.value}`;
+            const href = `/inventory/activity?type=${typeFilter}&range=${filter.value}&page=1`;
             return (
               <Link key={filter.value} href={href} className={`rounded-md border px-3 py-1 text-sm ${isActive ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
                 {filter.label}
@@ -94,6 +104,21 @@ export default async function InventoryActivityPage({
           </li>
         ))}
       </ul>
+      <div className="mt-4 flex items-center justify-end gap-3 text-sm">
+        <Link
+          href={`/inventory/activity?type=${typeFilter}&range=${rangeFilter}&page=${prevPage}`}
+          className={`rounded-md border px-3 py-1 ${currentPage <= 1 ? "pointer-events-none text-slate-400" : "text-slate-700 hover:bg-slate-50"}`}
+        >
+          前へ
+        </Link>
+        <span className="text-slate-600">{currentPage} / {totalPages}ページ</span>
+        <Link
+          href={`/inventory/activity?type=${typeFilter}&range=${rangeFilter}&page=${nextPage}`}
+          className={`rounded-md border px-3 py-1 ${currentPage >= totalPages ? "pointer-events-none text-slate-400" : "text-slate-700 hover:bg-slate-50"}`}
+        >
+          次へ
+        </Link>
+      </div>
     </div>
   );
 }
