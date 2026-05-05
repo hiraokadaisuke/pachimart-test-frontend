@@ -59,7 +59,7 @@ export default async function OutboundSchedulesPage() {
                       <InventoryStatusBadge status={outboundStatusLabel(s.status)} />
                       {autoCreated.isAutoCreated ? (
                         <div className="space-y-1">
-                          <Badge variant="secondary">パチマート成約から自動作成</Badge>
+                          <Badge variant="default">パチマート成約から自動作成</Badge>
                           {autoCreated.dealingId ? <p className="text-[11px] text-slate-600">Dealing ID: {autoCreated.dealingId}</p> : null}
                         </div>
                       ) : null}
