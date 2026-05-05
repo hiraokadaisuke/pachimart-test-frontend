@@ -252,17 +252,18 @@ type InMemoryPrisma = {
       where,
     }?: {
       where?: { id?: { in?: string[] } };
-    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }[]>;
+    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string; defaultStorageLocationId?: string | null }[]>;
     findUnique: ({
       where,
     }: {
       where: { id?: string | null };
-    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string } | null>;
+    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string; defaultStorageLocationId?: string | null } | null>;
     create: ({
       data,
     }: {
-      data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
-    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
+      data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string; defaultStorageLocationId?: string | null }>;
+    }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string; defaultStorageLocationId?: string | null }>;
+    update: ({ where, data }: { where: { id?: string | null }; data: { defaultStorageLocationId?: string | null } }) => Promise<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string; defaultStorageLocationId?: string | null }>;
   };
   message: {
     findMany: ({ where, orderBy }?: { where?: { naviId?: number | null }; orderBy?: { createdAt?: "asc" | "desc" } }) =>
@@ -353,9 +354,18 @@ type InMemoryPrisma = {
   $queryRaw: (...params: unknown[]) => Promise<void>;
 };
 
+type InMemoryUserRecord = {
+  id: string;
+  companyName: string;
+  contactName?: string;
+  address?: string;
+  tel?: string;
+  defaultStorageLocationId?: string | null;
+};
+
 const buildInMemoryPrisma = (): InMemoryPrisma => {
   const userDirectory = Object.values(DEV_USERS).reduce<
-    Record<string, { id: string; companyName: string; contactName?: string; address?: string; tel?: string }>
+    Record<string, InMemoryUserRecord>
   >((acc, user) => {
       acc[user.id] = {
         id: user.id,
@@ -363,6 +373,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
         contactName: user.contactName,
         address: user.address,
         tel: user.tel,
+        defaultStorageLocationId: null,
       };
       return acc;
     },
@@ -701,7 +712,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       create: async ({
         data,
       }: {
-        data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
+        data: Partial<InMemoryUserRecord>;
       }) => {
         const id = String(data.id ?? "");
         if (!id) {
@@ -714,10 +725,19 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
           contactName: data.contactName ?? undefined,
           address: data.address ?? undefined,
           tel: data.tel ?? undefined,
+          defaultStorageLocationId: (data.defaultStorageLocationId as string | null | undefined) ?? null,
         };
 
         userDirectory[id] = record;
         return { ...record };
+      },
+      update: async ({ where, data }: { where: { id?: string | null }; data: { defaultStorageLocationId?: string | null } }) => {
+        const id = where.id ?? "";
+        const found = userDirectory[id];
+        if (!found) throw new Error("User not found");
+        const updated = { ...found, defaultStorageLocationId: data.defaultStorageLocationId ?? null };
+        userDirectory[id] = updated;
+        return { ...updated };
       },
     },
     message: {

@@ -63,6 +63,39 @@ export async function getInventoryFormMasters() {
   return { makers, machineModels, storageLocations };
 }
 
+export async function getInventorySettingsData() {
+  const ownerUserId = await resolveCurrentUserId();
+  const [storageLocations, user] = await Promise.all([
+    prismaClient.storageLocation.findMany({ where: { ownerUserId, isActive: true }, orderBy: { name: "asc" } }),
+    prismaClient.user.findUnique({ where: { id: ownerUserId } }),
+  ]);
+
+  return {
+    storageLocations,
+    defaultStorageLocationId: user?.defaultStorageLocationId ?? null,
+  };
+}
+
+export async function updateDefaultStorageLocation(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const storageLocationId = String(formData.get("storageLocationId") ?? "").trim() || null;
+
+  if (storageLocationId) {
+    const location = await prismaClient.storageLocation.findUnique({ where: { id: storageLocationId } });
+    if (!location || location.ownerUserId !== ownerUserId) {
+      throw new Error("他ユーザーの倉庫は既定倉庫に設定できません。");
+    }
+  }
+
+  await prismaClient.user.update({
+    where: { id: ownerUserId },
+    data: { defaultStorageLocationId: storageLocationId },
+  });
+
+  revalidatePath("/inventory/settings");
+  revalidatePath("/inventory/inbound");
+}
+
 const toIntOrNull = (raw: FormDataEntryValue | null) => {
   const value = String(raw ?? "").trim();
   if (!value) return null;

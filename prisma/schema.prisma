@@ -203,6 +203,7 @@ enum InventoryExternalSyncStatus {
 model User {
   id               String            @id
   devUserId        String?           @unique
+  defaultStorageLocationId String?
   companyName      String
   contactName      String?
   address          String?
@@ -219,6 +220,7 @@ model User {
   inboundSchedulesOwned InboundSchedule[] @relation("InboundScheduleOwner")
   outboundSchedulesOwned OutboundSchedule[] @relation("OutboundScheduleOwner")
   inventoryExternalLinksOwned InventoryExternalLink[] @relation("InventoryExternalLinkOwner")
+  defaultStorageLocation StorageLocation? @relation("UserDefaultStorageLocation", fields: [defaultStorageLocationId], references: [id])
 }
 
 
@@ -392,6 +394,7 @@ model StorageLocation {
   updatedAt            DateTime @updatedAt
 
   ownerUser User      @relation(fields: [ownerUserId], references: [id])
+  defaultForUsers User[] @relation("UserDefaultStorageLocation")
   exhibits  Exhibit[]
   inventoryItems InventoryItem[]
   inboundDestinations InboundSchedule[] @relation("InboundDestinationLocation")
