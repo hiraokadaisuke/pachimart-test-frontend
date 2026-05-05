@@ -25,8 +25,8 @@ export default async function InventoryItemsPage() {
     frameColor: item.frameColor ?? "-",
     quantity: item.quantityOnHand,
     storageLocation: item.storageLocation?.name ?? "-",
-    purchasePrice: item.purchaseUnitPrice ?? 0,
-    plannedSalePrice: item.plannedSaleUnitPrice ?? 0,
+    purchasePrice: item.purchaseUnitPrice,
+    plannedSalePrice: item.plannedSaleUnitPrice,
     status: inventoryStatusLabel(item.inventoryStatus),
     listingStatus: inventoryListingStatusLabel(item.listingStatus),
   }));
