@@ -1,4 +1,10 @@
-export type ProfitMissingReason = "PURCHASE_PRICE_MISSING" | "PLANNED_SALE_PRICE_MISSING" | "QUANTITY_MISSING" | null;
+export type ProfitMissingReason =
+  | "MISSING_PURCHASE_PRICE"
+  | "MISSING_PLANNED_SALE_PRICE"
+  | "MISSING_BOTH_PRICES"
+  | "NO_QUANTITY"
+  | "NO_REVENUE"
+  | "NONE";
 
 export type CalculateProjectedProfitParams = {
   purchaseUnitPrice: number | null | undefined;
@@ -26,13 +32,17 @@ export function calculateProjectedProfit({
   const hasPlannedSalePrice = plannedSaleUnitPrice != null;
   const hasQuantity = quantity > 0;
 
-  const missingReason: ProfitMissingReason = !hasPurchasePrice
-    ? "PURCHASE_PRICE_MISSING"
-    : !hasPlannedSalePrice
-      ? "PLANNED_SALE_PRICE_MISSING"
-      : !hasQuantity
-        ? "QUANTITY_MISSING"
-        : null;
+  const missingReason: ProfitMissingReason = !hasPurchasePrice && !hasPlannedSalePrice
+    ? "MISSING_BOTH_PRICES"
+    : !hasPurchasePrice
+      ? "MISSING_PURCHASE_PRICE"
+      : !hasPlannedSalePrice
+        ? "MISSING_PLANNED_SALE_PRICE"
+        : !hasQuantity
+          ? "NO_QUANTITY"
+          : plannedSaleUnitPrice === 0
+            ? "NO_REVENUE"
+            : "NONE";
 
   const projectedRevenue = hasPlannedSalePrice ? plannedSaleUnitPrice * quantity : null;
   const projectedCost = hasPurchasePrice ? purchaseUnitPrice * quantity : null;

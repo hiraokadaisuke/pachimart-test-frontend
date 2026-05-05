@@ -116,6 +116,7 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
 
         <InventorySectionCard title="利益見込み" description="税抜基準の参考値です。価格入力で見込み粗利を確認できます。">
           <InventoryProfitSummary
+            itemId={item.id}
             purchaseUnitPrice={item.purchaseUnitPrice}
             plannedSaleUnitPrice={item.plannedSaleUnitPrice}
             projected={projectedProfit}
