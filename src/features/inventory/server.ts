@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 
 import { DEV_USERS } from "@/lib/dev-user/users";
 import { prisma } from "@/lib/server/prisma";
+import { resyncInventoryExternalLink } from "@/features/inventory/listing-sync";
 
 const DEV_USER_COOKIE_KEY = "dev_user_id";
 
@@ -592,4 +593,15 @@ export async function cancelOutboundSchedule(scheduleId: string) {
   if (["SHIPPED", "DELIVERED"].includes(schedule.status)) throw new Error("完了済みは取消できません。");
   if (schedule.status !== "CANCELED") await prismaClient.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "CANCELED" } });
   revalidatePath("/inventory/outbound");
+}
+
+
+export async function resyncInventoryListingStatusAction(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const linkId = String(formData.get("linkId") ?? "").trim();
+  const inventoryItemId = String(formData.get("inventoryItemId") ?? "").trim();
+  if (!linkId || !inventoryItemId) throw new Error("再同期に必要な情報が不足しています。");
+
+  await resyncInventoryExternalLink(linkId, ownerUserId);
+  revalidatePath(`/inventory/items/${inventoryItemId}`);
 }

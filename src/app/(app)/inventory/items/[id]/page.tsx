@@ -18,7 +18,8 @@ import {
   inventoryMovementTypeLabel,
   inventoryStatusLabel,
 } from "@/features/inventory/labels";
-import { getInventoryItemById } from "@/features/inventory/server";
+import { getInventoryItemById, resyncInventoryListingStatusAction } from "@/features/inventory/server";
+import { getExhibitStatusesByIds } from "@/features/inventory/listing-sync";
 
 const isListingBlocked = (inventoryStatus: InventoryStatus, quantityOnHand: number) =>
   quantityOnHand <= 0 || inventoryStatus === "SOLD" || inventoryStatus === "ARCHIVED";
@@ -38,6 +39,8 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
   );
   const margin = (item.plannedSaleUnitPrice ?? 0) - (item.purchaseUnitPrice ?? 0);
   const marginRate = item.plannedSaleUnitPrice ? Math.round((margin / item.plannedSaleUnitPrice) * 1000) / 10 : 0;
+
+  const exhibitStatuses = await getExhibitStatusesByIds(item.externalLinks.map((link) => link.externalId));
 
   const canList = !isListingBlocked(item.inventoryStatus, item.quantityOnHand);
   const showDuplicateWarning = isDuplicateListingRisk(item.listingStatus);
@@ -138,12 +141,20 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
                   <p>Exhibit ID: {link.externalId}</p>
                   <p>作成日: {link.createdAt.toISOString().slice(0, 10)}</p>
                   <p>同期状態: {link.syncStatus}</p>
+                  <p>最終同期日時: {link.syncedAt ? link.syncedAt.toISOString().slice(0, 19).replace("T", " ") : "-"}</p>
+                  <p>Exhibit.status: {exhibitStatuses.get(link.externalId) ?? "-"}</p>
+                  <p>InventoryItem.listingStatus: {item.listingStatus}</p>
+                  <form action={resyncInventoryListingStatusAction} className="mt-2">
+                    <input type="hidden" name="linkId" value={link.id} />
+                    <input type="hidden" name="inventoryItemId" value={item.id} />
+                    <Button type="submit">出品状態を再同期</Button>
+                  </form>
                 </li>
               ))}
             </ul>
           </div>
         ) : (
-          <p className="text-sm text-slate-500">出品との紐付けはまだありません。</p>
+          <div className="text-sm text-slate-500"><p>まだ出品と紐付いていません。</p><p>在庫から出品登録を行うと、ここに出品情報が表示されます。</p></div>
         )}
       </InventorySectionCard>
 

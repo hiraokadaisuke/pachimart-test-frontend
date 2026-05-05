@@ -284,6 +284,7 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
 
       if (listing && listing.status !== ExhibitStatus.SOLD) {
         await db.exhibit.update({ where: { id: listing.id }, data: { status: ExhibitStatus.SOLD } });
+        await syncInventoryListingStatusFromExhibit(listing.id);
       }
 
       return updated;

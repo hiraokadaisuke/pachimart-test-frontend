@@ -16,6 +16,7 @@ import {
   resolveStorageLocationSnapshot,
   type StorageLocationSnapshot,
 } from "@/lib/exhibits/storageLocation";
+import { syncInventoryListingStatusFromExhibit } from "@/features/inventory/listing-sync";
 
 const exhibitClient = prisma.exhibit;
 const confirmedTradeStatuses = new Set<DealingStatus>([
@@ -315,6 +316,10 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
       data: updateData as any,
     });
 
+    if (Object.prototype.hasOwnProperty.call(updateData, "status")) {
+      await syncInventoryListingStatusFromExhibit(updated.id);
+    }
+
     return NextResponse.json(toDto(updated));
   } catch (error) {
     console.error("Failed to update listing", error);
@@ -345,6 +350,7 @@ export async function DELETE(request: Request, { params }: { params: { id?: stri
     }
 
     await exhibitClient.delete({ where: { id } });
+    await syncInventoryListingStatusFromExhibit(id);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Failed to delete listing", error);
