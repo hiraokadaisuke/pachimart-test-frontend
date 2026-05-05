@@ -2,13 +2,33 @@ name: DB Migration Repair
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type REPAIR to proceed"
+        required: true
+      verify_partial_objects:
+        description: "Check whether failed migration left partial tables"
+        required: true
+        default: "true"
+
+concurrency:
+  group: prod-db-migration-repair
+  cancel-in-progress: false
 
 jobs:
   repair-migrations:
     runs-on: ubuntu-latest
+    environment: production
     env:
       APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
     steps:
+      - name: Guard - confirmation
+        run: |
+          if [ "${{ inputs.confirm }}" != "REPAIR" ]; then
+            echo "Confirmation mismatch. Aborting."
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
@@ -16,16 +36,33 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Resolve failed migration 0013_enhance_online_inquiry
-        run: npx prisma migrate resolve --schema prisma/schema.prisma --rolled-back 0013_enhance_online_inquiry
-        env:
-          APP_DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+      - name: Prisma generate
+        run: npx prisma generate --schema prisma/schema.prisma
+
+      - name: Check migration status (before)
+        run: npx prisma migrate status --schema prisma/schema.prisma || true
+
+      - name: Verify partial objects from failed migration
+        if: inputs.verify_partial_objects == 'true'
+        run: |
+          npx prisma db execute --schema prisma/schema.prisma --stdin <<'SQL'
+          SELECT table_name
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+            AND table_name IN ('InboundSchedule', 'OutboundSchedule')
+          ORDER BY table_name;
+          SQL
+
+      - name: Resolve failed migration 20260504000000_add_inventory_schedules
+        run: npx prisma migrate resolve --rolled-back 20260504000000_add_inventory_schedules --schema prisma/schema.prisma
 
       - name: Deploy pending migrations
         run: npx prisma migrate deploy --schema prisma/schema.prisma
-        env:
-          APP_DATABASE_URL: ${{ env.APP_DATABASE_URL }}
+
+      - name: Check migration status (after)
+        run: npx prisma migrate status --schema prisma/schema.prisma
