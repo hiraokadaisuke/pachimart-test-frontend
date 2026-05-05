@@ -7,6 +7,7 @@ import { getCurrentUserId } from "@/lib/server/currentUser";
 import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
 import { updateExhibitStatusWithInventorySync } from "@/features/exhibits/status-service";
+import { createOutboundScheduleFromDealing } from "@/features/inventory/outbound-sync";
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -298,6 +299,13 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
           });
 
     if (nextStatus === "ACCEPTED") {
+      const dealings = await prisma.dealing.findMany();
+      const linkedDealing = dealings.find((trade) => {
+        const payload = (trade as { payload?: unknown }).payload;
+        return !!payload && typeof payload === "object" && (payload as { onlineInquiryId?: string }).onlineInquiryId === updated.id;
+      });
+      if (linkedDealing?.id) await createOutboundScheduleFromDealing(linkedDealing.id);
+
       const listing = await prisma.exhibit.findUnique({ where: { id: updated.listingId } });
       if (listing && listing.status !== ExhibitStatus.SOLD) {
         await updateExhibitStatusWithInventorySync({
