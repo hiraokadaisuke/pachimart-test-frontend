@@ -14,6 +14,7 @@ import { revalidatePath } from "next/cache";
 import { DEV_USERS } from "@/lib/dev-user/users";
 import { prisma } from "@/lib/server/prisma";
 import { resyncInventoryExternalLink } from "@/features/inventory/listing-sync";
+import { getInventoryActivityFeed } from "@/features/inventory/activity-feed";
 
 const DEV_USER_COOKIE_KEY = "dev_user_id";
 
@@ -285,7 +286,7 @@ export async function getOutboundScheduleSummary() {
 export async function getInventoryDashboardData() {
   const ownerUserId = await resolveCurrentUserId();
 
-  const [inventoryItems, inboundSchedules, outboundSchedules, recentMovements] = await Promise.all([
+  const [inventoryItems, inboundSchedules, outboundSchedules, recentMovements, recentInboundSchedules, recentOutboundSchedules] = await Promise.all([
     prismaClient.inventoryItem.findMany({
       where: {
         ownerUserId,
@@ -319,7 +320,7 @@ export async function getInventoryDashboardData() {
     prismaClient.inventoryMovement.findMany({
       where: { ownerUserId },
       orderBy: [{ committedAt: "desc" }, { createdAt: "desc" }],
-      take: 8,
+      take: 20,
       include: {
         inventoryItem: {
           include: {
@@ -327,6 +328,18 @@ export async function getInventoryDashboardData() {
           },
         },
       },
+    }),
+    prismaClient.inboundSchedule.findMany({
+      where: { ownerUserId },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+      include: { inventoryItem: { select: { id: true, modelNameSnapshot: true } } },
+    }),
+    prismaClient.outboundSchedule.findMany({
+      where: { ownerUserId },
+      orderBy: { updatedAt: "desc" },
+      take: 20,
+      include: { inventoryItem: { select: { id: true, modelNameSnapshot: true } } },
     }),
   ]);
 
@@ -336,6 +349,19 @@ export async function getInventoryDashboardData() {
     if (item.purchaseUnitPrice == null || item.plannedSaleUnitPrice == null) return sum;
     return sum + (item.plannedSaleUnitPrice - item.purchaseUnitPrice) * item.quantityOnHand;
   }, 0);
+
+  const recentActivities = getInventoryActivityFeed({
+    movements: recentMovements.map((movement) => ({
+      ...movement,
+      inventoryItem: {
+        id: movement.inventoryItem.id,
+        modelNameSnapshot: movement.inventoryItem.modelNameSnapshot,
+      },
+    })),
+    inboundSchedules: recentInboundSchedules,
+    outboundSchedules: recentOutboundSchedules,
+    take: 10,
+  });
 
   return {
     kpi: {
@@ -347,6 +373,7 @@ export async function getInventoryDashboardData() {
       projectedGrossProfitTotal,
     },
     recentMovements,
+    recentActivities,
   };
 }
 

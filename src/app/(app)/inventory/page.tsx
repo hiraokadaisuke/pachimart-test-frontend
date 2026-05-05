@@ -5,9 +5,8 @@ import {
   InventorySectionCard,
   InventorySummaryCard,
 } from "@/components/inventory-demo/InventoryDemoPrimitives";
-import { InventoryStatusBadge } from "@/components/inventory-demo/InventoryStatusBadge";
 import { InventoryTabs } from "@/components/inventory-demo/InventoryTabs";
-import { formatCurrency, inventoryMovementTypeLabel } from "@/features/inventory/labels";
+import { formatCurrency } from "@/features/inventory/labels";
 import { getInventoryDashboardData } from "@/features/inventory/server";
 
 const flowSteps = [
@@ -18,20 +17,10 @@ const flowSteps = [
   { title: "成約・発送", description: "成約した取引が発送予定につながり、発送完了で在庫を更新します" },
 ];
 
-const toDate = (value: Date | null) => {
-  const date = value ?? new Date();
-  return date.toISOString().slice(0, 10);
-};
-
-const describeMovement = (movementType: string, quantityDelta: number) => {
-  if (movementType === "INBOUND") return "入庫完了";
-  if (movementType === "OUTBOUND") return "発送完了";
-  if (movementType === "ADJUSTMENT") return quantityDelta >= 0 ? "調整(増)" : "調整(減)";
-  return inventoryMovementTypeLabel(movementType as never);
-};
+const toDate = (value: Date) => value.toISOString().slice(0, 10);
 
 export default async function InventoryPage() {
-  const { kpi, recentMovements } = await getInventoryDashboardData();
+  const { kpi, recentActivities } = await getInventoryDashboardData();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
@@ -61,28 +50,27 @@ export default async function InventoryPage() {
         <InventoryFlowSteps steps={flowSteps} />
       </InventorySectionCard>
 
-      <InventorySectionCard title="最近の在庫の動き" className="mt-6" description="InventoryMovement を中心に直近の更新を表示しています。">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-slate-500">
-                <th>日付</th><th>区分</th><th>機種名</th><th>増減</th><th>保管場所</th><th>ステータス</th>
-              </tr>
-            </thead>
-            <tbody>
-              {recentMovements.map((movement) => (
-                <tr key={movement.id} className="border-t">
-                  <td className="py-3">{toDate(movement.committedAt)}</td>
-                  <td>{describeMovement(movement.movementType, movement.quantityDelta)}</td>
-                  <td>{movement.inventoryItem?.modelNameSnapshot ?? "-"}</td>
-                  <td>{movement.quantityDelta > 0 ? `+${movement.quantityDelta}` : movement.quantityDelta}台</td>
-                  <td>{movement.inventoryItem?.storageLocation?.name ?? "-"}</td>
-                  <td><InventoryStatusBadge status={movement.status === "COMMITTED" ? "確定" : movement.status === "PLANNED" ? "予定" : "取消"} /></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <InventorySectionCard title="最近の在庫の動き" className="mt-6" description="入庫予定・発送予定・完了・取消を統合したイベントフィードです。">
+        <ul className="divide-y rounded-lg border bg-white">
+          {recentActivities.map((activity) => (
+            <li key={activity.id} className="flex items-center justify-between gap-3 p-4">
+              <div>
+                <p className="text-xs text-slate-500">{toDate(activity.occurredAt)}</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">{activity.title}</p>
+                <p className="mt-1 text-xs text-slate-600">{activity.description}</p>
+              </div>
+              <div className="text-right">
+                <span className="inline-flex rounded-full border border-slate-300 px-2 py-1 text-xs text-slate-700">{activity.badgeLabel}</span>
+                {typeof activity.quantityDelta === "number" ? (
+                  <p className={`mt-2 text-sm font-semibold ${activity.quantityDelta >= 0 ? "text-emerald-700" : "text-rose-700"}`}>
+                    {activity.quantityDelta >= 0 ? `+${activity.quantityDelta}` : activity.quantityDelta}台
+                  </p>
+                ) : null}
+                <Link href={activity.href} className="mt-2 block text-xs text-blue-700 underline underline-offset-2 hover:text-blue-800">詳細を見る</Link>
+              </div>
+            </li>
+          ))}
+        </ul>
       </InventorySectionCard>
 
       <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
