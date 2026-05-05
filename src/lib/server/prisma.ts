@@ -354,9 +354,18 @@ type InMemoryPrisma = {
   $queryRaw: (...params: unknown[]) => Promise<void>;
 };
 
+type InMemoryUserRecord = {
+  id: string;
+  companyName: string;
+  contactName?: string;
+  address?: string;
+  tel?: string;
+  defaultStorageLocationId?: string | null;
+};
+
 const buildInMemoryPrisma = (): InMemoryPrisma => {
   const userDirectory = Object.values(DEV_USERS).reduce<
-    Record<string, { id: string; companyName: string; contactName?: string; address?: string; tel?: string }>
+    Record<string, InMemoryUserRecord>
   >((acc, user) => {
       acc[user.id] = {
         id: user.id,
@@ -703,7 +712,7 @@ const buildInMemoryPrisma = (): InMemoryPrisma => {
       create: async ({
         data,
       }: {
-        data: Partial<{ id: string; companyName: string; contactName?: string; address?: string; tel?: string }>;
+        data: Partial<InMemoryUserRecord>;
       }) => {
         const id = String(data.id ?? "");
         if (!id) {
