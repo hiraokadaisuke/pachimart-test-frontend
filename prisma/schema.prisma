@@ -170,6 +170,15 @@ enum OutboundScheduleSourceType {
   SEED
 }
 
+enum InboundScheduleSourceType {
+  MANUAL
+  DEALING
+  NAVI
+  EXHIBIT
+  ONLINE_INQUIRY
+  SEED
+}
+
 
 enum InventoryExternalLinkType {
   EXHIBIT
@@ -461,6 +470,9 @@ model InboundSchedule {
   quantity              Int
   destinationLocationId String?
   status                InboundStatus
+  sourceType            InboundScheduleSourceType?
+  sourceId              String?
+  dedupeKey             String?                  @unique
   note                  String?
   createdAt             DateTime          @default(now())
   updatedAt             DateTime          @updatedAt
@@ -471,6 +483,7 @@ model InboundSchedule {
 
   @@index([ownerUserId, status, expectedDate])
   @@index([inventoryItemId, expectedDate])
+  @@index([ownerUserId, sourceType, sourceId])
 }
 
 model OutboundSchedule {

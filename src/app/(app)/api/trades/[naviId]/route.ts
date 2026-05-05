@@ -11,6 +11,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/server/prisma";
 import { updateExhibitStatusWithInventorySync } from "@/features/exhibits/status-service";
 import { createOutboundScheduleFromDealing } from "@/features/inventory/outbound-sync";
+import { createInboundScheduleFromDealing } from "@/features/inventory/inbound-sync";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
@@ -437,7 +438,10 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
         });
       }
     }
-    if (tradeId) await createOutboundScheduleFromDealing(tradeId);
+    if (tradeId) {
+      await createOutboundScheduleFromDealing(tradeId);
+      await createInboundScheduleFromDealing(tradeId);
+    }
 
     return NextResponse.json(toDto(updated, tradeId));
   } catch (error) {

@@ -193,7 +193,7 @@ type InMemoryPrisma = {
     }) => Promise<InMemoryOnlineInquiry>;
   };
   dealing: {
-    findMany: ({ where }?: { where?: { status?: DealingStatus } }) => Promise<(InMemoryTrade & {
+    findMany: (args?: { where?: { status?: DealingStatus } }) => Promise<(InMemoryTrade & {
       navi: InMemoryNavi | null;
       sellerUser: { id: string; companyName: string } | null;
       buyerUser: { id: string; companyName: string } | null;

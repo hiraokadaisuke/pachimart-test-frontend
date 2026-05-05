@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { InventoryStatusBadge } from "@/components/inventory-demo/InventoryStatusBadge";
 import { InventorySummaryCard } from "@/components/inventory-demo/InventoryDemoPrimitives";
 import { InventoryTabs } from "@/components/inventory-demo/InventoryTabs";
 import { formatQuantity, inboundStatusLabel, inventoryItemTypeLabel } from "@/features/inventory/labels";
+import { getAutoCreatedInboundInfo } from "@/features/inventory/inbound-auto";
 import {
   cancelCompletedInboundSchedule,
   cancelInboundSchedule,
@@ -40,8 +42,9 @@ export default async function InboundSchedulesPage() {
             </tr>
           </thead>
           <tbody>
-            {schedules.map((s) => (
-              <tr key={s.id} className="border-t">
+            {schedules.map((s) => {
+              const autoCreated = getAutoCreatedInboundInfo({ sourceType: s.sourceType, sourceId: s.sourceId, note: s.note });
+              return <tr key={s.id} className="border-t">
                 <td className="px-3 py-2">{s.id}</td>
                 <td className="px-3 py-2">{s.expectedDate.toISOString().slice(0, 10)}</td>
                 <td className="px-3 py-2">{s.supplierName ?? "-"}</td>
@@ -50,7 +53,19 @@ export default async function InboundSchedulesPage() {
                 <td className="px-3 py-2">{s.modelNameSnapshot}</td>
                 <td className="px-3 py-2">{formatQuantity(s.quantity)}</td>
                 <td className="px-3 py-2">{s.destinationLocation?.name ?? "-"}</td>
-                <td className="px-3 py-2"><InventoryStatusBadge status={inboundStatusLabel(s.status)} /></td>
+                <td className="px-3 py-2">
+                  <div className="space-y-1">
+                    <InventoryStatusBadge status={inboundStatusLabel(s.status)} />
+                    {autoCreated.isAutoCreated ? (
+                      <div className="space-y-1">
+                        <Badge variant="default">パチマート購入から自動作成</Badge>
+                        {autoCreated.sourceType ? <p className="text-[11px] text-slate-600">Source: {autoCreated.sourceType} / Source ID: {autoCreated.sourceId ?? "-"}</p> : null}
+                        {autoCreated.dealingId ? <p className="text-[11px] text-slate-600">Dealing ID: {autoCreated.dealingId}</p> : null}
+                        {autoCreated.isLegacyNoteBased ? <p className="text-[11px] text-amber-700">旧形式(note判定)</p> : null}
+                      </div>
+                    ) : null}
+                  </div>
+                </td>
                 <td className="px-3 py-2">
                   {s.status === "RECEIVED" ? (
                     <div className="flex items-center gap-2">
@@ -73,8 +88,8 @@ export default async function InboundSchedulesPage() {
                     </div>
                   )}
                 </td>
-              </tr>
-            ))}
+              </tr>;
+            })}
           </tbody>
         </table>
       </div>
