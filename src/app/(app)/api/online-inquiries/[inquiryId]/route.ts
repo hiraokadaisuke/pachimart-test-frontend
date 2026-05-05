@@ -6,7 +6,7 @@ import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
-import { syncInventoryListingStatusFromExhibit } from "@/features/inventory/listing-sync";
+import { updateExhibitStatusWithInventorySync } from "@/features/exhibits/status-service";
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -283,10 +283,6 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
         });
       }
 
-      if (listing && listing.status !== ExhibitStatus.SOLD) {
-        await db.exhibit.update({ where: { id: listing.id }, data: { status: ExhibitStatus.SOLD } });
-        await syncInventoryListingStatusFromExhibit(listing.id);
-      }
 
       return updated;
     };
@@ -300,6 +296,18 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
             where: { id: inquiryId },
             data: updateData,
           });
+
+    if (nextStatus === "ACCEPTED") {
+      const listing = await prisma.exhibit.findUnique({ where: { id: updated.listingId } });
+      if (listing && listing.status !== ExhibitStatus.SOLD) {
+        await updateExhibitStatusWithInventorySync({
+          exhibitId: listing.id,
+          status: ExhibitStatus.SOLD,
+          actorUserId: currentUserId,
+          reason: "online-inquiries.patch.accept",
+        });
+      }
+    }
 
     const response = await buildInquiryDetail(updated);
 

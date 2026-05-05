@@ -17,6 +17,7 @@ import {
   type StorageLocationSnapshot,
 } from "@/lib/exhibits/storageLocation";
 import { syncInventoryListingStatusFromExhibit } from "@/features/inventory/listing-sync";
+import { updateExhibitStatusWithInventorySync } from "@/features/exhibits/status-service";
 
 const exhibitClient = prisma.exhibit;
 const confirmedTradeStatuses = new Set<DealingStatus>([
@@ -311,14 +312,18 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
       updateData.storageLocation = storageLocationLabel;
     }
 
-    const updated = await exhibitClient.update({
-      where: { id },
-      data: updateData as any,
-    });
-
-    if (Object.prototype.hasOwnProperty.call(updateData, "status")) {
-      await syncInventoryListingStatusFromExhibit(updated.id);
-    }
+    const updated = Object.prototype.hasOwnProperty.call(updateData, "status")
+      ? await updateExhibitStatusWithInventorySync({
+          exhibitId: id,
+          status: updateData.status as ExhibitStatus,
+          actorUserId: sellerUserId,
+          reason: "listings.patch",
+          data: updateData as any,
+        })
+      : await exhibitClient.update({
+          where: { id },
+          data: updateData as any,
+        });
 
     return NextResponse.json(toDto(updated));
   } catch (error) {
