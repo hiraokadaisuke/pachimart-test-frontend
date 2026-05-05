@@ -45,6 +45,8 @@ export default async function InboundSchedulesPage() {
             {schedules.map((s) => {
               const autoCreated = getAutoCreatedInboundInfo({ sourceType: s.sourceType, sourceId: s.sourceId, note: s.note });
               const destinationMissing = !s.destinationLocationId;
+              const isOpenSchedule = s.status !== "RECEIVED" && s.status !== "CANCELED";
+              const needsDestinationSetup = destinationMissing && isOpenSchedule;
               return <tr key={s.id} className="border-t">
                 <td className="px-3 py-2">{s.id}</td>
                 <td className="px-3 py-2">{s.expectedDate.toISOString().slice(0, 10)}</td>
@@ -57,8 +59,15 @@ export default async function InboundSchedulesPage() {
                   <div className="space-y-1">
                     <span>{s.destinationLocation?.name ?? "-"}</span>
                     {destinationMissing ? (
-                      <div>
+                      <div className="space-y-1">
                         <Badge variant="outline" className="border-red-400 text-red-700">入庫先未設定</Badge>
+                        {needsDestinationSetup ? (
+                          <div>
+                            <Link href={`/inventory/inbound/${s.id}/edit`} className="text-xs text-blue-700 underline underline-offset-2 hover:text-blue-800">
+                              入庫先を設定する
+                            </Link>
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </div>
@@ -89,7 +98,7 @@ export default async function InboundSchedulesPage() {
                   ) : (
                     <div className="flex gap-2">
                       <Link href={`/inventory/inbound/${s.id}/edit`} className="text-xs underline">編集</Link>
-                      {destinationMissing ? <span className="text-xs text-red-700">入庫先未設定のため完了できません</span> : null}
+                      {needsDestinationSetup ? <span className="text-xs text-red-700">入庫先未設定のため完了できません</span> : null}
                       <form action={async () => {"use server"; await cancelInboundSchedule(s.id); redirect("/inventory/inbound");}}>
                         <Button type="submit" variant="outline">取消する</Button>
                       </form>
