@@ -8,6 +8,7 @@ import {
   OutboundStatus,
 } from "@prisma/client";
 
+import { buildAutoFromDealingNoteToken } from "@/features/inventory/outbound-auto";
 import { prisma } from "@/lib/server/prisma";
 
 const prismaClient = prisma as PrismaClient;
@@ -74,7 +75,8 @@ export async function createOutboundScheduleFromDealing(dealingId: number | stri
     const existing = await prismaClient.outboundSchedule.findFirst({
       where: {
         ownerUserId: dealing.sellerUserId,
-        note: { contains: `auto-from-dealing:${dealing.id}` },
+        inventoryItemId: link.inventoryItemId,
+        note: { contains: buildAutoFromDealingNoteToken(dealing.id) },
       },
       select: { id: true },
     });
@@ -93,7 +95,7 @@ export async function createOutboundScheduleFromDealing(dealingId: number | stri
     const quantity = exhibit.quantity;
     const noteParts = [
       "パチマート成約から自動作成",
-      `auto-from-dealing:${dealing.id}`,
+      buildAutoFromDealingNoteToken(dealing.id),
       `dealingId: ${dealing.id}`,
       `exhibitId: ${exhibit.id}`,
     ];
