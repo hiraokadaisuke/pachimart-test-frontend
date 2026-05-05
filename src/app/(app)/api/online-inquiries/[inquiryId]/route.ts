@@ -8,6 +8,7 @@ import { prisma, type InMemoryPrismaClient } from "@/lib/server/prisma";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
 import { updateExhibitStatusWithInventorySync } from "@/features/exhibits/status-service";
 import { createOutboundScheduleFromDealing } from "@/features/inventory/outbound-sync";
+import { createInboundScheduleFromDealing } from "@/features/inventory/inbound-sync";
 
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
@@ -304,7 +305,10 @@ export async function PATCH(request: Request, { params }: { params: { inquiryId:
         const payload = (trade as { payload?: unknown }).payload;
         return !!payload && typeof payload === "object" && (payload as { onlineInquiryId?: string }).onlineInquiryId === updated.id;
       });
-      if (linkedDealing?.id) await createOutboundScheduleFromDealing(linkedDealing.id);
+      if (linkedDealing?.id) {
+        await createOutboundScheduleFromDealing(linkedDealing.id);
+        await createInboundScheduleFromDealing(linkedDealing.id);
+      }
 
       const listing = await prisma.exhibit.findUnique({ where: { id: updated.listingId } });
       if (listing && listing.status !== ExhibitStatus.SOLD) {

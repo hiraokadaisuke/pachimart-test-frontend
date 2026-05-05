@@ -267,6 +267,7 @@ export async function createInboundSchedule(formData: FormData) {
       frameColor: String(formData.get("frameColor") ?? "").trim() || null,
       destinationLocationId: String(formData.get("destinationLocationId") ?? "").trim() || null,
       inventoryItemId: String(formData.get("inventoryItemId") ?? "").trim() || null,
+      sourceType: "MANUAL",
       note: String(formData.get("note") ?? "").trim() || null,
     },
   });
