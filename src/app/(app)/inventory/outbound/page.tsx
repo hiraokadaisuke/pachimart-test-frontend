@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { InventoryStatusBadge } from "@/components/inventory-demo/InventoryStatusBadge";
 import { InventorySummaryCard } from "@/components/inventory-demo/InventoryDemoPrimitives";
 import { InventoryTabs } from "@/components/inventory-demo/InventoryTabs";
@@ -12,6 +13,7 @@ import {
   getOutboundScheduleSummary,
   getOutboundSchedules,
 } from "@/features/inventory/server";
+import { getAutoCreatedOutboundInfo } from "@/features/inventory/outbound-auto";
 
 export default async function OutboundSchedulesPage() {
   const [schedules, summary] = await Promise.all([getOutboundSchedules(), getOutboundScheduleSummary()]);
@@ -40,6 +42,7 @@ export default async function OutboundSchedulesPage() {
           <tbody>
             {schedules.map((s) => {
               const missingLink = !s.inventoryItemId;
+              const autoCreated = getAutoCreatedOutboundInfo(s.note);
               return (
                 <tr key={s.id} className="border-t">
                   <td className="px-3 py-2">{s.id}</td>
@@ -51,7 +54,17 @@ export default async function OutboundSchedulesPage() {
                   <td className="px-3 py-2">{formatQuantity(s.quantity)}</td>
                   <td className="px-3 py-2">{s.originLocation?.name ?? "-"}</td>
                   <td className="px-3 py-2">{shippingMethodLabel(s.shippingMethod)}</td>
-                  <td className="px-3 py-2"><InventoryStatusBadge status={outboundStatusLabel(s.status)} /></td>
+                  <td className="px-3 py-2">
+                    <div className="space-y-1">
+                      <InventoryStatusBadge status={outboundStatusLabel(s.status)} />
+                      {autoCreated.isAutoCreated ? (
+                        <div className="space-y-1">
+                          <Badge variant="secondary">パチマート成約から自動作成</Badge>
+                          {autoCreated.dealingId ? <p className="text-[11px] text-slate-600">Dealing ID: {autoCreated.dealingId}</p> : null}
+                        </div>
+                      ) : null}
+                    </div>
+                  </td>
                   <td className="px-3 py-2">
                     {s.status === "CANCELED" ? (
                       <span className="text-xs font-medium text-slate-500">取消済</span>
