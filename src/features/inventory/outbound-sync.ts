@@ -72,12 +72,9 @@ export async function createOutboundScheduleFromDealing(dealingId: number | stri
     });
     if (!link) return;
 
-    const existing = await prismaClient.outboundSchedule.findFirst({
-      where: {
-        ownerUserId: dealing.sellerUserId,
-        inventoryItemId: link.inventoryItemId,
-        note: { contains: buildAutoFromDealingNoteToken(dealing.id) },
-      },
+    const dealingDedupeKey = `outbound-from-dealing:${dealing.id}`;
+    const existing = await prismaClient.outboundSchedule.findUnique({
+      where: { dedupeKey: dealingDedupeKey },
       select: { id: true },
     });
     if (existing) return;
@@ -116,6 +113,9 @@ export async function createOutboundScheduleFromDealing(dealingId: number | stri
         originLocationId: inventoryItem.storageLocationId ?? exhibit.storageLocationId,
         shippingMethod: mapShippingMethod(payload),
         status: OutboundStatus.PLANNED,
+        sourceType: "DEALING",
+        sourceId: String(dealing.id),
+        dedupeKey: dealingDedupeKey,
         note: noteParts.join("\n"),
       },
     });
@@ -141,6 +141,7 @@ export async function createOutboundScheduleFromDealing(dealingId: number | stri
       update: { syncStatus: InventoryExternalSyncStatus.ACTIVE, syncedAt: new Date(), inventoryItemId: inventoryItem.id },
     });
   } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") return;
     console.error("[outbound-sync] failed to create outbound schedule from dealing", {
       dealingId,
       error,

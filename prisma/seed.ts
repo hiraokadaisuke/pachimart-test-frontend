@@ -17,6 +17,7 @@ import {
   InventoryMovementSourceType,
   InboundStatus,
   OutboundStatus,
+  OutboundScheduleSourceType,
   InventoryShippingMethod,
 } from "@prisma/client";
 
@@ -944,10 +945,10 @@ async function seedInventorySchedules() {
     { ownerUserId, expectedDate: new Date("2026-05-12"), supplierName: "株式会社G社", itemType: InventoryItemType.SLOT, makerNameSnapshot: "大都技研", modelNameSnapshot: "L押忍!番長4", quantity: 2, destinationLocationId: "location_dev_user_1_1", status: InboundStatus.RECEIVED, inventoryItemId: itemByModel.get("L押忍!番長4")?.id },
   ]});
   await prisma.outboundSchedule.createMany({ data: [
-    { ownerUserId, expectedDate: new Date("2026-05-09"), buyerName: "株式会社D社", itemType: InventoryItemType.SLOT, makerNameSnapshot: "北電子", modelNameSnapshot: "SアイムジャグラーEX", quantity: 3, originLocationId: "location_dev_user_1_2", shippingMethod: InventoryShippingMethod.PREPAID, status: OutboundStatus.READY_TO_SHIP, inventoryItemId: itemByModel.get("SアイムジャグラーEX")?.id },
-    { ownerUserId, expectedDate: new Date("2026-05-10"), buyerName: "株式会社E社", itemType: InventoryItemType.PACHINKO, makerNameSnapshot: "三共", modelNameSnapshot: "eフィーバーからくりサーカス2", quantity: 1, originLocationId: "location_dev_user_1_1", shippingMethod: InventoryShippingMethod.COLLECT, status: OutboundStatus.PLANNED, inventoryItemId: itemByModel.get("eフィーバーからくりサーカス2")?.id },
-    { ownerUserId, expectedDate: new Date("2026-05-11"), buyerName: "株式会社F社", itemType: InventoryItemType.SLOT, makerNameSnapshot: "山佐", modelNameSnapshot: "LモンキーターンV", quantity: 2, originLocationId: "location_dev_user_1_1", shippingMethod: InventoryShippingMethod.CHARTER, status: OutboundStatus.SHIPPED, inventoryItemId: itemByModel.get("LモンキーターンV")?.id },
-    { ownerUserId, expectedDate: new Date("2026-05-12"), buyerName: "株式会社H社", itemType: InventoryItemType.PACHINKO, makerNameSnapshot: "京楽", modelNameSnapshot: "P仮面ライダー電王", quantity: 1, originLocationId: "location_dev_user_1_2", shippingMethod: InventoryShippingMethod.OTHER, status: OutboundStatus.PICKING, inventoryItemId: itemByModel.get("P仮面ライダー電王")?.id },
+    { ownerUserId, expectedDate: new Date("2026-05-09"), buyerName: "株式会社D社", itemType: InventoryItemType.SLOT, makerNameSnapshot: "北電子", modelNameSnapshot: "SアイムジャグラーEX", quantity: 3, originLocationId: "location_dev_user_1_2", shippingMethod: InventoryShippingMethod.PREPAID, status: OutboundStatus.READY_TO_SHIP, inventoryItemId: itemByModel.get("SアイムジャグラーEX")?.id, sourceType: OutboundScheduleSourceType.SEED, sourceId: "seed-outbound-1", dedupeKey: "seed-outbound-1" },
+    { ownerUserId, expectedDate: new Date("2026-05-10"), buyerName: "株式会社E社", itemType: InventoryItemType.PACHINKO, makerNameSnapshot: "三共", modelNameSnapshot: "eフィーバーからくりサーカス2", quantity: 1, originLocationId: "location_dev_user_1_1", shippingMethod: InventoryShippingMethod.COLLECT, status: OutboundStatus.PLANNED, inventoryItemId: itemByModel.get("eフィーバーからくりサーカス2")?.id, sourceType: OutboundScheduleSourceType.SEED, sourceId: "seed-outbound-2", dedupeKey: "seed-outbound-2" },
+    { ownerUserId, expectedDate: new Date("2026-05-11"), buyerName: "株式会社F社", itemType: InventoryItemType.SLOT, makerNameSnapshot: "山佐", modelNameSnapshot: "LモンキーターンV", quantity: 2, originLocationId: "location_dev_user_1_1", shippingMethod: InventoryShippingMethod.CHARTER, status: OutboundStatus.SHIPPED, inventoryItemId: itemByModel.get("LモンキーターンV")?.id, sourceType: OutboundScheduleSourceType.SEED, sourceId: "seed-outbound-3", dedupeKey: "seed-outbound-3" },
+    { ownerUserId, expectedDate: new Date("2026-05-12"), buyerName: "株式会社H社", itemType: InventoryItemType.PACHINKO, makerNameSnapshot: "京楽", modelNameSnapshot: "P仮面ライダー電王", quantity: 1, originLocationId: "location_dev_user_1_2", shippingMethod: InventoryShippingMethod.OTHER, status: OutboundStatus.PICKING, inventoryItemId: itemByModel.get("P仮面ライダー電王")?.id, sourceType: OutboundScheduleSourceType.SEED, sourceId: "seed-outbound-4", dedupeKey: "seed-outbound-4" },
   ]});
 }
 async function seedOnlineInquiries(listings: ListingSeed[]) {
