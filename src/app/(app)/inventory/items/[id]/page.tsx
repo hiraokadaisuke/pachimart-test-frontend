@@ -11,7 +11,6 @@ import { InventoryStatusBadge } from "@/components/inventory-demo/InventoryStatu
 import { InventoryTabs } from "@/components/inventory-demo/InventoryTabs";
 import { Button } from "@/components/ui/button";
 import {
-  formatCurrency,
   formatQuantity,
   inventoryListingStatusLabel,
   inventoryMovementStatusLabel,
@@ -20,6 +19,8 @@ import {
 } from "@/features/inventory/labels";
 import { getInventoryItemById, resyncInventoryListingStatusAction } from "@/features/inventory/server";
 import { getExhibitStatusesByIds } from "@/features/inventory/listing-sync";
+import { calculateProjectedProfit } from "@/features/inventory/profit";
+import { InventoryProfitSummary } from "@/features/inventory/components/InventoryProfit";
 
 const isListingBlocked = (inventoryStatus: InventoryStatus, quantityOnHand: number) =>
   quantityOnHand <= 0 || inventoryStatus === "SOLD" || inventoryStatus === "ARCHIVED";
@@ -37,18 +38,11 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
         m.movementType
       )}(${inventoryMovementStatusLabel(m.status)}) ${m.quantityDelta > 0 ? "+" : ""}${m.quantityDelta}台`
   );
-  const estimatedRevenue = item.plannedSaleUnitPrice != null ? item.plannedSaleUnitPrice * item.quantityOnHand : null;
-  const estimatedCost = item.purchaseUnitPrice != null ? item.purchaseUnitPrice * item.quantityOnHand : null;
-  const estimatedGrossProfit = estimatedRevenue != null && estimatedCost != null ? estimatedRevenue - estimatedCost : null;
-  const estimatedGrossProfitRate =
-    estimatedGrossProfit != null &&
-    estimatedRevenue != null &&
-    item.purchaseUnitPrice != null &&
-    item.plannedSaleUnitPrice != null &&
-    item.quantityOnHand > 0 &&
-    estimatedRevenue > 0
-      ? Math.round((estimatedGrossProfit / estimatedRevenue) * 1000) / 10
-      : null;
+  const projectedProfit = calculateProjectedProfit({
+    purchaseUnitPrice: item.purchaseUnitPrice,
+    plannedSaleUnitPrice: item.plannedSaleUnitPrice,
+    quantity: item.quantityOnHand,
+  });
 
   const exhibitStatuses = await getExhibitStatusesByIds(item.externalLinks.map((link) => link.externalId));
 
@@ -121,32 +115,11 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
         </InventorySectionCard>
 
         <InventorySectionCard title="利益見込み" description="税抜基準の参考値です。価格入力で見込み粗利を確認できます。">
-          <div className="grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <p className="text-slate-500">仕入単価（税抜）</p>
-              <p className="text-lg font-semibold">{item.purchaseUnitPrice != null ? formatCurrency(item.purchaseUnitPrice) : "原価未入力"}</p>
-            </div>
-            <div>
-              <p className="text-slate-500">販売予定単価（税抜）</p>
-              <p className="text-lg font-semibold">{item.plannedSaleUnitPrice != null ? formatCurrency(item.plannedSaleUnitPrice) : "販売予定価格未入力"}</p>
-            </div>
-            <div>
-              <p className="text-slate-500">見込み売上</p>
-              <p className="text-lg font-semibold">{estimatedRevenue != null ? formatCurrency(estimatedRevenue) : "販売予定価格未入力"}</p>
-            </div>
-            <div>
-              <p className="text-slate-500">見込み原価</p>
-              <p className="text-lg font-semibold">{estimatedCost != null ? formatCurrency(estimatedCost) : "原価未入力"}</p>
-            </div>
-            <div>
-              <p className="text-slate-500">見込み粗利</p>
-              <p className="text-xl font-bold">{estimatedGrossProfit != null ? formatCurrency(estimatedGrossProfit) : "価格入力で表示"}</p>
-            </div>
-            <div>
-              <p className="text-slate-500">見込み粗利率</p>
-              <p className="text-xl font-bold">{estimatedGrossProfitRate != null ? `${estimatedGrossProfitRate}%` : "-"}</p>
-            </div>
-          </div>
+          <InventoryProfitSummary
+            purchaseUnitPrice={item.purchaseUnitPrice}
+            plannedSaleUnitPrice={item.plannedSaleUnitPrice}
+            projected={projectedProfit}
+          />
         </InventorySectionCard>
       </div>
 
