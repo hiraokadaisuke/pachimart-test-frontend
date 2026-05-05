@@ -10,6 +10,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { formatCurrency, formatQuantity } from "@/features/inventory/labels";
+import { calculateProjectedProfit } from "@/features/inventory/profit";
+import { InventoryProfitMini } from "@/features/inventory/components/InventoryProfit";
 
 type Row = { id:string; type:string; manufacturer:string; modelName:string; frameColor:string; quantity:number; storageLocation:string; purchasePrice:number | null; plannedSalePrice:number | null; status:string; listingStatus:string };
 
@@ -23,10 +25,12 @@ export default function ItemsClient({ rows: allRows, total }: { rows: Row[]; tot
     <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{summary.map(([l, v]) => <InventorySummaryCard key={l} label={l} value={v} />)}</div>
     <Card className="mt-4"><CardHeader><CardTitle className="text-base">検索・フィルター</CardTitle></CardHeader><CardContent><div className="flex flex-col gap-3 sm:flex-row"><Input placeholder="メーカー・機種名で検索" value={query} onChange={(e) => setQuery(e.target.value)} className="bg-white" /><Select value={status} onChange={(e) => setStatus(e.target.value)} className="sm:w-48">{"全て,在庫,商談中,発送予定,売却済".split(",").map((option) => <option key={option} value={option}>{option}</option>)}</Select></div></CardContent></Card>
     <div className="mt-4 overflow-x-auto rounded-lg border bg-white"><table className="w-full min-w-[1240px] text-sm"><thead className="bg-slate-50 text-left"><tr>{["在庫ID", "種別", "メーカー", "機種名", "枠色", "台数", "保管場所", "仕入価格", "販売予定価格", "見込み粗利", "ステータス", "出品状態", "詳細"].map((header) => <th key={header} className="px-4 py-3">{header}</th>)}</tr></thead><tbody>{rows.map((item) => {
-      const estimatedGrossProfit = item.purchasePrice != null && item.plannedSalePrice != null
-        ? (item.plannedSalePrice - item.purchasePrice) * item.quantity
-        : null;
-      return <tr key={item.id} className="border-t align-middle"><td className="px-4 py-3 font-semibold">{item.id}</td><td className="px-4 py-3">{item.type}</td><td className="px-4 py-3">{item.manufacturer}</td><td className="px-4 py-3">{item.modelName}</td><td className="px-4 py-3">{item.frameColor}</td><td className="px-4 py-3 font-medium">{formatQuantity(item.quantity)}</td><td className="px-4 py-3">{item.storageLocation}</td><td className="px-4 py-3 font-medium">{item.purchasePrice != null ? formatCurrency(item.purchasePrice) : "原価未入力"}</td><td className="px-4 py-3 font-medium">{item.plannedSalePrice != null ? formatCurrency(item.plannedSalePrice) : "販売予定価格未入力"}</td><td className="px-4 py-3 font-semibold">{estimatedGrossProfit != null ? formatCurrency(estimatedGrossProfit) : "-"}</td><td className="px-4 py-3"><InventoryStatusBadge status={item.status} /></td><td className="px-4 py-3"><InventoryStatusBadge status={item.listingStatus} /></td><td className="px-4 py-3"><Link href={`/inventory/items/${item.id}`} className="inline-flex rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">詳細を見る</Link></td></tr>;
+      const projectedProfit = calculateProjectedProfit({
+        purchaseUnitPrice: item.purchasePrice,
+        plannedSaleUnitPrice: item.plannedSalePrice,
+        quantity: item.quantity,
+      });
+      return <tr key={item.id} className="border-t align-middle"><td className="px-4 py-3 font-semibold">{item.id}</td><td className="px-4 py-3">{item.type}</td><td className="px-4 py-3">{item.manufacturer}</td><td className="px-4 py-3">{item.modelName}</td><td className="px-4 py-3">{item.frameColor}</td><td className="px-4 py-3 font-medium">{formatQuantity(item.quantity)}</td><td className="px-4 py-3">{item.storageLocation}</td><td className="px-4 py-3 font-medium">{item.purchasePrice != null ? formatCurrency(item.purchasePrice) : "原価未入力"}</td><td className="px-4 py-3 font-medium">{item.plannedSalePrice != null ? formatCurrency(item.plannedSalePrice) : "販売予定価格未入力"}</td><td className="px-4 py-3 font-semibold"><InventoryProfitMini projected={projectedProfit} /></td><td className="px-4 py-3"><InventoryStatusBadge status={item.status} /></td><td className="px-4 py-3"><InventoryStatusBadge status={item.listingStatus} /></td><td className="px-4 py-3"><Link href={`/inventory/items/${item.id}`} className="inline-flex rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700">詳細を見る</Link></td></tr>;
     })}</tbody></table></div>
   </div>;
 }
