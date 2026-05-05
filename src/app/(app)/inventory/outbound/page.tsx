@@ -42,7 +42,7 @@ export default async function OutboundSchedulesPage() {
           <tbody>
             {schedules.map((s) => {
               const missingLink = !s.inventoryItemId;
-              const autoCreated = getAutoCreatedOutboundInfo(s.note);
+              const autoCreated = getAutoCreatedOutboundInfo({ sourceType: s.sourceType, sourceId: s.sourceId, note: s.note });
               return (
                 <tr key={s.id} className="border-t">
                   <td className="px-3 py-2">{s.id}</td>
@@ -60,7 +60,9 @@ export default async function OutboundSchedulesPage() {
                       {autoCreated.isAutoCreated ? (
                         <div className="space-y-1">
                           <Badge variant="default">パチマート成約から自動作成</Badge>
+                          {autoCreated.sourceType ? <p className="text-[11px] text-slate-600">Source: {autoCreated.sourceType} / Source ID: {autoCreated.sourceId ?? "-"}</p> : null}
                           {autoCreated.dealingId ? <p className="text-[11px] text-slate-600">Dealing ID: {autoCreated.dealingId}</p> : null}
+                          {autoCreated.isLegacyNoteBased ? <p className="text-[11px] text-amber-700">旧形式(note判定)</p> : null}
                         </div>
                       ) : null}
                     </div>
