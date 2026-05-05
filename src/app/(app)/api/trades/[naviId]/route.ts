@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { prisma } from "@/lib/server/prisma";
-import { syncInventoryListingStatusFromExhibit } from "@/features/inventory/listing-sync";
+import { updateExhibitStatusWithInventorySync } from "@/features/exhibits/status-service";
 import { getCurrentUserId } from "@/lib/server/currentUser";
 import { buildListingSnapshot } from "@/lib/dealings/listingSnapshot";
 import { calculateOnlineInquiryTotals } from "@/lib/online-inquiries/totals";
@@ -415,10 +415,6 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
           select: { id: true },
         });
 
-        if (listing && listing.status !== ExhibitStatus.SOLD) {
-          await tx.exhibit.update({ where: { id: listing.id } as any, data: { status: ExhibitStatus.SOLD } });
-          await syncInventoryListingStatusFromExhibit(listing.id);
-        }
       }
 
       return {
@@ -428,6 +424,18 @@ export async function PATCH(request: Request, { params }: { params: { naviId: st
     });
 
     const tradeId = trade ? Number(trade.id) : undefined;
+
+    if (updated.listingId) {
+      const listing = await prisma.exhibit.findUnique({ where: { id: updated.listingId } as any });
+      if (listing && listing.status !== ExhibitStatus.SOLD) {
+        await updateExhibitStatusWithInventorySync({
+          exhibitId: listing.id,
+          status: ExhibitStatus.SOLD,
+          actorUserId: currentUserId,
+          reason: "trades.patch.approve",
+        });
+      }
+    }
 
     return NextResponse.json(toDto(updated, tradeId));
   } catch (error) {
