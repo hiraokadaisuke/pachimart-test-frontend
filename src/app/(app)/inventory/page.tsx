@@ -35,6 +35,7 @@ export default async function InventoryPage() {
         <InventorySummaryCard label="発送予定件数" value={`${kpi.outboundOpenCount}件`} />
         <InventorySummaryCard label="入庫先未設定件数" value={`${kpi.inboundDestinationMissingCount}件`} />
         <InventorySummaryCard label="見込み粗利合計" value={formatCurrency(kpi.projectedGrossProfitTotal)} />
+        <InventorySummaryCard label="実粗利合計" value={formatCurrency(kpi.realGrossProfitTotal)} />
       </div>
 
       <InventorySectionCard title="営業デモ向け説明" className="mt-6" description="販売管理と倉庫管理をつなぎ、二重入力を減らす運用を想定しています。">

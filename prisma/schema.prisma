@@ -200,6 +200,51 @@ enum InventoryExternalSyncStatus {
   CLOSED
 }
 
+enum RecordPaymentStatus {
+  UNPAID
+  PARTIAL
+  PAID
+  CANCELED
+}
+
+enum LedgerSourceType {
+  PURCHASE_RECORD
+  SALES_RECORD
+  PAYMENT_RECORD
+  MANUAL
+}
+
+enum LedgerEntryType {
+  PURCHASE
+  SALES
+  FEE
+  PAYMENT
+  ADJUSTMENT
+}
+
+enum LedgerDirection {
+  IN
+  OUT
+}
+
+enum PaymentSourceType {
+  PURCHASE_RECORD
+  SALES_RECORD
+}
+
+enum PaymentType {
+  BANK_TRANSFER
+  CASH
+  OFFSET
+  OTHER
+}
+
+enum PaymentRecordStatus {
+  PLANNED
+  PAID
+  CANCELED
+}
+
 model User {
   id               String            @id
   devUserId        String?           @unique
@@ -220,6 +265,10 @@ model User {
   inboundSchedulesOwned InboundSchedule[] @relation("InboundScheduleOwner")
   outboundSchedulesOwned OutboundSchedule[] @relation("OutboundScheduleOwner")
   inventoryExternalLinksOwned InventoryExternalLink[] @relation("InventoryExternalLinkOwner")
+  purchaseRecordsOwned PurchaseRecord[]
+  salesRecordsOwned SalesRecord[]
+  ledgerEntriesOwned LedgerEntry[]
+  paymentRecordsOwned PaymentRecord[]
   defaultStorageLocation StorageLocation? @relation("UserDefaultStorageLocation", fields: [defaultStorageLocationId], references: [id])
 }
 
@@ -433,9 +482,98 @@ model InventoryItem {
   inboundSchedules InboundSchedule[] @relation("InboundScheduleInventoryItem")
   outboundSchedules OutboundSchedule[] @relation("OutboundScheduleInventoryItem")
   externalLinks    InventoryExternalLink[]
+  purchaseRecords  PurchaseRecord[]
+  salesRecords     SalesRecord[]
 
   @@index([ownerUserId, inventoryStatus, updatedAt])
   @@index([ownerUserId, listingStatus])
+}
+
+model PurchaseRecord {
+  id                String            @id @default(cuid())
+  ownerUserId       String
+  inventoryItemId   String
+  dealingId         Int?
+  supplierCompanyId String?
+  purchaseDate      DateTime
+  unitCost          Int
+  quantity          Int
+  shippingCost      Int               @default(0)
+  otherCost         Int               @default(0)
+  totalCost         Int
+  paymentStatus     RecordPaymentStatus @default(UNPAID)
+  memo              String?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  ownerUser      User          @relation(fields: [ownerUserId], references: [id])
+  inventoryItem  InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([ownerUserId, purchaseDate])
+  @@index([inventoryItemId, purchaseDate])
+}
+
+model SalesRecord {
+  id              String              @id @default(cuid())
+  ownerUserId     String
+  inventoryItemId String
+  dealingId       Int?
+  buyerCompanyId  String?
+  salesDate       DateTime
+  unitPrice       Int
+  quantity        Int
+  shippingFee     Int                 @default(0)
+  platformFee     Int                 @default(0)
+  otherFee        Int                 @default(0)
+  totalSales      Int
+  paymentStatus   RecordPaymentStatus @default(UNPAID)
+  memo            String?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  ownerUser      User          @relation(fields: [ownerUserId], references: [id])
+  inventoryItem  InventoryItem @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([ownerUserId, salesDate])
+  @@index([inventoryItemId, salesDate])
+}
+
+model LedgerEntry {
+  id          String           @id @default(cuid())
+  ownerUserId String
+  sourceType  LedgerSourceType
+  sourceId    String
+  entryType   LedgerEntryType
+  amount      Int
+  direction   LedgerDirection
+  occurredAt  DateTime
+  memo        String?
+  dedupeKey   String?          @unique
+  createdAt   DateTime         @default(now())
+
+  ownerUser   User             @relation(fields: [ownerUserId], references: [id])
+
+  @@index([ownerUserId, occurredAt])
+  @@index([sourceType, sourceId])
+}
+
+model PaymentRecord {
+  id          String              @id @default(cuid())
+  ownerUserId String
+  sourceType  PaymentSourceType
+  sourceId    String
+  paymentType PaymentType
+  amount      Int
+  paidAt      DateTime?
+  status      PaymentRecordStatus
+  memo        String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  ownerUser   User                @relation(fields: [ownerUserId], references: [id])
+
+  @@index([ownerUserId, createdAt])
+  @@index([sourceType, sourceId])
 }
 
 

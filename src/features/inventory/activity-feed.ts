@@ -1,4 +1,4 @@
-import type { InboundSchedule, InventoryMovement, OutboundSchedule } from "@prisma/client";
+import type { InboundSchedule, InventoryMovement, OutboundSchedule, PurchaseRecord, SalesRecord } from "@prisma/client";
 
 export type InventoryActivity = {
   id: string;
@@ -11,7 +11,9 @@ export type InventoryActivity = {
     | "INBOUND_COMPLETION_CANCELED"
     | "OUTBOUND_COMPLETION_CANCELED"
     | "MANUAL_ADJUSTMENT"
-    | "SCHEDULE_CANCELED";
+    | "SCHEDULE_CANCELED"
+    | "PURCHASE_RECORDED"
+    | "SALES_RECORDED";
   title: string;
   description: string;
   badgeLabel: string;
@@ -29,6 +31,8 @@ export const INVENTORY_ACTIVITY_TYPE_FILTERS = [
   { value: "OUTBOUND_COMPLETED", label: "発送完了" },
   { value: "CANCELED", label: "取消" },
   { value: "MANUAL_ADJUSTMENT", label: "調整" },
+  { value: "PURCHASE_RECORDED", label: "仕入記録" },
+  { value: "SALES_RECORDED", label: "売上記録" },
 ] as const;
 
 export const INVENTORY_ACTIVITY_RANGE_FILTERS = [
@@ -36,6 +40,8 @@ export const INVENTORY_ACTIVITY_RANGE_FILTERS = [
   { value: "7D", label: "7日以内", days: 7 },
   { value: "30D", label: "30日以内", days: 30 },
   { value: "90D", label: "90日以内", days: 90 },
+  { value: "PURCHASE_RECORDED", label: "仕入記録" },
+  { value: "SALES_RECORDED", label: "売上記録" },
 ] as const;
 
 export type InventoryActivityTypeFilter = (typeof INVENTORY_ACTIVITY_TYPE_FILTERS)[number]["value"];
@@ -189,15 +195,30 @@ export const normalizeOutboundScheduleToActivity = (schedule: ScheduleWithItem<O
   };
 };
 
+
+
+const normalizePurchaseRecordToActivity = (record: PurchaseRecord): InventoryActivity => ({
+  id: `purchase:${record.id}`, occurredAt: record.purchaseDate, type: "PURCHASE_RECORDED",
+  title: `仕入記録：${record.quantity}台`, description: "仕入記録を登録しました。", badgeLabel: "仕入", href: `/inventory/items/${record.inventoryItemId}`
+});
+
+const normalizeSalesRecordToActivity = (record: SalesRecord): InventoryActivity => ({
+  id: `sales:${record.id}`, occurredAt: record.salesDate, type: "SALES_RECORDED",
+  title: `売上記録：${record.quantity}台`, description: "売上記録を登録しました。", badgeLabel: "売上", href: `/inventory/items/${record.inventoryItemId}`
+});
 export const getInventoryActivityFeed = ({
   movements,
   inboundSchedules,
   outboundSchedules,
+  purchaseRecords = [],
+  salesRecords = [],
   take = 10,
 }: {
   movements: MovementWithItem[];
   inboundSchedules: ScheduleWithItem<InboundSchedule>[];
   outboundSchedules: ScheduleWithItem<OutboundSchedule>[];
+  purchaseRecords?: PurchaseRecord[];
+  salesRecords?: SalesRecord[];
   take?: number;
 }) => {
   const movementActivities = movements
@@ -207,7 +228,10 @@ export const getInventoryActivityFeed = ({
   const inboundActivities = inboundSchedules.map(normalizeInboundScheduleToActivity);
   const outboundActivities = outboundSchedules.map(normalizeOutboundScheduleToActivity);
 
-  return [...movementActivities, ...inboundActivities, ...outboundActivities]
+  const purchaseActivities = purchaseRecords.map(normalizePurchaseRecordToActivity);
+  const salesActivities = salesRecords.map(normalizeSalesRecordToActivity);
+
+  return [...movementActivities, ...inboundActivities, ...outboundActivities, ...purchaseActivities, ...salesActivities]
     .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
     .slice(0, take);
 };

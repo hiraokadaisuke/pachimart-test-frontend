@@ -20,6 +20,7 @@ import {
 import { getInventoryItemById, resyncInventoryListingStatusAction } from "@/features/inventory/server";
 import { getExhibitStatusesByIds } from "@/features/inventory/listing-sync";
 import { calculateProjectedProfit } from "@/features/inventory/profit";
+import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
 import { InventoryProfitSummary } from "@/features/inventory/components/InventoryProfit";
 
 const isListingBlocked = (inventoryStatus: InventoryStatus, quantityOnHand: number) =>
@@ -42,6 +43,17 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
     purchaseUnitPrice: item.purchaseUnitPrice,
     plannedSaleUnitPrice: item.plannedSaleUnitPrice,
     quantity: item.quantityOnHand,
+  });
+
+  const purchaseTotal = item.purchaseRecords.reduce((sum, row) => sum + row.totalCost, 0);
+  const salesTotal = item.salesRecords.reduce((sum, row) => sum + row.totalSales, 0);
+  const purchaseSideCosts = item.purchaseRecords.reduce((sum, row) => sum + row.shippingCost + row.otherCost, 0);
+  const salesSideFees = item.salesRecords.reduce((sum, row) => sum + row.shippingFee + row.platformFee + row.otherFee, 0);
+  const realProfit = calculateRealGrossProfit({
+    totalSales: salesTotal,
+    totalCost: purchaseTotal,
+    salesSideFees,
+    purchaseSideCosts,
   });
 
   const exhibitStatuses = await getExhibitStatusesByIds(item.externalLinks.map((link) => link.externalId));
@@ -123,6 +135,17 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
           />
         </InventorySectionCard>
       </div>
+
+
+      <InventorySectionCard title="実績収支" className="mt-5" description="仕入・売上記録ベースの実粗利です。">
+        <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
+          <div><p className="text-slate-500">仕入金額</p><p className="text-lg font-semibold">{purchaseTotal.toLocaleString()}円</p></div>
+          <div><p className="text-slate-500">売上金額</p><p className="text-lg font-semibold">{salesTotal.toLocaleString()}円</p></div>
+          <div><p className="text-slate-500">費用</p><p className="text-lg font-semibold">{(purchaseSideCosts + salesSideFees).toLocaleString()}円</p></div>
+          <div><p className="text-slate-500">実粗利</p><p className="text-lg font-bold">{realProfit.realGrossProfit.toLocaleString()}円</p></div>
+          <div><p className="text-slate-500">粗利率</p><p className="text-lg font-bold">{realProfit.profitRate != null ? `${realProfit.profitRate}%` : "-"}</p></div>
+        </div>
+      </InventorySectionCard>
 
       <InventorySectionCard title="関連する動き" className="mt-5">
         <InventoryTimeline items={activities.length ? activities : ["履歴はありません"]} />

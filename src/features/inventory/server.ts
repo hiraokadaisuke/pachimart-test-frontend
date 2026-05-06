@@ -7,6 +7,7 @@ import type {
   InventoryOwnershipType,
   InventoryStatus,
   PrismaClient,
+  RecordPaymentStatus,
 } from "@prisma/client";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -17,6 +18,7 @@ import { resyncInventoryExternalLink } from "@/features/inventory/listing-sync";
 import { getInventoryActivityFeed } from "@/features/inventory/activity-feed";
 import { filterInventoryActivities } from "@/features/inventory/activity-feed";
 import type { InventoryActivityRangeFilter, InventoryActivityTypeFilter } from "@/features/inventory/activity-feed";
+import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
 
 const DEV_USER_COOKIE_KEY = "dev_user_id";
 
@@ -47,6 +49,8 @@ export async function getInventoryItemById(id: string) {
       machineModel: true,
       storageLocation: true,
       movements: { orderBy: [{ committedAt: "desc" }, { createdAt: "desc" }] },
+      purchaseRecords: { orderBy: { purchaseDate: "desc" } },
+      salesRecords: { orderBy: { salesDate: "desc" } },
       externalLinks: {
         where: { linkType: "EXHIBIT" },
         orderBy: { createdAt: "desc" },
@@ -55,6 +59,41 @@ export async function getInventoryItemById(id: string) {
   });
 }
 
+
+
+const PAYMENT_STATUS_MAP: Record<string, RecordPaymentStatus> = {
+  未払い: "UNPAID",
+  一部支払: "PARTIAL",
+  支払済: "PAID",
+  取消: "CANCELED",
+};
+
+export async function createPurchaseRecord(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const inventoryItemId = String(formData.get("inventoryItemId") ?? "").trim();
+  const purchaseDate = new Date(String(formData.get("purchaseDate") ?? ""));
+  const unitCost = Number(formData.get("unitCost"));
+  const quantity = Number(formData.get("quantity"));
+  const shippingCost = Number(formData.get("shippingCost") ?? 0) || 0;
+  const otherCost = Number(formData.get("otherCost") ?? 0) || 0;
+  if (!inventoryItemId || Number.isNaN(purchaseDate.getTime()) || !Number.isInteger(unitCost) || !Number.isInteger(quantity) || quantity < 1) throw new Error("入力内容が不正です。");
+  const totalCost = unitCost * quantity + shippingCost + otherCost;
+  return prismaClient.purchaseRecord.create({ data: { ownerUserId, inventoryItemId, purchaseDate, unitCost, quantity, shippingCost, otherCost, totalCost, paymentStatus: PAYMENT_STATUS_MAP[String(formData.get("paymentStatus") ?? "")] ?? "UNPAID", memo: String(formData.get("memo") ?? "").trim() || null, dealingId: Number(formData.get("dealingId")) || null, supplierCompanyId: String(formData.get("supplierCompanyId") ?? "").trim() || null } });
+}
+
+export async function createSalesRecord(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const inventoryItemId = String(formData.get("inventoryItemId") ?? "").trim();
+  const salesDate = new Date(String(formData.get("salesDate") ?? ""));
+  const unitPrice = Number(formData.get("unitPrice"));
+  const quantity = Number(formData.get("quantity"));
+  const shippingFee = Number(formData.get("shippingFee") ?? 0) || 0;
+  const platformFee = Number(formData.get("platformFee") ?? 0) || 0;
+  const otherFee = Number(formData.get("otherFee") ?? 0) || 0;
+  if (!inventoryItemId || Number.isNaN(salesDate.getTime()) || !Number.isInteger(unitPrice) || !Number.isInteger(quantity) || quantity < 1) throw new Error("入力内容が不正です。");
+  const totalSales = unitPrice * quantity;
+  return prismaClient.salesRecord.create({ data: { ownerUserId, inventoryItemId, salesDate, unitPrice, quantity, shippingFee, platformFee, otherFee, totalSales, paymentStatus: PAYMENT_STATUS_MAP[String(formData.get("paymentStatus") ?? "")] ?? "UNPAID", memo: String(formData.get("memo") ?? "").trim() || null, dealingId: Number(formData.get("dealingId")) || null, buyerCompanyId: String(formData.get("buyerCompanyId") ?? "").trim() || null } });
+}
 export async function getInventoryFormMasters() {
   const ownerUserId = await resolveCurrentUserId();
   const [makers, machineModels, storageLocations] = await Promise.all([
@@ -288,7 +327,7 @@ export async function getOutboundScheduleSummary() {
 export async function getInventoryDashboardData() {
   const ownerUserId = await resolveCurrentUserId();
 
-  const [inventoryItems, inboundSchedules, outboundSchedules, recentMovements, recentInboundSchedules, recentOutboundSchedules] = await Promise.all([
+  const [inventoryItems, inboundSchedules, outboundSchedules, recentMovements, recentInboundSchedules, recentOutboundSchedules, purchaseRecords, salesRecords] = await Promise.all([
     prismaClient.inventoryItem.findMany({
       where: {
         ownerUserId,
@@ -343,6 +382,8 @@ export async function getInventoryDashboardData() {
       take: 20,
       include: { inventoryItem: { select: { id: true, modelNameSnapshot: true } } },
     }),
+    prismaClient.purchaseRecord.findMany({ where: { ownerUserId } }),
+    prismaClient.salesRecord.findMany({ where: { ownerUserId } }),
   ]);
 
   const inventoryUnitCount = inventoryItems.reduce((sum, item) => sum + item.quantityOnHand, 0);
@@ -351,6 +392,13 @@ export async function getInventoryDashboardData() {
     if (item.purchaseUnitPrice == null || item.plannedSaleUnitPrice == null) return sum;
     return sum + (item.plannedSaleUnitPrice - item.purchaseUnitPrice) * item.quantityOnHand;
   }, 0);
+
+  const realGrossProfitTotal = calculateRealGrossProfit({
+    totalSales: salesRecords.reduce((sum, row) => sum + row.totalSales, 0),
+    totalCost: purchaseRecords.reduce((sum, row) => sum + row.totalCost, 0),
+    salesSideFees: salesRecords.reduce((sum, row) => sum + row.shippingFee + row.platformFee + row.otherFee, 0),
+    purchaseSideCosts: purchaseRecords.reduce((sum, row) => sum + row.shippingCost + row.otherCost, 0),
+  }).realGrossProfit;
 
   const recentActivities = getInventoryActivityFeed({
     movements: recentMovements.map((movement) => ({
@@ -373,6 +421,7 @@ export async function getInventoryDashboardData() {
       outboundOpenCount: outboundSchedules.length,
       inboundDestinationMissingCount: destinationMissingCount,
       projectedGrossProfitTotal,
+      realGrossProfitTotal,
     },
     recentMovements,
     recentActivities,
@@ -412,6 +461,8 @@ export async function getInventoryActivityData({
       take: 200,
       include: { inventoryItem: { select: { id: true, modelNameSnapshot: true } } },
     }),
+    prismaClient.purchaseRecord.findMany({ where: { ownerUserId } }),
+    prismaClient.salesRecord.findMany({ where: { ownerUserId } }),
   ]);
 
   const allActivities = getInventoryActivityFeed({ movements, inboundSchedules, outboundSchedules, take: 1000 });
