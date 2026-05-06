@@ -297,13 +297,17 @@ export async function createInventoryUnitFromScan(formData: FormData) {
   const rawQr = parsedInput.rawQr || null;
   const provisional = String(formData.get("provisional") ?? "") === "1";
   const inboundScheduleId = String(formData.get("inboundScheduleId") ?? "").trim() || null;
+  let warning: string | null = null;
   if (inboundScheduleId) {
     const inbound = await prismaClient.inboundSchedule.findFirst({ where: { id: inboundScheduleId, ownerUserId } });
     if (!inbound) throw new Error("他ユーザーの入庫予定には紐づけできません。");
+    if (inbound.inventoryItemId !== inventoryItemId) throw new Error("別InventoryItemの入庫予定には紐づけできません。");
+    const inboundCount = await prismaClient.inventoryUnit.count({ where: { ownerUserId, inboundScheduleId } });
+    if (inboundCount >= inbound.quantity) warning = "入庫予定台数を超過しています。";
   }
-  await checkInventoryUnitDuplicate(ownerUserId, displayCode, rawQr);
-  await prismaClient.inventoryUnit.create({ data: { ownerUserId, inventoryItemId, itemType: item.itemType, rawQr, displayCode, parsedQr: parsedInput.parsedQr ? (parsedInput.parsedQr as Prisma.InputJsonValue) : Prisma.JsonNull, codeType: INVENTORY_UNIT_CODE_TYPE_MAP[String(formData.get("codeType") ?? "")] ?? "UNKNOWN", memo: String(formData.get("memo") ?? "").trim() || null, inboundScheduleId, status: !provisional && displayCode ? "IN_STOCK" : "PROVISIONAL", storageLocationId: item.storageLocationId, confirmedAt: !provisional && displayCode ? new Date() : null } });
+  const unit = await prismaClient.inventoryUnit.create({ data: { ownerUserId, inventoryItemId, itemType: item.itemType, rawQr, displayCode, parsedQr: parsedInput.parsedQr ? (parsedInput.parsedQr as Prisma.InputJsonValue) : Prisma.JsonNull, codeType: INVENTORY_UNIT_CODE_TYPE_MAP[String(formData.get("codeType") ?? "")] ?? "UNKNOWN", memo: String(formData.get("memo") ?? "").trim() || null, inboundScheduleId, status: inboundScheduleId ? "RESERVED" : (!provisional && displayCode ? "IN_STOCK" : "PROVISIONAL"), storageLocationId: item.storageLocationId, confirmedAt: !provisional && displayCode ? new Date() : null } });
   revalidatePath("/inventory/units/scan");
+  return { ok: true, message: "個体を登録しました。", warning, nextAction: "次の台を読み取ってください", unitId: unit.id, linkedSchedule: inboundScheduleId ? `入庫予定に紐づけ: ${inboundScheduleId}` : null, clearedForNext: true };
 }
 
 export async function linkInventoryUnitToInbound(formData: FormData) {
@@ -316,7 +320,9 @@ export async function linkInventoryUnitToInbound(formData: FormData) {
     prismaClient.inboundSchedule.findFirst({ where: { id: inboundScheduleId, ownerUserId } }),
   ]);
   if (!unit || !inbound) throw new Error("紐づけ対象が見つかりません。");
-  await prismaClient.inventoryUnit.update({ where: { id: unit.id }, data: { inboundScheduleId } });
+  if (["CANCELED", "SHIPPED"].includes(unit.status)) throw new Error("取消済み/発送済み個体は紐づけ不可です。");
+  if (unit.inventoryItemId !== inbound.inventoryItemId) throw new Error("別InventoryItemの入庫予定へは紐づけできません。");
+  await prismaClient.inventoryUnit.update({ where: { id: unit.id }, data: { inboundScheduleId, status: unit.status === "PROVISIONAL" ? "RESERVED" : unit.status } });
 }
 
 export async function linkInventoryUnitToOutbound(formData: FormData) {
@@ -326,10 +332,11 @@ export async function linkInventoryUnitToOutbound(formData: FormData) {
   const rawQr = String(formData.get("rawQr") ?? "").trim() || null;
   const displayCode = String(formData.get("displayCode") ?? "").trim() || null;
   const unit = await findInventoryUnitByScan(rawQr, displayCode);
-  if (!unit) throw new Error("個体が見つかりません。");
+  if (!unit) return { ok: false, message: "未登録個体です。", warning: "個体を先に登録してください。", nextAction: "仮登録", clearedForNext: false };
   const validated = await validateUnitScheduleLink({ ownerUserId, unitId: unit.id, outboundScheduleId });
-  const outbound = validated.outbound;
   await prismaClient.inventoryUnit.update({ where: { id: unit.id }, data: { outboundScheduleId } });
+  revalidatePath('/inventory/units/scan');
+  return { ok: true, message: "発送予定に紐づけました。", warning: validated.overCapacity ? "発送予定台数を超過しています。" : null, nextAction: "次の台を読み取ってください", linkedSchedule: `発送予定: ${outboundScheduleId}`, unitId: unit.id, clearedForNext: true };
 }
 export async function updateInventoryUnit(formData: FormData) {
   const ownerUserId = await resolveCurrentUserId();
