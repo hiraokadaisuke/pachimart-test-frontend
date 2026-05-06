@@ -189,7 +189,7 @@ export async function createInventoryUnit(formData: FormData) {
       inventoryItemId,
       displayCode,
       rawQr,
-      parsedQr: parsed?.parsedQr ?? null,
+      parsedQr: parsed?.parsedQr ? (parsed.parsedQr as Prisma.InputJsonValue) : undefined,
       itemType: item.itemType,
       codeType: INVENTORY_UNIT_CODE_TYPE_MAP[String(formData.get("codeType") ?? "")] ?? "UNKNOWN",
       memo: String(formData.get("memo") ?? "").trim() || null,
