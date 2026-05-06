@@ -212,6 +212,80 @@ const INVENTORY_UNIT_STATUS_MAP = {
   CANCELED: "CANCELED",
 } as const;
 
+
+export async function parseUnitScanInput(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  void ownerUserId;
+  const rawQr = String(formData.get("rawQr") ?? "").trim();
+  const displayCodeInput = String(formData.get("displayCode") ?? "");
+  const inventoryItemId = String(formData.get("inventoryItemId") ?? "").trim();
+  const item = inventoryItemId ? await prismaClient.inventoryItem.findFirst({ where: { id: inventoryItemId, ownerUserId } }) : null;
+  const parsed = rawQr && item ? parseMachineQr(rawQr, item.itemType) : null;
+  const parsedDisplayCodeCandidate = normalizeDisplayCode(displayCodeInput) || parsed?.displayCodeCandidate || null;
+  return { rawQr, parsedQr: parsed?.parsedQr ?? null, parsedDisplayCodeCandidate };
+}
+
+export async function findInventoryUnitByScan(rawQr?: string | null, displayCode?: string | null) {
+  const ownerUserId = await resolveCurrentUserId();
+  const normalizedDisplayCode = normalizeDisplayCode(displayCode ?? "");
+  return prismaClient.inventoryUnit.findFirst({ where: { ownerUserId, OR: [{ rawQr: rawQr?.trim() || undefined }, { displayCode: normalizedDisplayCode || undefined }] } });
+}
+
+export async function checkInventoryUnitDuplicate(ownerUserId: string, displayCode?: string | null, rawQr?: string | null) {
+  const normalizedDisplayCode = normalizeDisplayCode(displayCode ?? "");
+  const [displayCodeDuplicate, rawQrDuplicate] = await Promise.all([
+    normalizedDisplayCode ? prismaClient.inventoryUnit.findFirst({ where: { ownerUserId, displayCode: normalizedDisplayCode } }) : Promise.resolve(null),
+    rawQr?.trim() ? prismaClient.inventoryUnit.findFirst({ where: { ownerUserId, rawQr: rawQr.trim() } }) : Promise.resolve(null),
+  ]);
+  return { displayCodeDuplicate, rawQrDuplicate };
+}
+
+export async function createInventoryUnitFromScan(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const inventoryItemId = String(formData.get("inventoryItemId") ?? "").trim();
+  if (!inventoryItemId) throw new Error("在庫IDは必須です。");
+  const item = await prismaClient.inventoryItem.findFirst({ where: { id: inventoryItemId, ownerUserId } });
+  if (!item) throw new Error("在庫が見つかりません。");
+  const parsedInput = await parseUnitScanInput(formData);
+  const displayCode = parsedInput.parsedDisplayCodeCandidate;
+  const rawQr = parsedInput.rawQr || null;
+  const provisional = String(formData.get("provisional") ?? "") === "1";
+  const inboundScheduleId = String(formData.get("inboundScheduleId") ?? "").trim() || null;
+  if (inboundScheduleId) {
+    const inbound = await prismaClient.inboundSchedule.findFirst({ where: { id: inboundScheduleId, ownerUserId } });
+    if (!inbound) throw new Error("他ユーザーの入庫予定には紐づけできません。");
+  }
+  await checkInventoryUnitDuplicate(ownerUserId, displayCode, rawQr);
+  await prismaClient.inventoryUnit.create({ data: { ownerUserId, inventoryItemId, itemType: item.itemType, rawQr, displayCode, parsedQr: parsedInput.parsedQr ? (parsedInput.parsedQr as Prisma.InputJsonValue) : Prisma.JsonNull, codeType: INVENTORY_UNIT_CODE_TYPE_MAP[String(formData.get("codeType") ?? "")] ?? "UNKNOWN", memo: String(formData.get("memo") ?? "").trim() || null, inboundScheduleId, status: !provisional && displayCode ? "IN_STOCK" : "PROVISIONAL", storageLocationId: item.storageLocationId, confirmedAt: !provisional && displayCode ? new Date() : null } });
+  revalidatePath("/inventory/units/scan");
+}
+
+export async function linkInventoryUnitToInbound(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const unitId = String(formData.get("unitId") ?? "").trim();
+  const inboundScheduleId = String(formData.get("inboundScheduleId") ?? "").trim();
+  if (!unitId || !inboundScheduleId) throw new Error("個体IDと入庫予定IDは必須です。");
+  const [unit, inbound] = await Promise.all([
+    prismaClient.inventoryUnit.findFirst({ where: { id: unitId, ownerUserId } }),
+    prismaClient.inboundSchedule.findFirst({ where: { id: inboundScheduleId, ownerUserId } }),
+  ]);
+  if (!unit || !inbound) throw new Error("紐づけ対象が見つかりません。");
+  await prismaClient.inventoryUnit.update({ where: { id: unit.id }, data: { inboundScheduleId } });
+}
+
+export async function linkInventoryUnitToOutbound(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const outboundScheduleId = String(formData.get("outboundScheduleId") ?? "").trim();
+  if (!outboundScheduleId) throw new Error("発送予定IDは必須です。");
+  const rawQr = String(formData.get("rawQr") ?? "").trim() || null;
+  const displayCode = String(formData.get("displayCode") ?? "").trim() || null;
+  const unit = await findInventoryUnitByScan(rawQr, displayCode);
+  if (!unit) throw new Error("個体が見つかりません。");
+  if (["SHIPPED", "CANCELED"].includes(unit.status)) throw new Error("発送済み/取消済み個体は紐づけ不可です。");
+  const outbound = await prismaClient.outboundSchedule.findFirst({ where: { id: outboundScheduleId, ownerUserId } });
+  if (!outbound) throw new Error("他ユーザーの発送予定には紐づけできません。");
+  await prismaClient.inventoryUnit.update({ where: { id: unit.id }, data: { outboundScheduleId } });
+}
 export async function updateInventoryUnit(formData: FormData) {
   const ownerUserId = await resolveCurrentUserId();
   const id = String(formData.get("id") ?? "").trim();
