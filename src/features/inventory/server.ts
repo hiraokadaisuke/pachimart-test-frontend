@@ -503,7 +503,7 @@ export async function getOutboundScheduleSummary() {
 export async function getInventoryDashboardData() {
   const ownerUserId = await resolveCurrentUserId();
 
-  const [inventoryItems, inboundSchedules, outboundSchedules, recentMovements, recentInboundSchedules, recentOutboundSchedules, purchaseRecords, salesRecords] = await Promise.all([
+  const [inventoryItems, inboundSchedules, outboundSchedules, recentMovements, recentInboundSchedules, recentOutboundSchedules, purchaseRecords, salesRecords, activityInventoryUnits] = await Promise.all([
     prismaClient.inventoryItem.findMany({
       where: {
         ownerUserId,
