@@ -40,8 +40,6 @@ export const INVENTORY_ACTIVITY_RANGE_FILTERS = [
   { value: "7D", label: "7日以内", days: 7 },
   { value: "30D", label: "30日以内", days: 30 },
   { value: "90D", label: "90日以内", days: 90 },
-  { value: "PURCHASE_RECORDED", label: "仕入記録" },
-  { value: "SALES_RECORDED", label: "売上記録" },
 ] as const;
 
 export type InventoryActivityTypeFilter = (typeof INVENTORY_ACTIVITY_TYPE_FILTERS)[number]["value"];
