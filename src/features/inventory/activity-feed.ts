@@ -13,7 +13,13 @@ export type InventoryActivity = {
     | "MANUAL_ADJUSTMENT"
     | "SCHEDULE_CANCELED"
     | "PURCHASE_RECORDED"
-    | "SALES_RECORDED";
+    | "SALES_RECORDED"
+    | "PURCHASE_UPDATED"
+    | "SALES_UPDATED"
+    | "PAYMENT_UPDATED"
+    | "PURCHASE_CANCELED"
+    | "SALES_CANCELED"
+    | "PAYMENT_CANCELED";
   title: string;
   description: string;
   badgeLabel: string;
@@ -33,6 +39,12 @@ export const INVENTORY_ACTIVITY_TYPE_FILTERS = [
   { value: "MANUAL_ADJUSTMENT", label: "調整" },
   { value: "PURCHASE_RECORDED", label: "仕入記録" },
   { value: "SALES_RECORDED", label: "売上記録" },
+  { value: "PURCHASE_UPDATED", label: "仕入更新" },
+  { value: "SALES_UPDATED", label: "売上更新" },
+  { value: "PAYMENT_UPDATED", label: "入出金更新" },
+  { value: "PURCHASE_CANCELED", label: "仕入取消" },
+  { value: "SALES_CANCELED", label: "売上取消" },
+  { value: "PAYMENT_CANCELED", label: "入出金取消" },
 ] as const;
 
 export const INVENTORY_ACTIVITY_RANGE_FILTERS = [
@@ -49,6 +61,9 @@ const CANCELED_ACTIVITY_TYPES: InventoryActivity["type"][] = [
   "INBOUND_COMPLETION_CANCELED",
   "OUTBOUND_COMPLETION_CANCELED",
   "SCHEDULE_CANCELED",
+  "PURCHASE_CANCELED",
+  "SALES_CANCELED",
+  "PAYMENT_CANCELED",
 ];
 
 type MovementWithItem = InventoryMovement & {
@@ -196,13 +211,13 @@ export const normalizeOutboundScheduleToActivity = (schedule: ScheduleWithItem<O
 
 
 const normalizePurchaseRecordToActivity = (record: PurchaseRecord): InventoryActivity => ({
-  id: `purchase:${record.id}`, occurredAt: record.purchaseDate, type: "PURCHASE_RECORDED",
-  title: `仕入記録：${record.quantity}台`, description: "仕入記録を登録しました。", badgeLabel: "仕入", href: `/inventory/items/${record.inventoryItemId}`
+  id: `purchase:${record.id}`, occurredAt: record.purchaseDate, type: record.paymentStatus === "CANCELED" ? "PURCHASE_CANCELED" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "PURCHASE_UPDATED" : "PURCHASE_RECORDED"),
+  title: `仕入記録：${record.quantity}台`, description: record.paymentStatus === "CANCELED" ? "仕入記録を取り消しました。" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "仕入記録を更新しました。" : "仕入記録を登録しました。"), badgeLabel: record.paymentStatus === "CANCELED" ? "仕入取消" : "仕入", href: `/inventory/items/${record.inventoryItemId}`
 });
 
 const normalizeSalesRecordToActivity = (record: SalesRecord): InventoryActivity => ({
-  id: `sales:${record.id}`, occurredAt: record.salesDate, type: "SALES_RECORDED",
-  title: `売上記録：${record.quantity}台`, description: "売上記録を登録しました。", badgeLabel: "売上", href: `/inventory/items/${record.inventoryItemId}`
+  id: `sales:${record.id}`, occurredAt: record.salesDate, type: record.paymentStatus === "CANCELED" ? "SALES_CANCELED" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "SALES_UPDATED" : "SALES_RECORDED"),
+  title: `売上記録：${record.quantity}台`, description: record.paymentStatus === "CANCELED" ? "売上記録を取り消しました。" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "売上記録を更新しました。" : "売上記録を登録しました。"), badgeLabel: record.paymentStatus === "CANCELED" ? "売上取消" : "売上", href: `/inventory/items/${record.inventoryItemId}`
 });
 export const getInventoryActivityFeed = ({
   movements,

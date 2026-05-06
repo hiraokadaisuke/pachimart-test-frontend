@@ -17,7 +17,7 @@ import {
   inventoryMovementTypeLabel,
   inventoryStatusLabel,
 } from "@/features/inventory/labels";
-import { getInventoryItemById, resyncInventoryListingStatusAction } from "@/features/inventory/server";
+import { getInventoryItemById, resyncInventoryListingStatusAction, updatePaymentRecord, updatePurchaseRecord, updateSalesRecord } from "@/features/inventory/server";
 import { getExhibitStatusesByIds } from "@/features/inventory/listing-sync";
 import { calculateProjectedProfit } from "@/features/inventory/profit";
 import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
@@ -46,10 +46,10 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
     quantity: item.quantityOnHand,
   });
 
-  const purchaseTotal = item.purchaseRecords.reduce((sum, row) => sum + row.totalCost, 0);
-  const salesTotal = item.salesRecords.reduce((sum, row) => sum + row.totalSales, 0);
-  const purchaseSideCosts = item.purchaseRecords.reduce((sum, row) => sum + row.shippingCost + row.otherCost, 0);
-  const salesSideFees = item.salesRecords.reduce((sum, row) => sum + row.shippingFee + row.platformFee + row.otherFee, 0);
+  const purchaseTotal = item.purchaseRecords.filter((row) => row.paymentStatus !== "CANCELED").reduce((sum, row) => sum + row.totalCost, 0);
+  const salesTotal = item.salesRecords.filter((row) => row.paymentStatus !== "CANCELED").reduce((sum, row) => sum + row.totalSales, 0);
+  const purchaseSideCosts = item.purchaseRecords.filter((row) => row.paymentStatus !== "CANCELED").reduce((sum, row) => sum + row.shippingCost + row.otherCost, 0);
+  const salesSideFees = item.salesRecords.filter((row) => row.paymentStatus !== "CANCELED").reduce((sum, row) => sum + row.shippingFee + row.platformFee + row.otherFee, 0);
   const realProfit = calculateRealGrossProfit({
     totalSales: salesTotal,
     totalCost: purchaseTotal,
@@ -153,13 +153,57 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
       </div>
 
 
-      <InventorySectionCard title="実績収支" className="mt-5" description="仕入・売上記録ベースの実粗利です。">
+            <InventorySectionCard title="実績収支" className="mt-5" description="仕入・売上記録ベースの実粗利です。">
         <div className="grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-5">
           <div><p className="text-slate-500">仕入金額</p><p className="text-lg font-semibold">{purchaseTotal.toLocaleString()}円</p></div>
           <div><p className="text-slate-500">売上金額</p><p className="text-lg font-semibold">{salesTotal.toLocaleString()}円</p></div>
           <div><p className="text-slate-500">費用</p><p className="text-lg font-semibold">{(purchaseSideCosts + salesSideFees).toLocaleString()}円</p></div>
           <div><p className="text-slate-500">実粗利</p><p className="text-lg font-bold">{realProfit.realGrossProfit.toLocaleString()}円</p></div>
           <div><p className="text-slate-500">粗利率</p><p className="text-lg font-bold">{realProfit.profitRate != null ? `${realProfit.profitRate}%` : "-"}</p></div>
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {item.purchaseRecords.map((record) => (
+            <form key={record.id} action={updatePurchaseRecord} className="rounded border p-3 text-xs space-y-2">
+              <input type="hidden" name="id" value={record.id} />
+              <p className="font-semibold">仕入記録 {record.paymentStatus === "CANCELED" ? "(取消済)" : ""}</p>
+              <input name="purchaseDate" type="date" defaultValue={record.purchaseDate.toISOString().slice(0,10)} className="w-full rounded border p-1" />
+              <input name="unitCost" type="number" min={0} defaultValue={record.unitCost} className="w-full rounded border p-1" />
+              <input name="quantity" type="number" min={1} defaultValue={record.quantity} className="w-full rounded border p-1" />
+              <input name="shippingCost" type="number" min={0} defaultValue={record.shippingCost} className="w-full rounded border p-1" />
+              <input name="otherCost" type="number" min={0} defaultValue={record.otherCost} className="w-full rounded border p-1" />
+              <select name="paymentStatus" defaultValue={record.paymentStatus} className="w-full rounded border p-1"><option value="UNPAID">未払い</option><option value="PARTIAL">一部支払</option><option value="PAID">支払済</option><option value="CANCELED">取消</option></select>
+              <input name="memo" defaultValue={record.memo ?? ""} className="w-full rounded border p-1" />
+              <Button type="submit">仕入を更新</Button>
+            </form>
+          ))}
+          {item.salesRecords.map((record) => (
+            <form key={record.id} action={updateSalesRecord} className="rounded border p-3 text-xs space-y-2">
+              <input type="hidden" name="id" value={record.id} />
+              <p className="font-semibold">売上記録 {record.paymentStatus === "CANCELED" ? "(取消済)" : ""}</p>
+              <input name="salesDate" type="date" defaultValue={record.salesDate.toISOString().slice(0,10)} className="w-full rounded border p-1" />
+              <input name="unitPrice" type="number" min={0} defaultValue={record.unitPrice} className="w-full rounded border p-1" />
+              <input name="quantity" type="number" min={1} defaultValue={record.quantity} className="w-full rounded border p-1" />
+              <input name="shippingFee" type="number" min={0} defaultValue={record.shippingFee} className="w-full rounded border p-1" />
+              <input name="platformFee" type="number" min={0} defaultValue={record.platformFee} className="w-full rounded border p-1" />
+              <input name="otherFee" type="number" min={0} defaultValue={record.otherFee} className="w-full rounded border p-1" />
+              <select name="paymentStatus" defaultValue={record.paymentStatus} className="w-full rounded border p-1"><option value="UNPAID">未払い</option><option value="PARTIAL">一部入金</option><option value="PAID">入金済</option><option value="CANCELED">取消</option></select>
+              <input name="memo" defaultValue={record.memo ?? ""} className="w-full rounded border p-1" />
+              <Button type="submit">売上を更新</Button>
+            </form>
+          ))}
+        </div>
+        <div className="mt-4 grid gap-4 lg:grid-cols-2">
+          {item.paymentRecords.map((payment) => (
+            <form key={payment.id} action={updatePaymentRecord} className="rounded border p-3 text-xs space-y-2">
+              <input type="hidden" name="id" value={payment.id} />
+              <p className="font-semibold">入出金 {payment.status === "CANCELED" ? "(取消済)" : ""}</p>
+              <input name="amount" type="number" min={0} defaultValue={payment.amount} className="w-full rounded border p-1" />
+              <select name="status" defaultValue={payment.status} className="w-full rounded border p-1"><option value="PLANNED">予定</option><option value="PAID">完了</option><option value="CANCELED">取消</option></select>
+              <input name="paidAt" type="date" defaultValue={payment.paidAt ? payment.paidAt.toISOString().slice(0,10) : ""} className="w-full rounded border p-1" />
+              <input name="memo" defaultValue={payment.memo ?? ""} className="w-full rounded border p-1" />
+              <Button type="submit">入出金を更新</Button>
+            </form>
+          ))}
         </div>
       </InventorySectionCard>
 
