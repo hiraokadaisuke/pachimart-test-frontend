@@ -17,7 +17,7 @@ import {
   inventoryMovementTypeLabel,
   inventoryStatusLabel,
 } from "@/features/inventory/labels";
-import { createInventoryUnit, getInventoryItemById, resyncInventoryListingStatusAction, updatePaymentRecord, updatePurchaseRecord, updateSalesRecord } from "@/features/inventory/server";
+import { cancelInventoryUnit, confirmInventoryUnit, createInventoryUnit, getInventoryItemById, resyncInventoryListingStatusAction, updateInventoryUnit, updatePaymentRecord, updatePurchaseRecord, updateSalesRecord } from "@/features/inventory/server";
 import { getExhibitStatusesByIds } from "@/features/inventory/listing-sync";
 import { calculateProjectedProfit } from "@/features/inventory/profit";
 import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
@@ -73,6 +73,22 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
   async function createUnitAction(formData: FormData) {
     "use server";
     await createInventoryUnit(formData);
+  }
+
+
+  async function updateUnitAction(formData: FormData) {
+    "use server";
+    await updateInventoryUnit(formData);
+  }
+
+  async function confirmUnitAction(formData: FormData) {
+    "use server";
+    await confirmInventoryUnit(String(formData.get("id") ?? ""));
+  }
+
+  async function cancelUnitAction(formData: FormData) {
+    "use server";
+    await cancelInventoryUnit(String(formData.get("id") ?? ""));
   }
 
   const query = new URLSearchParams({
@@ -229,14 +245,31 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
         </form>
         <div className="mt-3 space-y-2 text-sm">
           {item.inventoryUnits.length === 0 ? <p className="text-slate-500">個体登録はありません。</p> : item.inventoryUnits.map((unit) => (
-            <div key={unit.id} className="rounded border p-3">
+            <div key={unit.id} className="rounded border p-3 space-y-2">
               <p>displayCode: {unit.displayCode ?? "-"}</p>
               <p>rawQr: {unit.rawQr ?? "-"}</p>
+              <p>parsedQr: {unit.parsedQr ? JSON.stringify(unit.parsedQr) : "-"}</p>
               <p>codeType: {unit.codeType ?? "-"} / status: {unit.status}</p>
               <p>保管場所: {item.storageLocation?.name ?? "-"}</p>
               <p>入庫予定: {unit.inboundScheduleId ?? "-"} / 発送予定: {unit.outboundScheduleId ?? "-"}</p>
-              <p>確定: {unit.confirmedAt ? "確定済" : "仮登録"}</p>
+              <p>確定: {unit.confirmedAt ? `確定済み (${unit.confirmedAt.toISOString().slice(0,10)})` : "仮登録"} {unit.status === "CANCELED" ? " / 取消" : ""}</p>
               <p>memo: {unit.memo ?? "-"}</p>
+              <form action={updateUnitAction} className="grid gap-2 md:grid-cols-3">
+                <input type="hidden" name="id" value={unit.id} />
+                <input name="displayCode" defaultValue={unit.displayCode ?? ""} className="rounded border p-1" />
+                <input name="rawQr" defaultValue={unit.rawQr ?? ""} className="rounded border p-1" />
+                <select name="codeType" defaultValue={unit.codeType ?? "UNKNOWN"} className="rounded border p-1">
+                  <option value="UNKNOWN">UNKNOWN</option><option value="MAIN_BOARD">MAIN_BOARD</option><option value="CERTIFICATE">CERTIFICATE</option><option value="BODY">BODY</option><option value="FRAME">FRAME</option><option value="BOARD">BOARD</option><option value="OTHER">OTHER</option>
+                </select>
+                <input name="inboundScheduleId" defaultValue={unit.inboundScheduleId ?? ""} placeholder="入庫予定ID" className="rounded border p-1" />
+                <input name="outboundScheduleId" defaultValue={unit.outboundScheduleId ?? ""} placeholder="発送予定ID" className="rounded border p-1" />
+                <input name="memo" defaultValue={unit.memo ?? ""} className="rounded border p-1" />
+                <Button type="submit">編集</Button>
+              </form>
+              <div className="flex gap-2">
+                <form action={confirmUnitAction}><input type="hidden" name="id" value={unit.id} /><Button type="submit">確定</Button></form>
+                <form action={cancelUnitAction}><input type="hidden" name="id" value={unit.id} /><Button type="submit" variant="outline">取消</Button></form>
+              </div>
             </div>
           ))}
         </div>

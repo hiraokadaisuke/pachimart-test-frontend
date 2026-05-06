@@ -43,7 +43,13 @@ export type InventoryActivity = {
     | "PAYMENT_CANCELED"
     | "INVENTORY_CSV_IMPORTED"
     | "INVENTORY_CSV_IMPORT_FAILED"
-    | "INVENTORY_INITIAL_STOCK_CREATED";
+    | "INVENTORY_INITIAL_STOCK_CREATED"
+    | "INVENTORY_UNIT_CREATED"
+    | "INVENTORY_UNIT_UPDATED"
+    | "INVENTORY_UNIT_CONFIRMED"
+    | "INVENTORY_UNIT_CANCELED"
+    | "INVENTORY_UNIT_LINKED_INBOUND"
+    | "INVENTORY_UNIT_LINKED_OUTBOUND";
   title: string;
   description: string;
   badgeLabel: string;
@@ -72,6 +78,12 @@ export const INVENTORY_ACTIVITY_TYPE_FILTERS = [
   { value: "INVENTORY_CSV_IMPORTED", label: "CSV取込" },
   { value: "INVENTORY_CSV_IMPORT_FAILED", label: "CSV取込失敗" },
   { value: "INVENTORY_INITIAL_STOCK_CREATED", label: "初期在庫作成" },
+  { value: "INVENTORY_UNIT_CREATED", label: "個体作成" },
+  { value: "INVENTORY_UNIT_UPDATED", label: "個体更新" },
+  { value: "INVENTORY_UNIT_CONFIRMED", label: "個体確定" },
+  { value: "INVENTORY_UNIT_CANCELED", label: "個体取消" },
+  { value: "INVENTORY_UNIT_LINKED_INBOUND", label: "個体入庫紐付" },
+  { value: "INVENTORY_UNIT_LINKED_OUTBOUND", label: "個体発送紐付" },
 ] as const;
 
 export const INVENTORY_ACTIVITY_RANGE_FILTERS = [
@@ -261,6 +273,30 @@ const normalizeSalesRecordToActivity = (record: SalesRecordLike): InventoryActiv
   id: `sales:${record.id}`, occurredAt: record.salesDate, type: record.paymentStatus === "CANCELED" ? "SALES_CANCELED" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "SALES_UPDATED" : "SALES_RECORDED"),
   title: `売上記録：${record.quantity}台`, description: record.paymentStatus === "CANCELED" ? "売上記録を取り消しました。" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "売上記録を更新しました。" : "売上記録を登録しました。"), badgeLabel: record.paymentStatus === "CANCELED" ? "売上取消" : "売上", href: `/inventory/items/${record.inventoryItemId}`
 });
+
+type InventoryUnitLike = {
+  id: string;
+  inventoryItemId: string;
+  displayCode: string | null;
+  status: string;
+  inboundScheduleId: string | null;
+  outboundScheduleId: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+  confirmedAt: Date | null;
+  canceledAt: Date | null;
+};
+
+const normalizeInventoryUnitToActivities = (unit: InventoryUnitLike): InventoryActivity[] => {
+  const label = unit.displayCode ?? unit.id.slice(0, 8);
+  const base: InventoryActivity[] = [{ id: `unit:${unit.id}:created`, occurredAt: unit.createdAt, type: "INVENTORY_UNIT_CREATED", title: `個体作成：${label}`, description: "個体を登録しました。", badgeLabel: "個体作成", href: `/inventory/items/${unit.inventoryItemId}` }];
+  if (unit.updatedAt.getTime() > unit.createdAt.getTime()) base.push({ id: `unit:${unit.id}:updated`, occurredAt: unit.updatedAt, type: "INVENTORY_UNIT_UPDATED", title: `個体更新：${label}`, description: "個体情報を更新しました。", badgeLabel: "個体更新", href: `/inventory/items/${unit.inventoryItemId}` });
+  if (unit.confirmedAt) base.push({ id: `unit:${unit.id}:confirmed`, occurredAt: unit.confirmedAt, type: "INVENTORY_UNIT_CONFIRMED", title: `個体確定：${label}`, description: "個体を確定しました。", badgeLabel: "個体確定", href: `/inventory/items/${unit.inventoryItemId}` });
+  if (unit.status === "CANCELED") base.push({ id: `unit:${unit.id}:canceled`, occurredAt: unit.canceledAt ?? unit.updatedAt, type: "INVENTORY_UNIT_CANCELED", title: `個体取消：${label}`, description: "個体を取消しました。", badgeLabel: "個体取消", href: `/inventory/items/${unit.inventoryItemId}` });
+  if (unit.inboundScheduleId) base.push({ id: `unit:${unit.id}:inbound`, occurredAt: unit.updatedAt, type: "INVENTORY_UNIT_LINKED_INBOUND", title: `個体を入庫予定に紐付：${label}`, description: "入庫予定に個体を紐づけました。", badgeLabel: "入庫紐付", href: `/inventory/items/${unit.inventoryItemId}` });
+  if (unit.outboundScheduleId) base.push({ id: `unit:${unit.id}:outbound`, occurredAt: unit.updatedAt, type: "INVENTORY_UNIT_LINKED_OUTBOUND", title: `個体を発送予定に紐付：${label}`, description: "発送予定に個体を紐づけました。", badgeLabel: "発送紐付", href: `/inventory/items/${unit.inventoryItemId}` });
+  return base;
+};
 export const getInventoryActivityFeed = ({
   movements,
   inboundSchedules,
@@ -268,6 +304,7 @@ export const getInventoryActivityFeed = ({
   purchaseRecords = [],
   salesRecords = [],
   take = 10,
+  inventoryUnits = [],
 }: {
   movements: MovementWithItem[];
   inboundSchedules: ScheduleWithItem<InboundSchedule>[];
@@ -275,6 +312,7 @@ export const getInventoryActivityFeed = ({
   purchaseRecords?: PurchaseRecordLike[];
   salesRecords?: SalesRecordLike[];
   take?: number;
+  inventoryUnits?: InventoryUnitLike[];
 }) => {
   const movementActivities = movements
     .map(normalizeInventoryMovementToActivity)
@@ -285,8 +323,9 @@ export const getInventoryActivityFeed = ({
 
   const purchaseActivities = purchaseRecords.map(normalizePurchaseRecordToActivity);
   const salesActivities = salesRecords.map(normalizeSalesRecordToActivity);
+  const inventoryUnitActivities = inventoryUnits.flatMap(normalizeInventoryUnitToActivities);
 
-  return [...movementActivities, ...inboundActivities, ...outboundActivities, ...purchaseActivities, ...salesActivities]
+  return [...movementActivities, ...inboundActivities, ...outboundActivities, ...purchaseActivities, ...salesActivities, ...inventoryUnitActivities]
     .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
     .slice(0, take);
 };

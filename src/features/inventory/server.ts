@@ -202,6 +202,74 @@ export async function createInventoryUnit(formData: FormData) {
   revalidatePath(`/inventory/items/${inventoryItemId}`);
   return { unit, duplicateWarning: Boolean(duplicate) };
 }
+
+
+const INVENTORY_UNIT_STATUS_MAP = {
+  PROVISIONAL: "PROVISIONAL",
+  IN_STOCK: "IN_STOCK",
+  RESERVED: "RESERVED",
+  SHIPPED: "SHIPPED",
+  CANCELED: "CANCELED",
+} as const;
+
+export async function updateInventoryUnit(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const id = String(formData.get("id") ?? "").trim();
+  if (!id) throw new Error("個体IDは必須です。");
+
+  const target = await prismaClient.inventoryUnit.findFirst({ where: { id, ownerUserId } });
+  if (!target) throw new Error("対象の個体が見つかりません。");
+
+  const displayCodeInput = String(formData.get("displayCode") ?? "");
+  const rawQrInput = String(formData.get("rawQr") ?? "").trim();
+  const rawQr = rawQrInput || null;
+  const parsed = rawQr ? parseMachineQr(rawQr, target.itemType) : null;
+  const displayCode = normalizeDisplayCode(displayCodeInput) || null;
+  const duplicate = displayCode
+    ? await prismaClient.inventoryUnit.findFirst({ where: { ownerUserId, displayCode, NOT: { id } } })
+    : null;
+
+  const statusRaw = String(formData.get("status") ?? "").trim();
+  const status = (INVENTORY_UNIT_STATUS_MAP as Record<string, typeof target.status>)[statusRaw] ?? (displayCode ? target.status : "PROVISIONAL");
+
+  const updated = await prismaClient.inventoryUnit.update({
+    where: { id },
+    data: {
+      displayCode,
+      rawQr,
+      parsedQr: parsed?.parsedQr ? (parsed.parsedQr as Prisma.InputJsonValue) : Prisma.JsonNull,
+      codeType: INVENTORY_UNIT_CODE_TYPE_MAP[String(formData.get("codeType") ?? "")] ?? "UNKNOWN",
+      storageLocationId: String(formData.get("storageLocationId") ?? "").trim() || null,
+      inboundScheduleId: String(formData.get("inboundScheduleId") ?? "").trim() || null,
+      outboundScheduleId: String(formData.get("outboundScheduleId") ?? "").trim() || null,
+      memo: String(formData.get("memo") ?? "").trim() || null,
+      status,
+      confirmedAt: displayCode ? target.confirmedAt : null,
+    },
+  });
+  revalidatePath(`/inventory/items/${updated.inventoryItemId}`);
+  return { unit: updated, duplicateWarning: Boolean(duplicate) };
+}
+
+export async function confirmInventoryUnit(id: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  const target = await prismaClient.inventoryUnit.findFirst({ where: { id, ownerUserId } });
+  if (!target) throw new Error("対象の個体が見つかりません。");
+  if (!target.displayCode) throw new Error("displayCode未設定のため確定できません。");
+  const updated = await prismaClient.inventoryUnit.update({ where: { id }, data: { status: "IN_STOCK", confirmedAt: new Date() } });
+  revalidatePath(`/inventory/items/${updated.inventoryItemId}`);
+  return updated;
+}
+
+export async function cancelInventoryUnit(id: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  const target = await prismaClient.inventoryUnit.findFirst({ where: { id, ownerUserId } });
+  if (!target) throw new Error("対象の個体が見つかりません。");
+  if (target.status === "SHIPPED") throw new Error("発送済み個体は取消できません。");
+  const updated = await prismaClient.inventoryUnit.update({ where: { id }, data: { status: "CANCELED", canceledAt: new Date() } });
+  revalidatePath(`/inventory/items/${updated.inventoryItemId}`);
+  return updated;
+}
 export async function getInventoryFormMasters() {
   const ownerUserId = await resolveCurrentUserId();
   const [makers, machineModels, storageLocations] = await Promise.all([
@@ -492,6 +560,7 @@ export async function getInventoryDashboardData() {
     }),
     prismaClient.purchaseRecord.findMany({ where: { ownerUserId } }),
     prismaClient.salesRecord.findMany({ where: { ownerUserId } }),
+    prismaClient.inventoryUnit.findMany({ where: { ownerUserId }, orderBy: { updatedAt: "desc" }, take: 200 }),
   ]);
 
   const inventoryUnitCount = inventoryItems.reduce((sum, item) => sum + item.quantityOnHand, 0);
@@ -520,6 +589,7 @@ export async function getInventoryDashboardData() {
     outboundSchedules: recentOutboundSchedules,
     purchaseRecords,
     salesRecords,
+    inventoryUnits: activityInventoryUnits,
     take: 10,
   });
 
@@ -552,7 +622,7 @@ export async function getInventoryActivityData({
   take?: number;
 }) {
   const ownerUserId = await resolveCurrentUserId();
-  const [movements, inboundSchedules, outboundSchedules, purchaseRecords, salesRecords] = await Promise.all([
+  const [movements, inboundSchedules, outboundSchedules, purchaseRecords, salesRecords, inventoryUnits] = await Promise.all([
     prismaClient.inventoryMovement.findMany({
       where: { ownerUserId },
       orderBy: [{ committedAt: "desc" }, { createdAt: "desc" }],
@@ -573,9 +643,10 @@ export async function getInventoryActivityData({
     }),
     prismaClient.purchaseRecord.findMany({ where: { ownerUserId } }),
     prismaClient.salesRecord.findMany({ where: { ownerUserId } }),
+    prismaClient.inventoryUnit.findMany({ where: { ownerUserId }, orderBy: { updatedAt: "desc" }, take: 200 }),
   ]);
 
-  const allActivities = getInventoryActivityFeed({ movements, inboundSchedules, outboundSchedules, purchaseRecords, salesRecords, take: 1000 });
+  const allActivities = getInventoryActivityFeed({ movements, inboundSchedules, outboundSchedules, purchaseRecords, salesRecords, inventoryUnits, take: 1000 });
   const filteredActivities = filterInventoryActivities({ activities: allActivities, typeFilter, rangeFilter });
   const totalPages = Math.max(1, Math.ceil(filteredActivities.length / pageSize));
   const currentPage = Math.min(Math.max(page, 1), totalPages);
