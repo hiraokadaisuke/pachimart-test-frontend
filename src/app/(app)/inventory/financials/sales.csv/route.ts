@@ -1,0 +1,3 @@
+import { formatFinancialCsvRows } from "@/features/inventory/financials";
+import { getFinancialCsvData } from "@/features/inventory/server";
+export async function GET() { const { sales: rows }=await getFinancialCsvData(); const csv=formatFinancialCsvRows(["売上日","在庫ID","メーカー","機種名","台数","売上単価","送料","手数料","その他費用","売上合計","入金ステータス","関連取引ID","作成種別","取消","メモ"],rows.map(r=>[r.salesDate.toISOString().slice(0,10),r.inventoryItemId,r.inventoryItem.makerNameSnapshot??"",r.inventoryItem.modelNameSnapshot,r.quantity,r.unitPrice,r.shippingFee,r.platformFee,r.otherFee,r.totalSales,r.paymentStatus,r.dealingId??"",(r.memo??"").includes("AUTO")?"自動":"手動",r.paymentStatus==="CANCELED"?"取消":"",r.memo??""])); return new Response(csv,{headers:{"content-type":"text/csv; charset=utf-8"}});} 

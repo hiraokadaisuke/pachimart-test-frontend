@@ -1,0 +1,7 @@
+import Link from "next/link";
+import { parsePagination } from "@/features/inventory/financials";
+import { getFinancialPaymentsPage } from "@/features/inventory/server";
+export default async function PaymentsPage({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {
+const {page,pageSize,skip,take}=parsePagination(searchParams); const {rows,totalCount}=await getFinancialPaymentsPage(skip,take);
+return <div className="mx-auto max-w-6xl px-4 py-8 text-sm"><h1 className="text-2xl font-bold mb-3">入出金一覧</h1><Link href="/inventory/financials/payments.csv" className="underline text-blue-600">CSV出力</Link><table className="w-full mt-3 border text-xs"><thead><tr>{["種別","日付","支払入金日","金額","ステータス","対象"].map(h=><th key={h} className="border p-1">{h}</th>)}</tr></thead><tbody>{rows.map(r=><tr key={r.id}><td className="border p-1">{r.sourceType==="PURCHASE_RECORD"?"支払":"入金"}</td><td className="border p-1">{r.createdAt.toISOString().slice(0,10)}</td><td className="border p-1">{r.paidAt?.toISOString().slice(0,10)??"-"}</td><td className="border p-1">{r.amount}</td><td className="border p-1">{r.status}</td><td className="border p-1">{r.sourceType}:{r.sourceId}</td></tr>)}</tbody></table><div className="mt-3 flex gap-3"><span>{totalCount}件</span>{page>1&&<Link className="underline" href={`?page=${page-1}&pageSize=${pageSize}`}>Prev</Link>}{skip+take<totalCount&&<Link className="underline" href={`?page=${page+1}&pageSize=${pageSize}`}>Next</Link>}</div></div>;
+}

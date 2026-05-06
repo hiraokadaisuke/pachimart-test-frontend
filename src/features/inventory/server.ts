@@ -906,3 +906,65 @@ export async function resyncInventoryListingStatusAction(formData: FormData) {
   await resyncInventoryExternalLink(linkId, ownerUserId);
   revalidatePath(`/inventory/items/${inventoryItemId}`);
 }
+
+export async function getFinancialSummaryData() {
+  const ownerUserId = await resolveCurrentUserId();
+  const [purchases, sales, payments] = await Promise.all([
+    prismaClient.purchaseRecord.findMany({ where: { ownerUserId }, select: { totalCost: true, paymentStatus: true } }),
+    prismaClient.salesRecord.findMany({ where: { ownerUserId }, select: { totalSales: true, paymentStatus: true } }),
+    prismaClient.paymentRecord.findMany({ where: { ownerUserId }, select: { amount: true, status: true, sourceType: true } }),
+  ]);
+  return { purchases, sales, payments };
+}
+
+export async function getFinancialPurchasesPage(skip: number, take: number) {
+  const ownerUserId = await resolveCurrentUserId();
+  const where = { ownerUserId };
+  const [rows, totalCount] = await Promise.all([
+    prismaClient.purchaseRecord.findMany({ where, include: { inventoryItem: { include: { maker: true, machineModel: true } } }, orderBy: { purchaseDate: "desc" }, skip, take }),
+    prismaClient.purchaseRecord.count({ where }),
+  ]);
+  return { rows, totalCount };
+}
+
+export async function getFinancialSalesPage(skip: number, take: number) {
+  const ownerUserId = await resolveCurrentUserId();
+  const where = { ownerUserId };
+  const [rows, totalCount] = await Promise.all([
+    prismaClient.salesRecord.findMany({ where, include: { inventoryItem: { include: { maker: true, machineModel: true } } }, orderBy: { salesDate: "desc" }, skip, take }),
+    prismaClient.salesRecord.count({ where }),
+  ]);
+  return { rows, totalCount };
+}
+
+export async function getFinancialPaymentsPage(skip: number, take: number) {
+  const ownerUserId = await resolveCurrentUserId();
+  const where = { ownerUserId };
+  const [rows, totalCount] = await Promise.all([
+    prismaClient.paymentRecord.findMany({ where, orderBy: { createdAt: "desc" }, skip, take }),
+    prismaClient.paymentRecord.count({ where }),
+  ]);
+  return { rows, totalCount };
+}
+
+export async function getFinancialProfitPage(skip: number, take: number) {
+  const ownerUserId = await resolveCurrentUserId();
+  const where = { ownerUserId };
+  const [rows, totalCount, payments] = await Promise.all([
+    prismaClient.inventoryItem.findMany({ where, include: { maker: true, purchaseRecords: true, salesRecords: true }, orderBy: { updatedAt: "desc" }, skip, take }),
+    prismaClient.inventoryItem.count({ where }),
+    prismaClient.paymentRecord.findMany({ where }),
+  ]);
+  return { rows, totalCount, payments };
+}
+
+export async function getFinancialCsvData() {
+  const ownerUserId = await resolveCurrentUserId();
+  const [purchases, sales, payments, items] = await Promise.all([
+    prismaClient.purchaseRecord.findMany({ where: { ownerUserId }, include: { inventoryItem: true }, orderBy: { purchaseDate: "desc" } }),
+    prismaClient.salesRecord.findMany({ where: { ownerUserId }, include: { inventoryItem: true }, orderBy: { salesDate: "desc" } }),
+    prismaClient.paymentRecord.findMany({ where: { ownerUserId }, orderBy: { createdAt: "desc" } }),
+    prismaClient.inventoryItem.findMany({ where: { ownerUserId }, include: { maker: true, purchaseRecords: true, salesRecords: true } }),
+  ]);
+  return { purchases, sales, payments, items };
+}
