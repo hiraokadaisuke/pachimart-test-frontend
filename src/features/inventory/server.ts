@@ -266,7 +266,7 @@ export async function cancelInventoryUnit(id: string) {
   const target = await prismaClient.inventoryUnit.findFirst({ where: { id, ownerUserId } });
   if (!target) throw new Error("対象の個体が見つかりません。");
   if (target.status === "SHIPPED") throw new Error("発送済み個体は取消できません。");
-  const updated = await prismaClient.inventoryUnit.update({ where: { id }, data: { status: "CANCELED", canceledAt: new Date() } });
+  const updated = await prismaClient.inventoryUnit.update({ where: { id }, data: { status: "CANCELED" } });
   revalidatePath(`/inventory/items/${updated.inventoryItemId}`);
   return updated;
 }
