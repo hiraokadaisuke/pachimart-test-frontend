@@ -173,7 +173,7 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
               <input name="otherCost" type="number" min={0} defaultValue={record.otherCost} className="w-full rounded border p-1" />
               <select name="paymentStatus" defaultValue={record.paymentStatus} className="w-full rounded border p-1"><option value="UNPAID">未払い</option><option value="PARTIAL">一部支払</option><option value="PAID">支払済</option><option value="CANCELED">取消</option></select>
               <input name="memo" defaultValue={record.memo ?? ""} className="w-full rounded border p-1" />
-              <Button type="submit" size="sm">仕入を更新</Button>
+              <Button type="submit">仕入を更新</Button>
             </form>
           ))}
           {item.salesRecords.map((record) => (
@@ -188,7 +188,7 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
               <input name="otherFee" type="number" min={0} defaultValue={record.otherFee} className="w-full rounded border p-1" />
               <select name="paymentStatus" defaultValue={record.paymentStatus} className="w-full rounded border p-1"><option value="UNPAID">未払い</option><option value="PARTIAL">一部入金</option><option value="PAID">入金済</option><option value="CANCELED">取消</option></select>
               <input name="memo" defaultValue={record.memo ?? ""} className="w-full rounded border p-1" />
-              <Button type="submit" size="sm">売上を更新</Button>
+              <Button type="submit">売上を更新</Button>
             </form>
           ))}
         </div>
@@ -201,7 +201,7 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
               <select name="status" defaultValue={payment.status} className="w-full rounded border p-1"><option value="PLANNED">予定</option><option value="PAID">完了</option><option value="CANCELED">取消</option></select>
               <input name="paidAt" type="date" defaultValue={payment.paidAt ? payment.paidAt.toISOString().slice(0,10) : ""} className="w-full rounded border p-1" />
               <input name="memo" defaultValue={payment.memo ?? ""} className="w-full rounded border p-1" />
-              <Button type="submit" size="sm">入出金を更新</Button>
+              <Button type="submit">入出金を更新</Button>
             </form>
           ))}
         </div>
