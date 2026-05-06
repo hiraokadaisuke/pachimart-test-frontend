@@ -294,10 +294,6 @@ export async function getInboundSchedules() {
     include: { inventoryItem: true, destinationLocation: true },
     orderBy: { expectedDate: "asc" },
   });
-  if (!item) return null;
-  const sourceIds = [...item.purchaseRecords.map((r) => r.id), ...item.salesRecords.map((r) => r.id)];
-  const paymentRecords = sourceIds.length ? await prismaClient.paymentRecord.findMany({ where: { ownerUserId, sourceId: { in: sourceIds } }, orderBy: { createdAt: "desc" } }) : [];
-  return { ...item, paymentRecords };
 }
 
 export async function getOutboundSchedules() {
@@ -307,10 +303,6 @@ export async function getOutboundSchedules() {
     include: { inventoryItem: true, originLocation: true },
     orderBy: { expectedDate: "asc" },
   });
-  if (!item) return null;
-  const sourceIds = [...item.purchaseRecords.map((r) => r.id), ...item.salesRecords.map((r) => r.id)];
-  const paymentRecords = sourceIds.length ? await prismaClient.paymentRecord.findMany({ where: { ownerUserId, sourceId: { in: sourceIds } }, orderBy: { createdAt: "desc" } }) : [];
-  return { ...item, paymentRecords };
 }
 
 export async function getInboundScheduleById(id: string) {
@@ -539,10 +531,6 @@ export async function createOutboundSchedule(formData: FormData) {
       note: String(formData.get("note") ?? "").trim() || null,
     },
   });
-  if (!item) return null;
-  const sourceIds = [...item.purchaseRecords.map((r) => r.id), ...item.salesRecords.map((r) => r.id)];
-  const paymentRecords = sourceIds.length ? await prismaClient.paymentRecord.findMany({ where: { ownerUserId, sourceId: { in: sourceIds } }, orderBy: { createdAt: "desc" } }) : [];
-  return { ...item, paymentRecords };
 }
 
 export async function completeInboundSchedule(scheduleId: string) {
