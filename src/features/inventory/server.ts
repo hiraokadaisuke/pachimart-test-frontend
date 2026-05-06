@@ -7,6 +7,7 @@ import type {
   InventoryOwnershipType,
   InventoryStatus,
   PrismaClient,
+  Prisma,
   RecordPaymentStatus,
   PaymentRecordStatus,
 } from "@prisma/client";
@@ -936,6 +937,11 @@ const buildInventoryProfitRows = (
     }),
   );
 };
+
+type FinancialPurchaseCsvRow = Prisma.PurchaseRecordGetPayload<{ include: { inventoryItem: true } }>;
+type FinancialSalesCsvRow = Prisma.SalesRecordGetPayload<{ include: { inventoryItem: true } }>;
+type FinancialPaymentCsvRow = Prisma.PaymentRecordGetPayload<{}>;
+type FinancialProfitCsvRow = ReturnType<typeof buildInventoryProfitRows>[number];
 export async function getFinancialSummaryData() {
   const ownerUserId = await resolveCurrentUserId();
   const [purchases, sales, payments] = await Promise.all([
@@ -988,7 +994,12 @@ export async function getFinancialProfitPage(params: FinancialPageParams) {
   return { rows, totalCount };
 }
 
+export async function getFinancialCsvData(type: "purchases"): Promise<FinancialPurchaseCsvRow[]>;
+export async function getFinancialCsvData(type: "sales"): Promise<FinancialSalesCsvRow[]>;
+export async function getFinancialCsvData(type: "payments"): Promise<FinancialPaymentCsvRow[]>;
+export async function getFinancialCsvData(type: "profit"): Promise<FinancialProfitCsvRow[]>;
 export async function getFinancialCsvData(type: FinancialCsvType) {
+
   const ownerUserId = await resolveCurrentUserId();
   if (type === "purchases") return prismaClient.purchaseRecord.findMany({ where: { ownerUserId }, include: { inventoryItem: true }, orderBy: { purchaseDate: "desc" } });
   if (type === "sales") return prismaClient.salesRecord.findMany({ where: { ownerUserId }, include: { inventoryItem: true }, orderBy: { salesDate: "desc" } });
