@@ -276,7 +276,7 @@ export async function updateInventoryItem(id: string, input: InventoryFormInput)
           status: "COMMITTED",
           quantityDelta: input.quantityOnHand - existing.quantityOnHand,
           committedAt: new Date(),
-          sourceType: schedule.sourceType === "DEALING" ? "DEALING" : "MANUAL",
+          sourceType: "MANUAL",
           dedupeKey: `manual-adjustment-${id}-${crypto.randomUUID()}`,
           note: "在庫編集による数量調整",
           createdByUserId: ownerUserId,
@@ -285,10 +285,6 @@ export async function updateInventoryItem(id: string, input: InventoryFormInput)
     }
     return updated;
   });
-  if (!item) return null;
-  const sourceIds = [...item.purchaseRecords.map((r) => r.id), ...item.salesRecords.map((r) => r.id)];
-  const paymentRecords = sourceIds.length ? await prismaClient.paymentRecord.findMany({ where: { ownerUserId, sourceId: { in: sourceIds } }, orderBy: { createdAt: "desc" } }) : [];
-  return { ...item, paymentRecords };
 }
 
 export async function getInboundSchedules() {
