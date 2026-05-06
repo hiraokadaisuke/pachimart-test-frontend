@@ -2,18 +2,16 @@
 
 import { Html5Qrcode } from "html5-qrcode";
 import { useEffect, useId, useRef, useState } from "react";
-import type { InboundSchedule, InventoryItem, OutboundSchedule } from "@prisma/client";
+import type { getInventoryUnitScanOptions } from "@/features/inventory/server";
 
 type Props = {
-  inventoryItems: Pick<InventoryItem, "id" | "modelNameSnapshot" | "itemType">[];
-  inboundSchedules: Pick<InboundSchedule, "id" | "quantity" | "status" | "inventoryItemId">[];
-  outboundSchedules: Pick<OutboundSchedule, "id" | "quantity" | "status" | "inventoryItemId">[];
+  scanOptions: Awaited<ReturnType<typeof getInventoryUnitScanOptions>>;
   parseAction: (formData: FormData) => Promise<{ parsedDisplayCodeCandidate: string | null; warning?: string | null }>;
   createAction: (formData: FormData) => Promise<void>;
   outboundLinkAction: (formData: FormData) => Promise<void>;
 };
 
-export function InventoryUnitScanForm({ inventoryItems, inboundSchedules, outboundSchedules, parseAction, createAction, outboundLinkAction }: Props) {
+export function InventoryUnitScanForm({ scanOptions, parseAction, createAction, outboundLinkAction }: Props) {
   const qrRegionId = useId();
   const scannerRef = useRef<InstanceType<typeof Html5Qrcode> | null>(null);
   const lastDecodedRef = useRef<{ text: string; at: number } | null>(null);
@@ -21,6 +19,7 @@ export function InventoryUnitScanForm({ inventoryItems, inboundSchedules, outbou
   const [displayCode, setDisplayCode] = useState("");
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [scanHistory, setScanHistory] = useState<string[]>([]);
+  const [registeredCount, setRegisteredCount] = useState(0);
 
   useEffect(() => {
     return () => {
@@ -67,11 +66,14 @@ export function InventoryUnitScanForm({ inventoryItems, inboundSchedules, outbou
 
     <form action={parseAction} className="space-y-2">
       <input name="rawQr" value={rawQr} onChange={(e) => setRawQr(e.target.value)} placeholder="rawQr" className="w-full rounded border p-2" />
-      <input name="displayCode" value={displayCode} onChange={(e) => setDisplayCode(e.target.value)} placeholder="displayCode確定" className="w-full rounded border p-2" />
+      <div className="rounded border border-amber-300 bg-amber-50 p-2 text-xs">QRは正ではありません。現物表記を確認してください。</div>
+      <input name="displayCode" value={displayCode} onChange={(e) => setDisplayCode(e.target.value)} placeholder="displayCode確定（現物確認）" className="w-full rounded border-2 border-blue-500 p-2" />
       <select name="codeType" className="w-full rounded border p-2"><option value="UNKNOWN">UNKNOWN</option><option value="BODY">BODY</option><option value="BOARD">BOARD</option></select>
-      <select name="inventoryItemId" className="w-full rounded border p-2">{inventoryItems.map((i)=><option key={i.id} value={i.id}>{i.modelNameSnapshot} ({i.id})</option>)}</select>
-      <input name="inboundScheduleId" placeholder="InboundScheduleId" className="w-full rounded border p-2" />
-      <input name="outboundScheduleId" placeholder="OutboundScheduleId" className="w-full rounded border p-2" />
+      <select name="inventoryItemId" className="w-full rounded border p-2">{scanOptions.recentItems.map((i)=><option key={i.id} value={i.id}>{i.modelNameSnapshot} / {i.maker?.name ?? "メーカー未設定"} / units:{i.unitCount}</option>)}</select>
+      <select name="inboundScheduleId" className="w-full rounded border p-2"><option value="">入庫予定を選択</option>{scanOptions.inboundSchedules.map((s)=><option key={s.id} value={s.id}>{s.expectedDate?.toISOString().slice(0,10) ?? "-"} / {s.inventoryItem?.modelNameSnapshot ?? s.modelNameSnapshot} / {s.quantity}台 / 登録:{s.registeredUnitCount} / {s.status}</option>)}</select>
+      <input name="inboundScheduleId" placeholder="InboundScheduleId(手入力)" className="w-full rounded border p-2" />
+      <select name="outboundScheduleId" className="w-full rounded border p-2"><option value="">発送予定を選択</option>{scanOptions.outboundSchedules.map((s)=><option key={s.id} value={s.id}>{s.expectedDate?.toISOString().slice(0,10) ?? "-"} / {s.inventoryItem?.modelNameSnapshot ?? s.modelNameSnapshot} / {s.quantity}台 / 選択:{s.selectedUnitCount} / {s.status}</option>)}</select>
+      <input name="outboundScheduleId" placeholder="OutboundScheduleId(手入力)" className="w-full rounded border p-2" />
       <textarea name="memo" placeholder="memo" className="w-full rounded border p-2" />
       <div className="grid grid-cols-2 gap-2">
         <button formAction={createAction} className="rounded bg-blue-600 px-4 py-3 text-white">登録</button>
@@ -81,6 +83,6 @@ export function InventoryUnitScanForm({ inventoryItems, inboundSchedules, outbou
     </form>
 
     <div className="rounded border p-2 text-sm"><p>履歴</p>{scanHistory.map((h,idx)=><p key={idx}>{h}</p>)}</div>
-    <div className="text-xs text-gray-600">入庫予定件数: {inboundSchedules.length} / 発送予定件数: {outboundSchedules.length}</div>
+    <div className="text-xs text-gray-600">入庫予定件数: {scanOptions.inboundSchedules.length} / 発送予定件数: {scanOptions.outboundSchedules.length} / 登録済み件数: {registeredCount}</div>
   </div>;
 }

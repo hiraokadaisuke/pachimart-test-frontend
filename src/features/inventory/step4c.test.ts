@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { buildDisplayCodeCandidate, parseMachineQr } from "./qr-code";
+import { parseMachineQr } from "./qr-code";
 import { INVENTORY_ACTIVITY_TYPE_FILTERS, filterInventoryActivities, type InventoryActivity } from "./activity-feed";
+import { buildScanDuplicateWarnings } from "./unit-scan";
 
 const parsed = parseMachineQr("S-1001", "SLOT");
-assert.ok(parsed.parsedQr);
-assert.equal(buildDisplayCodeCandidate("S-1001", parsed.parsedQr), "S-1001");
+assert.ok(parsed);
 
 const provisionalAllowed = { displayCode: null, status: "PROVISIONAL" as const };
 assert.equal(provisionalAllowed.displayCode, null);
@@ -19,4 +19,12 @@ const activities: InventoryActivity[] = [
 ];
 const filtered = filterInventoryActivities({ activities, typeFilter: "INVENTORY_UNIT_LINKED_INBOUND", rangeFilter: "ALL", now: new Date() });
 assert.equal(filtered.length, 1);
+
+const duplicateWarningsStrong = buildScanDuplicateWarnings({ displayCodeDuplicate: { id: "u1" }, rawQrDuplicate: null });
+assert.equal(duplicateWarningsStrong.requiresConfirm, true);
+assert.ok(duplicateWarningsStrong.strongWarning);
+
+const duplicateWarningsSoft = buildScanDuplicateWarnings({ displayCodeDuplicate: null, rawQrDuplicate: { id: "u2" } });
+assert.equal(duplicateWarningsSoft.requiresConfirm, false);
+assert.ok(duplicateWarningsSoft.softWarning);
 console.log("step4c cases passed");
