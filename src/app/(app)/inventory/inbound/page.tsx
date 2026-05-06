@@ -29,10 +29,10 @@ export default async function InboundSchedulesPage({
   const [schedules, summary, params] = await Promise.all([getInboundSchedules(), getInboundScheduleSummary(), searchParams]);
   const filter: FilterType = params?.filter === "destination-missing" ? "destination-missing" : "all";
 
-  const destinationMissingCount = schedules.filter((schedule) => isDestinationMissingOpenSchedule(schedule)).length;
+  const destinationMissingCount = schedules.filter((schedule: (typeof schedules)[number]) => isDestinationMissingOpenSchedule(schedule)).length;
   const filteredSchedules =
     filter === "destination-missing"
-      ? schedules.filter((schedule) => isDestinationMissingOpenSchedule(schedule))
+      ? schedules.filter((schedule: (typeof schedules)[number]) => isDestinationMissingOpenSchedule(schedule))
       : schedules;
 
   return (
