@@ -232,6 +232,24 @@ enum InventoryImportStatus {
   CANCELED
 }
 
+enum InventoryUnitStatus {
+  PROVISIONAL
+  IN_STOCK
+  RESERVED
+  SHIPPED
+  CANCELED
+}
+
+enum InventoryUnitCodeType {
+  MAIN_BOARD
+  CERTIFICATE
+  BODY
+  FRAME
+  BOARD
+  OTHER
+  UNKNOWN
+}
+
 model User {
   id               String            @id
   devUserId        String?           @unique
@@ -251,6 +269,7 @@ model User {
   inventoryMovementsCreated InventoryMovement[] @relation("InventoryMovementCreatedBy")
   inboundSchedulesOwned InboundSchedule[] @relation("InboundScheduleOwner")
   outboundSchedulesOwned OutboundSchedule[] @relation("OutboundScheduleOwner")
+  inventoryUnitsOwned InventoryUnit[] @relation("InventoryUnitOwner")
   inventoryExternalLinksOwned InventoryExternalLink[] @relation("InventoryExternalLinkOwner")
   purchaseRecordsOwned PurchaseRecord[]
   salesRecordsOwned SalesRecord[]
@@ -468,6 +487,7 @@ model InventoryItem {
   movements       InventoryMovement[]
   inboundSchedules InboundSchedule[] @relation("InboundScheduleInventoryItem")
   outboundSchedules OutboundSchedule[] @relation("OutboundScheduleInventoryItem")
+  inventoryUnits   InventoryUnit[]
   externalLinks    InventoryExternalLink[]
   purchaseRecords  PurchaseRecord[]
   salesRecords     SalesRecord[]
@@ -590,6 +610,7 @@ model InboundSchedule {
   ownerUser User @relation("InboundScheduleOwner", fields: [ownerUserId], references: [id])
   inventoryItem InventoryItem? @relation("InboundScheduleInventoryItem", fields: [inventoryItemId], references: [id])
   destinationLocation StorageLocation? @relation("InboundDestinationLocation", fields: [destinationLocationId], references: [id])
+  inventoryUnits InventoryUnit[]
 
   @@index([ownerUserId, status, expectedDate])
   @@index([inventoryItemId, expectedDate])
@@ -620,10 +641,42 @@ model OutboundSchedule {
   ownerUser User @relation("OutboundScheduleOwner", fields: [ownerUserId], references: [id])
   inventoryItem InventoryItem? @relation("OutboundScheduleInventoryItem", fields: [inventoryItemId], references: [id])
   originLocation StorageLocation? @relation("OutboundOriginLocation", fields: [originLocationId], references: [id])
+  inventoryUnits InventoryUnit[]
 
   @@index([ownerUserId, status, expectedDate])
   @@index([inventoryItemId, expectedDate])
   @@index([ownerUserId, sourceType, sourceId])
+}
+
+model InventoryUnit {
+  id                String                 @id @default(cuid())
+  ownerUserId       String
+  inventoryItemId   String
+  displayCode       String?
+  rawQr             String?
+  parsedQr          Json?
+  codeType          InventoryUnitCodeType?
+  itemType          InventoryItemType
+  status            InventoryUnitStatus    @default(PROVISIONAL)
+  storageLocationId String?
+  inboundScheduleId String?
+  outboundScheduleId String?
+  purchaseRecordId  String?
+  salesRecordId     String?
+  memo              String?
+  confirmedAt       DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+
+  ownerUser         User                   @relation("InventoryUnitOwner", fields: [ownerUserId], references: [id])
+  inventoryItem     InventoryItem          @relation(fields: [inventoryItemId], references: [id])
+  inboundSchedule   InboundSchedule?       @relation(fields: [inboundScheduleId], references: [id])
+  outboundSchedule  OutboundSchedule?      @relation(fields: [outboundScheduleId], references: [id])
+
+  @@index([ownerUserId, displayCode])
+  @@index([inventoryItemId, status])
+  @@index([inboundScheduleId])
+  @@index([outboundScheduleId])
 }
 
 model InventoryMovement {
