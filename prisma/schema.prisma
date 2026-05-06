@@ -207,26 +207,6 @@ enum RecordPaymentStatus {
   CANCELED
 }
 
-enum LedgerSourceType {
-  PURCHASE_RECORD
-  SALES_RECORD
-  PAYMENT_RECORD
-  MANUAL
-}
-
-enum LedgerEntryType {
-  PURCHASE
-  SALES
-  FEE
-  PAYMENT
-  ADJUSTMENT
-}
-
-enum LedgerDirection {
-  IN
-  OUT
-}
-
 enum PaymentSourceType {
   PURCHASE_RECORD
   SALES_RECORD
@@ -267,7 +247,6 @@ model User {
   inventoryExternalLinksOwned InventoryExternalLink[] @relation("InventoryExternalLinkOwner")
   purchaseRecordsOwned PurchaseRecord[]
   salesRecordsOwned SalesRecord[]
-  ledgerEntriesOwned LedgerEntry[]
   paymentRecordsOwned PaymentRecord[]
   defaultStorageLocation StorageLocation? @relation("UserDefaultStorageLocation", fields: [defaultStorageLocationId], references: [id])
 }
@@ -536,25 +515,6 @@ model SalesRecord {
 
   @@index([ownerUserId, salesDate])
   @@index([inventoryItemId, salesDate])
-}
-
-model LedgerEntry {
-  id          String           @id @default(cuid())
-  ownerUserId String
-  sourceType  LedgerSourceType
-  sourceId    String
-  entryType   LedgerEntryType
-  amount      Int
-  direction   LedgerDirection
-  occurredAt  DateTime
-  memo        String?
-  dedupeKey   String?          @unique
-  createdAt   DateTime         @default(now())
-
-  ownerUser   User             @relation(fields: [ownerUserId], references: [id])
-
-  @@index([ownerUserId, occurredAt])
-  @@index([sourceType, sourceId])
 }
 
 model PaymentRecord {
