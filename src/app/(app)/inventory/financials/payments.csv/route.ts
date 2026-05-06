@@ -1,5 +1,3 @@
-import { cookies } from "next/headers";
-import { DEV_USERS } from "@/lib/dev-user/users";
-import { prisma } from "@/lib/server/prisma";
 import { formatFinancialCsvRows } from "@/features/inventory/financials";
-export async function GET() { const ownerUserId=(await cookies()).get("dev_user_id")?.value??DEV_USERS.A.id; const rows=await prisma.paymentRecord.findMany({where:{ownerUserId},orderBy:{createdAt:"desc"}}); const csv=formatFinancialCsvRows(["種別","日付","支払入金日","金額","ステータス","対象種別","対象ID","在庫ID","メーカー","機種名","関連取引ID","メモ"],rows.map(r=>[r.sourceType==="PURCHASE_RECORD"?"支払":"入金",r.createdAt.toISOString().slice(0,10),r.paidAt?.toISOString().slice(0,10)??"",r.amount,r.status,r.sourceType,r.sourceId,"","","","",r.memo??""])); return new Response(csv,{headers:{"content-type":"text/csv; charset=utf-8"}});} 
+import { getFinancialCsvData } from "@/features/inventory/server";
+export async function GET() { const { payments: rows }=await getFinancialCsvData(); const csv=formatFinancialCsvRows(["種別","日付","支払入金日","金額","ステータス","対象種別","対象ID","在庫ID","メーカー","機種名","関連取引ID","メモ"],rows.map(r=>[r.sourceType==="PURCHASE_RECORD"?"支払":"入金",r.createdAt.toISOString().slice(0,10),r.paidAt?.toISOString().slice(0,10)??"",r.amount,r.status,r.sourceType,r.sourceId,"","","","",r.memo??""])); return new Response(csv,{headers:{"content-type":"text/csv; charset=utf-8"}});} 
