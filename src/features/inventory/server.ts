@@ -23,7 +23,7 @@ import type { InventoryActivityRangeFilter, InventoryActivityTypeFilter } from "
 import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
 import { ensurePurchaseAndPaymentOnInboundComplete, ensureSalesAndPaymentOnOutboundComplete } from "@/features/inventory/auto-records";
 import { calculateInventoryProfitRows } from "@/features/inventory/financials";
-import { importInventoryCsv, parseInventoryImportRows, validateImportRows } from "@/features/inventory/csv-import";
+import { computeCsvFileHash, importInventoryCsv, parseInventoryImportRows, validateImportRows } from "@/features/inventory/csv-import";
 
 const DEV_USER_COOKIE_KEY = "dev_user_id";
 
@@ -1027,10 +1027,32 @@ export async function runInventoryCsvImport(csvText: string) {
   const defaultStorage = user?.defaultStorageLocationId
     ? await prismaClient.storageLocation.findFirst({ where: { id: user.defaultStorageLocationId, ownerUserId, isActive: true } })
     : await prismaClient.storageLocation.findFirst({ where: { ownerUserId, isActive: true }, orderBy: { createdAt: "asc" } });
-  const importBatchId = `${Date.now()}`;
+  const fileHash = computeCsvFileHash(csvText);
+  const duplicateImportedCount = await prismaClient.inventoryImportBatch.count({ where: { ownerUserId, fileHash, status: "IMPORTED" } });
   await prismaClient.$transaction(async (tx) => {
-    await importInventoryCsv(tx, { ownerUserId, rows: parsed.rows, importBatchId, defaultStorageLocationId: defaultStorage?.id ?? null });
+    const batch = await tx.inventoryImportBatch.create({
+      data: { ownerUserId, fileName: `manual-${new Date().toISOString()}.csv`, fileHash, totalRows: parsed.rows.length, status: "PREVIEWED", memo: duplicateImportedCount > 0 ? "同じCSVがすでに取り込まれている可能性があります" : null },
+    });
+    const result = await importInventoryCsv(tx, { ownerUserId, rows: parsed.rows, importBatchId: batch.id, defaultStorageLocationId: defaultStorage?.id ?? null });
+    await tx.inventoryImportBatch.update({ where: { id: batch.id }, data: { successRows: result.successRows, errorRows: result.errorRows, status: result.errorRows > 0 ? "FAILED" : "IMPORTED", completedAt: new Date() } });
   });
   revalidatePath("/inventory");
   revalidatePath("/inventory/activity");
+}
+
+export async function getInventoryImportHistory() {
+  const ownerUserId = await resolveCurrentUserId();
+  return prismaClient.inventoryImportBatch.findMany({ where: { ownerUserId }, orderBy: { createdAt: "desc" }, take: 50 });
+}
+
+export async function getInventoryImportBatchDetail(id: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  return prismaClient.inventoryImportBatch.findFirst({ where: { id, ownerUserId }, include: { rows: { orderBy: { rowNumber: "asc" } } } });
+}
+
+export async function getInventoryCsvDuplicateWarning(csvText: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  const fileHash = computeCsvFileHash(csvText);
+  const count = await prismaClient.inventoryImportBatch.count({ where: { ownerUserId, fileHash, status: "IMPORTED" } });
+  return count > 0 ? "同じCSVがすでに取り込まれている可能性があります" : null;
 }

@@ -225,6 +225,13 @@ enum PaymentRecordStatus {
   CANCELED
 }
 
+enum InventoryImportStatus {
+  PREVIEWED
+  IMPORTED
+  FAILED
+  CANCELED
+}
+
 model User {
   id               String            @id
   devUserId        String?           @unique
@@ -248,6 +255,7 @@ model User {
   purchaseRecordsOwned PurchaseRecord[]
   salesRecordsOwned SalesRecord[]
   paymentRecordsOwned PaymentRecord[]
+  inventoryImportBatches InventoryImportBatch[]
   defaultStorageLocation StorageLocation? @relation("UserDefaultStorageLocation", fields: [defaultStorageLocationId], references: [id])
 }
 
@@ -463,6 +471,7 @@ model InventoryItem {
   externalLinks    InventoryExternalLink[]
   purchaseRecords  PurchaseRecord[]
   salesRecords     SalesRecord[]
+  importRows       InventoryImportRow[]
 
   @@index([ownerUserId, inventoryStatus, updatedAt])
   @@index([ownerUserId, listingStatus])
@@ -641,6 +650,43 @@ model InventoryMovement {
   @@index([inventoryItemId, committedAt])
   @@index([ownerUserId, status, createdAt])
   @@index([sourceType, sourceId])
+}
+
+model InventoryImportBatch {
+  id          String                @id @default(cuid())
+  ownerUserId String
+  fileName    String
+  fileHash    String?
+  totalRows   Int
+  successRows Int                   @default(0)
+  errorRows   Int                   @default(0)
+  status      InventoryImportStatus @default(PREVIEWED)
+  memo        String?
+  createdAt   DateTime              @default(now())
+  completedAt DateTime?
+
+  ownerUser User                 @relation(fields: [ownerUserId], references: [id])
+  rows      InventoryImportRow[]
+
+  @@index([ownerUserId, createdAt])
+  @@index([ownerUserId, fileHash, status])
+}
+
+model InventoryImportRow {
+  id              String                @id @default(cuid())
+  batchId         String
+  rowNumber       Int
+  status          InventoryImportStatus
+  errorMessage    String?
+  rawData         Json
+  inventoryItemId String?
+  createdAt       DateTime              @default(now())
+
+  batch         InventoryImportBatch @relation(fields: [batchId], references: [id])
+  inventoryItem InventoryItem?       @relation(fields: [inventoryItemId], references: [id])
+
+  @@index([batchId, rowNumber])
+  @@index([inventoryItemId])
 }
 
 model BuyerShippingAddress {
