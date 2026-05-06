@@ -284,7 +284,7 @@ type InventoryUnitLike = {
   createdAt: Date;
   updatedAt: Date;
   confirmedAt: Date | null;
-  canceledAt: Date | null;
+  canceledAt?: Date | null;
 };
 
 const normalizeInventoryUnitToActivities = (unit: InventoryUnitLike): InventoryActivity[] => {
