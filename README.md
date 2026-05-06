@@ -121,3 +121,17 @@ curl "https://<your-domain>/api/trades/in-progress/1"
 - `dev_user_3` / 株式会社さしすせそ
 - `dev_user_4` / 株式会社たちつてと
 - `dev_user_5` / 株式会社なにぬねの
+
+## DB migration repair（P3009対応）
+
+`20260504091000_add_inventory_schedules` が `_prisma_migrations` に failed として残っている場合は、`DB Migration Repair` workflow を使って修復します。
+
+- 実行条件:
+  - `confirm=REPAIR`
+  - `verify_partial_objects=true`（推奨）
+  - `target_environment=production` または `preview`
+- workflow は `InboundSchedule` / `OutboundSchedule` と関連 enum/index の存在を確認し、
+  - オブジェクトが揃っている場合: `prisma migrate resolve --applied 20260504091000_add_inventory_schedules`
+  - 欠けている場合: `prisma migrate resolve --rolled-back 20260504091000_add_inventory_schedules`
+  を選択してから `prisma migrate deploy` を実行します。
+- Preview DB と Production DB が別接続の場合は、**両方の environment で個別に実行**して failed migration の取り残しを防いでください。
