@@ -25,7 +25,7 @@ export function InventoryUnitScanForm({ inventoryItems, inboundSchedules, outbou
   useEffect(() => {
     return () => {
       void scannerRef.current?.stop().catch(() => undefined);
-      scannerRef.current?.clear().catch(() => undefined);
+      try { scannerRef.current?.clear(); } catch {}
     };
   }, []);
 
