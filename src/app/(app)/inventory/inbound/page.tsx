@@ -82,7 +82,7 @@ export default async function InboundSchedulesPage({
             </tr>
           </thead>
           <tbody>
-            {filteredSchedules.map((s) => {
+            {filteredSchedules.map((s: (typeof filteredSchedules)[number]) => {
               const autoCreated = getAutoCreatedInboundInfo({ sourceType: s.sourceType, sourceId: s.sourceId, note: s.note });
               const destinationMissing = !s.destinationLocationId;
               const isOpenSchedule = s.status !== "RECEIVED" && s.status !== "CANCELED";
