@@ -17,7 +17,7 @@ import {
   inventoryMovementTypeLabel,
   inventoryStatusLabel,
 } from "@/features/inventory/labels";
-import { getInventoryItemById, resyncInventoryListingStatusAction, updatePaymentRecord, updatePurchaseRecord, updateSalesRecord } from "@/features/inventory/server";
+import { createInventoryUnit, getInventoryItemById, resyncInventoryListingStatusAction, updatePaymentRecord, updatePurchaseRecord, updateSalesRecord } from "@/features/inventory/server";
 import { getExhibitStatusesByIds } from "@/features/inventory/listing-sync";
 import { calculateProjectedProfit } from "@/features/inventory/profit";
 import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
@@ -68,6 +68,13 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
   const showDuplicateWarning = isDuplicateListingRisk(item.listingStatus);
 
   const exhibitType = item.itemType === "PACHINKO" ? "pachinko" : "slot";
+
+
+  async function createUnitAction(formData: FormData) {
+    "use server";
+    await createInventoryUnit(formData);
+  }
+
   const query = new URLSearchParams({
     inventoryItemId: item.id,
     itemType: item.itemType,
@@ -203,6 +210,34 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
               <input name="memo" defaultValue={payment.memo ?? ""} className="w-full rounded border p-1" />
               <Button type="submit">入出金を更新</Button>
             </form>
+          ))}
+        </div>
+      </InventorySectionCard>
+
+
+
+      <InventorySectionCard title="個体番号" className="mt-5" description="displayCodeを正として管理し、rawQrは補助情報として保持します。">
+        <form action={createUnitAction} className="grid gap-2 rounded border p-3 text-sm md:grid-cols-2">
+          <input type="hidden" name="inventoryItemId" value={item.id} />
+          <input name="displayCode" placeholder="displayCode (現物表記)" className="rounded border p-2" />
+          <input name="rawQr" placeholder="rawQr (QR読み取り値)" className="rounded border p-2" />
+          <select name="codeType" className="rounded border p-2">
+            <option value="UNKNOWN">UNKNOWN</option><option value="MAIN_BOARD">MAIN_BOARD</option><option value="CERTIFICATE">CERTIFICATE</option><option value="BODY">BODY</option><option value="FRAME">FRAME</option><option value="BOARD">BOARD</option><option value="OTHER">OTHER</option>
+          </select>
+          <input name="memo" placeholder="メモ" className="rounded border p-2" />
+          <Button type="submit">個体追加</Button>
+        </form>
+        <div className="mt-3 space-y-2 text-sm">
+          {item.inventoryUnits.length === 0 ? <p className="text-slate-500">個体登録はありません。</p> : item.inventoryUnits.map((unit) => (
+            <div key={unit.id} className="rounded border p-3">
+              <p>displayCode: {unit.displayCode ?? "-"}</p>
+              <p>rawQr: {unit.rawQr ?? "-"}</p>
+              <p>codeType: {unit.codeType ?? "-"} / status: {unit.status}</p>
+              <p>保管場所: {item.storageLocation?.name ?? "-"}</p>
+              <p>入庫予定: {unit.inboundScheduleId ?? "-"} / 発送予定: {unit.outboundScheduleId ?? "-"}</p>
+              <p>確定: {unit.confirmedAt ? "確定済" : "仮登録"}</p>
+              <p>memo: {unit.memo ?? "-"}</p>
+            </div>
           ))}
         </div>
       </InventorySectionCard>

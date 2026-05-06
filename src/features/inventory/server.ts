@@ -10,6 +10,7 @@ import type {
   Prisma,
   RecordPaymentStatus,
   PaymentRecordStatus,
+  InventoryUnitCodeType,
 } from "@prisma/client";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -24,6 +25,7 @@ import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
 import { ensurePurchaseAndPaymentOnInboundComplete, ensureSalesAndPaymentOnOutboundComplete } from "@/features/inventory/auto-records";
 import { calculateInventoryProfitRows } from "@/features/inventory/financials";
 import { computeCsvFileHash, importInventoryCsv, parseInventoryImportRows, validateImportRows } from "@/features/inventory/csv-import";
+import { normalizeDisplayCode, parseMachineQr } from "@/features/inventory/qr-code";
 
 const DEV_USER_COOKIE_KEY = "dev_user_id";
 
@@ -56,6 +58,7 @@ export async function getInventoryItemById(id: string) {
       movements: { orderBy: [{ committedAt: "desc" }, { createdAt: "desc" }] },
       purchaseRecords: { orderBy: { purchaseDate: "desc" } },
       salesRecords: { orderBy: { salesDate: "desc" } },
+      inventoryUnits: { orderBy: { createdAt: "desc" } },
       externalLinks: {
         where: { linkType: "EXHIBIT" },
         orderBy: { createdAt: "desc" },
@@ -156,6 +159,48 @@ export async function updatePaymentRecord(formData: FormData) {
   const paidAt = paidAtRaw ? new Date(paidAtRaw) : null;
   if (paidAt && Number.isNaN(paidAt.getTime())) throw new Error("支払日が不正です。");
   await prismaClient.paymentRecord.update({ where: { id }, data: { amount, status, paidAt, memo: String(formData.get("memo") ?? "").trim() || null } });
+}
+
+
+const INVENTORY_UNIT_CODE_TYPE_MAP: Record<string, InventoryUnitCodeType> = {
+  MAIN_BOARD: "MAIN_BOARD", CERTIFICATE: "CERTIFICATE", BODY: "BODY", FRAME: "FRAME", BOARD: "BOARD", OTHER: "OTHER", UNKNOWN: "UNKNOWN",
+};
+
+export async function createInventoryUnit(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const inventoryItemId = String(formData.get("inventoryItemId") ?? "").trim();
+  if (!inventoryItemId) throw new Error("在庫IDは必須です。");
+  const item = await prismaClient.inventoryItem.findFirst({ where: { id: inventoryItemId, ownerUserId } });
+  if (!item) throw new Error("在庫が見つかりません。");
+
+  const displayCodeRaw = String(formData.get("displayCode") ?? "");
+  const rawQr = String(formData.get("rawQr") ?? "").trim() || null;
+  const normalizedDisplayCode = normalizeDisplayCode(displayCodeRaw) || null;
+  const parsed = rawQr ? parseMachineQr(rawQr, item.itemType) : null;
+  const displayCode = normalizedDisplayCode ?? parsed?.displayCodeCandidate ?? null;
+
+  const duplicate = displayCode
+    ? await prismaClient.inventoryUnit.findFirst({ where: { ownerUserId, displayCode } })
+    : null;
+
+  const unit = await prismaClient.inventoryUnit.create({
+    data: {
+      ownerUserId,
+      inventoryItemId,
+      displayCode,
+      rawQr,
+      parsedQr: parsed?.parsedQr ?? null,
+      itemType: item.itemType,
+      codeType: INVENTORY_UNIT_CODE_TYPE_MAP[String(formData.get("codeType") ?? "")] ?? "UNKNOWN",
+      memo: String(formData.get("memo") ?? "").trim() || null,
+      status: displayCode ? "IN_STOCK" : "PROVISIONAL",
+      storageLocationId: item.storageLocationId,
+      confirmedAt: displayCode ? new Date() : null,
+    },
+  });
+
+  revalidatePath(`/inventory/items/${inventoryItemId}`);
+  return { unit, duplicateWarning: Boolean(duplicate) };
 }
 export async function getInventoryFormMasters() {
   const ownerUserId = await resolveCurrentUserId();
@@ -667,6 +712,8 @@ export async function completeInboundSchedule(scheduleId: string) {
 
     await ensurePurchaseAndPaymentOnInboundComplete(tx, { ownerUserId, schedule, inventoryItemId: inventoryItemId!, quantity: schedule.quantity, committedAt: new Date() });
 
+    await tx.inventoryUnit.updateMany({ where: { ownerUserId, inboundScheduleId: schedule.id }, data: { status: "IN_STOCK", storageLocationId: schedule.destinationLocationId, inventoryItemId: inventoryItemId!, confirmedAt: new Date() } });
+
     await tx.inboundSchedule.update({
       where: { id: schedule.id },
       data: { status: "RECEIVED", inventoryItemId },
@@ -698,7 +745,9 @@ export async function completeOutboundSchedule(scheduleId: string) {
       where: { dedupeKey: `outbound:${schedule.id}:shipped` },
     });
     if (existingMovement) {
-      await tx.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "SHIPPED" } });
+      await tx.inventoryUnit.updateMany({ where: { ownerUserId, outboundScheduleId: schedule.id }, data: { status: "SHIPPED", confirmedAt: new Date() } });
+
+    await tx.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "SHIPPED" } });
       return { inventoryItemId: schedule.inventoryItemId };
     }
 
@@ -737,6 +786,8 @@ export async function completeOutboundSchedule(scheduleId: string) {
     });
 
     await ensureSalesAndPaymentOnOutboundComplete(tx, { ownerUserId, schedule, inventoryItemId: item.id, quantity: schedule.quantity, committedAt: new Date() });
+
+    await tx.inventoryUnit.updateMany({ where: { ownerUserId, outboundScheduleId: schedule.id }, data: { status: "SHIPPED", confirmedAt: new Date() } });
 
     await tx.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "SHIPPED" } });
     return { inventoryItemId: item.id };
