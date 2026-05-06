@@ -913,10 +913,12 @@ export async function resyncInventoryListingStatusAction(formData: FormData) {
 
 type FinancialPageParams = { skip: number; take: number };
 type FinancialCsvType = "purchases" | "sales" | "payments" | "profit";
+type FinancialProfitItem = Prisma.InventoryItemGetPayload<{ include: { maker: true; purchaseRecords: true; salesRecords: true } }>;
+type FinancialPaymentRow = Prisma.PaymentRecordGetPayload<{}>;
 
 const buildInventoryProfitRows = (
-  items: Awaited<ReturnType<typeof prismaClient.inventoryItem.findMany>>,
-  payments: Awaited<ReturnType<typeof prismaClient.paymentRecord.findMany>>,
+  items: FinancialProfitItem[],
+  payments: FinancialPaymentRow[],
 ) => {
 
   return calculateInventoryProfitRows(
