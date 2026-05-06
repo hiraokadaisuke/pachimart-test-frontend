@@ -1,0 +1,21 @@
+import assert from "node:assert/strict";
+import { calculateInventoryProfitRows, formatFinancialCsvRows, parsePagination, summarizeInventoryFinancials, summarizePaymentRecords, summarizePurchaseRecords, summarizeSalesRecords } from "./financials";
+
+assert.equal(summarizePurchaseRecords([{ totalCost: 100, paymentStatus: "UNPAID" }, { totalCost: 300, paymentStatus: "CANCELED" }]), 100);
+assert.equal(summarizeSalesRecords([{ totalSales: 400, paymentStatus: "PAID" }, { totalSales: 300, paymentStatus: "CANCELED" }]), 400);
+const payment = summarizePaymentRecords([{ amount: 100, status: "PLANNED", sourceType: "PURCHASE_RECORD" }, { amount: 200, status: "PLANNED", sourceType: "SALES_RECORD" }, { amount: 999, status: "CANCELED", sourceType: "PURCHASE_RECORD" }]);
+assert.equal(payment.unpaidAmount, 100);
+assert.equal(payment.unreceivedAmount, 200);
+const rows = calculateInventoryProfitRows([{ id: "1", makerName: "m", modelName: "x", quantityOnHand: 1, inventoryStatus: "IN_STOCK", purchaseRecords: [{ totalCost: 100, paymentStatus: "UNPAID", shippingCost: 10, otherCost: 0 }], salesRecords: [{ totalSales: 200, paymentStatus: "PAID", shippingFee: 5, platformFee: 5, otherFee: 0 }], paymentRecords: [] }]);
+assert.equal(rows[0].profitRate, 40);
+const zero = calculateInventoryProfitRows([{ id: "1", makerName: "m", modelName: "x", quantityOnHand: 1, inventoryStatus: "IN_STOCK", purchaseRecords: [], salesRecords: [], paymentRecords: [] }]);
+assert.equal(zero[0].profitRate, null);
+const csv = formatFinancialCsvRows(["A"], [["x,y\n\"z\""]]);
+assert.equal(csv.charCodeAt(0), 0xfeff);
+assert.ok(csv.includes('"x,y'));
+const paged = parsePagination({ page: "2", pageSize: "5" });
+assert.equal(paged.skip, 5);
+const summary = summarizeInventoryFinancials({ purchases: [{ totalCost: 100, paymentStatus: "UNPAID" }, { totalCost: 20, paymentStatus: "CANCELED" }], sales: [{ totalSales: 300, paymentStatus: "PAID" }], payments: [] });
+assert.equal(summary.purchaseTotal, 100);
+assert.equal(summary.salesTotal, 300);
+console.log("financials cases passed");
