@@ -7,11 +7,11 @@ import type {
   InventoryOwnershipType,
   InventoryStatus,
   PrismaClient,
-  Prisma,
   RecordPaymentStatus,
   PaymentRecordStatus,
   InventoryUnitCodeType,
 } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 
