@@ -23,6 +23,7 @@ import type { InventoryActivityRangeFilter, InventoryActivityTypeFilter } from "
 import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
 import { ensurePurchaseAndPaymentOnInboundComplete, ensureSalesAndPaymentOnOutboundComplete } from "@/features/inventory/auto-records";
 import { calculateInventoryProfitRows } from "@/features/inventory/financials";
+import { importInventoryCsv, parseInventoryImportRows, validateImportRows } from "@/features/inventory/csv-import";
 
 const DEV_USER_COOKIE_KEY = "dev_user_id";
 
@@ -1012,4 +1013,21 @@ export async function getFinancialCsvData(type: FinancialCsvType) {
     prismaClient.paymentRecord.findMany({ where: { ownerUserId } }),
   ]);
   return buildInventoryProfitRows(items, payments);
+}
+
+
+export async function runInventoryCsvImport(csvText: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  const parsed = parseInventoryImportRows(csvText);
+  const issues = [...parsed.issues, ...validateImportRows(parsed.rows)];
+  if (issues.some((i) => i.level === "error")) {
+    throw new Error(`CSV import validation failed: ${issues.map((i) => `${i.rowNumber}:${i.message}`).join(",")}`);
+  }
+  const defaultStorage = await prismaClient.storageLocation.findFirst({ where: { ownerUserId, isDefault: true, isActive: true } });
+  const importBatchId = `${Date.now()}`;
+  await prismaClient.$transaction(async (tx) => {
+    await importInventoryCsv(tx, { ownerUserId, rows: parsed.rows, importBatchId, defaultStorageLocationId: defaultStorage?.id ?? null });
+  });
+  revalidatePath("/inventory");
+  revalidatePath("/inventory/activity");
 }

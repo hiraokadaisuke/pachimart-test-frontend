@@ -40,7 +40,10 @@ export type InventoryActivity = {
     | "PAYMENT_UPDATED"
     | "PURCHASE_CANCELED"
     | "SALES_CANCELED"
-    | "PAYMENT_CANCELED";
+    | "PAYMENT_CANCELED"
+    | "INVENTORY_CSV_IMPORTED"
+    | "INVENTORY_CSV_IMPORT_FAILED"
+    | "INVENTORY_INITIAL_STOCK_CREATED";
   title: string;
   description: string;
   badgeLabel: string;
@@ -66,6 +69,9 @@ export const INVENTORY_ACTIVITY_TYPE_FILTERS = [
   { value: "PURCHASE_CANCELED", label: "仕入取消" },
   { value: "SALES_CANCELED", label: "売上取消" },
   { value: "PAYMENT_CANCELED", label: "入出金取消" },
+  { value: "INVENTORY_CSV_IMPORTED", label: "CSV取込" },
+  { value: "INVENTORY_CSV_IMPORT_FAILED", label: "CSV取込失敗" },
+  { value: "INVENTORY_INITIAL_STOCK_CREATED", label: "初期在庫作成" },
 ] as const;
 
 export const INVENTORY_ACTIVITY_RANGE_FILTERS = [
@@ -137,6 +143,21 @@ export const normalizeInventoryMovementToActivity = (movement: MovementWithItem)
         relatedItemName,
       };
     }
+  }
+
+  if (movement.dedupeKey?.startsWith("csv-import-") || movement.note === "CSVインポート初期在庫") {
+    return {
+      id: `movement:${movement.id}`,
+      occurredAt,
+      type: "INVENTORY_INITIAL_STOCK_CREATED",
+      title: `初期在庫作成：${relatedItemName} +${movement.quantityDelta}台`,
+      description: "CSVインポートにより初期在庫を作成しました。",
+      badgeLabel: "初期在庫",
+      href: `/inventory/items/${movement.inventoryItemId}`,
+      quantityDelta: movement.quantityDelta,
+      sourceLabel: "InventoryMovement",
+      relatedItemName,
+    };
   }
 
   if (movement.movementType === "ADJUSTMENT") {
