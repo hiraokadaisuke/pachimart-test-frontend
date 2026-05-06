@@ -19,6 +19,7 @@ import { getInventoryActivityFeed } from "@/features/inventory/activity-feed";
 import { filterInventoryActivities } from "@/features/inventory/activity-feed";
 import type { InventoryActivityRangeFilter, InventoryActivityTypeFilter } from "@/features/inventory/activity-feed";
 import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
+import { ensurePurchaseAndPaymentOnInboundComplete, ensureSalesAndPaymentOnOutboundComplete } from "@/features/inventory/auto-records";
 
 const DEV_USER_COOKIE_KEY = "dev_user_id";
 
@@ -42,7 +43,7 @@ export async function getInventoryItems() {
 
 export async function getInventoryItemById(id: string) {
   const ownerUserId = await resolveCurrentUserId();
-  return prismaClient.inventoryItem.findFirst({
+  const item = await prismaClient.inventoryItem.findFirst({
     where: { id, ownerUserId },
     include: {
       maker: true,
@@ -57,6 +58,10 @@ export async function getInventoryItemById(id: string) {
       },
     },
   });
+  if (!item) return null;
+  const sourceIds = [...item.purchaseRecords.map((r) => r.id), ...item.salesRecords.map((r) => r.id)];
+  const paymentRecords = sourceIds.length ? await prismaClient.paymentRecord.findMany({ where: { ownerUserId, sourceId: { in: sourceIds } }, orderBy: { createdAt: "desc" } }) : [];
+  return { ...item, paymentRecords };
 }
 
 
@@ -271,7 +276,7 @@ export async function updateInventoryItem(id: string, input: InventoryFormInput)
           status: "COMMITTED",
           quantityDelta: input.quantityOnHand - existing.quantityOnHand,
           committedAt: new Date(),
-          sourceType: "MANUAL",
+          sourceType: schedule.sourceType === "DEALING" ? "DEALING" : "MANUAL",
           dedupeKey: `manual-adjustment-${id}-${crypto.randomUUID()}`,
           note: "在庫編集による数量調整",
           createdByUserId: ownerUserId,
@@ -280,6 +285,10 @@ export async function updateInventoryItem(id: string, input: InventoryFormInput)
     }
     return updated;
   });
+  if (!item) return null;
+  const sourceIds = [...item.purchaseRecords.map((r) => r.id), ...item.salesRecords.map((r) => r.id)];
+  const paymentRecords = sourceIds.length ? await prismaClient.paymentRecord.findMany({ where: { ownerUserId, sourceId: { in: sourceIds } }, orderBy: { createdAt: "desc" } }) : [];
+  return { ...item, paymentRecords };
 }
 
 export async function getInboundSchedules() {
@@ -289,6 +298,10 @@ export async function getInboundSchedules() {
     include: { inventoryItem: true, destinationLocation: true },
     orderBy: { expectedDate: "asc" },
   });
+  if (!item) return null;
+  const sourceIds = [...item.purchaseRecords.map((r) => r.id), ...item.salesRecords.map((r) => r.id)];
+  const paymentRecords = sourceIds.length ? await prismaClient.paymentRecord.findMany({ where: { ownerUserId, sourceId: { in: sourceIds } }, orderBy: { createdAt: "desc" } }) : [];
+  return { ...item, paymentRecords };
 }
 
 export async function getOutboundSchedules() {
@@ -298,6 +311,10 @@ export async function getOutboundSchedules() {
     include: { inventoryItem: true, originLocation: true },
     orderBy: { expectedDate: "asc" },
   });
+  if (!item) return null;
+  const sourceIds = [...item.purchaseRecords.map((r) => r.id), ...item.salesRecords.map((r) => r.id)];
+  const paymentRecords = sourceIds.length ? await prismaClient.paymentRecord.findMany({ where: { ownerUserId, sourceId: { in: sourceIds } }, orderBy: { createdAt: "desc" } }) : [];
+  return { ...item, paymentRecords };
 }
 
 export async function getInboundScheduleById(id: string) {
@@ -526,6 +543,10 @@ export async function createOutboundSchedule(formData: FormData) {
       note: String(formData.get("note") ?? "").trim() || null,
     },
   });
+  if (!item) return null;
+  const sourceIds = [...item.purchaseRecords.map((r) => r.id), ...item.salesRecords.map((r) => r.id)];
+  const paymentRecords = sourceIds.length ? await prismaClient.paymentRecord.findMany({ where: { ownerUserId, sourceId: { in: sourceIds } }, orderBy: { createdAt: "desc" } }) : [];
+  return { ...item, paymentRecords };
 }
 
 export async function completeInboundSchedule(scheduleId: string) {
@@ -592,13 +613,15 @@ export async function completeInboundSchedule(scheduleId: string) {
         status: "COMMITTED",
         quantityDelta: schedule.quantity,
         committedAt: new Date(),
-        sourceType: "MANUAL",
+        sourceType: schedule.sourceType === "DEALING" ? "DEALING" : "MANUAL",
         sourceId: schedule.id,
         dedupeKey: `inbound:${schedule.id}:received`,
         note: "入庫予定の完了により在庫反映",
         createdByUserId: ownerUserId,
       },
     });
+
+    await ensurePurchaseAndPaymentOnInboundComplete(tx, { ownerUserId, schedule, inventoryItemId: inventoryItemId!, quantity: schedule.quantity, committedAt: new Date() });
 
     await tx.inboundSchedule.update({
       where: { id: schedule.id },
@@ -661,13 +684,15 @@ export async function completeOutboundSchedule(scheduleId: string) {
         status: "COMMITTED",
         quantityDelta: -schedule.quantity,
         committedAt: new Date(),
-        sourceType: "MANUAL",
+        sourceType: schedule.sourceType === "DEALING" ? "DEALING" : "MANUAL",
         sourceId: schedule.id,
         dedupeKey: `outbound:${schedule.id}:shipped`,
         note: "発送予定の完了により在庫反映",
         createdByUserId: ownerUserId,
       },
     });
+
+    await ensureSalesAndPaymentOnOutboundComplete(tx, { ownerUserId, schedule, inventoryItemId: item.id, quantity: schedule.quantity, committedAt: new Date() });
 
     await tx.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "SHIPPED" } });
     return { inventoryItemId: item.id };
