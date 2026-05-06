@@ -8,6 +8,7 @@ import type {
   InventoryStatus,
   PrismaClient,
   RecordPaymentStatus,
+  PaymentRecordStatus,
 } from "@prisma/client";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -72,6 +73,13 @@ const PAYMENT_STATUS_MAP: Record<string, RecordPaymentStatus> = {
   支払済: "PAID",
   取消: "CANCELED",
 };
+const PAYMENT_RECORD_STATUS_VALUES: PaymentRecordStatus[] = ["PLANNED", "PAID", "CANCELED"];
+
+const parseNonNegativeInt = (raw: FormDataEntryValue | null, field: string) => {
+  const value = Number(raw);
+  if (!Number.isInteger(value) || value < 0) throw new Error(`${field}は0以上の整数で入力してください。`);
+  return value;
+};
 
 export async function createPurchaseRecord(formData: FormData) {
   const ownerUserId = await resolveCurrentUserId();
@@ -98,6 +106,53 @@ export async function createSalesRecord(formData: FormData) {
   if (!inventoryItemId || Number.isNaN(salesDate.getTime()) || !Number.isInteger(unitPrice) || !Number.isInteger(quantity) || quantity < 1) throw new Error("入力内容が不正です。");
   const totalSales = unitPrice * quantity;
   return prismaClient.salesRecord.create({ data: { ownerUserId, inventoryItemId, salesDate, unitPrice, quantity, shippingFee, platformFee, otherFee, totalSales, paymentStatus: PAYMENT_STATUS_MAP[String(formData.get("paymentStatus") ?? "")] ?? "UNPAID", memo: String(formData.get("memo") ?? "").trim() || null, dealingId: Number(formData.get("dealingId")) || null, buyerCompanyId: String(formData.get("buyerCompanyId") ?? "").trim() || null } });
+}
+
+export async function updatePurchaseRecord(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const id = String(formData.get("id") ?? "").trim();
+  const purchaseDate = new Date(String(formData.get("purchaseDate") ?? ""));
+  const unitCost = parseNonNegativeInt(formData.get("unitCost"), "仕入単価");
+  const quantity = parseNonNegativeInt(formData.get("quantity"), "仕入台数");
+  const shippingCost = parseNonNegativeInt(formData.get("shippingCost") ?? 0, "送料");
+  const otherCost = parseNonNegativeInt(formData.get("otherCost") ?? 0, "その他費用");
+  if (!id || Number.isNaN(purchaseDate.getTime()) || quantity < 1) throw new Error("入力内容が不正です。");
+  const target = await prismaClient.purchaseRecord.findFirst({ where: { id, ownerUserId } });
+  if (!target) throw new Error("対象の仕入記録が見つかりません。");
+  const paymentStatus = PAYMENT_STATUS_MAP[String(formData.get("paymentStatus") ?? "")] ?? "UNPAID";
+  await prismaClient.purchaseRecord.update({ where: { id }, data: { purchaseDate, unitCost, quantity, shippingCost, otherCost, totalCost: unitCost * quantity + shippingCost + otherCost, paymentStatus, memo: String(formData.get("memo") ?? "").trim() || null } });
+  revalidatePath(`/inventory/items/${target.inventoryItemId}`);
+}
+
+export async function updateSalesRecord(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const id = String(formData.get("id") ?? "").trim();
+  const salesDate = new Date(String(formData.get("salesDate") ?? ""));
+  const unitPrice = parseNonNegativeInt(formData.get("unitPrice"), "売上単価");
+  const quantity = parseNonNegativeInt(formData.get("quantity"), "売上台数");
+  const shippingFee = parseNonNegativeInt(formData.get("shippingFee") ?? 0, "送料");
+  const platformFee = parseNonNegativeInt(formData.get("platformFee") ?? 0, "手数料");
+  const otherFee = parseNonNegativeInt(formData.get("otherFee") ?? 0, "その他費用");
+  if (!id || Number.isNaN(salesDate.getTime()) || quantity < 1) throw new Error("入力内容が不正です。");
+  const target = await prismaClient.salesRecord.findFirst({ where: { id, ownerUserId } });
+  if (!target) throw new Error("対象の売上記録が見つかりません。");
+  const paymentStatus = PAYMENT_STATUS_MAP[String(formData.get("paymentStatus") ?? "")] ?? "UNPAID";
+  await prismaClient.salesRecord.update({ where: { id }, data: { salesDate, unitPrice, quantity, shippingFee, platformFee, otherFee, totalSales: unitPrice * quantity, paymentStatus, memo: String(formData.get("memo") ?? "").trim() || null } });
+  revalidatePath(`/inventory/items/${target.inventoryItemId}`);
+}
+
+export async function updatePaymentRecord(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const id = String(formData.get("id") ?? "").trim();
+  const amount = parseNonNegativeInt(formData.get("amount"), "金額");
+  const status = String(formData.get("status") ?? "") as PaymentRecordStatus;
+  const paidAtRaw = String(formData.get("paidAt") ?? "").trim();
+  if (!id || !PAYMENT_RECORD_STATUS_VALUES.includes(status)) throw new Error("入力内容が不正です。");
+  const target = await prismaClient.paymentRecord.findFirst({ where: { id, ownerUserId } });
+  if (!target) throw new Error("対象の支払記録が見つかりません。");
+  const paidAt = paidAtRaw ? new Date(paidAtRaw) : null;
+  if (paidAt && Number.isNaN(paidAt.getTime())) throw new Error("支払日が不正です。");
+  await prismaClient.paymentRecord.update({ where: { id }, data: { amount, status, paidAt, memo: String(formData.get("memo") ?? "").trim() || null } });
 }
 export async function getInventoryFormMasters() {
   const ownerUserId = await resolveCurrentUserId();
@@ -399,10 +454,10 @@ export async function getInventoryDashboardData() {
   }, 0);
 
   const realGrossProfitTotal = calculateRealGrossProfit({
-    totalSales: salesRecords.reduce((sum, row) => sum + row.totalSales, 0),
-    totalCost: purchaseRecords.reduce((sum, row) => sum + row.totalCost, 0),
-    salesSideFees: salesRecords.reduce((sum, row) => sum + row.shippingFee + row.platformFee + row.otherFee, 0),
-    purchaseSideCosts: purchaseRecords.reduce((sum, row) => sum + row.shippingCost + row.otherCost, 0),
+    totalSales: salesRecords.filter((row) => row.paymentStatus !== "CANCELED").reduce((sum, row) => sum + row.totalSales, 0),
+    totalCost: purchaseRecords.filter((row) => row.paymentStatus !== "CANCELED").reduce((sum, row) => sum + row.totalCost, 0),
+    salesSideFees: salesRecords.filter((row) => row.paymentStatus !== "CANCELED").reduce((sum, row) => sum + row.shippingFee + row.platformFee + row.otherFee, 0),
+    purchaseSideCosts: purchaseRecords.filter((row) => row.paymentStatus !== "CANCELED").reduce((sum, row) => sum + row.shippingCost + row.otherCost, 0),
   }).realGrossProfit;
 
   const recentActivities = getInventoryActivityFeed({
@@ -415,6 +470,8 @@ export async function getInventoryDashboardData() {
     })),
     inboundSchedules: recentInboundSchedules,
     outboundSchedules: recentOutboundSchedules,
+    purchaseRecords,
+    salesRecords,
     take: 10,
   });
 
@@ -447,7 +504,7 @@ export async function getInventoryActivityData({
   take?: number;
 }) {
   const ownerUserId = await resolveCurrentUserId();
-  const [movements, inboundSchedules, outboundSchedules] = await Promise.all([
+  const [movements, inboundSchedules, outboundSchedules, purchaseRecords, salesRecords] = await Promise.all([
     prismaClient.inventoryMovement.findMany({
       where: { ownerUserId },
       orderBy: [{ committedAt: "desc" }, { createdAt: "desc" }],
@@ -470,7 +527,7 @@ export async function getInventoryActivityData({
     prismaClient.salesRecord.findMany({ where: { ownerUserId } }),
   ]);
 
-  const allActivities = getInventoryActivityFeed({ movements, inboundSchedules, outboundSchedules, take: 1000 });
+  const allActivities = getInventoryActivityFeed({ movements, inboundSchedules, outboundSchedules, purchaseRecords, salesRecords, take: 1000 });
   const filteredActivities = filterInventoryActivities({ activities: allActivities, typeFilter, rangeFilter });
   const totalPages = Math.max(1, Math.ceil(filteredActivities.length / pageSize));
   const currentPage = Math.min(Math.max(page, 1), totalPages);
