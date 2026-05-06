@@ -49,7 +49,8 @@ export type InventoryActivity = {
     | "INVENTORY_UNIT_CONFIRMED"
     | "INVENTORY_UNIT_CANCELED"
     | "INVENTORY_UNIT_LINKED_INBOUND"
-    | "INVENTORY_UNIT_LINKED_OUTBOUND";
+    | "INVENTORY_UNIT_LINKED_OUTBOUND"
+    | "INVENTORY_UNIT_SCAN_DUPLICATE_WARNING";
   title: string;
   description: string;
   badgeLabel: string;
@@ -84,6 +85,7 @@ export const INVENTORY_ACTIVITY_TYPE_FILTERS = [
   { value: "INVENTORY_UNIT_CANCELED", label: "個体取消" },
   { value: "INVENTORY_UNIT_LINKED_INBOUND", label: "個体入庫紐付" },
   { value: "INVENTORY_UNIT_LINKED_OUTBOUND", label: "個体発送紐付" },
+  { value: "INVENTORY_UNIT_SCAN_DUPLICATE_WARNING", label: "個体重複警告" },
 ] as const;
 
 export const INVENTORY_ACTIVITY_RANGE_FILTERS = [

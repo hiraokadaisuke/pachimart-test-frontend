@@ -240,6 +240,52 @@ export async function checkInventoryUnitDuplicate(ownerUserId: string, displayCo
   return { displayCodeDuplicate, rawQrDuplicate };
 }
 
+
+export async function validateUnitScheduleLink(input: { ownerUserId: string; unitId: string; outboundScheduleId: string }) {
+  const [unit, outbound] = await Promise.all([
+    prismaClient.inventoryUnit.findFirst({ where: { id: input.unitId, ownerUserId: input.ownerUserId } }),
+    prismaClient.outboundSchedule.findFirst({ where: { id: input.outboundScheduleId, ownerUserId: input.ownerUserId } }),
+  ]);
+  if (!unit || !outbound) throw new Error("紐づけ対象が見つかりません。");
+  if (["SHIPPED", "CANCELED"].includes(unit.status)) throw new Error("発送済み/取消済み個体は紐づけ不可です。");
+  if (unit.inventoryItemId !== outbound.inventoryItemId) throw new Error("別InventoryItemの個体は発送予定へ紐づけできません。");
+  const linkedCount = await prismaClient.inventoryUnit.count({ where: { ownerUserId: input.ownerUserId, outboundScheduleId: outbound.id } });
+  return { unit, outbound, overCapacity: linkedCount >= outbound.quantity, linkedCount };
+}
+
+export async function getInventoryUnitScanOptions() {
+  const ownerUserId = await resolveCurrentUserId();
+  const [recentItems, inboundSchedules, outboundSchedules] = await Promise.all([
+    prismaClient.inventoryItem.findMany({
+      where: { ownerUserId },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+      include: { maker: true, inventoryUnits: { select: { id: true } } },
+    }),
+    prismaClient.inboundSchedule.findMany({
+      where: { ownerUserId, status: { notIn: ["RECEIVED", "CANCELED"] } },
+      orderBy: { expectedDate: "asc" },
+      include: { inventoryItem: { include: { maker: true } } },
+    }),
+    prismaClient.outboundSchedule.findMany({
+      where: { ownerUserId, status: { notIn: ["SHIPPED", "DELIVERED", "CANCELED"] } },
+      orderBy: { expectedDate: "asc" },
+      include: { inventoryItem: { include: { maker: true } } },
+    }),
+  ]);
+  const [inboundCounts, outboundCounts] = await Promise.all([
+    prismaClient.inventoryUnit.groupBy({ by: ["inboundScheduleId"], where: { ownerUserId, inboundScheduleId: { not: null } }, _count: { _all: true } }),
+    prismaClient.inventoryUnit.groupBy({ by: ["outboundScheduleId"], where: { ownerUserId, outboundScheduleId: { not: null } }, _count: { _all: true } }),
+  ]);
+  const inboundCountMap = new Map(inboundCounts.map((x) => [x.inboundScheduleId, x._count._all]));
+  const outboundCountMap = new Map(outboundCounts.map((x) => [x.outboundScheduleId, x._count._all]));
+  return {
+    recentItems: recentItems.map((i) => ({ ...i, unitCount: i.inventoryUnits.length })),
+    inboundSchedules: inboundSchedules.map((s) => ({ ...s, registeredUnitCount: inboundCountMap.get(s.id) ?? 0 })),
+    outboundSchedules: outboundSchedules.map((s) => ({ ...s, selectedUnitCount: outboundCountMap.get(s.id) ?? 0 })),
+  };
+}
+
 export async function createInventoryUnitFromScan(formData: FormData) {
   const ownerUserId = await resolveCurrentUserId();
   const inventoryItemId = String(formData.get("inventoryItemId") ?? "").trim();
@@ -281,9 +327,8 @@ export async function linkInventoryUnitToOutbound(formData: FormData) {
   const displayCode = String(formData.get("displayCode") ?? "").trim() || null;
   const unit = await findInventoryUnitByScan(rawQr, displayCode);
   if (!unit) throw new Error("個体が見つかりません。");
-  if (["SHIPPED", "CANCELED"].includes(unit.status)) throw new Error("発送済み/取消済み個体は紐づけ不可です。");
-  const outbound = await prismaClient.outboundSchedule.findFirst({ where: { id: outboundScheduleId, ownerUserId } });
-  if (!outbound) throw new Error("他ユーザーの発送予定には紐づけできません。");
+  const validated = await validateUnitScheduleLink({ ownerUserId, unitId: unit.id, outboundScheduleId });
+  const outbound = validated.outbound;
   await prismaClient.inventoryUnit.update({ where: { id: unit.id }, data: { outboundScheduleId } });
 }
 export async function updateInventoryUnit(formData: FormData) {
