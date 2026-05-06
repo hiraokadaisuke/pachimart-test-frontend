@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { parseCsv, parseInventoryImportRows, validateImportRows } from "./csv-import";
+import { buildTemplateCsv, computeCsvFileHash, parseCsv, parseInventoryImportRows, validateImportRows } from "./csv-import";
 import { INVENTORY_ACTIVITY_TYPE_FILTERS } from "./activity-feed";
 
 const bom = "\uFEFF種別,機種名,台数\nPACHINKO,AA,1";
@@ -12,4 +12,8 @@ assert.ok(validateImportRows([{ rowNumber: 2, 種別: "PACHINKO", メーカー: 
 assert.ok(validateImportRows([{ rowNumber: 2, 種別: "PACHINKO", メーカー: "", 機種名: "A", 枠色: "", 台数: "1", 保管場所: "", 仕入単価: "-1", 販売予定単価: "", ステータス: "", メモ: "" }]).some((i) => i.message.includes("仕入単価")));
 assert.ok(validateImportRows([{ rowNumber: 2, 種別: "PACHINKO", メーカー: "", 機種名: "A", 枠色: "", 台数: "1", 保管場所: "", 仕入単価: "", 販売予定単価: "", ステータス: "", メモ: "" }]).some((i) => i.level === "warning"));
 for (const type of ["INVENTORY_CSV_IMPORTED", "INVENTORY_CSV_IMPORT_FAILED", "INVENTORY_INITIAL_STOCK_CREATED"]) assert.ok(INVENTORY_ACTIVITY_TYPE_FILTERS.some((x) => x.value === type));
+const template = buildTemplateCsv();
+assert.ok(template.startsWith("\uFEFF"));
+assert.ok(template.includes("CSVインポートサンプル"));
+assert.equal(computeCsvFileHash("a,b"), computeCsvFileHash("\uFEFFa,b"));
 console.log("csv-import cases passed");
