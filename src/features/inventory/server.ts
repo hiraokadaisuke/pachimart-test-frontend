@@ -1023,7 +1023,10 @@ export async function runInventoryCsvImport(csvText: string) {
   if (issues.some((i) => i.level === "error")) {
     throw new Error(`CSV import validation failed: ${issues.map((i) => `${i.rowNumber}:${i.message}`).join(",")}`);
   }
-  const defaultStorage = await prismaClient.storageLocation.findFirst({ where: { ownerUserId, isDefault: true, isActive: true } });
+  const user = await prismaClient.user.findUnique({ where: { id: ownerUserId }, select: { defaultStorageLocationId: true } });
+  const defaultStorage = user?.defaultStorageLocationId
+    ? await prismaClient.storageLocation.findFirst({ where: { id: user.defaultStorageLocationId, ownerUserId, isActive: true } })
+    : await prismaClient.storageLocation.findFirst({ where: { ownerUserId, isActive: true }, orderBy: { createdAt: "asc" } });
   const importBatchId = `${Date.now()}`;
   await prismaClient.$transaction(async (tx) => {
     await importInventoryCsv(tx, { ownerUserId, rows: parsed.rows, importBatchId, defaultStorageLocationId: defaultStorage?.id ?? null });
