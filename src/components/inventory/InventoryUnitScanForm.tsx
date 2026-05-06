@@ -37,14 +37,19 @@ export function InventoryUnitScanForm({ inventoryItems, inboundSchedules, outbou
       }
       const scanner = new Html5Qrcode(qrRegionId);
       scannerRef.current = scanner;
-      await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: 220 }, (decodedText) => {
-        const now = Date.now();
-        const last = lastDecodedRef.current;
-        if (last && last.text === decodedText && now - last.at < 1500) return;
-        lastDecodedRef.current = { text: decodedText, at: now };
-        setRawQr(decodedText);
-        setScanHistory((prev) => [decodedText, ...prev].slice(0, 5));
-      });
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 220 },
+        (decodedText) => {
+          const now = Date.now();
+          const last = lastDecodedRef.current;
+          if (last && last.text === decodedText && now - last.at < 1500) return;
+          lastDecodedRef.current = { text: decodedText, at: now };
+          setRawQr(decodedText);
+          setScanHistory((prev) => [decodedText, ...prev].slice(0, 5));
+        },
+        () => undefined,
+      );
       setCameraError(null);
     } catch (error) {
       setCameraError("カメラ許可エラー。手入力をご利用ください。");
