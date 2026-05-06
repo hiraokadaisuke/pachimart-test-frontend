@@ -87,8 +87,8 @@ export async function createPurchaseRecord(formData: FormData) {
   const purchaseDate = new Date(String(formData.get("purchaseDate") ?? ""));
   const unitCost = Number(formData.get("unitCost"));
   const quantity = Number(formData.get("quantity"));
-  const shippingCost = Number(formData.get("shippingCost") ?? 0) || 0;
-  const otherCost = Number(formData.get("otherCost") ?? 0) || 0;
+  const shippingCost = Number(formData.get("shippingCost") ?? "0") || 0;
+  const otherCost = Number(formData.get("otherCost") ?? "0") || 0;
   if (!inventoryItemId || Number.isNaN(purchaseDate.getTime()) || !Number.isInteger(unitCost) || !Number.isInteger(quantity) || quantity < 1) throw new Error("入力内容が不正です。");
   const totalCost = unitCost * quantity + shippingCost + otherCost;
   return prismaClient.purchaseRecord.create({ data: { ownerUserId, inventoryItemId, purchaseDate, unitCost, quantity, shippingCost, otherCost, totalCost, paymentStatus: PAYMENT_STATUS_MAP[String(formData.get("paymentStatus") ?? "")] ?? "UNPAID", memo: String(formData.get("memo") ?? "").trim() || null, dealingId: Number(formData.get("dealingId")) || null, supplierCompanyId: String(formData.get("supplierCompanyId") ?? "").trim() || null } });
@@ -100,9 +100,9 @@ export async function createSalesRecord(formData: FormData) {
   const salesDate = new Date(String(formData.get("salesDate") ?? ""));
   const unitPrice = Number(formData.get("unitPrice"));
   const quantity = Number(formData.get("quantity"));
-  const shippingFee = Number(formData.get("shippingFee") ?? 0) || 0;
-  const platformFee = Number(formData.get("platformFee") ?? 0) || 0;
-  const otherFee = Number(formData.get("otherFee") ?? 0) || 0;
+  const shippingFee = Number(formData.get("shippingFee") ?? "0") || 0;
+  const platformFee = Number(formData.get("platformFee") ?? "0") || 0;
+  const otherFee = Number(formData.get("otherFee") ?? "0") || 0;
   if (!inventoryItemId || Number.isNaN(salesDate.getTime()) || !Number.isInteger(unitPrice) || !Number.isInteger(quantity) || quantity < 1) throw new Error("入力内容が不正です。");
   const totalSales = unitPrice * quantity;
   return prismaClient.salesRecord.create({ data: { ownerUserId, inventoryItemId, salesDate, unitPrice, quantity, shippingFee, platformFee, otherFee, totalSales, paymentStatus: PAYMENT_STATUS_MAP[String(formData.get("paymentStatus") ?? "")] ?? "UNPAID", memo: String(formData.get("memo") ?? "").trim() || null, dealingId: Number(formData.get("dealingId")) || null, buyerCompanyId: String(formData.get("buyerCompanyId") ?? "").trim() || null } });
@@ -114,8 +114,8 @@ export async function updatePurchaseRecord(formData: FormData) {
   const purchaseDate = new Date(String(formData.get("purchaseDate") ?? ""));
   const unitCost = parseNonNegativeInt(formData.get("unitCost"), "仕入単価");
   const quantity = parseNonNegativeInt(formData.get("quantity"), "仕入台数");
-  const shippingCost = parseNonNegativeInt(formData.get("shippingCost") ?? 0, "送料");
-  const otherCost = parseNonNegativeInt(formData.get("otherCost") ?? 0, "その他費用");
+  const shippingCost = parseNonNegativeInt(formData.get("shippingCost") ?? "0", "送料");
+  const otherCost = parseNonNegativeInt(formData.get("otherCost") ?? "0", "その他費用");
   if (!id || Number.isNaN(purchaseDate.getTime()) || quantity < 1) throw new Error("入力内容が不正です。");
   const target = await prismaClient.purchaseRecord.findFirst({ where: { id, ownerUserId } });
   if (!target) throw new Error("対象の仕入記録が見つかりません。");
@@ -130,9 +130,9 @@ export async function updateSalesRecord(formData: FormData) {
   const salesDate = new Date(String(formData.get("salesDate") ?? ""));
   const unitPrice = parseNonNegativeInt(formData.get("unitPrice"), "売上単価");
   const quantity = parseNonNegativeInt(formData.get("quantity"), "売上台数");
-  const shippingFee = parseNonNegativeInt(formData.get("shippingFee") ?? 0, "送料");
-  const platformFee = parseNonNegativeInt(formData.get("platformFee") ?? 0, "手数料");
-  const otherFee = parseNonNegativeInt(formData.get("otherFee") ?? 0, "その他費用");
+  const shippingFee = parseNonNegativeInt(formData.get("shippingFee") ?? "0", "送料");
+  const platformFee = parseNonNegativeInt(formData.get("platformFee") ?? "0", "手数料");
+  const otherFee = parseNonNegativeInt(formData.get("otherFee") ?? "0", "その他費用");
   if (!id || Number.isNaN(salesDate.getTime()) || quantity < 1) throw new Error("入力内容が不正です。");
   const target = await prismaClient.salesRecord.findFirst({ where: { id, ownerUserId } });
   if (!target) throw new Error("対象の売上記録が見つかりません。");
