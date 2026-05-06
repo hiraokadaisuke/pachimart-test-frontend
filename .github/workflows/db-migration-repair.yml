@@ -6,8 +6,12 @@ on:
       confirm:
         description: "Type REPAIR to proceed"
         required: true
+      target_environment:
+        description: "Database target: production or preview"
+        required: true
+        default: "production"
       verify_partial_objects:
-        description: "Check whether failed migration left partial tables"
+        description: "Check whether failed migration left partial tables/enums/indexes"
         required: true
         default: "true"
 
@@ -20,7 +24,8 @@ jobs:
     runs-on: ubuntu-latest
     environment: production
     env:
-      APP_DATABASE_URL: ${{ secrets.PROD_APP_DATABASE_URL }}
+      TARGET_ENV: ${{ inputs.target_environment }}
+      APP_DATABASE_URL: ${{ inputs.target_environment == 'preview' && secrets.PREVIEW_APP_DATABASE_URL || secrets.PROD_APP_DATABASE_URL }}
     steps:
       - name: Guard - confirmation
         run: |
@@ -56,10 +61,62 @@ jobs:
           WHERE table_schema = 'public'
             AND table_name IN ('InboundSchedule', 'OutboundSchedule')
           ORDER BY table_name;
+
+          SELECT t.typname AS enum_name
+          FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE n.nspname = 'public'
+            AND t.typname IN ('InboundStatus', 'OutboundStatus', 'InventoryShippingMethod')
+          ORDER BY t.typname;
+
+          SELECT indexname
+          FROM pg_indexes
+          WHERE schemaname = 'public'
+            AND indexname IN (
+              'InboundSchedule_ownerUserId_status_expectedDate_idx',
+              'InboundSchedule_inventoryItemId_expectedDate_idx',
+              'OutboundSchedule_ownerUserId_status_expectedDate_idx',
+              'OutboundSchedule_inventoryItemId_expectedDate_idx'
+            )
+          ORDER BY indexname;
           SQL
 
-      - name: Resolve failed migration 20260504000000_add_inventory_schedules
-        run: npx prisma migrate resolve --rolled-back 20260504000000_add_inventory_schedules --schema prisma/schema.prisma
+      - name: Decide resolve mode for 20260504091000_add_inventory_schedules
+        id: resolve_mode
+        run: |
+          set -euo pipefail
+          TABLE_COUNT=$(npx prisma db execute --schema prisma/schema.prisma --stdin <<'SQL' | tail -n 1
+          SELECT COUNT(*)
+          FROM information_schema.tables
+          WHERE table_schema = 'public'
+            AND table_name IN ('InboundSchedule', 'OutboundSchedule');
+          SQL
+          )
+
+          ENUM_COUNT=$(npx prisma db execute --schema prisma/schema.prisma --stdin <<'SQL' | tail -n 1
+          SELECT COUNT(*)
+          FROM pg_type t
+          JOIN pg_namespace n ON n.oid = t.typnamespace
+          WHERE n.nspname = 'public'
+            AND t.typname IN ('InboundStatus', 'OutboundStatus', 'InventoryShippingMethod');
+          SQL
+          )
+
+          if [ "$TABLE_COUNT" = "2" ] && [ "$ENUM_COUNT" = "3" ]; then
+            echo "mode=applied" >> "$GITHUB_OUTPUT"
+            echo "Detected full objects from failed migration; using --applied."
+          else
+            echo "mode=rolled-back" >> "$GITHUB_OUTPUT"
+            echo "Detected missing objects; using --rolled-back then deploy."
+          fi
+
+      - name: Resolve failed migration as applied
+        if: steps.resolve_mode.outputs.mode == 'applied'
+        run: npx prisma migrate resolve --applied 20260504091000_add_inventory_schedules --schema prisma/schema.prisma
+
+      - name: Resolve failed migration as rolled back
+        if: steps.resolve_mode.outputs.mode == 'rolled-back'
+        run: npx prisma migrate resolve --rolled-back 20260504091000_add_inventory_schedules --schema prisma/schema.prisma
 
       - name: Deploy pending migrations
         run: npx prisma migrate deploy --schema prisma/schema.prisma

@@ -1,5 +1,26 @@
-import type { InboundSchedule, InventoryMovement, OutboundSchedule, PurchaseRecord, SalesRecord } from "@prisma/client";
+import type { InboundSchedule, InventoryMovement, OutboundSchedule } from "@prisma/client";
 
+
+
+type PurchaseRecordLike = {
+  id: string;
+  inventoryItemId: string;
+  quantity: number;
+  purchaseDate: Date;
+  paymentStatus: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+type SalesRecordLike = {
+  id: string;
+  inventoryItemId: string;
+  quantity: number;
+  salesDate: Date;
+  paymentStatus: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
 export type InventoryActivity = {
   id: string;
   occurredAt: Date;
@@ -210,12 +231,12 @@ export const normalizeOutboundScheduleToActivity = (schedule: ScheduleWithItem<O
 
 
 
-const normalizePurchaseRecordToActivity = (record: PurchaseRecord): InventoryActivity => ({
+const normalizePurchaseRecordToActivity = (record: PurchaseRecordLike): InventoryActivity => ({
   id: `purchase:${record.id}`, occurredAt: record.purchaseDate, type: record.paymentStatus === "CANCELED" ? "PURCHASE_CANCELED" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "PURCHASE_UPDATED" : "PURCHASE_RECORDED"),
   title: `仕入記録：${record.quantity}台`, description: record.paymentStatus === "CANCELED" ? "仕入記録を取り消しました。" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "仕入記録を更新しました。" : "仕入記録を登録しました。"), badgeLabel: record.paymentStatus === "CANCELED" ? "仕入取消" : "仕入", href: `/inventory/items/${record.inventoryItemId}`
 });
 
-const normalizeSalesRecordToActivity = (record: SalesRecord): InventoryActivity => ({
+const normalizeSalesRecordToActivity = (record: SalesRecordLike): InventoryActivity => ({
   id: `sales:${record.id}`, occurredAt: record.salesDate, type: record.paymentStatus === "CANCELED" ? "SALES_CANCELED" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "SALES_UPDATED" : "SALES_RECORDED"),
   title: `売上記録：${record.quantity}台`, description: record.paymentStatus === "CANCELED" ? "売上記録を取り消しました。" : (record.updatedAt.getTime() > record.createdAt.getTime() ? "売上記録を更新しました。" : "売上記録を登録しました。"), badgeLabel: record.paymentStatus === "CANCELED" ? "売上取消" : "売上", href: `/inventory/items/${record.inventoryItemId}`
 });
@@ -230,8 +251,8 @@ export const getInventoryActivityFeed = ({
   movements: MovementWithItem[];
   inboundSchedules: ScheduleWithItem<InboundSchedule>[];
   outboundSchedules: ScheduleWithItem<OutboundSchedule>[];
-  purchaseRecords?: PurchaseRecord[];
-  salesRecords?: SalesRecord[];
+  purchaseRecords?: PurchaseRecordLike[];
+  salesRecords?: SalesRecordLike[];
   take?: number;
 }) => {
   const movementActivities = movements
