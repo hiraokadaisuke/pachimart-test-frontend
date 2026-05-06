@@ -40,7 +40,7 @@ export default async function OutboundSchedulesPage() {
             </tr>
           </thead>
           <tbody>
-            {schedules.map((s) => {
+            {schedules.map((s: (typeof schedules)[number]) => {
               const missingLink = !s.inventoryItemId;
               const autoCreated = getAutoCreatedOutboundInfo({ sourceType: s.sourceType, sourceId: s.sourceId, note: s.note });
               return (

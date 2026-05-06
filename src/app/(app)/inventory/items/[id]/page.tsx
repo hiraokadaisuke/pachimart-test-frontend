@@ -21,6 +21,7 @@ import { getInventoryItemById, resyncInventoryListingStatusAction } from "@/feat
 import { getExhibitStatusesByIds } from "@/features/inventory/listing-sync";
 import { calculateProjectedProfit } from "@/features/inventory/profit";
 import { calculateRealGrossProfit } from "@/features/inventory/real-profit";
+import { isAutoRecordMemo } from "@/features/inventory/auto-records";
 import { InventoryProfitSummary } from "@/features/inventory/components/InventoryProfit";
 
 const isListingBlocked = (inventoryStatus: InventoryStatus, quantityOnHand: number) =>
@@ -55,6 +56,11 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
     salesSideFees,
     purchaseSideCosts,
   });
+
+  const latestPurchase = item.purchaseRecords[0] ?? null;
+  const latestSales = item.salesRecords[0] ?? null;
+  const purchasePayment = latestPurchase ? item.paymentRecords.find((p) => p.sourceType === "PURCHASE_RECORD" && p.sourceId === latestPurchase.id) : null;
+  const salesPayment = latestSales ? item.paymentRecords.find((p) => p.sourceType === "SALES_RECORD" && p.sourceId === latestSales.id) : null;
 
   const exhibitStatuses = await getExhibitStatusesByIds(item.externalLinks.map((link) => link.externalId));
 
@@ -111,6 +117,16 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
             <p className="text-slate-500">出品状態</p>
             <InventoryStatusBadge status={inventoryListingStatusLabel(item.listingStatus)} />
           </div>
+        </div>
+        <div className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+          <p>仕入記録: {latestPurchase ? (isAutoRecordMemo(latestPurchase.memo) ? "自動作成" : "手動作成") : "-"}</p>
+          <p>売上記録: {latestSales ? (isAutoRecordMemo(latestSales.memo) ? "自動作成" : "手動作成") : "-"}</p>
+          <p>関連取引ID(仕入): {latestPurchase?.dealingId ?? "-"}</p>
+          <p>関連取引ID(売上): {latestSales?.dealingId ?? "-"}</p>
+          <p>仕入状態: {latestPurchase?.paymentStatus ?? "-"}</p>
+          <p>売上状態: {latestSales?.paymentStatus ?? "-"}</p>
+          <p>支払予定ステータス: {purchasePayment?.status ?? "-"}</p>
+          <p>入金予定ステータス: {salesPayment?.status ?? "-"}</p>
         </div>
       </InventorySectionCard>
 
