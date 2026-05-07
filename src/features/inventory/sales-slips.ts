@@ -7,20 +7,28 @@ const DEV_USER_COOKIE_KEY = 'dev_user_id';
 const resolveCurrentUserId = async () => (await cookies()).get(DEV_USER_COOKIE_KEY)?.value ?? 'dev-user-a';
 
 export async function listSalesSlips() {
-  const ownerUserId = await resolveCurrentUserId();
-  return prismaClient.salesSlip.findMany({
-    where: { ownerUserId },
-    include: { lines: true },
-    orderBy: { createdAt: 'desc' },
-  });
+  try {
+    const ownerUserId = await resolveCurrentUserId();
+    return await prismaClient.salesSlip.findMany({
+      where: { ownerUserId },
+      include: { lines: true },
+      orderBy: { createdAt: 'desc' },
+    });
+  } catch {
+    return [];
+  }
 }
 
 export async function getSalesSlip(id: string) {
-  const ownerUserId = await resolveCurrentUserId();
-  return prismaClient.salesSlip.findFirst({
-    where: { id, ownerUserId },
-    include: { lines: { include: { inventoryUnit: true } }, bankAccount: true },
-  });
+  try {
+    const ownerUserId = await resolveCurrentUserId();
+    return await prismaClient.salesSlip.findFirst({
+      where: { id, ownerUserId },
+      include: { lines: { include: { inventoryUnit: true } }, bankAccount: true },
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function createSalesSlip(formData: FormData) {
@@ -67,10 +75,14 @@ export async function createSalesSlip(formData: FormData) {
 }
 
 export async function listSelectableSalesUnits() {
-  const ownerUserId = await resolveCurrentUserId();
-  return prismaClient.inventoryUnit.findMany({
-    where: { ownerUserId, status: { notIn: ['SHIPPED', 'CANCELED'] } },
-    take: 50,
-    orderBy: { updatedAt: 'desc' },
-  });
+  try {
+    const ownerUserId = await resolveCurrentUserId();
+    return await prismaClient.inventoryUnit.findMany({
+      where: { ownerUserId, status: { notIn: ['SHIPPED', 'CANCELED'] } },
+      take: 50,
+      orderBy: { updatedAt: 'desc' },
+    });
+  } catch {
+    return [];
+  }
 }

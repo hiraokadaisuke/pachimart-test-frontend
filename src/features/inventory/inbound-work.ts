@@ -16,21 +16,29 @@ export const calcInboundProgress = (
 });
 
 export async function listInboundMobile() {
-  const ownerUserId = await resolveUserId();
-  const rows = await prismaClient.inboundSchedule.findMany({
-    where: { ownerUserId },
-    include: { inventoryUnits: true },
-    orderBy: { expectedDate: 'desc' },
-  });
-  return rows.map((r) => ({ ...r, progress: calcInboundProgress(r.inventoryUnits, r.quantity) }));
+  try {
+    const ownerUserId = await resolveUserId();
+    const rows = await prismaClient.inboundSchedule.findMany({
+      where: { ownerUserId },
+      include: { inventoryUnits: true },
+      orderBy: { expectedDate: 'desc' },
+    });
+    return rows.map((r) => ({ ...r, progress: calcInboundProgress(r.inventoryUnits, r.quantity) }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getInboundWork(id: string) {
-  const ownerUserId = await resolveUserId();
-  return prismaClient.inboundSchedule.findFirst({
-    where: { id, ownerUserId },
-    include: { inventoryUnits: true, inventoryItem: true },
-  });
+  try {
+    const ownerUserId = await resolveUserId();
+    return await prismaClient.inboundSchedule.findFirst({
+      where: { id, ownerUserId },
+      include: { inventoryUnits: true, inventoryItem: true },
+    });
+  } catch {
+    return null;
+  }
 }
 
 export async function saveInboundWork(id: string, formData: FormData) {
