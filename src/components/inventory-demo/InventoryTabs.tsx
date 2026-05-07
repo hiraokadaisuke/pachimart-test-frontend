@@ -4,10 +4,12 @@ import { usePathname } from "next/navigation";
 
 const tabs = [
   { href: "/inventory", label: "ダッシュボード" },
-  { href: "/inventory/items", label: "在庫物件一覧" },
+  { href: "/inventory/items", label: "在庫一覧" },
   { href: "/inventory/inbound", label: "入庫予定" },
-  { href: "/inventory/outbound", label: "発送予定" },
-  { href: "/inventory/activity", label: "在庫の動き" },
+  { href: "/inventory/outbound", label: "出庫予定" },
+  { href: "/inventory/stocktakes", label: "棚卸" },
+  { href: "/inventory/units/scan", label: "QRスキャン" },
+  { href: "/inventory/settings", label: "設定" },
 ];
 
 export function InventoryTabs() {

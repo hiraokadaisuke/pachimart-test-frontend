@@ -744,6 +744,60 @@ export async function getInventoryDashboardData() {
   };
 }
 
+export async function getInventoryDashboardSummary() {
+  const ownerUserId = await resolveCurrentUserId();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+
+  const [units, inbounds, outbounds, stocktakes] = await Promise.all([
+    prismaClient.inventoryUnit.findMany({
+      where: { ownerUserId },
+      select: { status: true, operationCheckStatus: true, bodySerialNumber: true, frameSerialNumber: true, mainBoardSerialNumber: true, certificateNumber: true },
+    }),
+    prismaClient.inboundSchedule.findMany({
+      where: { ownerUserId },
+      select: { id: true, status: true, expectedDate: true },
+    }),
+    prismaClient.outboundSchedule.findMany({
+      where: { ownerUserId },
+      select: { id: true, status: true, expectedDate: true, sourceType: true },
+    }),
+    prismaClient.inventoryStocktakeSession.findMany({
+      where: { ownerUserId },
+      select: { id: true, status: true, name: true, updatedAt: true },
+    }),
+  ]);
+
+  const openInboundStatuses: InboundStatus[] = ["PLANNED", "ARRIVAL_WAITING", "PARTIALLY_RECEIVED"];
+  const openOutboundStatuses: OutboundStatus[] = ["PLANNED", "PICKING", "READY_TO_SHIP"];
+  const activeStocktakeStatuses = new Set(["DRAFT", "IN_PROGRESS"]);
+  const inStock = units.filter((u) => u.status === "IN_STOCK").length;
+  const reserved = units.filter((u) => u.status === "RESERVED").length;
+  const shipped = units.filter((u) => u.status === "SHIPPED").length;
+  const needOperationCheck = units.filter((u) => u.operationCheckStatus === "NOT_CHECKED" || u.operationCheckStatus === "NEEDS_RECHECK").length;
+  const numberMissing = units.filter((u) => !u.bodySerialNumber && !u.frameSerialNumber && !u.mainBoardSerialNumber && !u.certificateNumber).length;
+
+  return {
+    totalUnitCount: units.length,
+    inStockUnitCount: inStock,
+    reservedUnitCount: reserved,
+    shippedUnitCount: shipped,
+    inboundOpenCount: inbounds.filter((x) => openInboundStatuses.includes(x.status)).length,
+    outboundOpenCount: outbounds.filter((x) => openOutboundStatuses.includes(x.status)).length,
+    stocktakeInProgressCount: stocktakes.filter((x) => x.status === "IN_PROGRESS").length,
+    requiresAttentionCount: needOperationCheck + numberMissing,
+    todayInboundCount: inbounds.filter((x) => openInboundStatuses.includes(x.status) && x.expectedDate >= today && x.expectedDate < tomorrow).length,
+    todayOutboundCount: outbounds.filter((x) => openOutboundStatuses.includes(x.status) && x.expectedDate >= today && x.expectedDate < tomorrow).length,
+    activeStocktakes: stocktakes.filter((x) => activeStocktakeStatuses.has(x.status)).slice(0, 5),
+    operationCheckPendingUnitCount: needOperationCheck,
+    missingSerialUnitCount: numberMissing,
+    outboundFromSalesInvoiceCount: outbounds.filter((x) => x.sourceType === "NAVI").length,
+    outboundNotCompletedCount: outbounds.filter((x) => x.status !== "SHIPPED" && x.status !== "DELIVERED" && x.status !== "CANCELED").length,
+  };
+}
+
 export async function getInventoryActivityData({
   typeFilter,
   rangeFilter,
