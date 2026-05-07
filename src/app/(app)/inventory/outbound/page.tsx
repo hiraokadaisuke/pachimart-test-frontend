@@ -34,7 +34,7 @@ export default async function OutboundSchedulesPage() {
         <table className="min-w-[1100px] w-full text-sm">
           <thead className="bg-slate-50">
             <tr>
-              {["発送予定ID", "発送予定日", "販売先", "種別", "メーカー", "機種名", "台数", "出庫元", "発送方法", "ステータス", "操作"].map((h) => (
+              {["発送予定ID", "発送予定日", "販売先", "種別", "メーカー", "機種名", "台数", "出庫元", "発送方法", "由来", "ステータス", "操作"].map((h) => (
                 <th key={h} className="px-3 py-2 text-left">{h}</th>
               ))}
             </tr>
@@ -54,6 +54,15 @@ export default async function OutboundSchedulesPage() {
                   <td className="px-3 py-2">{formatQuantity(s.quantity)}</td>
                   <td className="px-3 py-2">{s.originLocation?.name ?? "-"}</td>
                   <td className="px-3 py-2">{shippingMethodLabel(s.shippingMethod)}</td>
+                  <td className="px-3 py-2 text-xs">
+                    {s.sourceId?.startsWith("SV-") || s.sourceId?.startsWith("SH-") ? (
+                      <div>
+                        <div>販売伝票: {s.sourceId}</div>
+                        <div>Unit: {s.inventoryUnits[0]?.displayCode ?? s.inventoryUnits[0]?.id ?? "-"}</div>
+                        <div>QR: {s.inventoryUnits[0]?.rawQr ?? "-"}</div>
+                      </div>
+                    ) : "-"}
+                  </td>
                   <td className="px-3 py-2">
                     <div className="space-y-1">
                       <InventoryStatusBadge status={outboundStatusLabel(s.status)} />
