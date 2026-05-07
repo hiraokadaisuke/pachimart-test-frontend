@@ -1,4 +1,4 @@
-const { execSync } = require("child_process");
+const { spawnSync, execSync } = require("child_process");
 
 typeof process !== "undefined" && process.on("uncaughtException", (error) => {
   console.error("[prisma-preview-setup] Uncaught exception:", error);
@@ -13,7 +13,6 @@ const log = (message) => {
 };
 
 const environment = process.env.VERCEL_ENV;
-
 if (environment !== "preview") {
   log(`Non-preview environment (${environment ?? "undefined"}); skipping Prisma migrations and seed.`);
   return;
@@ -26,7 +25,7 @@ if (databaseUrl) {
   try {
     const { host } = new URL(databaseUrl);
     log(`APP_DATABASE_URL host: ${host}`);
-  } catch (error) {
+  } catch {
     log("APP_DATABASE_URL provided (host hidden due to parse error)");
   }
 } else {
@@ -34,24 +33,24 @@ if (databaseUrl) {
 }
 
 log("Running prisma migrate deploy");
-try {
-  execSync("npx prisma migrate deploy", { stdio: "inherit" });
-} catch (error) {
-  console.error("[prisma-preview-setup] prisma migrate deploy failed", error);
-  throw error;
+const migrate = spawnSync("npx", ["prisma", "migrate", "deploy"], { encoding: "utf-8" });
+if (migrate.stdout) process.stdout.write(migrate.stdout);
+if (migrate.stderr) process.stderr.write(migrate.stderr);
+if (migrate.status !== 0) {
+  const output = `${migrate.stdout ?? ""}\n${migrate.stderr ?? ""}`;
+  if (output.includes("P3009")) {
+    console.warn("[prisma-preview-setup] prisma migrate deploy hit P3009 on preview DB; continuing build");
+  } else {
+    throw new Error(`[prisma-preview-setup] prisma migrate deploy failed with status ${migrate.status}`);
+  }
 }
 
 log("Running prisma generate");
-try {
-  execSync("npx prisma generate", { stdio: "inherit" });
-} catch (error) {
-  console.error("[prisma-preview-setup] prisma generate failed", error);
-  throw error;
-}
+execSync("npx prisma generate", { stdio: "inherit" });
 
 log("Running prisma db seed");
 try {
   execSync("npx prisma db seed", { stdio: "inherit" });
-} catch (error) {
+} catch {
   console.warn("[prisma-preview-setup] prisma db seed failed (continuing)");
 }

@@ -240,6 +240,36 @@ enum InventoryUnitStatus {
   CANCELED
 }
 
+
+enum SalesSlipStatus {
+  DRAFT
+  ISSUED
+  PAYMENT_PENDING
+  PAID
+  SHIPMENT_PENDING
+  SHIPPED
+  CANCELED
+}
+
+enum PartnerType {
+  CUSTOMER
+  SUPPLIER
+  OTHER
+}
+
+enum CompanyLocationType {
+  HEAD_OFFICE
+  BRANCH
+  WAREHOUSE
+  HALL
+  OTHER
+}
+
+enum TradeTermType {
+  PURCHASE
+  SALE
+}
+
 enum InventoryUnitCodeType {
   MAIN_BOARD
   CERTIFICATE
@@ -275,6 +305,15 @@ model User {
   salesRecordsOwned SalesRecord[]
   paymentRecordsOwned PaymentRecord[]
   inventoryImportBatches InventoryImportBatch[]
+  salesSlipsOwned SalesSlip[]
+  salesSlipLinesOwned SalesSlipLine[]
+  businessPartners BusinessPartner[]
+  businessPartnerLocations BusinessPartnerLocation[]
+  companyProfiles CompanyProfile[]
+  companyLocations CompanyLocation[]
+  staffMembers StaffMember[]
+  bankAccounts BankAccount[]
+  tradeTermTemplates TradeTermTemplate[]
   defaultStorageLocation StorageLocation? @relation("UserDefaultStorageLocation", fields: [defaultStorageLocationId], references: [id])
 }
 
@@ -491,6 +530,7 @@ model InventoryItem {
   externalLinks    InventoryExternalLink[]
   purchaseRecords  PurchaseRecord[]
   salesRecords     SalesRecord[]
+  salesSlipLines   SalesSlipLine[]
   importRows       InventoryImportRow[]
 
   @@index([ownerUserId, inventoryStatus, updatedAt])
@@ -672,6 +712,7 @@ model InventoryUnit {
   inventoryItem     InventoryItem          @relation(fields: [inventoryItemId], references: [id])
   inboundSchedule   InboundSchedule?       @relation(fields: [inboundScheduleId], references: [id])
   outboundSchedule  OutboundSchedule?      @relation(fields: [outboundScheduleId], references: [id])
+  salesSlipLines   SalesSlipLine[]
 
   @@index([ownerUserId, displayCode])
   @@index([inventoryItemId, status])
@@ -758,4 +799,191 @@ model BuyerShippingAddress {
   updatedAt   DateTime @updatedAt
 
   @@index([ownerUserId, isActive])
+}
+
+
+model SalesSlip {
+  id                 String          @id @default(cuid())
+  ownerUserId        String
+  slipNumber         String?
+  customerId         String?
+  customerName       String
+  salesContactName   String?
+  status             SalesSlipStatus @default(DRAFT)
+  contractedAt       DateTime?
+  paymentDueDate     DateTime?
+  paymentTimeText    String?
+  paymentMethod      String?
+  bankAccountId      String?
+  shippingMethod     String?
+  machineShipDate    DateTime?
+  documentShipDate   DateTime?
+  destinationName    String?
+  destinationAddress String?
+  destinationPhone   String?
+  carrierName        String?
+  sharedShippingNote String?
+  subtotalAmount     Int             @default(0)
+  taxAmount          Int             @default(0)
+  totalAmount        Int             @default(0)
+  grossProfitAmount  Int             @default(0)
+  memo               String?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  ownerUser   User            @relation(fields: [ownerUserId], references: [id])
+  bankAccount BankAccount?    @relation(fields: [bankAccountId], references: [id])
+  lines       SalesSlipLine[]
+
+  @@index([ownerUserId, createdAt])
+}
+
+model SalesSlipLine {
+  id                  String   @id @default(cuid())
+  ownerUserId         String
+  salesSlipId         String
+  inventoryItemId     String?
+  inventoryUnitId     String?
+  makerName           String?
+  machineName         String
+  itemType            InventoryItemType
+  quantity            Int      @default(1)
+  purchaseUnitPrice   Int?
+  salesUnitPrice      Int
+  amount              Int
+  nailSheet           Boolean  @default(false)
+  frameColor          String?
+  storageLocationName String?
+  memo                String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  ownerUser      User          @relation(fields: [ownerUserId], references: [id])
+  salesSlip      SalesSlip     @relation(fields: [salesSlipId], references: [id])
+  inventoryItem  InventoryItem? @relation(fields: [inventoryItemId], references: [id])
+  inventoryUnit  InventoryUnit? @relation(fields: [inventoryUnitId], references: [id])
+
+  @@index([ownerUserId])
+  @@index([salesSlipId])
+}
+
+model BusinessPartner {
+  id                 String      @id @default(cuid())
+  ownerUserId        String
+  type               PartnerType
+  name               String
+  postalCode         String?
+  address            String?
+  representativeName String?
+  phone              String?
+  fax                String?
+  invoiceNumber      String?
+  email              String?
+  memo               String?
+  createdAt          DateTime    @default(now())
+  updatedAt          DateTime    @updatedAt
+  ownerUser          User        @relation(fields: [ownerUserId], references: [id])
+  locations          BusinessPartnerLocation[]
+  @@index([ownerUserId])
+}
+
+model BusinessPartnerLocation {
+  id          String   @id @default(cuid())
+  ownerUserId String
+  partnerId   String
+  name        String
+  postalCode  String?
+  address     String?
+  phone       String?
+  fax         String?
+  memo        String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  ownerUser   User     @relation(fields: [ownerUserId], references: [id])
+  partner     BusinessPartner @relation(fields: [partnerId], references: [id])
+  @@index([ownerUserId])
+  @@index([partnerId])
+}
+
+model CompanyProfile {
+  id                 String   @id @default(cuid())
+  ownerUserId        String
+  name               String
+  postalCode         String?
+  address            String?
+  representativeName String?
+  phone              String?
+  fax                String?
+  registrationNumber String?
+  invoiceNumber      String?
+  email              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  ownerUser          User     @relation(fields: [ownerUserId], references: [id])
+  locations          CompanyLocation[]
+  @@index([ownerUserId])
+}
+
+model CompanyLocation {
+  id               String   @id @default(cuid())
+  ownerUserId      String
+  companyProfileId String?
+  name             String
+  type             CompanyLocationType
+  postalCode       String?
+  address          String?
+  phone            String?
+  fax              String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  ownerUser        User     @relation(fields: [ownerUserId], references: [id])
+  companyProfile   CompanyProfile? @relation(fields: [companyProfileId], references: [id])
+  staffMembers     StaffMember[]
+  @@index([ownerUserId])
+}
+
+model StaffMember {
+  id                String   @id @default(cuid())
+  ownerUserId       String
+  companyLocationId String?
+  name              String
+  role              String?
+  phone             String?
+  email             String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  ownerUser         User     @relation(fields: [ownerUserId], references: [id])
+  companyLocation   CompanyLocation? @relation(fields: [companyLocationId], references: [id])
+  @@index([ownerUserId])
+}
+
+model BankAccount {
+  id            String   @id @default(cuid())
+  ownerUserId   String
+  bankCode      String?
+  bankName      String
+  branchCode    String?
+  branchName    String?
+  accountType   String?
+  accountNumber String
+  accountHolder String
+  subjectCode   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  ownerUser     User     @relation(fields: [ownerUserId], references: [id])
+  salesSlips    SalesSlip[]
+  @@index([ownerUserId])
+}
+
+model TradeTermTemplate {
+  id          String        @id @default(cuid())
+  ownerUserId String
+  type        TradeTermType
+  title       String
+  body        String
+  isDefault   Boolean       @default(false)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  ownerUser   User          @relation(fields: [ownerUserId], references: [id])
+  @@index([ownerUserId, type])
 }
