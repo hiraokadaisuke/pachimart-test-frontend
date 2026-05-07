@@ -609,7 +609,7 @@ export async function getInboundScheduleById(id: string) {
 
 export async function getOutboundScheduleById(id: string) {
   const ownerUserId = await resolveCurrentUserId();
-  return prismaClient.outboundSchedule.findFirst({ where: { id, ownerUserId } });
+  return prismaClient.outboundSchedule.findFirst({ where: { id, ownerUserId }, include: { inventoryItem: true, originLocation: true, inventoryUnits: true } });
 }
 
 const summarizeByStatus = <T extends { status: string; quantity: number }>(rows: T[]) =>
