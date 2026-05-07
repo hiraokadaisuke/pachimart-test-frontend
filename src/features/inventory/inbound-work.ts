@@ -1,7 +1,64 @@
+import type { PrismaClient } from '@prisma/client';
 import { prisma } from '@/lib/server/prisma';
 import { cookies } from 'next/headers';
-const u=async()=> (await cookies()).get('dev_user_id')?.value ?? 'dev-user-a';
-export const calcInboundProgress=(units:{rawQr:string|null;displayCode:string|null;memo:string|null}[],qty:number)=>({qrDone:units.filter(x=>!!x.rawQr).length, codeDone:units.filter(x=>!!x.displayCode).length, checkDone:units.filter(x=>(x.memo??'').includes('動確済')).length, total:qty});
-export async function listInboundMobile(){const ownerUserId=await u();const rows=await prisma.inboundSchedule.findMany({where:{ownerUserId},include:{inventoryUnits:true},orderBy:{expectedDate:'desc'}});return rows.map(r=>({...r,progress:calcInboundProgress(r.inventoryUnits,r.quantity)}));}
-export async function getInboundWork(id:string){const ownerUserId=await u();return prisma.inboundSchedule.findFirst({where:{id,ownerUserId},include:{inventoryUnits:true,inventoryItem:true}})}
-export async function saveInboundWork(id:string, formData:FormData){const ownerUserId=await u();const s=await prisma.inboundSchedule.findFirst({where:{id,ownerUserId}});if(!s) throw new Error('not found');const unitId=String(formData.get('unitId')??'').trim();const data={rawQr:String(formData.get('rawQr')??'').trim()||null,displayCode:String(formData.get('displayCode')??'').trim()||null,memo:String(formData.get('memo')??'').trim()||null};if(unitId){await prisma.inventoryUnit.update({where:{id:unitId},data});}else{await prisma.inventoryUnit.create({data:{ownerUserId,inventoryItemId:s.inventoryItemId!,itemType:s.itemType,inboundScheduleId:id,status:'PROVISIONAL',...data}})} }
+
+const prismaClient = prisma as PrismaClient;
+const resolveUserId = async () => (await cookies()).get('dev_user_id')?.value ?? 'dev-user-a';
+
+export const calcInboundProgress = (
+  units: { rawQr: string | null; displayCode: string | null; memo: string | null }[],
+  qty: number,
+) => ({
+  qrDone: units.filter((x) => Boolean(x.rawQr)).length,
+  codeDone: units.filter((x) => Boolean(x.displayCode)).length,
+  checkDone: units.filter((x) => (x.memo ?? '').includes('動確済')).length,
+  total: qty,
+});
+
+export async function listInboundMobile() {
+  const ownerUserId = await resolveUserId();
+  const rows = await prismaClient.inboundSchedule.findMany({
+    where: { ownerUserId },
+    include: { inventoryUnits: true },
+    orderBy: { expectedDate: 'desc' },
+  });
+  return rows.map((r) => ({ ...r, progress: calcInboundProgress(r.inventoryUnits, r.quantity) }));
+}
+
+export async function getInboundWork(id: string) {
+  const ownerUserId = await resolveUserId();
+  return prismaClient.inboundSchedule.findFirst({
+    where: { id, ownerUserId },
+    include: { inventoryUnits: true, inventoryItem: true },
+  });
+}
+
+export async function saveInboundWork(id: string, formData: FormData) {
+  const ownerUserId = await resolveUserId();
+  const schedule = await prismaClient.inboundSchedule.findFirst({ where: { id, ownerUserId } });
+  if (!schedule) throw new Error('not found');
+
+  const unitId = String(formData.get('unitId') ?? '').trim();
+  const data = {
+    rawQr: String(formData.get('rawQr') ?? '').trim() || null,
+    displayCode: String(formData.get('displayCode') ?? '').trim() || null,
+    memo: String(formData.get('memo') ?? '').trim() || null,
+  };
+
+  if (unitId) {
+    await prismaClient.inventoryUnit.update({ where: { id: unitId }, data });
+    return;
+  }
+
+  if (!schedule.inventoryItemId) throw new Error('schedule has no inventory item');
+  await prismaClient.inventoryUnit.create({
+    data: {
+      ownerUserId,
+      inventoryItemId: schedule.inventoryItemId,
+      itemType: schedule.itemType,
+      inboundScheduleId: id,
+      status: 'PROVISIONAL',
+      ...data,
+    },
+  });
+}
