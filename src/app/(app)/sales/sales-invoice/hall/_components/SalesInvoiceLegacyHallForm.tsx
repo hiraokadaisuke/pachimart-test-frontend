@@ -111,6 +111,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
   const unitCandidates = useMemo(() => buildSalesInvoiceUnitCandidates(inventories ?? []), [inventories]);
   const selectedUnitIds = useMemo(() => new Set(rows.map((r) => r.selectedUnit?.inventoryUnitId).filter((v): v is string => Boolean(v))), [rows]);
   const [unitModalRowId, setUnitModalRowId] = useState<string | null>(null);
+  const [syncToOutboundOnSubmit, setSyncToOutboundOnSubmit] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
@@ -288,7 +289,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     ]);
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!hallName) {
       alert("販売先を入力してください");
       return;
@@ -392,7 +393,15 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
       updateInventoryStatuses(soldInventoryIds, "sold");
     }
 
-    alert("登録完了");
+    if (syncToOutboundOnSubmit) {
+      try {
+        const res = await fetch("/api/inventory/outbound/sales-invoice-sync", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ salesInvoiceId: invoiceId, salesInvoiceType: "hall", customerName: hallName, destinationName: introductionStore || hallName, machineShipDate: installationDate || issuedDate, shippingMethod: paymentMethod, memo: memoLines, items }) });
+        if (res.ok) {
+          const syncResult = await res.json();
+          alert(`登録完了（出庫予定: ${syncResult.createdCount}件作成 / ${syncResult.skippedCount}件スキップ）`);
+        } else alert("登録完了（出庫予定連携は失敗）");
+      } catch { alert("登録完了（出庫予定連携は失敗）"); }
+    } else alert("登録完了");
     router.push("/sales/sales-invoice/list");
   };
 
@@ -940,6 +949,10 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
             >
               確認
             </button>
+            <label className="inline-flex items-center gap-1 text-[11px]">
+              <input type="checkbox" checked={syncToOutboundOnSubmit} onChange={(e) => setSyncToOutboundOnSubmit(e.target.checked)} />
+              出庫予定へ反映
+            </label>
             <button
               type="button"
               onClick={() => router.back()}
