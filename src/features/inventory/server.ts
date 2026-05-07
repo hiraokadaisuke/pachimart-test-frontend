@@ -36,7 +36,7 @@ const resolveCurrentUserId = async () => {
   return DEV_USERS.A.id;
 };
 
-const prismaClient = prisma as PrismaClient;
+export const prismaClient = prisma as PrismaClient;
 
 export async function getInventoryItems() {
   const ownerUserId = await resolveCurrentUserId();
@@ -1313,4 +1313,113 @@ export async function getInventoryCsvDuplicateWarning(csvText: string) {
   const fileHash = computeCsvFileHash(csvText);
   const count = await prismaClient.inventoryImportBatch.count({ where: { ownerUserId, fileHash, status: "IMPORTED" } });
   return count > 0 ? "同じCSVがすでに取り込まれている可能性があります" : null;
+}
+
+export type StocktakeScanInput = {
+  ownerUserId: string;
+  sessionId: string;
+  scannedDisplayCode?: string | null;
+  scannedRawQr?: string | null;
+  targetWarehouseId?: string | null;
+  targetStorageLocationId?: string | null;
+  memo?: string | null;
+};
+
+export async function getStocktakeSessions() {
+  const ownerUserId = await resolveCurrentUserId();
+  return prismaClient.inventoryStocktakeSession.findMany({
+    where: { ownerUserId },
+    include: { scans: true, targetWarehouse: true, targetStorageLocation: true },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
+export async function createStocktakeSession(formData: FormData) {
+  const ownerUserId = await resolveCurrentUserId();
+  const name = String(formData.get("name") ?? "").trim();
+  if (!name) throw new Error("棚卸名は必須です。");
+  const targetWarehouseId = String(formData.get("targetWarehouseId") ?? "").trim() || null;
+  const targetStorageLocationId = String(formData.get("targetStorageLocationId") ?? "").trim() || null;
+  const memo = String(formData.get("memo") ?? "").trim() || null;
+  const row = await prismaClient.inventoryStocktakeSession.create({
+    data: { ownerUserId, name, targetWarehouseId, targetStorageLocationId, memo, status: "DRAFT" },
+  });
+  revalidatePath("/inventory/stocktakes");
+  return row;
+}
+
+export async function getStocktakeSessionById(id: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  return prismaClient.inventoryStocktakeSession.findFirst({
+    where: { id, ownerUserId },
+    include: {
+      targetWarehouse: true,
+      targetStorageLocation: true,
+      scans: { include: { inventoryUnit: { include: { inventoryItem: true, } }, storageLocation: true }, orderBy: { scannedAt: "desc" } },
+    },
+  });
+}
+
+export async function createStocktakeScan(input: StocktakeScanInput) {
+  const session = await prismaClient.inventoryStocktakeSession.findFirst({ where: { id: input.sessionId, ownerUserId: input.ownerUserId } });
+  if (!session) throw new Error("棚卸セッションが見つかりません。");
+  const normalizedDisplayCode = normalizeDisplayCode(input.scannedDisplayCode ?? "") || null;
+  const rawQr = String(input.scannedRawQr ?? "").trim() || null;
+
+  const candidates = await prismaClient.inventoryUnit.findMany({
+    where: {
+      ownerUserId: input.ownerUserId,
+      OR: [
+        normalizedDisplayCode ? { displayCode: normalizedDisplayCode } : undefined,
+        normalizedDisplayCode ? { bodySerialNumber: normalizedDisplayCode } : undefined,
+        normalizedDisplayCode ? { frameSerialNumber: normalizedDisplayCode } : undefined,
+        normalizedDisplayCode ? { mainBoardSerialNumber: normalizedDisplayCode } : undefined,
+        rawQr ? { rawQr } : undefined,
+      ].filter(Boolean) as any,
+    },
+    include: { inventoryItem: true },
+    take: 10,
+  });
+
+  let matched: (typeof candidates)[number] | null = candidates[0] ?? null;
+  let matchStatus: any = "NOT_FOUND";
+  let matchedBy: any = null;
+
+  if (candidates.length > 1) {
+    matchStatus = "MANUAL_REVIEW";
+    matched = null;
+  } else if (matched) {
+    const dup = await prismaClient.inventoryStocktakeScan.findFirst({ where: { sessionId: input.sessionId, inventoryUnitId: matched.id } });
+    if (dup) {
+      matchStatus = "DUPLICATE_SCAN";
+    } else if (input.targetStorageLocationId && matched.storageLocationId && matched.storageLocationId !== input.targetStorageLocationId) {
+      matchStatus = "WRONG_LOCATION";
+    } else if (normalizedDisplayCode && [matched.displayCode, matched.bodySerialNumber, matched.frameSerialNumber, matched.mainBoardSerialNumber].includes(normalizedDisplayCode)) {
+      matchStatus = "MATCHED";
+      matchedBy = "DISPLAY_CODE";
+    } else if (rawQr && matched.rawQr === rawQr) {
+      matchStatus = "QR_MATCHED";
+      matchedBy = "RAW_QR";
+    } else {
+      matchStatus = "MANUAL_REVIEW";
+      matchedBy = "MANUAL";
+    }
+  }
+
+  const scan = await prismaClient.inventoryStocktakeScan.create({
+    data: {
+      ownerUserId: input.ownerUserId,
+      sessionId: input.sessionId,
+      inventoryUnitId: matched?.id ?? null,
+      scannedRawQr: rawQr,
+      scannedDisplayCode: input.scannedDisplayCode?.trim() || null,
+      normalizedDisplayCode,
+      matchStatus,
+      matchedBy,
+      warehouseId: input.targetWarehouseId ?? session.targetWarehouseId,
+      storageLocationId: input.targetStorageLocationId ?? session.targetStorageLocationId,
+      memo: input.memo ?? null,
+    },
+  });
+  return scan;
 }
