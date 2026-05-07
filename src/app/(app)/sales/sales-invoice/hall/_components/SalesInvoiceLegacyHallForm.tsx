@@ -11,6 +11,8 @@ import { splitInventoryForSales } from "@/lib/inventory/salesInvoiceSplit";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { addSalesInvoice, generateSalesInvoiceId } from "@/lib/demo-data/salesInvoices";
 import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
+import { SalesInvoiceUnitModal } from "@/components/inventory/SalesInvoiceUnitModal";
+import { buildSalesInvoiceUnitCandidates, type SalesInvoiceUnitCandidate } from "@/lib/inventory/salesInvoiceUnitCandidates";
 import {
   DEFAULT_MASTER_DATA,
   loadMasterData,
@@ -66,6 +68,7 @@ type BaseRow = {
   selectedSerialIndexes?: number[];
   serialRows?: SerialInputRow[];
   serialSelectionError?: string;
+  selectedUnit?: SalesInvoiceUnitCandidate | null;
 };
 
 type Props = {
@@ -105,6 +108,10 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
     maxQuantity: number;
     requiredQuantity: number;
   } | null>(null);
+  const unitCandidates = useMemo(() => buildSalesInvoiceUnitCandidates(inventories ?? []), [inventories]);
+  const selectedUnitIds = useMemo(() => new Set(rows.map((r) => r.selectedUnit?.inventoryUnitId).filter((v): v is string => Boolean(v))), [rows]);
+  const [unitModalRowId, setUnitModalRowId] = useState<string | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
@@ -460,6 +467,13 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
           <div className="flex flex-col items-center gap-1">
             <button
               type="button"
+              onClick={() => setUnitModalRowId(row.rowId)}
+              className="border border-black bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold"
+            >
+              Unit
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 if (!row.inventoryId || !row.maxQuantity) return;
                 setSerialModalState({
@@ -474,7 +488,7 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
               disabled={!row.inventoryId}
               className="border border-[#333] bg-[#f3f3f3] px-3 py-1 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
             >
-              選択
+              番号選択
             </button>
             {row.inventoryId && (
               <div className="text-[10px] text-neutral-600">
@@ -483,6 +497,9 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
             )}
             {row.serialSelectionError && (
               <div className="text-[10px] text-red-600">{row.serialSelectionError}</div>
+            )}
+            {row.selectedUnit && (
+              <div className="text-[10px] text-slate-700">Unit:{row.selectedUnit.displayCode ?? "-"} QR:{row.selectedUnit.rawQr ? "読取済" : "-"} 保管先:{row.selectedUnit.storageLocationName ?? "-"} 状態:{row.selectedUnit.status ?? "-"}</div>
             )}
           </div>
         </td>
@@ -933,6 +950,8 @@ export function SalesInvoiceLegacyHallForm({ inventories }: Props) {
           </div>
         </div>
       </div>
+      <SalesInvoiceUnitModal open={Boolean(unitModalRowId)} title={rows.find((row) => row.rowId === unitModalRowId)?.productName ?? ""} candidates={unitCandidates} selectedUnitIds={selectedUnitIds} onClose={() => setUnitModalRowId(null)} onSelect={(candidate) => { if (!unitModalRowId) return; setRows((prev) => prev.map((row) => row.rowId === unitModalRowId ? { ...row, selectedUnit: candidate, maker: row.maker || candidate.makerName, productName: row.productName || candidate.machineName, type: row.type || candidate.itemType || row.type, note: row.note || candidate.memo || "", unitPrice: row.unitPrice || (candidate.estimatedSalesUnitPrice ? String(candidate.estimatedSalesUnitPrice) : row.unitPrice) } : row)); setUnitModalRowId(null); }} />
+
       {serialModalState && (
         <SalesInvoiceSerialModal
           open={Boolean(serialModalState)}

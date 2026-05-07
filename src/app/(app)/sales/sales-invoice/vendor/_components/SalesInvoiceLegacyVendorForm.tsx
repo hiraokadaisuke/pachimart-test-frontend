@@ -7,6 +7,8 @@ import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } 
 import { CSS } from "@dnd-kit/utilities";
 
 import { SalesInvoiceSerialModal } from "@/components/inventory/SalesInvoiceSerialModal";
+import { SalesInvoiceUnitModal } from "@/components/inventory/SalesInvoiceUnitModal";
+import { buildSalesInvoiceUnitCandidates, type SalesInvoiceUnitCandidate } from "@/lib/inventory/salesInvoiceUnitCandidates";
 import { addSalesInvoice, generateSalesInvoiceId, loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
 import { loadInventoryRecords, updateInventoryStatuses, type InventoryRecord } from "@/lib/demo-data/demoInventory";
 import {
@@ -38,6 +40,7 @@ type BaseRow = {
   selectedSerialIndexes?: number[];
   serialRows?: SerialInputRow[];
   serialSelectionError?: string;
+  selectedUnit?: SalesInvoiceUnitCandidate | null;
 };
 
 type Props = {
@@ -110,6 +113,11 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
     maxQuantity: number;
     requiredQuantity: number;
   } | null>(null);
+
+  const unitCandidates = useMemo(() => buildSalesInvoiceUnitCandidates(inventoryRecords), [inventoryRecords]);
+  const selectedUnitIds = useMemo(() => new Set(rows.map((r) => r.selectedUnit?.inventoryUnitId).filter((v): v is string => Boolean(v))), [rows]);
+  const [unitModalRowId, setUnitModalRowId] = useState<string | null>(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } }),
@@ -375,6 +383,13 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
           <div className="flex flex-col items-center gap-1">
             <button
               type="button"
+              onClick={() => setUnitModalRowId(row.rowId)}
+              className="border border-black bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold"
+            >
+              Unit
+            </button>
+            <button
+              type="button"
               onClick={() => {
                 if (!row.inventoryId || !row.maxQuantity) return;
                 setSerialModalState({
@@ -389,7 +404,7 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               disabled={!row.inventoryId}
               className="border border-black bg-slate-100 px-2 py-0.5 text-[11px] font-semibold disabled:cursor-not-allowed disabled:opacity-40"
             >
-              選択
+              番号選択
             </button>
             {row.inventoryId && (
               <div className="text-[10px] text-neutral-600">
@@ -398,6 +413,9 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
             )}
             {row.serialSelectionError && (
               <div className="text-[10px] text-red-600">{row.serialSelectionError}</div>
+            )}
+            {row.selectedUnit && (
+              <div className="text-[10px] text-slate-700">Unit:{row.selectedUnit.displayCode ?? "-"} QR:{row.selectedUnit.rawQr ? "読取済" : "-"} 保管先:{row.selectedUnit.storageLocationName ?? "-"} 状態:{row.selectedUnit.status ?? "-"}</div>
             )}
           </div>
         </td>
@@ -528,13 +546,14 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               .map((index) => row.serialRows?.[index])
               .filter((serialRow): serialRow is SerialInputRow => Boolean(serialRow))
           : undefined,
-      inventoryItemId: row.inventoryId,
-      inventoryUnitId: row.inventoryId && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `${row.inventoryId}#${row.selectedSerialIndexes[0]}` : undefined,
-      unitDisplayCode: row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `No.${row.selectedSerialIndexes[0] + 1}` : undefined,
-      unitRawQr: row.serialRows && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? row.serialRows[row.selectedSerialIndexes[0]]?.main : undefined,
-      unitMemo: row.serialRows && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `枠:${row.serialRows[row.selectedSerialIndexes[0]]?.frame ?? "-"} / 基盤:${row.serialRows[row.selectedSerialIndexes[0]]?.board ?? "-"}` : undefined,
-      unitStatus: "LINKED_DRAFT",
-      storageLocationName: row.note,
+      inventoryItemId: row.selectedUnit?.inventoryItemId ?? row.inventoryId,
+      inventoryUnitId: row.selectedUnit?.inventoryUnitId ?? (row.inventoryId && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `${row.inventoryId}#${row.selectedSerialIndexes[0]}` : undefined),
+      unitDisplayCode: row.selectedUnit?.displayCode ?? (row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `No.${row.selectedSerialIndexes[0] + 1}` : undefined),
+      unitRawQr: row.selectedUnit?.rawQr ?? (row.serialRows && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? row.serialRows[row.selectedSerialIndexes[0]]?.main : undefined),
+      unitMemo: row.selectedUnit?.memo ?? (row.serialRows && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `枠:${row.serialRows[row.selectedSerialIndexes[0]]?.frame ?? "-"} / 基盤:${row.serialRows[row.selectedSerialIndexes[0]]?.board ?? "-"}` : undefined),
+      unitStatus: row.selectedUnit?.status ?? "LINKED_DRAFT",
+      storageLocationName: row.selectedUnit?.storageLocationName ?? row.note,
+      purchaseUnitPrice: row.selectedUnit?.purchaseUnitPrice ?? undefined,
     }));
 
     const invoiceId = generateSalesInvoiceId("vendor");
@@ -1001,6 +1020,30 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
           </div>
         </div>
       </div>
+      <SalesInvoiceUnitModal
+        open={Boolean(unitModalRowId)}
+        title={rows.find((row) => row.rowId === unitModalRowId)?.productName ?? ""}
+        candidates={unitCandidates}
+        selectedUnitIds={selectedUnitIds}
+        onClose={() => setUnitModalRowId(null)}
+        onSelect={(candidate) => {
+          if (!unitModalRowId) return;
+          setRows((prev) => prev.map((row) => {
+            if (row.rowId !== unitModalRowId) return row;
+            return {
+              ...row,
+              selectedUnit: candidate,
+              maker: row.maker || candidate.makerName,
+              productName: row.productName || candidate.machineName,
+              type: row.type || candidate.itemType || row.type,
+              note: row.note || candidate.memo || "",
+              unitPrice: row.unitPrice || (candidate.estimatedSalesUnitPrice ? String(candidate.estimatedSalesUnitPrice) : row.unitPrice),
+            };
+          }));
+          setUnitModalRowId(null);
+        }}
+      />
+
       {serialModalState && (
         <SalesInvoiceSerialModal
           open={Boolean(serialModalState)}
