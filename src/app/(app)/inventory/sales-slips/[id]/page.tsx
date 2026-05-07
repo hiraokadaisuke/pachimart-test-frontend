@@ -1,0 +1,4 @@
+import Link from 'next/link';
+import { getSalesSlip } from '@/features/inventory/sales-slips';
+import { notFound } from 'next/navigation';
+export default async function Page({params}:{params:Promise<{id:string}>}){const {id}=await params;const s=await getSalesSlip(id);if(!s) return notFound();return <div className='space-y-2 text-sm'><h1 className='font-bold'>販売伝票詳細</h1><div>販売先: {s.customerName}</div><div>合計: {s.totalAmount.toLocaleString()} 粗利:{s.grossProfitAmount.toLocaleString()}</div><table className='w-full border'><tbody>{s.lines.map(l=><tr key={l.id} className='border-b'><td>{l.machineName}</td><td>{l.amount}</td><td>{l.inventoryUnit?.displayCode ?? '-'}</td></tr>)}</tbody></table><div className='flex gap-2'>{['sales-slip','invoice','contract','shipping-request'].map(t=><Link key={t} href={`/inventory/sales-slips/${s.id}/documents/${t}`} className='border px-2 bg-blue-100'>{t}</Link>)}</div></div>}
