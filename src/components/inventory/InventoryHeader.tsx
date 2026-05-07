@@ -10,6 +10,7 @@ const navItems = [
   { label: "在庫一覧", href: "/inventory/items" },
   { label: "入庫予定", href: "/inventory/inbound" },
   { label: "発送予定", href: "/inventory/outbound" },
+  { label: "棚卸", href: "/inventory/stocktakes" },
   { label: "設定", href: "/inventory/settings" },
 ];
 

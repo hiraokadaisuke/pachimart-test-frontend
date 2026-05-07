@@ -232,6 +232,30 @@ enum InventoryImportStatus {
   CANCELED
 }
 
+
+enum InventoryStocktakeStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELED
+}
+
+enum InventoryStocktakeMatchStatus {
+  MATCHED
+  QR_MATCHED
+  NOT_FOUND
+  DUPLICATE_SCAN
+  WRONG_LOCATION
+  EXPECTED_NOT_SCANNED
+  MANUAL_REVIEW
+}
+
+enum InventoryStocktakeMatchedBy {
+  DISPLAY_CODE
+  RAW_QR
+  MANUAL
+}
+
 enum InventoryUnitStatus {
   PROVISIONAL
   IN_STOCK
@@ -334,6 +358,8 @@ model User {
   inboundSchedulesOwned InboundSchedule[] @relation("InboundScheduleOwner")
   outboundSchedulesOwned OutboundSchedule[] @relation("OutboundScheduleOwner")
   inventoryUnitsOwned InventoryUnit[] @relation("InventoryUnitOwner")
+  inventoryStocktakeSessions InventoryStocktakeSession[]
+  inventoryStocktakeScans InventoryStocktakeScan[]
   inventoryExternalLinksOwned InventoryExternalLink[] @relation("InventoryExternalLinkOwner")
   purchaseRecordsOwned PurchaseRecord[]
   salesRecordsOwned SalesRecord[]
@@ -527,6 +553,10 @@ model StorageLocation {
   inventoryItems InventoryItem[]
   inboundDestinations InboundSchedule[] @relation("InboundDestinationLocation")
   outboundOrigins OutboundSchedule[] @relation("OutboundOriginLocation")
+  stocktakeTargetWarehouses InventoryStocktakeSession[] @relation("StocktakeTargetWarehouse")
+  stocktakeTargetLocations InventoryStocktakeSession[] @relation("StocktakeTargetStorageLocation")
+  stocktakeScansWarehouses InventoryStocktakeScan[] @relation("StocktakeScanWarehouse")
+  stocktakeScansLocations InventoryStocktakeScan[] @relation("StocktakeScanStorageLocation")
 
   @@unique([name, ownerUserId])
   @@index([ownerUserId])
@@ -763,6 +793,7 @@ model InventoryUnit {
   inboundSchedule   InboundSchedule?       @relation(fields: [inboundScheduleId], references: [id])
   outboundSchedule  OutboundSchedule?      @relation(fields: [outboundScheduleId], references: [id])
   salesSlipLines   SalesSlipLine[]
+  stocktakeScans   InventoryStocktakeScan[]
 
   @@index([ownerUserId, displayCode])
   @@index([inventoryItemId, status])
@@ -794,6 +825,59 @@ model InventoryMovement {
   @@index([inventoryItemId, committedAt])
   @@index([ownerUserId, status, createdAt])
   @@index([sourceType, sourceId])
+}
+
+
+model InventoryStocktakeSession {
+  id                      String                   @id @default(cuid())
+  ownerUserId             String
+  name                    String
+  status                  InventoryStocktakeStatus @default(DRAFT)
+  targetWarehouseId       String?
+  targetStorageLocationId String?
+  startedAt               DateTime?
+  completedAt             DateTime?
+  memo                    String?
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
+
+  ownerUser            User              @relation(fields: [ownerUserId], references: [id])
+  targetWarehouse      StorageLocation?  @relation("StocktakeTargetWarehouse", fields: [targetWarehouseId], references: [id])
+  targetStorageLocation StorageLocation? @relation("StocktakeTargetStorageLocation", fields: [targetStorageLocationId], references: [id])
+  scans                InventoryStocktakeScan[]
+
+  @@index([ownerUserId])
+  @@index([status, createdAt])
+  @@index([targetWarehouseId])
+  @@index([targetStorageLocationId])
+}
+
+model InventoryStocktakeScan {
+  id                    String                         @id @default(cuid())
+  ownerUserId           String
+  sessionId             String
+  inventoryUnitId       String?
+  scannedRawQr          String?
+  scannedDisplayCode    String?
+  normalizedDisplayCode String?
+  matchStatus           InventoryStocktakeMatchStatus
+  matchedBy             InventoryStocktakeMatchedBy?
+  warehouseId           String?
+  storageLocationId     String?
+  scannedAt             DateTime                       @default(now())
+  memo                  String?
+  createdAt             DateTime                       @default(now())
+
+  ownerUser        User                     @relation(fields: [ownerUserId], references: [id])
+  session          InventoryStocktakeSession @relation(fields: [sessionId], references: [id])
+  inventoryUnit    InventoryUnit?            @relation(fields: [inventoryUnitId], references: [id])
+  warehouse        StorageLocation?          @relation("StocktakeScanWarehouse", fields: [warehouseId], references: [id])
+  storageLocation  StorageLocation?          @relation("StocktakeScanStorageLocation", fields: [storageLocationId], references: [id])
+
+  @@index([ownerUserId])
+  @@index([sessionId])
+  @@index([inventoryUnitId])
+  @@index([normalizedDisplayCode])
 }
 
 model InventoryImportBatch {
