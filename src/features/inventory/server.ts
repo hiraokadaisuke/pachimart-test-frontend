@@ -1327,11 +1327,12 @@ export type StocktakeScanInput = {
 
 export async function getStocktakeSessions() {
   const ownerUserId = await resolveCurrentUserId();
-  return prismaClient.inventoryStocktakeSession.findMany({
+  const sessions = await prismaClient.inventoryStocktakeSession.findMany({
     where: { ownerUserId },
     include: { scans: true, targetWarehouse: true, targetStorageLocation: true },
     orderBy: { createdAt: "desc" },
   });
+  return Promise.all(sessions.map((session) => buildStocktakeSummary(session)));
 }
 
 export async function createStocktakeSession(formData: FormData) {
@@ -1350,7 +1351,7 @@ export async function createStocktakeSession(formData: FormData) {
 
 export async function getStocktakeSessionById(id: string) {
   const ownerUserId = await resolveCurrentUserId();
-  return prismaClient.inventoryStocktakeSession.findFirst({
+  const session = await prismaClient.inventoryStocktakeSession.findFirst({
     where: { id, ownerUserId },
     include: {
       targetWarehouse: true,
@@ -1358,6 +1359,87 @@ export async function getStocktakeSessionById(id: string) {
       scans: { include: { inventoryUnit: { include: { inventoryItem: true, } }, storageLocation: true }, orderBy: { scannedAt: "desc" } },
     },
   });
+  if (!session) return null;
+  return buildStocktakeSummary(session);
+}
+
+type StocktakeSummaryCounts = {
+  totalScans: number;
+  matchedCount: number;
+  qrMatchedCount: number;
+  notFoundCount: number;
+  duplicateCount: number;
+  wrongLocationCount: number;
+  manualReviewCount: number;
+  expectedUnitCount: number;
+  scannedExpectedUnitCount: number;
+  expectedNotScannedCount: number;
+  expectedNotScannedUnits: Array<{ id: string; displayCode: string | null; rawQr: string | null; storageLocationId: string | null; status: string; inventoryItem: { modelNameSnapshot: string } }>;
+};
+
+export async function buildStocktakeSummary<T extends { ownerUserId: string; targetWarehouseId: string | null; targetStorageLocationId: string | null; scans: Array<{ matchStatus: string; inventoryUnitId: string | null }> }>(session: T): Promise<T & { summary: StocktakeSummaryCounts }> {
+  const statusFilter = { in: ["IN_STOCK", "RESERVED"] as const };
+  const expectedWhere: any = { ownerUserId: session.ownerUserId, status: statusFilter };
+  if (session.targetStorageLocationId) {
+    expectedWhere.storageLocationId = session.targetStorageLocationId;
+  } else if (session.targetWarehouseId) {
+    expectedWhere.storageLocationId = session.targetWarehouseId;
+  }
+  const expectedUnits = await prismaClient.inventoryUnit.findMany({
+    where: expectedWhere,
+    select: { id: true, displayCode: true, rawQr: true, storageLocationId: true, status: true, inventoryItem: { select: { modelNameSnapshot: true } } },
+    take: 2000,
+  });
+  const expectedSet = new Set(expectedUnits.map((u) => u.id));
+  const scannedExpectedSet = new Set(session.scans.map((x) => x.inventoryUnitId).filter((id): id is string => Boolean(id) && expectedSet.has(id!)));
+  const count = (k: string) => session.scans.filter((x) => x.matchStatus === k).length;
+  const expectedNotScannedUnits = expectedUnits.filter((u) => !scannedExpectedSet.has(u.id));
+  return {
+    ...session,
+    summary: {
+      totalScans: session.scans.length,
+      matchedCount: count("MATCHED"),
+      qrMatchedCount: count("QR_MATCHED"),
+      notFoundCount: count("NOT_FOUND"),
+      duplicateCount: count("DUPLICATE_SCAN"),
+      wrongLocationCount: count("WRONG_LOCATION"),
+      manualReviewCount: count("MANUAL_REVIEW"),
+      expectedUnitCount: expectedUnits.length,
+      scannedExpectedUnitCount: scannedExpectedSet.size,
+      expectedNotScannedCount: expectedNotScannedUnits.length,
+      expectedNotScannedUnits,
+    },
+  };
+}
+
+export async function startStocktakeSession(sessionId: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  const session = await prismaClient.inventoryStocktakeSession.findFirst({ where: { id: sessionId, ownerUserId } });
+  if (!session) throw new Error("棚卸セッションが見つかりません。");
+  if (session.status !== "DRAFT") return session;
+  const row = await prismaClient.inventoryStocktakeSession.update({ where: { id: sessionId }, data: { status: "IN_PROGRESS", startedAt: session.startedAt ?? new Date() } });
+  revalidatePath(`/inventory/stocktakes/${sessionId}`); revalidatePath("/inventory/stocktakes");
+  return row;
+}
+
+export async function completeStocktakeSession(sessionId: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  const session = await prismaClient.inventoryStocktakeSession.findFirst({ where: { id: sessionId, ownerUserId } });
+  if (!session) throw new Error("棚卸セッションが見つかりません。");
+  if (session.status === "COMPLETED" || session.status === "CANCELED") return session;
+  const row = await prismaClient.inventoryStocktakeSession.update({ where: { id: sessionId }, data: { status: "COMPLETED", startedAt: session.startedAt ?? new Date(), completedAt: new Date() } });
+  revalidatePath(`/inventory/stocktakes/${sessionId}`); revalidatePath("/inventory/stocktakes");
+  return row;
+}
+
+export async function cancelStocktakeSession(sessionId: string) {
+  const ownerUserId = await resolveCurrentUserId();
+  const session = await prismaClient.inventoryStocktakeSession.findFirst({ where: { id: sessionId, ownerUserId } });
+  if (!session) throw new Error("棚卸セッションが見つかりません。");
+  if (session.status === "COMPLETED" || session.status === "CANCELED") return session;
+  const row = await prismaClient.inventoryStocktakeSession.update({ where: { id: sessionId }, data: { status: "CANCELED" } });
+  revalidatePath(`/inventory/stocktakes/${sessionId}`); revalidatePath("/inventory/stocktakes");
+  return row;
 }
 
 export async function createStocktakeScan(input: StocktakeScanInput) {
