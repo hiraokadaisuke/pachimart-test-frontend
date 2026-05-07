@@ -113,6 +113,7 @@ curl "https://<your-domain>/api/trades/in-progress/1"
 - Vercel の Environment ごとに `APP_DATABASE_URL` を設定します（Production/Preview/Development で値を分ける）。ローカル開発では `.env.local` に `APP_DATABASE_URL` を指定してください。
 - GitHub Actions から DB を操作する場合も `APP_DATABASE_URL` を Secrets として登録し、Preview 用の接続文字列のみを渡します。
 - seed は `preview`/`development` モードまたは `VERCEL_ENV` が Preview/Development のときのみ動作し、Production では常にスキップされます（冪等・安全な動作）。
+- Vercel Preview の `scripts/prisma-preview-setup.js` は一時的に `P3009` を warning としてビルド継続しますが、**Production では P3009 を握り潰しません**。根本対応は `DB Migration Repair` workflow による migration 修復です。
 
 #### 開発用ユーザー ID 一覧（ownerUserId 等で利用できます）
 
