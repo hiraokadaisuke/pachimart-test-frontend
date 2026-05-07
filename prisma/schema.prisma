@@ -240,6 +240,40 @@ enum InventoryUnitStatus {
   CANCELED
 }
 
+enum OperationCheckStatus {
+  NOT_CHECKED
+  OK
+  NG
+  NEEDS_RECHECK
+}
+
+enum UnitGlassStatus {
+  UNKNOWN
+  OK
+  NG
+  MISSING
+}
+
+enum UnitNailSheetStatus {
+  UNKNOWN
+  PRESENT
+  MISSING
+  NOT_REQUIRED
+}
+
+enum UnitInspectionStatus {
+  NOT_INSPECTED
+  INSPECTED
+  ISSUE_FOUND
+}
+
+enum UnitDocumentStatus {
+  UNKNOWN
+  PRESENT
+  MISSING
+  NOT_REQUIRED
+}
+
 
 enum SalesSlipStatus {
   DRAFT
@@ -696,6 +730,22 @@ model InventoryUnit {
   rawQr             String?
   parsedQr          Json?
   codeType          InventoryUnitCodeType?
+  bodySerialNumber  String?
+  frameSerialNumber String?
+  mainBoardSerialNumber String?
+  subBoardSerialNumber String?
+  certificateNumber String?
+  operationCheckStatus OperationCheckStatus? @default(NOT_CHECKED)
+  operationCheckedAt DateTime?
+  operationMemo     String?
+  glassStatus       UnitGlassStatus? @default(UNKNOWN)
+  nailSheetStatus   UnitNailSheetStatus? @default(UNKNOWN)
+  accessoryMemo     String?
+  inspectionStatus  UnitInspectionStatus? @default(NOT_INSPECTED)
+  inspectedAt       DateTime?
+  inspectionMemo    String?
+  inspectionDocumentStatus UnitDocumentStatus? @default(UNKNOWN)
+  certificateDocumentStatus UnitDocumentStatus? @default(UNKNOWN)
   itemType          InventoryItemType
   status            InventoryUnitStatus    @default(PROVISIONAL)
   storageLocationId String?

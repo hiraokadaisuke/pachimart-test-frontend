@@ -7,6 +7,8 @@ export type SalesInvoiceUnitDisplay = {
   storageLocationLabel: string | null;
   memoLabel: string | null;
   warningLabel: string | null;
+  serialLabel: string | null;
+  checkLabel: string | null;
 };
 
 const toClean = (value?: string | null) => {
@@ -24,6 +26,8 @@ export const buildSalesInvoiceUnitDisplay = (item: SalesInvoiceItem): SalesInvoi
   const status = toClean(item.unitStatus);
   const storage = toClean(item.storageLocationName);
   const memo = toClean(item.unitMemo);
+  const serialLabel = [toClean(item.unitBodySerialNumber) ? `本:${toClean(item.unitBodySerialNumber)}` : null, toClean(item.unitFrameSerialNumber) ? `枠:${toClean(item.unitFrameSerialNumber)}` : null, toClean(item.unitMainBoardSerialNumber) ? `基:${toClean(item.unitMainBoardSerialNumber)}` : null].filter(Boolean).join(" / ") || null;
+  const checkLabel = [`動確:${toClean(item.unitOperationCheckStatus) ?? "未"}`, `ガラス:${toClean(item.unitGlassStatus) ?? "未"}`, `釘:${toClean(item.unitNailSheetStatus) ?? "未"}`, `検品:${toClean(item.unitInspectionStatus) ?? "未"}`].join(" / ");
 
   return {
     primaryCode,
@@ -32,6 +36,8 @@ export const buildSalesInvoiceUnitDisplay = (item: SalesInvoiceItem): SalesInvoi
     storageLocationLabel: storage ? `保管先: ${storage}` : null,
     memoLabel: memo ? `Unitメモ: ${memo}` : null,
     warningLabel: !primaryCode && rawQr ? "番号未選択（QRのみ）" : null,
+    serialLabel,
+    checkLabel,
   };
 };
 
@@ -42,6 +48,8 @@ export const formatSalesInvoiceUnitSummary = (item: SalesInvoiceItem): string =>
     display.rawQrLabel,
     display.storageLocationLabel,
     display.statusLabel,
+    display.serialLabel,
+    display.checkLabel,
     display.memoLabel,
   ].filter((value): value is string => Boolean(value));
 

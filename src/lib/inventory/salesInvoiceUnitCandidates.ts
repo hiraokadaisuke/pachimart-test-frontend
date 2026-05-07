@@ -16,6 +16,13 @@ export type SalesInvoiceUnitCandidate = {
   purchaseUnitPrice: number | null;
   estimatedSalesUnitPrice: number | null;
   memo?: string | null;
+  bodySerialNumber?: string | null;
+  frameSerialNumber?: string | null;
+  mainBoardSerialNumber?: string | null;
+  operationCheckStatus?: string | null;
+  glassStatus?: string | null;
+  nailSheetStatus?: string | null;
+  inspectionStatus?: string | null;
   isSelectable: boolean;
   warning?: string | null;
   inboundScheduleId?: string | null;
@@ -51,6 +58,13 @@ export const buildSalesInvoiceUnitCandidates = (records: InventoryRecord[], owne
     purchaseUnitPrice: record.unitPrice ?? null,
     estimatedSalesUnitPrice: record.saleUnitPrice ?? record.unitPrice ?? null,
     memo: record.note ?? record.notes ?? null,
+    bodySerialNumber: null,
+    frameSerialNumber: null,
+    mainBoardSerialNumber: null,
+    operationCheckStatus: null,
+    glassStatus: null,
+    nailSheetStatus: null,
+    inspectionStatus: null,
     isSelectable: !UNSELECTABLE_STATUSES.has(resolveStatus(record)),
     warning: RESERVED_STATUSES.has(resolveStatus(record)) ? "引当済み在庫です。重複販売に注意してください。" : null,
     inboundScheduleId: null,

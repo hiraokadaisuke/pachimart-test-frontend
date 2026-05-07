@@ -22,6 +22,13 @@ export type SalesInvoiceItem = {
   unitRawQr?: string;
   unitMemo?: string;
   unitStatus?: string;
+  unitBodySerialNumber?: string;
+  unitFrameSerialNumber?: string;
+  unitMainBoardSerialNumber?: string;
+  unitOperationCheckStatus?: string;
+  unitGlassStatus?: string;
+  unitNailSheetStatus?: string;
+  unitInspectionStatus?: string;
   storageLocationName?: string;
   purchaseUnitPrice?: number;
 };
