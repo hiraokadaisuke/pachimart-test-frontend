@@ -16,6 +16,15 @@ import { getAutoCreatedOutboundInfo } from "@/features/inventory/outbound-auto";
 
 export default async function OutboundSchedulesPage() {
   const [schedules, summary] = await Promise.all([getOutboundSchedules(), getOutboundScheduleSummary()]);
+  const toDate = (value: Date | null | undefined) => (value instanceof Date ? value.toISOString().slice(0, 10) : "-");
+  const toStatusLabel = (value: string | null | undefined) => {
+    if (!value) return "不明";
+    try {
+      return outboundStatusLabel(value as never);
+    } catch {
+      return value;
+    }
+  };
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-8 md:px-6">
@@ -45,16 +54,16 @@ export default async function OutboundSchedulesPage() {
               const autoCreated = getAutoCreatedOutboundInfo({ sourceType: s.sourceType, sourceId: s.sourceId, note: s.note });
               return (
                 <tr key={s.id} className="border-t">
-                  <td className="px-2 py-1 whitespace-nowrap">{s.expectedDate.toISOString().slice(0, 10)}</td>
-                  <td className="px-2 py-1"><InventoryStatusBadge status={outboundStatusLabel(s.status)} /></td>
+                  <td className="px-2 py-1 whitespace-nowrap">{toDate(s.expectedDate)}</td>
+                  <td className="px-2 py-1"><InventoryStatusBadge status={toStatusLabel(s.status)} /></td>
                   <td className="px-2 py-1 text-xs">{salesDerived ? "販売伝票" : autoCreated.isAutoCreated ? "取引" : "手動"}</td>
                   <td className="px-2 py-1">{salesDerived ? s.sourceId : "-"}</td>
                   <td className="px-2 py-1">{s.buyerName ?? "-"}</td>
                   <td className="px-2 py-1">{s.modelNameSnapshot}</td>
                   <td className="px-2 py-1">{formatQuantity(s.quantity)}</td>
-                  <td className="px-2 py-1">{s.inventoryUnits[0]?.displayCode ?? "-"}</td>
-                  <td className="px-2 py-1">{s.inventoryUnits[0]?.rawQr ?? "-"}</td>
-                  <td className="px-2 py-1">{s.originLocation?.name ?? s.inventoryUnits[0]?.storageLocationId ?? "-"}</td>
+                  <td className="px-2 py-1">{s.inventoryUnits?.[0]?.displayCode ?? "-"}</td>
+                  <td className="px-2 py-1">{s.inventoryUnits?.[0]?.rawQr ?? "-"}</td>
+                  <td className="px-2 py-1">{s.originLocation?.name ?? s.inventoryUnits?.[0]?.storageLocationId ?? "-"}</td>
                   <td className="px-2 py-1">{shippingMethodLabel(s.shippingMethod)}</td>
                   <td className="px-2 py-1">-</td>
                   <td className="px-2 py-1 max-w-[220px] truncate" title={s.note ?? undefined}>{s.note ?? "-"}</td>
