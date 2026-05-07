@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 import { formatCurrency, formatDate, loadInventoryRecords } from "@/lib/demo-data/demoInventory";
 import { loadSalesInvoices } from "@/lib/demo-data/salesInvoices";
+import { buildSalesInvoiceUnitCandidates } from "@/lib/inventory/salesInvoiceUnitCandidates";
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 
 const labelCellClass = "bg-slate-100 text-center font-semibold text-slate-800";
@@ -39,6 +40,7 @@ function SalesInvoiceCreateContent() {
     saleDate: "",
   });
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [onlyWithUnit, setOnlyWithUnit] = useState(false);
   const [prefillIds, setPrefillIds] = useState<string[]>([]);
 
   const queryPrefillIds = useMemo(
@@ -107,13 +109,17 @@ function SalesInvoiceCreateContent() {
     return soldRecords;
   }, [prefillIds.length, prefillIdSet, records, soldRecords]);
 
+  const unitCandidates = useMemo(() => buildSalesInvoiceUnitCandidates(records), [records]);
+
   const filteredRecords = useMemo(() => {
+    const unitIdSet = new Set(unitCandidates.map((candidate) => candidate.inventoryItemId));
     const limited = baseRecords
       .filter((record) => record.id.toLowerCase().includes(filters.id.toLowerCase()))
       .filter((record) => (record.maker ?? "").toLowerCase().includes(filters.maker.toLowerCase()))
       .filter((record) => (record.model ?? record.machineName ?? "").toLowerCase().includes(filters.model.toLowerCase()))
       .filter((record) => (record.buyerStaff ?? record.staff ?? "").toLowerCase().includes(filters.salesStaff.toLowerCase()))
       .filter((record) => (record.supplier ?? record.supplierCorporate ?? "").toLowerCase().includes(filters.customer.toLowerCase()))
+      .filter((record) => (!onlyWithUnit ? true : unitIdSet.has(record.id)))
       .filter((record) => {
         if (!filters.saleDate) return true;
         const saleDate = getSaleDate(record);
@@ -124,7 +130,7 @@ function SalesInvoiceCreateContent() {
 
     const limit = prefillIds.length > 0 ? limited.length : Number(filters.displayCount) || limited.length;
     return limited.slice(0, limit);
-  }, [baseRecords, filters, prefillIds.length]);
+  }, [baseRecords, filters, onlyWithUnit, prefillIds.length, unitCandidates]);
 
   const handleInputChange = (
     key: keyof typeof filters,
@@ -247,6 +253,8 @@ function SalesInvoiceCreateContent() {
                     placeholder="販売先"
                   />
                 </td>
+                <th className={`${labelCellClass} ${borderCell} w-28 px-3 py-2`}>Unit連携</th>
+                <td className={`${borderCell} px-3 py-2`}><label className="inline-flex items-center gap-2"><input type="checkbox" checked={onlyWithUnit} onChange={(e)=>setOnlyWithUnit(e.target.checked)} />Unitありのみ</label></td>
                 <th className={`${labelCellClass} ${borderCell} w-28 px-3 py-2`}>表示数</th>
                 <td className={`${borderCell} px-3 py-2`}>
                   <select

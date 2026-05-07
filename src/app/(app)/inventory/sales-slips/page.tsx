@@ -10,7 +10,7 @@ export default async function Page() {
   return (
     <div className='space-y-3 text-sm'>
       <div className='flex items-center justify-between'>
-        <h1 className='font-bold'>販売伝票一覧</h1>
+        <div><h1 className='font-bold'>販売伝票一覧（検証用）</h1><p className='text-xs text-amber-700'>本運用の販売伝票導線は /sales/sales-invoice を利用してください。</p></div>
         <Link href='/inventory/sales-slips/new' className='border border-slate-300 bg-blue-100 px-3 py-1'>新規作成</Link>
       </div>
       <table className='w-full border border-slate-400'>
