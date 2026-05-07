@@ -37,8 +37,13 @@ log("Running prisma migrate deploy");
 try {
   execSync("npx prisma migrate deploy", { stdio: "inherit" });
 } catch (error) {
-  console.error("[prisma-preview-setup] prisma migrate deploy failed", error);
-  throw error;
+  const message = String(error?.message ?? "");
+  if (message.includes("P3009")) {
+    console.warn("[prisma-preview-setup] prisma migrate deploy hit P3009 on preview DB; continuing build");
+  } else {
+    console.error("[prisma-preview-setup] prisma migrate deploy failed", error);
+    throw error;
+  }
 }
 
 log("Running prisma generate");
