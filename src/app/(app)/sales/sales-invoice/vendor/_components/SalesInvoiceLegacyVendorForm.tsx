@@ -528,6 +528,13 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
               .map((index) => row.serialRows?.[index])
               .filter((serialRow): serialRow is SerialInputRow => Boolean(serialRow))
           : undefined,
+      inventoryItemId: row.inventoryId,
+      inventoryUnitId: row.inventoryId && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `${row.inventoryId}#${row.selectedSerialIndexes[0]}` : undefined,
+      unitDisplayCode: row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `No.${row.selectedSerialIndexes[0] + 1}` : undefined,
+      unitRawQr: row.serialRows && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? row.serialRows[row.selectedSerialIndexes[0]]?.main : undefined,
+      unitMemo: row.serialRows && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `枠:${row.serialRows[row.selectedSerialIndexes[0]]?.frame ?? "-"} / 基盤:${row.serialRows[row.selectedSerialIndexes[0]]?.board ?? "-"}` : undefined,
+      unitStatus: "LINKED_DRAFT",
+      storageLocationName: row.note,
     }));
 
     const invoiceId = generateSalesInvoiceId("vendor");

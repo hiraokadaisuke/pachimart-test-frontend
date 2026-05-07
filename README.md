@@ -136,3 +136,13 @@ curl "https://<your-domain>/api/trades/in-progress/1"
   - 欠けている場合: `prisma migrate resolve --rolled-back 20260504091000_add_inventory_schedules`
   を選択してから `prisma migrate deploy` を実行します。
 - Preview DB と Production DB が別接続の場合は、**両方の environment で個別に実行**して failed migration の取り残しを防いでください。
+
+## 在庫・販売伝票の責務分離（2026-05方針）
+
+- `/sales` は商流・伝票（販売/購入）・請求・契約を主導線として扱います。
+- `/inventory` は倉庫・在庫・InventoryUnit・QR・入出庫を主導線として扱います。
+- 販売伝票の本導線は `/sales/sales-invoice` を利用します。
+- `/inventory/sales-slips` は検証用途（将来統合予定）として扱います。
+- InventoryUnit は `/sales/sales-invoice` の明細行に紐づけて保持します。
+- 販売伝票作成時点では InventoryMovement を作成しません。
+- InventoryMovement は出庫/発送完了時点で作成する方針です。

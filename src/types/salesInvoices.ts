@@ -16,6 +16,14 @@ export type SalesInvoiceItem = {
   note?: string;
   selectedSerialIndexes?: number[];
   selectedSerialRows?: SerialInputRow[];
+  inventoryUnitId?: string;
+  inventoryItemId?: string;
+  unitDisplayCode?: string;
+  unitRawQr?: string;
+  unitMemo?: string;
+  unitStatus?: string;
+  storageLocationName?: string;
+  purchaseUnitPrice?: number;
 };
 
 export type SalesInvoice = {
