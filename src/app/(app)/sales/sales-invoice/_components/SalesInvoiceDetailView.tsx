@@ -23,6 +23,10 @@ import {
 import type { InventoryRecord } from "@/lib/demo-data/demoInventory";
 import type { SalesInvoice, SalesInvoiceGroup } from "@/types/salesInvoices";
 import { PrintMenu } from "@/app/(app)/sales/_components/PrintMenu";
+import {
+  buildSalesInvoiceSupplementNote,
+  formatSalesInvoiceUnitSummary,
+} from "@/lib/sales/salesInvoiceUnitDisplay";
 
 const COMPANY_INFO = {
   name: "p-kanriclub",
@@ -1055,7 +1059,10 @@ export const renderVendorSheet = ({
                   items.map((item, index) => (
                     <tr key={item.itemId ?? `${item.productName}-${index}`} className="align-middle text-center">
                       <td className="border border-black px-2 py-2 text-left">{item.maker || ""}</td>
-                      <td className="border border-black px-2 py-2 text-left font-semibold">{item.productName || ""}</td>
+                      <td className="border border-black px-2 py-2 text-left font-semibold">
+                        <div>{item.productName || ""}</div>
+                        <div className="text-[10px] font-normal text-neutral-700">{formatSalesInvoiceUnitSummary(item) || "―"}</div>
+                      </td>
                       <td className="border border-black px-2 py-2 text-left">{item.type || ""}</td>
                       <td className="border border-black px-2 py-2 text-right">{formatNumber(item.quantity)}</td>
                       <td className="border border-black px-2 py-2 text-right">{formatNumber(item.unitPrice)}</td>
@@ -1063,7 +1070,7 @@ export const renderVendorSheet = ({
                       <td className="border border-black px-2 py-2">―</td>
                       <td className="border border-black px-2 py-2">―</td>
                       <td className="border border-black px-2 py-2">―</td>
-                      <td className="border border-black px-2 py-2 text-left">{item.note || ""}</td>
+                      <td className="border border-black px-2 py-2 text-left">{buildSalesInvoiceSupplementNote(item) || ""}</td>
                     </tr>
                   ))
                 )}
@@ -1297,7 +1304,10 @@ export const renderSalesContractInvoiceSheet = ({
               items.map((item, index) => (
                 <tr key={item.itemId ?? `${item.productName}-${index}`} className="align-middle text-center">
                   <td className="border border-black px-2 py-1 text-left">{item.maker || ""}</td>
-                  <td className="border border-black px-2 py-1 text-left font-semibold">{item.productName || ""}</td>
+                  <td className="border border-black px-2 py-1 text-left font-semibold">
+                    <div>{item.productName || ""}</div>
+                    <div className="text-[10px] font-normal text-neutral-700">{formatSalesInvoiceUnitSummary(item) || "―"}</div>
+                  </td>
                   <td className="border border-black px-2 py-1 text-left">{item.type || ""}</td>
                   <td className="border border-black px-2 py-1 text-right">{formatNumber(item.quantity)}</td>
                   <td className="border border-black px-2 py-1 text-right">{formatNumber(item.unitPrice)}</td>
@@ -1433,12 +1443,15 @@ const renderHallSheet = ({
               items.map((item, index) => (
                 <tr key={item.itemId ?? `${item.productName}-${index}`} className="align-middle text-center">
                   <td className="border border-black px-2 py-2 text-left">{item.maker || ""}</td>
-                  <td className="border border-black px-2 py-2 text-left font-semibold">{item.productName || ""}</td>
+                  <td className="border border-black px-2 py-2 text-left font-semibold">
+                    <div>{item.productName || ""}</div>
+                    <div className="text-[10px] font-normal text-neutral-700">{formatSalesInvoiceUnitSummary(item) || "―"}</div>
+                  </td>
                   <td className="border border-black px-2 py-2 text-left">{item.type || ""}</td>
                   <td className="border border-black px-2 py-2 text-right">{formatNumber(item.quantity)}</td>
                   <td className="border border-black px-2 py-2 text-right">{formatNumber(item.unitPrice)}</td>
                   <td className="border border-black px-2 py-2 text-right font-semibold">{formatNumber(item.amount)}</td>
-                  <td className="border border-black px-2 py-2 text-left">{item.note || ""}</td>
+                  <td className="border border-black px-2 py-2 text-left">{buildSalesInvoiceSupplementNote(item) || ""}</td>
                 </tr>
               ))
             )}
