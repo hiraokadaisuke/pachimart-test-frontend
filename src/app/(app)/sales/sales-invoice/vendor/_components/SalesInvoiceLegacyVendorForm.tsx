@@ -553,6 +553,13 @@ export function SalesInvoiceLegacyVendorForm({ inventories, selectedIds }: Props
       unitRawQr: row.selectedUnit?.rawQr ?? (row.serialRows && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? row.serialRows[row.selectedSerialIndexes[0]]?.main : undefined),
       unitMemo: row.selectedUnit?.memo ?? (row.serialRows && row.selectedSerialIndexes && row.selectedSerialIndexes.length > 0 ? `枠:${row.serialRows[row.selectedSerialIndexes[0]]?.frame ?? "-"} / 基盤:${row.serialRows[row.selectedSerialIndexes[0]]?.board ?? "-"}` : undefined),
       unitStatus: row.selectedUnit?.status ?? "LINKED_DRAFT",
+      unitBodySerialNumber: row.selectedUnit?.bodySerialNumber ?? undefined,
+      unitFrameSerialNumber: row.selectedUnit?.frameSerialNumber ?? undefined,
+      unitMainBoardSerialNumber: row.selectedUnit?.mainBoardSerialNumber ?? undefined,
+      unitOperationCheckStatus: row.selectedUnit?.operationCheckStatus ?? undefined,
+      unitGlassStatus: row.selectedUnit?.glassStatus ?? undefined,
+      unitNailSheetStatus: row.selectedUnit?.nailSheetStatus ?? undefined,
+      unitInspectionStatus: row.selectedUnit?.inspectionStatus ?? undefined,
       storageLocationName: row.selectedUnit?.storageLocationName ?? row.note,
       purchaseUnitPrice: row.selectedUnit?.purchaseUnitPrice ?? undefined,
     }));

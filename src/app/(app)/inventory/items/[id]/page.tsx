@@ -248,8 +248,12 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
             <div key={unit.id} className="rounded border p-3 space-y-2">
               <p>displayCode: {unit.displayCode ?? "-"}</p>
               <p>rawQr: {unit.rawQr ?? "-"}</p>
+              <p>本体番号: {unit.bodySerialNumber ?? "-"}</p>
+              <p>枠番号: {unit.frameSerialNumber ?? "-"}</p>
+              <p>主基板番号: {unit.mainBoardSerialNumber ?? "-"}</p>
               <p>parsedQr: {unit.parsedQr ? JSON.stringify(unit.parsedQr) : "-"}</p>
               <p>codeType: {unit.codeType ?? "-"} / status: {unit.status}</p>
+              <p>動確:{unit.operationCheckStatus ?? "-"} / ガラス:{unit.glassStatus ?? "-"} / 釘シート:{unit.nailSheetStatus ?? "-"} / 検品:{unit.inspectionStatus ?? "-"}</p>
               <p>保管場所: {item.storageLocation?.name ?? "-"}</p>
               <p>入庫予定: {unit.inboundScheduleId ?? "-"} / 発送予定: {unit.outboundScheduleId ?? "-"}</p>
               <p>確定: {unit.confirmedAt ? `確定済み (${unit.confirmedAt.toISOString().slice(0,10)})` : "仮登録"} {unit.status === "CANCELED" ? " / 取消" : ""}</p>
@@ -258,11 +262,18 @@ export default async function InventoryDetailPage({ params }: { params: { id: st
                 <input type="hidden" name="id" value={unit.id} />
                 <input name="displayCode" defaultValue={unit.displayCode ?? ""} className="rounded border p-1" />
                 <input name="rawQr" defaultValue={unit.rawQr ?? ""} className="rounded border p-1" />
+                <input name="bodySerialNumber" defaultValue={unit.bodySerialNumber ?? ""} className="rounded border p-1" placeholder="本体番号" />
+                <input name="frameSerialNumber" defaultValue={unit.frameSerialNumber ?? ""} className="rounded border p-1" placeholder="枠番号" />
+                <input name="mainBoardSerialNumber" defaultValue={unit.mainBoardSerialNumber ?? ""} className="rounded border p-1" placeholder="主基板番号" />
                 <select name="codeType" defaultValue={unit.codeType ?? "UNKNOWN"} className="rounded border p-1">
                   <option value="UNKNOWN">UNKNOWN</option><option value="MAIN_BOARD">MAIN_BOARD</option><option value="CERTIFICATE">CERTIFICATE</option><option value="BODY">BODY</option><option value="FRAME">FRAME</option><option value="BOARD">BOARD</option><option value="OTHER">OTHER</option>
                 </select>
                 <input name="inboundScheduleId" defaultValue={unit.inboundScheduleId ?? ""} placeholder="入庫予定ID" className="rounded border p-1" />
                 <input name="outboundScheduleId" defaultValue={unit.outboundScheduleId ?? ""} placeholder="発送予定ID" className="rounded border p-1" />
+                <select name="operationCheckStatus" defaultValue={unit.operationCheckStatus ?? "NOT_CHECKED"} className="rounded border p-1"><option value="NOT_CHECKED">動確未</option><option value="OK">動確OK</option><option value="NG">動確NG</option><option value="NEEDS_RECHECK">再確認</option></select>
+                <select name="glassStatus" defaultValue={unit.glassStatus ?? "UNKNOWN"} className="rounded border p-1"><option value="UNKNOWN">ガラス未</option><option value="OK">OK</option><option value="NG">NG</option><option value="MISSING">欠品</option></select>
+                <select name="nailSheetStatus" defaultValue={unit.nailSheetStatus ?? "UNKNOWN"} className="rounded border p-1"><option value="UNKNOWN">釘シート未</option><option value="PRESENT">有</option><option value="MISSING">無</option><option value="NOT_REQUIRED">不要</option></select>
+                <select name="inspectionStatus" defaultValue={unit.inspectionStatus ?? "NOT_INSPECTED"} className="rounded border p-1"><option value="NOT_INSPECTED">検品未</option><option value="INSPECTED">検品済</option><option value="ISSUE_FOUND">課題あり</option></select>
                 <input name="memo" defaultValue={unit.memo ?? ""} className="rounded border p-1" />
                 <Button type="submit">編集</Button>
               </form>
