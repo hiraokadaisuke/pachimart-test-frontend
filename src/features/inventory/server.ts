@@ -588,7 +588,7 @@ export async function getInboundSchedules() {
   const ownerUserId = await resolveCurrentUserId();
   return prismaClient.inboundSchedule.findMany({
     where: { ownerUserId },
-    include: { inventoryItem: true, destinationLocation: true },
+    include: { inventoryItem: true, destinationLocation: true, inventoryUnits: true },
     orderBy: { expectedDate: "asc" },
   });
 }

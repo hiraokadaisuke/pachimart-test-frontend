@@ -76,7 +76,7 @@ export default async function InboundSchedulesPage({
         <table className="min-w-[980px] w-full text-sm">
           <thead className="bg-slate-50">
             <tr>
-              {["入庫予定ID", "入庫予定日", "取引先", "種別", "メーカー", "機種名", "台数", "入庫先", "ステータス", "操作"].map((h) => (
+              {["入庫予定日", "ステータス", "由来", "取引先", "機種名", "台数", "進捗", "入庫先", "備考", "操作"].map((h) => (
                 <th key={h} className="px-3 py-2 text-left">{h}</th>
               ))}
             </tr>
@@ -88,13 +88,19 @@ export default async function InboundSchedulesPage({
               const isOpenSchedule = s.status !== "RECEIVED" && s.status !== "CANCELED";
               const needsDestinationSetup = destinationMissing && isOpenSchedule;
               return <tr key={s.id} className="border-t">
-                <td className="px-3 py-2">{s.id}</td>
                 <td className="px-3 py-2">{s.expectedDate.toISOString().slice(0, 10)}</td>
+                <td className="px-3 py-2">{s.note ?? "-"}</td>
+                <td className="px-3 py-2"><InventoryStatusBadge status={inboundStatusLabel(s.status)} /></td>
+                <td className="px-3 py-2">{s.sourceType ?? "MANUAL"}</td>
                 <td className="px-3 py-2">{s.supplierName ?? "-"}</td>
-                <td className="px-3 py-2">{inventoryItemTypeLabel(s.itemType)}</td>
-                <td className="px-3 py-2">{s.makerNameSnapshot ?? "-"}</td>
                 <td className="px-3 py-2">{s.modelNameSnapshot}</td>
                 <td className="px-3 py-2">{formatQuantity(s.quantity)}</td>
+                <td className="px-3 py-2 text-xs">
+                  <div>Unit {s.inventoryUnits.length}/{s.quantity}</div>
+                  <div>QR {s.inventoryUnits.filter((u)=>u.rawQr).length}/{s.quantity}</div>
+                  <div>番号 {s.inventoryUnits.filter((u)=>u.displayCode).length}/{s.quantity}</div>
+                  <div>動確 {s.inventoryUnits.filter((u)=>(u.memo??"").includes("動確済")).length}/{s.quantity}</div>
+                </td>
                 <td className="px-3 py-2">
                   <div className="space-y-1">
                     <span>{s.destinationLocation?.name ?? "-"}</span>
@@ -114,7 +120,6 @@ export default async function InboundSchedulesPage({
                 </td>
                 <td className="px-3 py-2">
                   <div className="space-y-1">
-                    <InventoryStatusBadge status={inboundStatusLabel(s.status)} />
                     {autoCreated.isAutoCreated ? (
                       <div className="space-y-1">
                         <Badge variant="default">パチマート購入から自動作成</Badge>
@@ -139,6 +144,8 @@ export default async function InboundSchedulesPage({
                     <div className="flex gap-2">
                       <Link href={`/inventory/inbound/${s.id}/edit`} className="text-xs underline">編集</Link>
                       {needsDestinationSetup ? <span className="text-xs text-red-700">入庫先未設定のため完了できません</span> : null}
+                      <Link href={`/inventory/inbounds/${s.id}`} className="text-xs underline">詳細</Link>
+                      <Link href={`/inventory/inbounds/${s.id}/work`} className="text-xs underline">作業</Link>
                       <form action={async () => {"use server"; await cancelInboundSchedule(s.id); redirect("/inventory/inbound");}}>
                         <Button type="submit" variant="outline">取消する</Button>
                       </form>
