@@ -20,20 +20,20 @@ export default async function OutboundSchedulesPage() {
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-8 md:px-6">
       <InventoryTabs />
-      <h1 className="text-2xl font-bold">発送予定</h1>
+      <h1 className="text-2xl font-bold">出庫予定</h1>
       <div className="mt-4">
-        <Link href="/inventory/outbound/new" className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800">発送予定を登録</Link>
+        <Link href="/inventory/outbound/new" className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800">出庫予定を登録</Link>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
-        <InventorySummaryCard label="発送予定件数" value={`${schedules.length}件`} />
+        <InventorySummaryCard label="出庫予定件数" value={`${schedules.length}件`} />
         <InventorySummaryCard label="ピッキング中" value={`${summary.PICKING?.count ?? 0}件`} />
-        <InventorySummaryCard label="発送準備中" value={`${summary.READY_TO_SHIP?.count ?? 0}件`} />
+        <InventorySummaryCard label="出庫準備中" value={`${summary.READY_TO_SHIP?.count ?? 0}件`} />
       </div>
       <div className="mt-4 overflow-x-auto rounded-lg border bg-white">
         <table className="min-w-[1100px] w-full text-sm">
           <thead className="bg-slate-50">
             <tr>
-              {["予定日", "ステータス", "由来", "販売伝票ID", "販売先/買主", "機種名", "台数", "Unit", "QR", "保管先", "発送方法", "運送会社", "備考", "リンク", "操作"].map((h) => (
+              {["予定日", "ステータス", "由来", "販売伝票ID", "販売先/買主", "機種名", "台数", "Unit番号", "QR(補助)", "保管先", "出庫方法", "運送会社", "備考", "リンク", "操作"].map((h) => (
                 <th key={h} className="px-3 py-2 text-left">{h}</th>
               ))}
             </tr>
@@ -52,7 +52,7 @@ export default async function OutboundSchedulesPage() {
                   <td className="px-2 py-1">{s.buyerName ?? "-"}</td>
                   <td className="px-2 py-1">{s.modelNameSnapshot}</td>
                   <td className="px-2 py-1">{formatQuantity(s.quantity)}</td>
-                  <td className="px-2 py-1">{s.inventoryUnits[0]?.displayCode ?? s.inventoryUnits[0]?.id ?? "-"}</td>
+                  <td className="px-2 py-1">{s.inventoryUnits[0]?.displayCode ?? "-"}</td>
                   <td className="px-2 py-1">{s.inventoryUnits[0]?.rawQr ?? "-"}</td>
                   <td className="px-2 py-1">{s.originLocation?.name ?? s.inventoryUnits[0]?.storageLocationId ?? "-"}</td>
                   <td className="px-2 py-1">{shippingMethodLabel(s.shippingMethod)}</td>
@@ -65,7 +65,7 @@ export default async function OutboundSchedulesPage() {
                     ) : s.status === "SHIPPED" || s.status === "DELIVERED" ? (
                       <div className="flex items-center gap-2">
                         <form action={async () => {"use server"; await cancelCompletedOutboundSchedule(s.id); redirect("/inventory/outbound");}}>
-                          <Button type="submit" variant="outline">発送済みを取消</Button>
+                          <Button type="submit" variant="outline">出庫済みを取消</Button>
                         </form>
                         <span className="text-xs text-amber-700">在庫を戻します</span>
                       </div>
@@ -76,7 +76,7 @@ export default async function OutboundSchedulesPage() {
                           <Button type="submit" variant="outline">取消する</Button>
                         </form>
                         <form action={async () => {"use server"; await completeOutboundSchedule(s.id); redirect("/inventory/outbound");}}>
-                          <Button type="submit" disabled={missingLink}>発送完了</Button>
+                          <Button type="submit" disabled={missingLink}>出庫完了</Button>
                         </form>
                         {missingLink ? <span className="text-xs text-amber-700">紐付け在庫なし</span> : null}
                       </div>
@@ -85,7 +85,7 @@ export default async function OutboundSchedulesPage() {
                 </tr>
               );
             })}
-          </tbody>
+          {schedules.length===0 ? <tr><td colSpan={15} className="px-3 py-8 text-center text-slate-500">出庫予定はありません。販売伝票から出庫予定を作成できます。</td></tr> : null}</tbody>
         </table>
       </div>
     </div>
