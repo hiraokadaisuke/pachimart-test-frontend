@@ -139,13 +139,13 @@ export function InventoryUnitScanForm({ scanOptions, parseAction, createAction, 
       <select value={codeType} onChange={(e) => setCodeType(e.target.value)} className="w-full rounded border p-2"><option value="UNKNOWN">UNKNOWN</option><option value="BODY">BODY</option><option value="BOARD">BOARD</option></select>
       <select value={inventoryItemId} onChange={(e) => setInventoryItemId(e.target.value)} className="w-full rounded border p-2">{scanOptions.recentItems.map((i)=><option key={i.id} value={i.id}>{i.modelNameSnapshot} / {i.maker?.name ?? "メーカー未設定"} / units:{i.unitCount}</option>)}</select>
       <select value={inboundScheduleId} onChange={(e) => setInboundScheduleId(e.target.value)} className="w-full rounded border p-2"><option value="">入庫予定を選択</option>{scanOptions.inboundSchedules.map((s)=><option key={s.id} value={s.id}>{s.expectedDate?.toISOString().slice(0,10) ?? "-"} / {s.inventoryItem?.modelNameSnapshot ?? s.modelNameSnapshot} / {s.quantity}台 / 登録:{s.registeredUnitCount} / {s.status}</option>)}</select>
-      <select value={outboundScheduleId} onChange={(e) => setOutboundScheduleId(e.target.value)} className="w-full rounded border p-2"><option value="">発送予定を選択</option>{scanOptions.outboundSchedules.map((s)=><option key={s.id} value={s.id}>{s.expectedDate?.toISOString().slice(0,10) ?? "-"} / {s.inventoryItem?.modelNameSnapshot ?? s.modelNameSnapshot} / {s.quantity}台 / 選択:{s.selectedUnitCount} / {s.status}</option>)}</select>
+      <select value={outboundScheduleId} onChange={(e) => setOutboundScheduleId(e.target.value)} className="w-full rounded border p-2"><option value="">出庫予定を選択</option>{scanOptions.outboundSchedules.map((s)=><option key={s.id} value={s.id}>{s.expectedDate?.toISOString().slice(0,10) ?? "-"} / {s.inventoryItem?.modelNameSnapshot ?? s.modelNameSnapshot} / {s.quantity}台 / 選択:{s.selectedUnitCount} / {s.status}</option>)}</select>
       <textarea value={memo} onChange={(e) => setMemo(e.target.value)} placeholder="memo" className="w-full rounded border p-2" />
       <div className="grid grid-cols-2 gap-2">
         <button type="button" onClick={() => void onCreate(false)} className="rounded bg-blue-600 px-4 py-3 text-white">登録</button>
         <button type="button" onClick={() => void onCreate(true)} className="rounded bg-amber-600 px-4 py-3 text-white">仮登録</button>
       </div>
-      <button type="button" onClick={() => void onLinkOutbound()} className="w-full rounded bg-emerald-700 px-4 py-3 text-white">発送予定に照合・紐づけ</button>
+      <button type="button" onClick={() => void onLinkOutbound()} className="w-full rounded bg-emerald-700 px-4 py-3 text-white">出庫予定に照合・紐づけ</button>
     </div>
 
     {parsed ? <div className="rounded border p-2 text-sm"><p>推定 displayCode 候補: {parsed.parsedDisplayCodeCandidate ?? "-"}</p><p>confidence/警告: {parsed.warning ?? "-"}</p><pre className="overflow-auto text-xs">{JSON.stringify(parsed.parsedQr ?? {}, null, 2)}</pre></div> : null}
@@ -153,6 +153,6 @@ export function InventoryUnitScanForm({ scanOptions, parseAction, createAction, 
 
     <div className="rounded border p-2 text-sm"><p>直近読み取り履歴</p>{scanHistory.map((h,idx)=><p key={idx}>{h}</p>)}</div>
     <div className="rounded border p-2 text-sm"><p>直近登録個体</p>{recentUnits.map((u, idx) => <p key={`${u.unitId}-${idx}`}>{u.displayCode} / {u.at}</p>)}</div>
-    <div className="text-xs text-gray-600">入庫予定件数: {scanOptions.inboundSchedules.length} / 発送予定件数: {scanOptions.outboundSchedules.length} / 登録済み件数: {registeredCount}</div>
+    <div className="text-xs text-gray-600">入庫予定件数: {scanOptions.inboundSchedules.length} / 出庫予定件数: {scanOptions.outboundSchedules.length} / 登録済み件数: {registeredCount}</div>
   </div>;
 }

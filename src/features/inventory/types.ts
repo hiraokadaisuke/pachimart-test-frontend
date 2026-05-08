@@ -1,4 +1,4 @@
-export type InventoryStatus = "在庫" | "商談中" | "発送予定" | "売却済";
+export type InventoryStatus = "在庫" | "商談中" | "出庫予定" | "売却済";
 export type ListingStatus = "未出品" | "出品中" | "成約済";
 
 export type InventoryItem = {

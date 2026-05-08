@@ -7,7 +7,7 @@ export const inventoryItems: InventoryItem[] = [
   { id: "INV-0001", type: "パチンコ", manufacturer: "SANKYO", modelName: "eフィーバーからくりサーカス2", frameColor: "赤", quantity: 3, storageLocation: "名古屋倉庫", purchasePrice: 180000, plannedSalePrice: 230000, status: "在庫", listingStatus: "未出品", notes: "フレーム擦り傷軽微。" },
   { id: "INV-0002", type: "パチスロ", manufacturer: "北電子", modelName: "SアイムジャグラーEX", frameColor: "-", quantity: 10, storageLocation: "大阪倉庫", purchasePrice: 80000, plannedSalePrice: 105000, status: "在庫", listingStatus: "出品中", notes: "ロット在庫。" },
   { id: "INV-0003", type: "パチンコ", manufacturer: "三洋", modelName: "P大海物語5", frameColor: "青", quantity: 5, storageLocation: "東京倉庫", purchasePrice: 120000, plannedSalePrice: 158000, status: "商談中", listingStatus: "出品中", notes: "5/3から商談中。" },
-  { id: "INV-0004", type: "パチスロ", manufacturer: "山佐", modelName: "LモンキーターンV", frameColor: "-", quantity: 2, storageLocation: "名古屋倉庫", purchasePrice: 350000, plannedSalePrice: 420000, status: "発送予定", listingStatus: "成約済", notes: "発送調整中。" },
+  { id: "INV-0004", type: "パチスロ", manufacturer: "山佐", modelName: "LモンキーターンV", frameColor: "-", quantity: 2, storageLocation: "名古屋倉庫", purchasePrice: 350000, plannedSalePrice: 420000, status: "出庫予定", listingStatus: "成約済", notes: "発送調整中。" },
   { id: "INV-0005", type: "パチンコ", manufacturer: "京楽", modelName: "P仮面ライダー電王", frameColor: "黒", quantity: 4, storageLocation: "福岡倉庫", purchasePrice: 140000, plannedSalePrice: 182000, status: "在庫", listingStatus: "未出品", notes: "整備済。" },
   { id: "INV-0006", type: "パチスロ", manufacturer: "大都技研", modelName: "L押忍!番長4", frameColor: "-", quantity: 3, storageLocation: "東京倉庫", purchasePrice: 260000, plannedSalePrice: 320000, status: "商談中", listingStatus: "出品中", notes: "見積提出済。" },
 ];

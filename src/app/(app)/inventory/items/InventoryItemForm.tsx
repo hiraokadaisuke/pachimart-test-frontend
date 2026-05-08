@@ -6,7 +6,7 @@ import { Select } from "@/components/ui/select";
 
 const itemTypes = ["パチンコ", "パチスロ"];
 const ownershipTypes = ["在庫", "設置", "非在庫"];
-const inventoryStatuses = ["在庫中", "商談中", "引当済", "発送予定", "売却済", "設置中", "非在庫"];
+const inventoryStatuses = ["在庫中", "商談中", "引当済", "出庫予定", "売却済", "設置中", "非在庫"];
 const listingStatuses = ["未出品", "出品中", "商談中", "成約済", "停止中", "終了"];
 
 const inventoryStatusValueMap: Record<InventoryStatus, string> = {
@@ -14,7 +14,7 @@ const inventoryStatusValueMap: Record<InventoryStatus, string> = {
   IN_STOCK: "在庫中",
   NEGOTIATING: "商談中",
   RESERVED: "引当済",
-  OUTBOUND_SCHEDULED: "発送予定",
+  OUTBOUND_SCHEDULED: "出庫予定",
   SOLD: "売却済",
   INSTALLED: "設置中",
   NON_STOCK: "非在庫",
