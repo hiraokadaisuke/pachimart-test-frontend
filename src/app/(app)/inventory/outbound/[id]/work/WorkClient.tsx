@@ -11,6 +11,6 @@ export function WorkClient({ unitDisplayCode, unitRawQr, canComplete, completeAc
   return <div className="space-y-2 rounded border bg-white p-3 text-sm"><input value={displayCodeInput} onChange={(e)=>setDisplayCodeInput(e.target.value)} placeholder="displayCodeを入力" className="w-full rounded border p-2" />
   <input value={rawQrInput} onChange={(e)=>setRawQrInput(e.target.value)} placeholder="rawQrを入力" className="w-full rounded border p-2" />
   <p>照合結果: {check.result}</p>{check.warning ? <p className="text-amber-700">{check.warning}</p> : null}
-  <form action={completeAction}><button disabled={!canSubmit} className="rounded bg-slate-900 px-3 py-2 text-white disabled:bg-slate-400">出庫完了</button></form>
+  <form action={completeAction}><button disabled={!canSubmit} className="rounded bg-emerald-700 px-3 py-2 text-white disabled:bg-slate-400">出庫完了</button></form>
   </div>;
 }

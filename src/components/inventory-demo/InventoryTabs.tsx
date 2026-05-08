@@ -15,12 +15,14 @@ const tabs = [
 export function InventoryTabs() {
   const pathname = usePathname();
   return (
-    <div className="mb-6 flex flex-wrap gap-2">
+    <div className="mb-4 overflow-x-auto border-b border-slate-300 pb-2">
+      <div className="flex min-w-max gap-2">
       {tabs.map((tab) => (
-        <Link key={tab.href} href={tab.href} className={`rounded-md border px-3 py-2 text-sm ${pathname === tab.href ? "bg-slate-900 text-white" : "bg-white text-slate-700"}`}>
+        <Link key={tab.href} href={tab.href} className={`rounded-sm border px-3 py-1.5 text-sm font-medium ${pathname === tab.href ? "border-emerald-700 bg-emerald-700 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"}`}>
           {tab.label}
         </Link>
       ))}
+      </div>
     </div>
   );
 }

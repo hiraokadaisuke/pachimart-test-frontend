@@ -36,7 +36,7 @@ export default async function InboundSchedulesPage({
       : schedules;
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
+    <div className="mx-auto max-w-[1400px] px-4 py-8 md:px-6">
       <InventoryTabs />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h1 className="text-2xl font-bold">入庫予定</h1>
@@ -46,7 +46,7 @@ export default async function InboundSchedulesPage({
         <Link
           href="/inventory/inbound"
           className={`rounded-md border px-3 py-1.5 text-sm ${
-            filter === "all" ? "border-slate-900 bg-slate-900 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            filter === "all" ? "border-slate-900 bg-emerald-700 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
           }`}
         >
           全て
@@ -55,15 +55,15 @@ export default async function InboundSchedulesPage({
           href="/inventory/inbound?filter=destination-missing"
           className={`rounded-md border px-3 py-1.5 text-sm ${
             filter === "destination-missing"
-              ? "border-slate-900 bg-slate-900 text-white"
-              : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+              ? "border-slate-900 bg-emerald-700 text-white"
+              : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
           }`}
         >
           入庫先未設定のみ（{destinationMissingCount}）
         </Link>
       </div>
       <div className="mt-4">
-        <Link href="/inventory/inbound/new" className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800">
+        <Link href="/inventory/inbound/new" className="inline-flex h-10 items-center rounded-md bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800">
           入庫予定を登録
         </Link>
       </div>
@@ -72,9 +72,9 @@ export default async function InboundSchedulesPage({
         <InventorySummaryCard label="入庫待ち" value={`${summary.ARRIVAL_WAITING?.count ?? 0}件`} />
         <InventorySummaryCard label="一部入庫" value={`${summary.PARTIALLY_RECEIVED?.count ?? 0}件`} />
       </div>
-      <div className="mt-4 overflow-x-auto rounded-lg border bg-white">
+      <div className="mt-4 overflow-x-auto rounded-md border border-slate-300 bg-white">
         <table className="min-w-[980px] w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-100">
             <tr>
               {["入庫予定日", "ステータス", "由来", "取引先", "機種名", "台数", "進捗", "入庫先", "備考", "操作"].map((h) => (
                 <th key={h} className="px-3 py-2 text-left">{h}</th>
@@ -87,7 +87,7 @@ export default async function InboundSchedulesPage({
               const destinationMissing = !s.destinationLocationId;
               const isOpenSchedule = s.status !== "RECEIVED" && s.status !== "CANCELED";
               const needsDestinationSetup = destinationMissing && isOpenSchedule;
-              return <tr key={s.id} className="border-t">
+              return <tr key={s.id} className="border-t border-slate-200">
                 <td className="px-3 py-2">{s.expectedDate.toISOString().slice(0, 10)}</td>
                 <td className="px-3 py-2">{s.note ?? "-"}</td>
                 <td className="px-3 py-2"><InventoryStatusBadge status={inboundStatusLabel(s.status)} /></td>
