@@ -605,6 +605,16 @@ export async function getInboundSchedules() {
 
 export async function getOutboundSchedules() {
   const ownerUserId = await resolveCurrentUserId();
+  type OutboundScheduleWithUnits = Prisma.OutboundScheduleGetPayload<{
+    include: { inventoryItem: true; originLocation: true; inventoryUnits: true };
+  }>;
+  type OutboundScheduleWithoutUnits = Prisma.OutboundScheduleGetPayload<{
+    include: { inventoryItem: true; originLocation: true };
+  }>;
+
+  const withEmptyUnits = (rows: OutboundScheduleWithoutUnits[]): OutboundScheduleWithUnits[] =>
+    rows.map((row) => ({ ...row, inventoryUnits: [] }));
+
   try {
     return await prismaClient.outboundSchedule.findMany({
       where: { ownerUserId },
@@ -619,7 +629,7 @@ export async function getOutboundSchedules() {
         include: { inventoryItem: true, originLocation: true },
         orderBy: { expectedDate: "asc" },
       });
-      return rows.map((row) => ({ ...row, inventoryUnits: [] }));
+      return withEmptyUnits(rows);
     }
     throw error;
   }
@@ -632,13 +642,23 @@ export async function getInboundScheduleById(id: string) {
 
 export async function getOutboundScheduleById(id: string) {
   const ownerUserId = await resolveCurrentUserId();
+  type OutboundScheduleWithUnits = Prisma.OutboundScheduleGetPayload<{
+    include: { inventoryItem: true; originLocation: true; inventoryUnits: true };
+  }>;
+  type OutboundScheduleWithoutUnits = Prisma.OutboundScheduleGetPayload<{
+    include: { inventoryItem: true; originLocation: true };
+  }>;
+
+  const withEmptyUnits = (row: OutboundScheduleWithoutUnits | null): OutboundScheduleWithUnits | null =>
+    row ? { ...row, inventoryUnits: [] } : null;
+
   try {
     return await prismaClient.outboundSchedule.findFirst({ where: { id, ownerUserId }, include: { inventoryItem: true, originLocation: true, inventoryUnits: true } });
   } catch (error) {
     if (error instanceof Prisma.PrismaClientKnownRequestError && ["P2021", "P2022", "P2023", "P3009"].includes(error.code)) {
       console.error("[inventory/outbound] fallback by id without inventoryUnits include", { id, code: error.code, message: error.message });
       const row = await prismaClient.outboundSchedule.findFirst({ where: { id, ownerUserId }, include: { inventoryItem: true, originLocation: true } });
-      return row ? { ...row, inventoryUnits: [] } : null;
+      return withEmptyUnits(row);
     }
     throw error;
   }
