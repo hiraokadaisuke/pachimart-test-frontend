@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function InventoryLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-screen flex-col bg-slate-100">
+    <div className="flex min-h-screen flex-col bg-[#f6f8fb]">
       <Suspense
         fallback={
           <div className="w-full border-b border-slate-200 bg-white">

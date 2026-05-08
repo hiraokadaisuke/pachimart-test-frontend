@@ -31,16 +31,16 @@ export default async function OutboundSchedulesPage() {
       <InventoryTabs />
       <h1 className="text-2xl font-bold">出庫予定</h1>
       <div className="mt-4">
-        <Link href="/inventory/outbound/new" className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white hover:bg-slate-800">出庫予定を登録</Link>
+        <Link href="/inventory/outbound/new" className="inline-flex h-10 items-center rounded-md bg-emerald-700 px-4 text-sm font-medium text-white hover:bg-emerald-800">出庫予定を登録</Link>
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         <InventorySummaryCard label="出庫予定件数" value={`${schedules.length}件`} />
         <InventorySummaryCard label="ピッキング中" value={`${summary.PICKING?.count ?? 0}件`} />
         <InventorySummaryCard label="出庫準備中" value={`${summary.READY_TO_SHIP?.count ?? 0}件`} />
       </div>
-      <div className="mt-4 overflow-x-auto rounded-lg border bg-white">
+      <div className="mt-4 overflow-x-auto rounded-md border border-slate-300 bg-white">
         <table className="min-w-[1100px] w-full text-sm">
-          <thead className="bg-slate-50">
+          <thead className="bg-slate-100">
             <tr>
               {["予定日", "ステータス", "由来", "販売伝票ID", "販売先/買主", "機種名", "台数", "Unit番号", "QR(補助)", "保管先", "出庫方法", "運送会社", "備考", "リンク", "操作"].map((h) => (
                 <th key={h} className="px-3 py-2 text-left">{h}</th>
@@ -53,7 +53,7 @@ export default async function OutboundSchedulesPage() {
               const salesDerived = s.sourceId?.startsWith("SV-") || s.sourceId?.startsWith("SH-");
               const autoCreated = getAutoCreatedOutboundInfo({ sourceType: s.sourceType, sourceId: s.sourceId, note: s.note });
               return (
-                <tr key={s.id} className="border-t">
+                <tr key={s.id} className="border-t border-slate-200">
                   <td className="px-2 py-1 whitespace-nowrap">{toDate(s.expectedDate)}</td>
                   <td className="px-2 py-1"><InventoryStatusBadge status={toStatusLabel(s.status)} /></td>
                   <td className="px-2 py-1 text-xs">{salesDerived ? "販売伝票" : autoCreated.isAutoCreated ? "取引" : "手動"}</td>
