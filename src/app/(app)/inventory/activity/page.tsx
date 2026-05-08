@@ -50,7 +50,7 @@ export default async function InventoryActivityPage({
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-6">
       <InventoryTabs />
       <h1 className="text-3xl font-bold">在庫の動き</h1>
-      <p className="mt-2 text-slate-600">入庫予定・発送予定・入出庫実績・取消履歴を時系列で確認できます</p>
+      <p className="mt-2 text-slate-600">入庫予定・出庫予定・入出庫実績・取消履歴を時系列で確認できます</p>
 
       <div className="mt-6 rounded-lg border bg-white p-4">
         <p className="text-sm font-semibold text-slate-900">イベント種別</p>

@@ -97,7 +97,7 @@ export async function createOutboundScheduleFromDealing(dealingId: number | stri
       `dealingId: ${dealing.id}`,
       `exhibitId: ${exhibit.id}`,
     ];
-    if (desiredDateMissing) noteParts.push("発送予定日未確定(暫定+7日)");
+    if (desiredDateMissing) noteParts.push("出庫予定日未確定(暫定+7日)");
     if (quantity > inventoryItem.quantityOnHand) noteParts.push("注意: 出品数量が在庫数を超えています");
 
     await prismaClient.outboundSchedule.create({

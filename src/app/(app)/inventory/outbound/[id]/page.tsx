@@ -13,7 +13,7 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
   const sourceLabel = schedule.sourceId?.startsWith("SV-") || schedule.sourceId?.startsWith("SH-") ? "販売伝票由来" : schedule.sourceType ?? "MANUAL";
   const unit = schedule.inventoryUnits[0] ?? null;
 
-  return <div className="mx-auto max-w-5xl px-4 py-6 space-y-4"><InventoryTabs /><h1 className="text-2xl font-bold">発送予定詳細</h1>
+  return <div className="mx-auto max-w-5xl px-4 py-6 space-y-4"><InventoryTabs /><h1 className="text-2xl font-bold">出庫予定詳細</h1>
     <div className="rounded border bg-white p-4 text-sm grid gap-2 md:grid-cols-2">
       <p>予定日: {schedule.expectedDate.toISOString().slice(0,10)}</p><p>ステータス: {outboundStatusLabel(schedule.status)}</p>
       <p>販売先/買主: {schedule.buyerName ?? "-"}</p><p>発送方法: {shippingMethodLabel(schedule.shippingMethod)}</p>

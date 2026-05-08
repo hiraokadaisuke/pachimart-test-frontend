@@ -23,7 +23,7 @@ export const inventoryStatusLabel = (value: InventoryStatus) => {
     IN_STOCK: "在庫",
     NEGOTIATING: "商談中",
     RESERVED: "引当済",
-    OUTBOUND_SCHEDULED: "発送予定",
+    OUTBOUND_SCHEDULED: "出庫予定",
     SOLD: "売却済",
     INSTALLED: "設置済",
     NON_STOCK: "非在庫",

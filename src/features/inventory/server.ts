@@ -251,7 +251,7 @@ export async function validateUnitScheduleLink(input: { ownerUserId: string; uni
   ]);
   if (!unit || !outbound) throw new Error("紐づけ対象が見つかりません。");
   if (["SHIPPED", "CANCELED"].includes(unit.status)) throw new Error("発送済み/取消済み個体は紐づけ不可です。");
-  if (unit.inventoryItemId !== outbound.inventoryItemId) throw new Error("別InventoryItemの個体は発送予定へ紐づけできません。");
+  if (unit.inventoryItemId !== outbound.inventoryItemId) throw new Error("別InventoryItemの個体は出庫予定へ紐づけできません。");
   const linkedCount = await prismaClient.inventoryUnit.count({ where: { ownerUserId: input.ownerUserId, outboundScheduleId: outbound.id } });
   return { unit, outbound, overCapacity: linkedCount >= outbound.quantity, linkedCount };
 }
@@ -331,7 +331,7 @@ export async function linkInventoryUnitToInbound(formData: FormData) {
 export async function linkInventoryUnitToOutbound(formData: FormData) {
   const ownerUserId = await resolveCurrentUserId();
   const outboundScheduleId = String(formData.get("outboundScheduleId") ?? "").trim();
-  if (!outboundScheduleId) throw new Error("発送予定IDは必須です。");
+  if (!outboundScheduleId) throw new Error("出庫予定IDは必須です。");
   const rawQr = String(formData.get("rawQr") ?? "").trim() || null;
   const displayCode = String(formData.get("displayCode") ?? "").trim() || null;
   const unit = await findInventoryUnitByScan(rawQr, displayCode);
@@ -339,7 +339,7 @@ export async function linkInventoryUnitToOutbound(formData: FormData) {
   const validated = await validateUnitScheduleLink({ ownerUserId, unitId: unit.id, outboundScheduleId });
   await prismaClient.inventoryUnit.update({ where: { id: unit.id }, data: { outboundScheduleId } });
   revalidatePath('/inventory/units/scan');
-  return { ok: true, message: "発送予定に紐づけました。", warning: validated.overCapacity ? "発送予定台数を超過しています。" : null, nextAction: "次の台を読み取ってください", linkedSchedule: `発送予定: ${outboundScheduleId}`, unitId: unit.id, clearedForNext: true };
+  return { ok: true, message: "出庫予定に紐づけました。", warning: validated.overCapacity ? "出庫予定台数を超過しています。" : null, nextAction: "次の台を読み取ってください", linkedSchedule: `出庫予定: ${outboundScheduleId}`, unitId: unit.id, clearedForNext: true };
 }
 export async function updateInventoryUnit(formData: FormData) {
   const ownerUserId = await resolveCurrentUserId();
@@ -464,7 +464,7 @@ const INVENTORY_STATUS_MAP: Record<string, InventoryStatus> = {
   在庫中: "IN_STOCK",
   商談中: "NEGOTIATING",
   引当済: "RESERVED",
-  発送予定: "OUTBOUND_SCHEDULED",
+  出庫予定: "OUTBOUND_SCHEDULED",
   売却済: "SOLD",
   設置中: "INSTALLED",
   非在庫: "NON_STOCK",
@@ -1036,9 +1036,9 @@ export async function completeOutboundSchedule(scheduleId: string) {
     const schedule = await tx.outboundSchedule.findFirst({
       where: { id: scheduleId, ownerUserId },
     });
-    if (!schedule) throw new Error("発送予定が見つかりません。");
+    if (!schedule) throw new Error("出庫予定が見つかりません。");
     if (["SHIPPED", "DELIVERED", "CANCELED"].includes(schedule.status)) {
-      throw new Error("この発送予定は完了できません。");
+      throw new Error("この出庫予定は完了できません。");
     }
     if (!schedule.inventoryItemId) {
       throw new Error("紐付け在庫がないため発送完了できません。");
@@ -1083,7 +1083,7 @@ export async function completeOutboundSchedule(scheduleId: string) {
         sourceType: schedule.sourceType === "DEALING" ? "DEALING" : "MANUAL",
         sourceId: schedule.id,
         dedupeKey: `outbound:${schedule.id}:shipped`,
-        note: "発送予定の完了により在庫反映",
+        note: "出庫予定の完了により在庫反映",
         createdByUserId: ownerUserId,
       },
     });
@@ -1119,7 +1119,7 @@ export async function updateInboundSchedule(scheduleId: string, formData: FormDa
 export async function updateOutboundSchedule(scheduleId: string, formData: FormData) {
   const ownerUserId = await resolveCurrentUserId();
   const schedule = await prismaClient.outboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
-  if (!schedule) throw new Error("発送予定が見つかりません。");
+  if (!schedule) throw new Error("出庫予定が見つかりません。");
   if (["SHIPPED", "DELIVERED", "CANCELED"].includes(schedule.status)) throw new Error("完了済みまたは取消済みの予定は編集できません");
   const expectedDate = new Date(String(formData.get("expectedDate") ?? ""));
   const modelNameSnapshot = String(formData.get("modelNameSnapshot") ?? "").trim();
@@ -1190,7 +1190,7 @@ export async function cancelCompletedOutboundSchedule(scheduleId: string) {
 
   const result = await prismaClient.$transaction(async (tx) => {
     const schedule = await tx.outboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
-    if (!schedule) throw new Error("発送予定が見つかりません。");
+    if (!schedule) throw new Error("出庫予定が見つかりません。");
     if (schedule.status === "CANCELED") return { inventoryItemId: schedule.inventoryItemId };
     if (!["SHIPPED", "DELIVERED"].includes(schedule.status)) throw new Error("発送完了済みの予定のみ取消できます。");
     if (!schedule.inventoryItemId) throw new Error("紐付け在庫が見つかりません。");
@@ -1247,7 +1247,7 @@ export async function cancelInboundSchedule(scheduleId: string) {
 export async function cancelOutboundSchedule(scheduleId: string) {
   const ownerUserId = await resolveCurrentUserId();
   const schedule = await prismaClient.outboundSchedule.findFirst({ where: { id: scheduleId, ownerUserId } });
-  if (!schedule) throw new Error("発送予定が見つかりません。");
+  if (!schedule) throw new Error("出庫予定が見つかりません。");
   if (["SHIPPED", "DELIVERED"].includes(schedule.status)) throw new Error("完了済みは取消できません。");
   if (schedule.status !== "CANCELED") await prismaClient.outboundSchedule.update({ where: { id: schedule.id }, data: { status: "CANCELED" } });
   revalidatePath("/inventory/outbound");

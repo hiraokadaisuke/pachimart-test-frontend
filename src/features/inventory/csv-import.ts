@@ -8,7 +8,7 @@ export type CsvImportRow = Record<HeaderKey,string> & { rowNumber:number };
 export type CsvImportIssue = { rowNumber:number; level:"error"|"warning"; field?: HeaderKey; value?: string; message:string };
 
 const TYPE_MAP: Record<string, InventoryItemType> = {"パチンコ":"PACHINKO","PACHINKO":"PACHINKO","パチスロ":"SLOT","SLOT":"SLOT"};
-const STATUS_MAP: Record<string, InventoryStatus> = {"下書き":"DRAFT","在庫中":"IN_STOCK","商談中":"NEGOTIATING","予約":"RESERVED","発送予定":"OUTBOUND_SCHEDULED","売却済":"SOLD","設置":"INSTALLED","非在庫":"NON_STOCK","アーカイブ":"ARCHIVED",...Object.fromEntries(Object.values(InventoryStatus).map((v)=>[v,v]))};
+const STATUS_MAP: Record<string, InventoryStatus> = {"下書き":"DRAFT","在庫中":"IN_STOCK","商談中":"NEGOTIATING","予約":"RESERVED","出庫予定":"OUTBOUND_SCHEDULED","売却済":"SOLD","設置":"INSTALLED","非在庫":"NON_STOCK","アーカイブ":"ARCHIVED",...Object.fromEntries(Object.values(InventoryStatus).map((v)=>[v,v]))};
 
 export function parseCsv(text: string): string[][] {
   const input = text.charCodeAt(0) === 0xfeff ? text.slice(1) : text;

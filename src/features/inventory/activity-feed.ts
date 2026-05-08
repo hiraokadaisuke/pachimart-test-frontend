@@ -64,7 +64,7 @@ export type InventoryActivity = {
 export const INVENTORY_ACTIVITY_TYPE_FILTERS = [
   { value: "ALL", label: "全て" },
   { value: "INBOUND_SCHEDULE_CREATED", label: "入庫予定" },
-  { value: "OUTBOUND_SCHEDULE_CREATED", label: "発送予定" },
+  { value: "OUTBOUND_SCHEDULE_CREATED", label: "出庫予定" },
   { value: "INBOUND_COMPLETED", label: "入庫完了" },
   { value: "OUTBOUND_COMPLETED", label: "発送完了" },
   { value: "CANCELED", label: "取消" },
@@ -212,7 +212,7 @@ export const normalizeInventoryMovementToActivity = (movement: MovementWithItem)
       occurredAt,
       type: "OUTBOUND_COMPLETED",
       title: `発送完了：${relatedItemName} ${movement.quantityDelta > 0 ? `+${movement.quantityDelta}` : movement.quantityDelta}台`,
-      description: "発送予定が完了し在庫に反映されました。",
+      description: "出庫予定が完了し在庫に反映されました。",
       badgeLabel: "発送完了",
       href: `/inventory/items/${movement.inventoryItemId}`,
       quantityDelta: movement.quantityDelta,
@@ -256,9 +256,9 @@ export const normalizeOutboundScheduleToActivity = (schedule: ScheduleWithItem<O
     type: isCanceled ? "SCHEDULE_CANCELED" : "OUTBOUND_SCHEDULE_CREATED",
     title: isCanceled
       ? `予定取消：${relatedItemName} ${schedule.quantity}台`
-      : `発送予定作成：${relatedItemName} ${schedule.quantity}台`,
-    description: isCanceled ? "発送予定が取り消されました。" : "発送予定を作成しました。",
-    badgeLabel: isCanceled ? "予定取消" : "発送予定作成",
+      : `出庫予定作成：${relatedItemName} ${schedule.quantity}台`,
+    description: isCanceled ? "出庫予定が取り消されました。" : "出庫予定を作成しました。",
+    badgeLabel: isCanceled ? "予定取消" : "出庫予定作成",
     href: "/inventory/outbound",
     quantityDelta: -Math.abs(schedule.quantity),
     sourceLabel: "OutboundSchedule",
@@ -298,7 +298,7 @@ const normalizeInventoryUnitToActivities = (unit: InventoryUnitLike): InventoryA
   if (unit.confirmedAt) base.push({ id: `unit:${unit.id}:confirmed`, occurredAt: unit.confirmedAt, type: "INVENTORY_UNIT_CONFIRMED", title: `個体確定：${label}`, description: "個体を確定しました。", badgeLabel: "個体確定", href: `/inventory/items/${unit.inventoryItemId}` });
   if (unit.status === "CANCELED") base.push({ id: `unit:${unit.id}:canceled`, occurredAt: unit.canceledAt ?? unit.updatedAt, type: "INVENTORY_UNIT_CANCELED", title: `個体取消：${label}`, description: "個体を取消しました。", badgeLabel: "個体取消", href: `/inventory/items/${unit.inventoryItemId}` });
   if (unit.inboundScheduleId) base.push({ id: `unit:${unit.id}:inbound`, occurredAt: unit.updatedAt, type: "INVENTORY_UNIT_LINKED_INBOUND", title: `個体を入庫予定に紐付：${label}`, description: "入庫予定に個体を紐づけました。", badgeLabel: "入庫紐付", href: `/inventory/items/${unit.inventoryItemId}` });
-  if (unit.outboundScheduleId) base.push({ id: `unit:${unit.id}:outbound`, occurredAt: unit.updatedAt, type: "INVENTORY_UNIT_LINKED_OUTBOUND", title: `個体を発送予定に紐付：${label}`, description: "発送予定に個体を紐づけました。", badgeLabel: "発送紐付", href: `/inventory/items/${unit.inventoryItemId}` });
+  if (unit.outboundScheduleId) base.push({ id: `unit:${unit.id}:outbound`, occurredAt: unit.updatedAt, type: "INVENTORY_UNIT_LINKED_OUTBOUND", title: `個体を出庫予定に紐付：${label}`, description: "出庫予定に個体を紐づけました。", badgeLabel: "発送紐付", href: `/inventory/items/${unit.inventoryItemId}` });
   return base;
 };
 export const getInventoryActivityFeed = ({

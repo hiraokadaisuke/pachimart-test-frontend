@@ -5,7 +5,7 @@ type Props = { action: (formData: FormData) => void | Promise<void>; storageLoca
 
 export function OutboundScheduleForm({ action, storageLocations, inventoryItems, initial, readOnly=false, submitLabel }: Props) {
   return <form action={action} className="mt-4 grid gap-3 rounded-lg border bg-white p-4 sm:grid-cols-2">
-    <label>発送予定日<input required disabled={readOnly} defaultValue={initial?.expectedDate.toISOString().slice(0,10)} name="expectedDate" type="date" className="mt-1 w-full rounded border p-2"/></label>
+    <label>出庫予定日<input required disabled={readOnly} defaultValue={initial?.expectedDate.toISOString().slice(0,10)} name="expectedDate" type="date" className="mt-1 w-full rounded border p-2"/></label>
     <label>販売先<input disabled={readOnly} defaultValue={initial?.buyerName ?? ""} name="buyerName" className="mt-1 w-full rounded border p-2"/></label>
     <label>種別<select disabled={readOnly} defaultValue={initial ? (initial.itemType === "PACHINKO" ? "パチンコ" : "パチスロ") : "パチンコ"} name="itemType" className="mt-1 w-full rounded border p-2"><option>パチンコ</option><option>パチスロ</option></select></label>
     <label>メーカー<input disabled={readOnly} defaultValue={initial?.makerNameSnapshot ?? ""} name="makerNameSnapshot" className="mt-1 w-full rounded border p-2"/></label>
