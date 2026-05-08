@@ -19,10 +19,10 @@ export default async function Page() {
       {rows.map((r) => {
         const done = r.status === 'RECEIVED';
         return (
-          <div key={r.id} className={`rounded border border-slate-300 bg-white p-2 text-xs ${done ? 'opacity-70' : 'border-slate-300'} flex gap-3`}>
+          <div key={r.id} className={`rounded-sm border border-slate-300 bg-white p-2 text-xs ${done ? 'opacity-70' : 'border-slate-300'} flex gap-3`}>
             <div className='flex-1 space-y-1'>
               <div className='flex items-center gap-2 text-xs'><span className='rounded bg-sky-100 px-2 py-0.5 text-sky-700'>入庫予定</span><span className='rounded bg-slate-100 px-2 py-0.5'>{r.expectedDate.toISOString().slice(0, 10)}</span></div>
-              <div className='text-base font-bold leading-tight'>{r.modelNameSnapshot}</div>
+              <div className='text-sm font-bold leading-tight'>{r.modelNameSnapshot}</div>
               <div className='text-xs text-slate-600'>{r.supplierName ?? '取引先未設定'} / {r.quantity}台</div>
               <div className='text-xs text-slate-500'>保管倉庫: {r.destinationLocation?.name ?? '-'}</div>
             </div>
