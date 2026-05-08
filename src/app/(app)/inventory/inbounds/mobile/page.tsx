@@ -5,11 +5,11 @@ export default async function Page() {
   const rows = await listInboundMobile();
 
   return (
-    <div className='mx-auto max-w-md space-y-3 bg-white p-3'>
+    <div className='mx-auto max-w-md space-y-2 bg-[#f6f8fb] p-2'>
       <header className='flex items-center justify-between rounded border border-slate-200 px-3 py-2'>
         <div className='text-xs font-semibold text-emerald-700'>▣ 在庫管理システム（倉庫）</div><div className='text-slate-500'>☰</div>
       </header>
-      <h1 className='text-lg font-bold'>入庫予定一覧</h1>
+      <h1 className='text-base font-bold'>入庫予定一覧</h1>
       <p className='text-xs text-slate-600'>入庫予定の一覧です。QRコードを読み取ると入庫作業に進めます。</p>
       <input className='w-full rounded border border-slate-300 px-3 py-2 text-sm' placeholder='機種名・仕入先で絞り込み' />
       <div className='grid grid-cols-4 gap-1 text-xs'>
@@ -19,18 +19,18 @@ export default async function Page() {
       {rows.map((r) => {
         const done = r.status === 'RECEIVED';
         return (
-          <div key={r.id} className={`rounded border bg-white p-3 text-sm shadow-sm ${done ? 'opacity-70' : 'border-slate-300'} flex gap-3`}>
+          <div key={r.id} className={`rounded border border-slate-300 bg-white p-2 text-xs ${done ? 'opacity-70' : 'border-slate-300'} flex gap-3`}>
             <div className='flex-1 space-y-1'>
               <div className='flex items-center gap-2 text-xs'><span className='rounded bg-sky-100 px-2 py-0.5 text-sky-700'>入庫予定</span><span className='rounded bg-slate-100 px-2 py-0.5'>{r.expectedDate.toISOString().slice(0, 10)}</span></div>
-              <div className='text-lg font-bold leading-tight'>{r.modelNameSnapshot}</div>
+              <div className='text-base font-bold leading-tight'>{r.modelNameSnapshot}</div>
               <div className='text-xs text-slate-600'>{r.supplierName ?? '取引先未設定'} / {r.quantity}台</div>
               <div className='text-xs text-slate-500'>保管倉庫: {r.destinationLocation?.name ?? '-'}</div>
             </div>
-            <Link href={`/inventory/inbounds/${r.id}/work`} className='inline-flex min-h-[84px] items-center rounded border border-emerald-700 bg-emerald-600 px-3 text-xs font-semibold text-white'>QR読取</Link>
+            <Link href={`/inventory/inbounds/${r.id}/work`} className='inline-flex min-h-[78px] items-center rounded-sm border border-emerald-800 bg-emerald-700 px-2 text-sm font-bold text-white'>QR読取</Link>
           </div>
         );
       })}
-      <nav className='sticky bottom-2 grid grid-cols-5 gap-1 rounded border border-slate-200 bg-white p-1 text-[11px]'>
+      <nav className='sticky bottom-1 grid grid-cols-5 gap-1 rounded border border-slate-300 bg-white p-1 text-[10px]'>
         {['入庫予定', '入庫作業', '出庫作業', '在庫照会', 'メニュー'].map((item) => <div key={item} className='rounded px-1 py-2 text-center text-slate-700'>{item}</div>)}
       </nav>
     </div>

@@ -25,8 +25,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
 
   const units = s.inventoryUnits;
-  return <div className='mx-auto max-w-md space-y-3 bg-white p-3 text-sm'>
-    <h1 className='text-lg font-bold'>入庫作業（QR読取）</h1>
+  return <div className='mx-auto max-w-md space-y-2 bg-[#f6f8fb] p-2 text-sm'>
+    <h1 className='text-base font-bold'>入庫作業（QR読取）</h1>
     <p className='text-xs text-slate-600'>機械に貼付されているQRコードを読み取ってください。</p>
     <div className='relative rounded border-2 border-emerald-400 bg-slate-50 p-5 text-center'>
       <div className='absolute left-2 top-2 h-4 w-4 border-l-2 border-t-2 border-emerald-600' />
