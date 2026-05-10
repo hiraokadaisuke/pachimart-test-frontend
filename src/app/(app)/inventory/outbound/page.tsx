@@ -83,10 +83,10 @@ export default async function OutboundSchedulesPage() {
                       <div className="flex items-center gap-2">
                         <Link href={`/inventory/outbound/${s.id}/edit`} className="text-xs underline">編集</Link>
                         <form action={async () => {"use server"; await cancelOutboundSchedule(s.id); redirect("/inventory/outbound");}}>
-                          <Button type="submit" size="sm" variant="outline">取消する</Button>
+                          <Button type="submit" variant="outline" className="h-7 px-2 text-xs">取消する</Button>
                         </form>
                         <form action={async () => {"use server"; await completeOutboundSchedule(s.id); redirect("/inventory/outbound");}}>
-                          <Button type="submit" size="sm" disabled={missingLink}>出庫完了</Button>
+                          <Button type="submit" disabled={missingLink} className="h-7 px-2 text-xs">出庫完了</Button>
                         </form>
                         {missingLink ? <span className="text-xs text-amber-700">紐付け在庫なし</span> : null}
                       </div>
