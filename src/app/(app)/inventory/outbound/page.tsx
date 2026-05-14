@@ -51,7 +51,7 @@ export default async function OutboundSchedulesPage() {
           <tbody>
             {schedules.map((s: (typeof schedules)[number]) => {
               const missingLink = !s.inventoryItemId;
-              const salesDerived = s.sourceId?.startsWith("SV-") || s.sourceId?.startsWith("SH-");
+              const salesDerived = s.sourceId?.startsWith("S-V-") || s.sourceId?.startsWith("S-H-") || s.note?.includes("販売伝票連携") === true;
               const autoCreated = getAutoCreatedOutboundInfo({ sourceType: s.sourceType, sourceId: s.sourceId, note: s.note });
               return (
                 <tr key={s.id} className="border-t border-slate-200 hover:bg-slate-50">

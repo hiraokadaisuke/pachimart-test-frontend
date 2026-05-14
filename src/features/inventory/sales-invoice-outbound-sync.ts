@@ -1,4 +1,4 @@
-import { OutboundScheduleSourceType, OutboundStatus, InventoryShippingMethod, InventoryUnitStatus, PrismaClient } from "@prisma/client";
+import { OutboundScheduleSourceType, OutboundStatus, InventoryShippingMethod, InventoryUnitStatus, InventoryItemType, PrismaClient } from "@prisma/client";
 import { prisma } from "@/lib/server/prisma";
 import type { SalesInvoiceItem } from "@/types/salesInvoices";
 
@@ -22,6 +22,12 @@ export type SalesInvoiceOutboundSyncResult = { createdCount: number; skippedCoun
 const toShippingMethod = (v?: string | null): InventoryShippingMethod => (v?.includes("着払") ? "COLLECT" : "PREPAID");
 const prismaClient = prisma as PrismaClient;
 
+const toItemType = (value?: string | null): InventoryItemType => {
+  const normalized = (value ?? "").trim();
+  if (["パチスロ", "SLOT"].includes(normalized)) return "SLOT";
+  return "PACHINKO";
+};
+
 export async function syncSalesInvoiceToOutboundSchedules(input: SalesInvoiceOutboundSyncInput): Promise<SalesInvoiceOutboundSyncResult> {
   const warnings: string[] = [];
   let createdCount = 0;
@@ -29,11 +35,6 @@ export async function syncSalesInvoiceToOutboundSchedules(input: SalesInvoiceOut
   const schedules: SalesInvoiceOutboundSyncResult["schedules"] = [];
 
   for (const [index, item] of input.items.entries()) {
-    if (!item.inventoryUnitId && !item.inventoryItemId) {
-      skippedCount += 1;
-      warnings.push(`明細${index + 1}: Unit/在庫紐付けが無いためスキップ`);
-      continue;
-    }
 
     const dedupeKey = `sales-invoice-outbound:${input.salesInvoiceId}:${item.itemId ?? index}:${item.inventoryUnitId ?? item.inventoryItemId ?? "none"}`;
     const exists = await prismaClient.outboundSchedule.findUnique({ where: { dedupeKey } });
@@ -62,23 +63,17 @@ export async function syncSalesInvoiceToOutboundSchedules(input: SalesInvoiceOut
     const inventoryItem = inventoryItemId
       ? await prismaClient.inventoryItem.findFirst({ where: { id: inventoryItemId, ownerUserId: input.ownerUserId } })
       : null;
-    if (!inventoryItem) {
-      skippedCount += 1;
-      warnings.push(`明細${index + 1}: 在庫が見つからないためスキップ`);
-      continue;
-    }
-
     const created = await prismaClient.outboundSchedule.create({
       data: {
         ownerUserId: input.ownerUserId,
-        inventoryItemId: inventoryItem.id,
+        inventoryItemId: inventoryItem?.id ?? null,
         expectedDate: input.machineShipDate ? new Date(input.machineShipDate) : new Date(),
         buyerName: input.customerName ?? input.destinationName ?? null,
-        itemType: inventoryItem.itemType,
-        makerNameSnapshot: inventoryItem.makerNameSnapshot,
-        modelNameSnapshot: item.productName ?? inventoryItem.modelNameSnapshot,
+        itemType: inventoryItem?.itemType ?? toItemType(item.type),
+        makerNameSnapshot: inventoryItem?.makerNameSnapshot ?? item.maker ?? null,
+        modelNameSnapshot: item.productName ?? inventoryItem?.modelNameSnapshot ?? "機種未設定",
         quantity: Math.max(1, item.quantity || 1),
-        originLocationId: inventoryItem.storageLocationId,
+        originLocationId: inventoryItem?.storageLocationId ?? null,
         shippingMethod: toShippingMethod(input.shippingMethod ?? input.carrierName),
         status: OutboundStatus.PLANNED,
         sourceType: OutboundScheduleSourceType.MANUAL,

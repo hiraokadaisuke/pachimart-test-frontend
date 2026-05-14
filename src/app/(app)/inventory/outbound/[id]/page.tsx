@@ -10,7 +10,7 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
   const schedule = await getOutboundScheduleById(id);
   if (!schedule) notFound();
 
-  const sourceLabel = schedule.sourceId?.startsWith("SV-") || schedule.sourceId?.startsWith("SH-") ? "販売伝票由来" : schedule.sourceType ?? "MANUAL";
+  const sourceLabel = schedule.sourceId?.startsWith("S-V-") || schedule.sourceId?.startsWith("S-H-") || schedule.note?.includes("販売伝票連携") ? "販売伝票由来" : schedule.sourceType ?? "MANUAL";
   const unit = schedule.inventoryUnits[0] ?? null;
 
   return <div className="mx-auto max-w-5xl px-4 py-6 space-y-4"><InventoryTabs /><h1 className="text-2xl font-bold">出庫予定詳細</h1>
