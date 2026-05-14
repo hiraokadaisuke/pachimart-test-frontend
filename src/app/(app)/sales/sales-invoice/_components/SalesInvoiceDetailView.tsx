@@ -974,30 +974,30 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
         </div>
         <div className="border border-gray-300 bg-white"><div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">履歴・アクティビティ</div><ul className="list-disc space-y-1 px-6 py-3 text-xs">{[`${issuedDateLabel} 販売伝票を作成`,...(isPachimartInvoice ? [`${issuedDateLabel} パチマート成約から販売伝票を作成`] : []),`${paymentDueDateLabel} ${isPachimartInvoice ? "出庫予定を作成" : "出庫指示を作成"}`,`${issuedDateLabel} 帳票プレビューを生成`,`${transferDateLabel} ${statusLabel}`].map((t)=><li key={t}>{t}</li>)}</ul></div>
 
-        <div className="overflow-x-auto py-2">
-          <div className="mx-auto w-[794px] min-h-[1123px] border-2 border-black bg-white p-4 text-[11px] text-black document-preview-a4 print:mx-0 print:min-h-0 print:w-full">
+        <div className="overflow-x-auto py-1 print:py-0">
+          <div className="mx-auto w-[794px] min-h-[1123px] border-2 border-black bg-white p-3 text-[11px] leading-[1.35] text-black document-preview-a4 print:mx-0 print:min-h-0 print:w-full print:border print:p-2">
             {(documentKind === "invoice" || documentKind === "bundle") && (
               <>
-                <div className="mb-3 text-center text-xl font-bold">請求書</div>
+                <div className="mb-2 text-center text-lg font-bold">請求書</div>
                 {renderVendorSheet({ recipientName, staffName, manager, items, subtotal, tax, shippingInsurance, grandTotal, issuedDateLabel, paymentDueDateLabel, invoiceOriginalRequiredLabel, sellerInvoiceNumber, buyerInvoiceNumber })}
               </>
             )}
             {(documentKind === "contract" || documentKind === "bundle") && (
-              <div className="mt-6 break-inside-avoid border-t-2 border-black pt-4 print:break-before-page">
+              <div className="mt-4 break-inside-avoid border-t-2 border-black pt-3 print:break-before-page print:break-inside-avoid-page">
                 {renderSalesContractInvoiceSheet({ title: "売買契約書", issuedDateLabel, recipientName, staffName, items, subtotal, tax, grandTotal, paymentDueDateLabel, sellerInvoiceNumber, buyerInvoiceNumber })}
               </div>
             )}
             {(documentKind === "shipping-request" || documentKind === "bundle") && (
-              <div className="mt-6 break-inside-avoid border-t-2 border-black pt-4 print:break-before-page">
+              <div className="mt-4 break-inside-avoid border-t-2 border-black pt-3 print:break-before-page print:break-inside-avoid-page">
                 <SimpleShippingRequest invoice={invoice} recipientName={recipientName} issuedDateLabel={issuedDateLabel} items={items} staffName={staffName} />
               </div>
             )}
             {(documentKind === "outbound-instruction" || documentKind === "bundle") && (
-              <div className="mt-6 break-inside-avoid border-t-2 border-black pt-4 print:break-before-page">
+              <div className="mt-4 break-inside-avoid border-t-2 border-black pt-3 print:break-before-page print:break-inside-avoid-page">
                 <SimpleOutboundInstruction invoice={invoice} recipientName={recipientName} issuedDateLabel={issuedDateLabel} pachimartDealId={pachimartDealId} />
               </div>
             )}
-            <div className="mb-4 mt-6 min-h-[90px] border border-black p-3 text-[12px]">
+            <div className="mb-3 mt-4 min-h-[80px] border border-black p-2 text-[11px]">
               <div className="mb-2 font-semibold">備考</div>
               <div className="whitespace-pre-wrap">{remarks || "―"}</div>
             </div>
@@ -1089,18 +1089,18 @@ export const renderVendorSheet = ({
     : COMPANY_INFO;
 
   return (
-    <div className="space-y-4 text-[12px] text-neutral-900">
-      <div className="space-y-3 border border-black p-4">
+    <div className="space-y-3 text-[11px] text-neutral-900">
+      <div className="space-y-2 border border-black p-3">
         <div className="flex flex-wrap justify-between gap-4">
           <div className="min-w-[280px] flex-1 space-y-2">
-            <div className="text-lg font-bold text-neutral-900">請求書</div>
-            <div className="text-lg font-semibold text-neutral-900">{recipientName} 御中</div>
+            <div className="text-base font-bold text-neutral-900">請求書</div>
+            <div className="text-base font-semibold text-neutral-900">{recipientName} 御中</div>
             <div className="flex gap-6 text-sm text-neutral-800">
               <span>FAX ―</span>
               <span>TEL ―</span>
             </div>
             <div className="text-xs text-neutral-700">インボイス番号 {buyerInvoiceNumber || "―"}</div>
-            <div className="text-sm font-semibold text-neutral-900">下記の通りご請求申し上げます。</div>
+            <div className="text-[12px] font-semibold text-neutral-900">下記の通りご請求申し上げます。</div>
             <div className="text-xs leading-relaxed text-neutral-800">
               <div>＊キャンセルは理由の如何にかかわらず承りません。</div>
               <div>＊商品の引き渡し後の故障・損傷・破損などについて弊社は一切の責任を負いません。</div>
@@ -1135,10 +1135,10 @@ export const renderVendorSheet = ({
 
         <div className="grid gap-3 lg:grid-cols-[2.3fr_1fr]">
           <div className="overflow-x-auto">
-            <table className="min-w-full table-fixed border border-black text-[12px]">
+            <table className="min-w-full table-fixed border border-black text-[11px]">
               <thead className="bg-slate-100 text-center font-semibold">
                 <tr>
-                  <th className="border border-black px-2 py-2">メーカー名</th>
+                  <th className="border border-black px-2 py-1.5">メーカー名</th>
                   <th className="border border-black px-2 py-2">商品名</th>
                   <th className="border border-black px-2 py-2">タイプ</th>
                   <th className="border border-black px-2 py-2 text-right">数量</th>
@@ -1147,7 +1147,7 @@ export const renderVendorSheet = ({
                   <th className="border border-black px-2 py-2">発信</th>
                   <th className="border border-black px-2 py-2">申請適用</th>
                   <th className="border border-black px-2 py-2">申請日</th>
-                  <th className="border border-black px-2 py-2">商品補足</th>
+                  <th className="border border-black px-2 py-1.5">商品補足</th>
                 </tr>
               </thead>
               <tbody>
@@ -1160,19 +1160,19 @@ export const renderVendorSheet = ({
                 ) : (
                   items.map((item, index) => (
                     <tr key={item.itemId ?? `${item.productName}-${index}`} className="align-middle text-center">
-                      <td className="border border-black px-2 py-2 text-left">{item.maker || ""}</td>
-                      <td className="border border-black px-2 py-2 text-left font-semibold">
+                      <td className="border border-black px-2 py-1.5 text-left">{item.maker || "―"}</td>
+                      <td className="border border-black px-2 py-1.5 text-left font-semibold">
                         <div>{item.productName || ""}</div>
                         <div className="text-[10px] font-normal text-neutral-700">{formatSalesInvoiceUnitSummary(item) || "―"}</div>
                       </td>
-                      <td className="border border-black px-2 py-2 text-left">{item.type || ""}</td>
-                      <td className="border border-black px-2 py-2 text-right">{formatNumber(item.quantity)}</td>
-                      <td className="border border-black px-2 py-2 text-right">{formatNumber(item.unitPrice)}</td>
-                      <td className="border border-black px-2 py-2 text-right font-semibold">{formatNumber(item.amount)}</td>
-                      <td className="border border-black px-2 py-2">―</td>
-                      <td className="border border-black px-2 py-2">―</td>
-                      <td className="border border-black px-2 py-2">―</td>
-                      <td className="border border-black px-2 py-2 text-left">{buildSalesInvoiceSupplementNote(item) || ""}</td>
+                      <td className="border border-black px-2 py-1.5 text-left">{item.type || "―"}</td>
+                      <td className="border border-black px-2 py-1.5 text-right">{formatNumber(item.quantity)}</td>
+                      <td className="border border-black px-2 py-1.5 text-right">{formatNumber(item.unitPrice)}</td>
+                      <td className="border border-black px-2 py-1.5 text-right font-semibold">{formatNumber(item.amount)}</td>
+                      <td className="border border-black px-2 py-1.5">―</td>
+                      <td className="border border-black px-2 py-1.5">―</td>
+                      <td className="border border-black px-2 py-1.5">―</td>
+                      <td className="border border-black px-2 py-1.5 text-left">{buildSalesInvoiceSupplementNote(item) || "―"}</td>
                     </tr>
                   ))
                 )}
@@ -1202,22 +1202,40 @@ export const renderVendorSheet = ({
               </div>
             </div>
 
-            <div className="border border-black p-3 text-[12px]">
-              <div className="text-sm font-semibold text-neutral-900">お振込先</div>
-              <div className="mt-2 space-y-1 text-neutral-800">
-                <div>三菱東京UFJ銀行 高田馬場支店</div>
-                <div>普通 0131849 カ)ピーカンクラブ</div>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <div className="flex items-center justify-between border border-black px-2 py-1 text-[11px]">
-                  <span>支払期日</span>
-                  <span className="text-[12px] font-semibold">{paymentDueDateLabel}</span>
-                </div>
-                <div className="flex items-center justify-between border border-black px-2 py-1 text-[11px]">
-                  <span>請求書原本</span>
-                  <span className="text-[12px] font-semibold">{invoiceOriginalRequiredLabel}</span>
-                </div>
-              </div>
+            <div className="border border-black text-[11px]">
+              <div className="border-b border-black bg-slate-100 px-3 py-1.5 text-sm font-bold text-neutral-900">支払情報</div>
+              <table className="w-full border-collapse">
+                <tbody>
+                  <tr>
+                    <th className="w-[38%] border border-black bg-slate-50 px-2 py-1 text-left font-semibold">支払方法</th>
+                    <td className="border border-black px-2 py-1">振込</td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-slate-50 px-2 py-1 text-left font-semibold">お支払期日</th>
+                    <td className="border border-black px-2 py-1">{paymentDueDateLabel || "-"}</td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-slate-50 px-2 py-1 text-left font-semibold">ご請求金額</th>
+                    <td className="border border-black px-2 py-1 text-right text-[12px] font-bold">{formatCurrency(grandTotal)}</td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-slate-50 px-2 py-1 text-left font-semibold">振込先</th>
+                    <td className="border border-black px-2 py-1">株式会社ピーカンクラブ</td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-slate-50 px-2 py-1 text-left font-semibold">銀行/支店</th>
+                    <td className="border border-black px-2 py-1">三菱東京UFJ銀行 高田馬場支店</td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-slate-50 px-2 py-1 text-left font-semibold">口座番号</th>
+                    <td className="border border-black px-2 py-1">普通 0131849</td>
+                  </tr>
+                  <tr>
+                    <th className="border border-black bg-slate-50 px-2 py-1 text-left font-semibold">注意書き</th>
+                    <td className="border border-black px-2 py-1">請求書原本: {invoiceOriginalRequiredLabel || "-"}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>
@@ -1351,7 +1369,7 @@ export const renderSalesContractInvoiceSheet = ({
     : { ...COMPANY_INFO, representative: undefined };
 
   return (
-    <div className="space-y-4 text-[12px] text-neutral-900">
+    <div className="space-y-3 text-[11px] text-neutral-900">
       <div className="grid grid-cols-[1fr_1.5fr_1fr] items-start">
         <div />
         <div className="text-center text-lg font-semibold">{title}</div>
@@ -1472,6 +1490,15 @@ export const renderSalesContractInvoiceSheet = ({
           <div className="h-7 border border-black" />
           <div className="h-16 border border-black" />
         </div>
+      </div>
+
+      <div className="break-inside-avoid border border-black p-3 text-[10px] leading-relaxed print:break-inside-avoid-page">
+        <div className="mb-1 text-[11px] font-bold">【確認事項】</div>
+        <ul className="list-disc space-y-0.5 pl-4">
+          <li>当証明書送付後のキャンセルは売買代金の50%を賠償していただきます。</li>
+          <li>機械の不具合に関しては到着日を含め3営業日以内にご連絡ください。</li>
+          <li>ご連絡いたしますので、ご対応をお願い致します。</li>
+        </ul>
       </div>
     </div>
   );
