@@ -62,16 +62,16 @@ export const inboundStatusLabel = (value: InboundStatus) => ({
   ARRIVAL_WAITING: "入庫待ち",
   PARTIALLY_RECEIVED: "一部入庫",
   RECEIVED: "入庫済",
-  CANCELED: "取消",
+  CANCELED: "取消済",
 })[value];
 
 export const outboundStatusLabel = (value: OutboundStatus) => ({
-  PLANNED: "未発送",
+  PLANNED: "出庫待ち",
   PICKING: "ピッキング中",
-  READY_TO_SHIP: "発送準備中",
-  SHIPPED: "発送済",
-  DELIVERED: "納品済",
-  CANCELED: "取消",
+  READY_TO_SHIP: "出庫準備中",
+  SHIPPED: "出庫完了",
+  DELIVERED: "出庫完了",
+  CANCELED: "取消済",
 })[value];
 
 export const shippingMethodLabel = (value: InventoryShippingMethod) => ({
