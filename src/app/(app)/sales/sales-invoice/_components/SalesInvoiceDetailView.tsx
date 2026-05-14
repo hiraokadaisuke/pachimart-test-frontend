@@ -42,6 +42,8 @@ const PRINT_ACTIONS = [
   { label: "売買契約書", path: "sales-contract", requiresSerial: false },
   { label: "請求書", path: "invoice", requiresSerial: false },
   { label: "発送依頼書", path: "shipping-request", requiresSerial: true },
+  { label: "出庫指示書", path: "shipping-request", requiresSerial: true },
+  { label: "販売伝票", path: "invoice", requiresSerial: false },
   { label: "書類一括", path: "bundle", requiresSerial: true },
 ] as const;
 
@@ -365,6 +367,17 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const taxRate = invoice?.invoiceType === "hall" ? 0.05 : 0.1;
   const tax = invoice?.tax ?? Math.floor(subtotal * taxRate);
   const grandTotal = invoice?.totalAmount ?? subtotal + tax + shippingInsurance;
+  const processSteps = ["販売入力済", "出庫手配中", "出庫待ち", "出庫完了", "請求済", "入金済"] as const;
+  const sourceTypeLabel = (invoice?.remarks ?? "").includes("パチマート") ? "パチマート" : "既存在庫";
+  const statusLabel = invoice?.isReceived ? "入金済" : invoice?.transferDate ? "請求済" : "販売入力済";
+  const statusIndex = Math.max(0, processSteps.findIndex((step) => step === statusLabel));
+  const purchaseTotal = items.reduce(
+    (sum, item) => sum + (Number(item.purchaseUnitPrice ?? 0) || 0) * (Number(item.quantity) || 0),
+    0,
+  );
+  const grossExTax = subtotal - purchaseTotal;
+  const grossInTax = grandTotal - purchaseTotal;
+  const grossRate = grandTotal > 0 ? (grossExTax / grandTotal) * 100 : 0;
 
   const issuedDateLabel = formatFullDate(invoice?.issuedDate || invoice?.createdAt);
   const paymentDueDateLabel = formatMonthDay(invoice?.paymentDueDate || invoice?.issuedDate || invoice?.createdAt);
@@ -841,6 +854,29 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
             <span>{transferDateLabel}</span>
           </div>
         </div>
+        <div className="overflow-x-auto border border-gray-300 bg-white">
+          <table className="w-full border-collapse text-xs">
+            <tbody>
+              <tr className="bg-amber-50">
+                <th className="border border-gray-300 px-2 py-1 text-left">販売伝票ID</th><td className="border border-gray-300 px-2 py-1">{invoice.invoiceId}</td>
+                <th className="border border-gray-300 px-2 py-1 text-left">取引元</th><td className="border border-gray-300 px-2 py-1">{sourceTypeLabel}</td>
+                <th className="border border-gray-300 px-2 py-1 text-left">伝票種別</th><td className="border border-gray-300 px-2 py-1">{invoice.invoiceType === "vendor" ? "業者販売" : "ホール販売"}</td>
+                <th className="border border-gray-300 px-2 py-1 text-left">ステータス</th><td className="border border-gray-300 px-2 py-1 font-semibold">{statusLabel}</td>
+              </tr>
+              <tr>
+                <th className="border border-gray-300 px-2 py-1 text-left">販売先</th><td className="border border-gray-300 px-2 py-1">{recipientName}</td>
+                <th className="border border-gray-300 px-2 py-1 text-left">売却先担当者</th><td className="border border-gray-300 px-2 py-1">{manager || "-"}</td>
+                <th className="border border-gray-300 px-2 py-1 text-left">販売担当</th><td className="border border-gray-300 px-2 py-1">{staffName || "-"}</td>
+                <th className="border border-gray-300 px-2 py-1 text-left">伝票発行日</th><td className="border border-gray-300 px-2 py-1">{issuedDateLabel}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div className="overflow-x-auto border border-gray-300 bg-slate-50 px-2 py-2">
+          <div className="flex min-w-[860px] items-center gap-1 text-xs">
+            {processSteps.map((step, idx) => <div key={step} className={`border px-2 py-1 ${idx <= statusIndex ? "bg-slate-300 font-semibold border-slate-500" : "bg-white border-gray-300"}`}>{step}{idx < processSteps.length - 1 ? " →" : ""}</div>)}
+          </div>
+        </div>
 
         <PrintMenu
           menuLabel="メニュー："
@@ -858,6 +894,19 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
             台入力済み）
           </div>
         )}
+        <div className="overflow-x-auto border border-gray-300 bg-white">
+          <div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">販売明細</div>
+          <table className="min-w-[1400px] w-full border-collapse text-xs">
+            <thead><tr className="bg-slate-100">{["行","機種名","メーカー名","区分","売却数","釘シート","仕入単価","販売単価","粗利","セル/回胴 製造番号","枠・筐体 製造番号","基盤 製造番号","枠/色/パネル","最終保管先","備考"].map((h)=><th key={h} className="border border-gray-300 px-2 py-1 text-left">{h}</th>)}</tr></thead>
+            <tbody>{items.map((item, i)=><tr key={`${item.itemId ?? i}`} className={i%2===0?"bg-amber-50":"bg-white"}><td className="border border-gray-300 px-2 py-1">{i+1}</td><td className="border border-gray-300 px-2 py-1">{item.productName ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{item.maker ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{item.type ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{item.quantity ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{item.unitNailSheetStatus ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{formatYen(item.purchaseUnitPrice ?? 0)}</td><td className="border border-gray-300 px-2 py-1">{formatYen(item.unitPrice ?? 0)}</td><td className="border border-gray-300 px-2 py-1">{formatYen(((item.unitPrice ?? 0)-(item.purchaseUnitPrice ?? 0))*(item.quantity ?? 0))}</td><td className="border border-gray-300 px-2 py-1">{item.unitBodySerialNumber ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{item.unitFrameSerialNumber ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{item.unitMainBoardSerialNumber ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{item.unitMemo ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{item.storageLocationName ?? "-"}</td><td className="border border-gray-300 px-2 py-1">{item.note ?? "-"}</td></tr>)}
+            </tbody>
+          </table>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="border border-gray-300 bg-white"><div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">出庫・発送情報</div><table className="w-full border-collapse text-xs"><tbody><tr><th className="border border-gray-300 bg-slate-100 px-2 py-1 text-left">出庫予定日</th><td className="border border-gray-300 px-2 py-1">{paymentDueDateLabel}</td><th className="border border-gray-300 bg-slate-100 px-2 py-1 text-left">出庫ステータス</th><td className="border border-gray-300 px-2 py-1">倉庫確認待ち</td></tr><tr><th className="border border-gray-300 bg-slate-100 px-2 py-1 text-left">保管倉庫</th><td className="border border-gray-300 px-2 py-1">{invoice.storageLocation ?? "-"}</td><th className="border border-gray-300 bg-slate-100 px-2 py-1 text-left">運送会社</th><td className="border border-gray-300 px-2 py-1">-</td></tr><tr><th className="border border-gray-300 bg-slate-100 px-2 py-1 text-left">送り先会社名</th><td className="border border-gray-300 px-2 py-1">{recipientName}</td><th className="border border-gray-300 bg-slate-100 px-2 py-1 text-left">電話番号/郵便番号</th><td className="border border-gray-300 px-2 py-1">-</td></tr><tr><th className="border border-gray-300 bg-slate-100 px-2 py-1 text-left">書類送付先</th><td className="border border-gray-300 px-2 py-1">{recipientName}</td><th className="border border-gray-300 bg-slate-100 px-2 py-1 text-left">共有事項</th><td className="border border-gray-300 px-2 py-1">出庫指示あり</td></tr></tbody></table></div>
+          <div className="border border-gray-300 bg-white"><div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">金額・粗利サマリー（見込）</div><table className="w-full border-collapse text-xs"><tbody>{[["売却合計金額（税抜）",formatYen(subtotal)],["消費税",formatYen(tax)],["送料",formatYen(shippingInsurance)],["手数料","0円"],["売却合計金額（税込）",formatYen(grandTotal)],["仕入合計金額",formatYen(purchaseTotal)],["粗利合計金額（税抜）",formatYen(grossExTax)],["粗利合計金額（税込）",formatYen(grossInTax)],["粗利率",`${grossRate.toFixed(1)}%`]].map(([k,v])=><tr key={k}><th className="border border-gray-300 bg-slate-100 px-2 py-1 text-left">{k}</th><td className="border border-gray-300 px-2 py-1 text-right">{v}</td></tr>)}</tbody></table></div>
+        </div>
+        <div className="border border-gray-300 bg-white"><div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">履歴・アクティビティ</div><ul className="list-disc space-y-1 px-6 py-3 text-xs">{[`${issuedDateLabel} 販売伝票を作成`,`${issuedDateLabel} パチマート成約から販売伝票を作成`,`${paymentDueDateLabel} 出庫予定を作成`,`${issuedDateLabel} 請求書プレビューを生成`,`${transferDateLabel} ${statusLabel}`].map((t)=><li key={t}>{t}</li>)}</ul></div>
 
         <div className="flex justify-center">
           <div className="w-full max-w-5xl border border-black bg-white p-6 shadow-sm">

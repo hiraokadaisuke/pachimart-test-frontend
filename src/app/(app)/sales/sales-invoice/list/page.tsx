@@ -35,6 +35,9 @@ interface SalesInvoiceRow {
   totalAmount: number;
   invoiceType: "vendor" | "hall" | "mixed";
   transferDate?: string;
+  sourceType: "PACHIMART" | "MANUAL" | "INVENTORY";
+  statusLabel: string;
+  outboundStatus: string;
 }
 
 interface SalesInvoiceFilters {
@@ -213,6 +216,9 @@ export default function SalesInvoiceListPage() {
           totalAmount: resolveInvoiceTotal(invoice),
           invoiceType: invoice.invoiceType,
           transferDate: invoice.transferDate,
+          sourceType: (invoice.remarks ?? "").includes("パチマート") ? "PACHIMART" : "INVENTORY",
+          statusLabel: invoice.isReceived ? "入金済" : invoice.transferDate ? "請求済" : "販売入力済",
+          outboundStatus: invoice.paymentDate ? "出庫完了" : "出庫待ち",
         };
       });
   }, [invoices, inventoryMap, mergedInvoiceIds]);
@@ -264,6 +270,9 @@ export default function SalesInvoiceListPage() {
         totalAmount,
         invoiceType: invoiceTypes.length === 1 ? invoiceTypes[0] : "mixed",
         transferDate,
+        sourceType: groupedInvoices.some((entry) => (entry.remarks ?? "").includes("パチマート")) ? "PACHIMART" : "INVENTORY",
+        statusLabel: groupedInvoices.every((entry) => entry.isReceived) ? "入金済" : "請求済",
+        outboundStatus: groupedInvoices.some((entry) => entry.paymentDate) ? "出庫完了" : "出庫待ち",
       });
       return acc;
     }, []);
@@ -610,6 +619,9 @@ export default function SalesInvoiceListPage() {
               <th className="border border-gray-300 px-3 py-2 text-left">区分</th>
               <th className="border border-gray-300 px-3 py-2 text-left">担当</th>
               <th className="border border-gray-300 px-3 py-2 text-left">入金予定日</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">取引元</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">ステータス</th>
+              <th className="border border-gray-300 px-3 py-2 text-left">出庫状況</th>
               <th className="border border-gray-300 px-3 py-2 text-right">合計金額</th>
               <th className="border border-gray-300 px-3 py-2 text-center">選択</th>
               <th className="border border-gray-300 px-3 py-2 text-center">詳細</th>
@@ -618,7 +630,7 @@ export default function SalesInvoiceListPage() {
           <tbody>
             {filteredInvoices.length === 0 && (
               <tr>
-                <td colSpan={12} className="border border-gray-300 px-4 py-8 text-center text-sm text-slate-700">
+                <td colSpan={15} className="border border-gray-300 px-4 py-8 text-center text-sm text-slate-700">
                   該当データがありません。
                 </td>
               </tr>
@@ -648,8 +660,13 @@ export default function SalesInvoiceListPage() {
               </td>
               <td className="border border-gray-300 px-3 py-2">{invoice.customer}</td>
               <td className="border border-gray-300 px-3 py-2">{typeLabel}</td>
-              <td className="border border-gray-300 px-3 py-2">{invoice.staff}</td>
+                  <td className="border border-gray-300 px-3 py-2">{invoice.staff}</td>
                   <td className="border border-gray-300 px-3 py-2">{formatDate(invoice.transferDate)}</td>
+                  <td className="border border-gray-300 px-3 py-2">
+                    {invoice.sourceType === "PACHIMART" ? "パチマート" : invoice.sourceType === "MANUAL" ? "手入力" : "既存在庫"}
+                  </td>
+                  <td className="border border-gray-300 px-3 py-2">{invoice.statusLabel}</td>
+                  <td className="border border-gray-300 px-3 py-2">{invoice.outboundStatus}</td>
                   <td className="border border-gray-300 px-3 py-2 text-right">
                     {formatCurrency(invoice.totalAmount)}
                   </td>

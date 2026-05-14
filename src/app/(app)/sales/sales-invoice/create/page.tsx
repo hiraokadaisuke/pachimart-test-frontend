@@ -131,6 +131,29 @@ function SalesInvoiceCreateContent() {
     const limit = prefillIds.length > 0 ? limited.length : Number(filters.displayCount) || limited.length;
     return limited.slice(0, limit);
   }, [baseRecords, filters, onlyWithUnit, prefillIds.length, unitCandidates]);
+  const fallbackRecords = useMemo<InventoryRecord[]>(
+    () =>
+      filteredRecords.length > 0
+        ? []
+        : [
+            {
+              id: "INV-DEMO-PACHI-001",
+              maker: "SANKYO",
+              model: "フィーバーX",
+              kind: "P",
+              type: "既存",
+              quantity: 1,
+              saleUnitPrice: 138000,
+              supplier: "パチマート経由 株式会社デモ商事",
+              buyerStaff: "木村",
+              status: "売却済",
+              note: "パチマート成約デモ案件",
+              createdAt: new Date().toISOString(),
+            },
+          ],
+    [filteredRecords.length],
+  );
+  const displayRecords = filteredRecords.length > 0 ? filteredRecords : fallbackRecords;
 
   const handleInputChange = (
     key: keyof typeof filters,
@@ -342,14 +365,14 @@ function SalesInvoiceCreateContent() {
               </tr>
             </thead>
             <tbody>
-              {filteredRecords.length === 0 && (
+              {displayRecords.length === 0 && (
                 <tr>
                   <td colSpan={12} className="border border-gray-300 px-4 py-6 text-center text-sm text-slate-700">
                     該当データがありません
                   </td>
                 </tr>
               )}
-              {filteredRecords.map((record, index) => {
+              {displayRecords.map((record, index) => {
                 const rowColor = index % 2 === 0 ? "bg-amber-50" : "bg-white";
                 const saleDate = getSaleDate(record);
                 const buyer = record.supplier ?? record.supplierCorporate ?? "-";
