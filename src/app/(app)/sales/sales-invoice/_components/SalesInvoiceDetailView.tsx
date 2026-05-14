@@ -183,19 +183,25 @@ const buildMergedInvoice = (invoices: SalesInvoice[], groupName: string, groupId
 };
 
 const SimpleShippingRequest = ({
+  invoice,
   recipientName,
   issuedDateLabel,
   staffName,
   items,
-}: { recipientName: string; issuedDateLabel: string; staffName: string; items: SalesInvoice["items"] }) => (
-  <div className="text-[12px]">
-    <div className="mb-3 text-center text-xl font-bold">発送依頼書</div>
-    <div className="mb-2 flex justify-between"><div>{recipientName || "〇〇倉庫"} 御中</div><div>作成日：{issuedDateLabel}</div></div>
-    <table className="mb-3 w-full border-collapse"><tbody><tr><th className="border border-black px-2 py-1 text-left">担当者</th><td className="border border-black px-2 py-1">{staffName || "-"}</td><th className="border border-black px-2 py-1 text-left">宛先倉庫</th><td className="border border-black px-2 py-1">{recipientName || "-"}</td></tr></tbody></table>
-    <table className="w-full border-collapse">
-      <thead><tr>{["メーカー", "商品名", "区分", "数量"].map((h) => <th key={h} className="border border-black px-2 py-1 text-left">{h}</th>)}</tr></thead>
-      <tbody>{(items ?? []).map((it, i) => <tr key={i}><td className="border border-black px-2 py-1">{it.maker || "-"}</td><td className="border border-black px-2 py-1">{it.productName || "-"}</td><td className="border border-black px-2 py-1">{it.type || "-"}</td><td className="border border-black px-2 py-1 text-right">{it.quantity || "-"}</td></tr>)}</tbody>
-    </table>
+}: { invoice: SalesInvoice; recipientName: string; issuedDateLabel: string; staffName: string; items: SalesInvoice["items"] }) => (
+  <div className="space-y-3 text-[11px]">
+    <div className="text-center text-[20px] font-bold">発送依頼書</div>
+    <div className="flex justify-between">
+      <div className="text-[13px] font-semibold">{(invoice.storageLocation || "〇〇倉庫")} 御中</div>
+      <div className="space-y-0.5 text-right"><div>作成日：{issuedDateLabel}</div><div>担当：{staffName || "-"}</div></div>
+    </div>
+    <table className="w-full border-collapse text-[11px]"><thead><tr>{["メーカー","商品名","区分","数量"].map((h)=><th key={h} className="border border-black px-2 py-1 text-left">{h}</th>)}</tr></thead><tbody>{(items ?? []).map((it,i)=><tr key={i}><td className="border border-black px-2 py-1">{it.maker||"-"}</td><td className="border border-black px-2 py-1">{it.productName||"-"}</td><td className="border border-black px-2 py-1">{it.type||"-"}</td><td className="border border-black px-2 py-1 text-right">{formatNumber(it.quantity)}</td></tr>)}{Array.from({length:4}).map((_,i)=><tr key={`empty-${i}`}><td className="border border-black px-2 py-1">&nbsp;</td><td className="border border-black px-2 py-1"/><td className="border border-black px-2 py-1"/><td className="border border-black px-2 py-1"/></tr>)}</tbody></table>
+    <table className="w-full border-collapse text-[11px]"><tbody>
+      {[["機械納品先",recipientName||"-"],["機械発送先住所","-"],["機械発送先電話番号","-"],["機械発送日",formatFullDate(invoice.transferDate)],["機械納品日",formatFullDate(invoice.paymentDueDate)],["開店日","-"],["売却先",recipientName||"-"],["運送会社","-"],["発送方法","路線便"]].map(([k,v])=><tr key={k}><th className="w-[180px] border border-black bg-slate-50 px-2 py-1 text-left">{k}</th><td className="border border-black px-2 py-1">{v}</td></tr>)}
+    </tbody></table>
+    <div className="border border-black p-2"><div className="mb-1 font-semibold">備考</div><div className="min-h-[80px] whitespace-pre-wrap">{invoice.remarks?.trim() || " "}</div></div>
+    <div className="text-center text-[11px]">お手数ですが、送り状のFAXをお願い致します。</div>
+    <table className="w-full border-collapse text-[11px]"><tbody>{[["会社名",COMPANY_INFO.name],["郵便番号",COMPANY_INFO.postal],["住所",COMPANY_INFO.address],["TEL",COMPANY_INFO.tel],["FAX",COMPANY_INFO.fax],["登録番号","-" ]].map(([k,v])=><tr key={k}><th className="w-[120px] border border-black bg-slate-50 px-2 py-1 text-left">{k}</th><td className="border border-black px-2 py-1">{v}</td></tr>)}</tbody></table>
   </div>
 );
 
@@ -205,13 +211,16 @@ const SimpleOutboundInstruction = ({
   issuedDateLabel,
   pachimartDealId,
 }: { invoice: SalesInvoice; recipientName: string; issuedDateLabel: string; pachimartDealId: string }) => (
-  <div className="text-[12px]">
-    <div className="mb-3 text-center text-xl font-bold">出庫指示書</div>
+  <div className="space-y-3 text-[11px]">
+    <div className="text-center text-[20px] font-bold">出庫指示書</div>
     <table className="w-full border-collapse"><tbody>
-      <tr><th className="border border-black px-2 py-1 text-left">作成日</th><td className="border border-black px-2 py-1">{issuedDateLabel}</td><th className="border border-black px-2 py-1 text-left">出庫予定日</th><td className="border border-black px-2 py-1">{invoice.paymentDueDate || "-"}</td></tr>
-      <tr><th className="border border-black px-2 py-1 text-left">販売伝票ID</th><td className="border border-black px-2 py-1">{invoice.invoiceId}</td><th className="border border-black px-2 py-1 text-left">パチマート取引ID</th><td className="border border-black px-2 py-1">{pachimartDealId || "-"}</td></tr>
-      <tr><th className="border border-black px-2 py-1 text-left">販売先</th><td className="border border-black px-2 py-1">{recipientName}</td><th className="border border-black px-2 py-1 text-left">倉庫</th><td className="border border-black px-2 py-1">{invoice.storageLocation || "-"}</td></tr>
+      <tr><th className="border border-black px-2 py-1 text-left">作成日</th><td className="border border-black px-2 py-1">{issuedDateLabel}</td><th className="border border-black px-2 py-1 text-left">出庫予定日</th><td className="border border-black px-2 py-1">{formatFullDate(invoice.paymentDueDate)}</td></tr>
+      <tr><th className="border border-black px-2 py-1 text-left">倉庫</th><td className="border border-black px-2 py-1">{invoice.storageLocation || "-"}</td><th className="border border-black px-2 py-1 text-left">販売伝票ID</th><td className="border border-black px-2 py-1">{invoice.invoiceId}</td></tr>
+      <tr><th className="border border-black px-2 py-1 text-left">パチマート取引ID</th><td className="border border-black px-2 py-1" colSpan={3}>{pachimartDealId || "-"}</td></tr>
     </tbody></table>
+    <table className="w-full border-collapse"><thead><tr>{["メーカー","商品名","区分","数量","Unit番号","QR補助","保管先"].map((h)=><th key={h} className="border border-black px-2 py-1 text-left">{h}</th>)}</tr></thead><tbody>{(invoice.items ?? []).map((it,i)=><tr key={i}><td className="border border-black px-2 py-1">{it.maker||"-"}</td><td className="border border-black px-2 py-1">{it.productName||"-"}</td><td className="border border-black px-2 py-1">{it.type||"-"}</td><td className="border border-black px-2 py-1 text-right">{formatNumber(it.quantity)}</td><td className="border border-black px-2 py-1">{formatSalesInvoiceUnitSummary(it)||"-"}</td><td className="border border-black px-2 py-1">-</td><td className="border border-black px-2 py-1">{it.storageLocationName||invoice.storageLocation||"-"}</td></tr>)}</tbody></table>
+    <table className="w-full border-collapse"><tbody>{[["出庫方法","路線便"],["運送会社","-"],["発送先",recipientName||"-"],["電話番号","-"],["備考",invoice.remarks||"-"]].map(([k,v])=><tr key={k}><th className="w-[160px] border border-black bg-slate-50 px-2 py-1 text-left">{k}</th><td className="border border-black px-2 py-1">{v}</td></tr>)}</tbody></table>
+    <div className="border border-black px-2 py-2">□ 対象在庫確認　□ Unit番号確認　□ QR確認　□ 発送先確認　□ 出庫完了</div>
   </div>
 );
 
@@ -966,7 +975,7 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
         <div className="border border-gray-300 bg-white"><div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">履歴・アクティビティ</div><ul className="list-disc space-y-1 px-6 py-3 text-xs">{[`${issuedDateLabel} 販売伝票を作成`,...(isPachimartInvoice ? [`${issuedDateLabel} パチマート成約から販売伝票を作成`] : []),`${paymentDueDateLabel} ${isPachimartInvoice ? "出庫予定を作成" : "出庫指示を作成"}`,`${issuedDateLabel} 帳票プレビューを生成`,`${transferDateLabel} ${statusLabel}`].map((t)=><li key={t}>{t}</li>)}</ul></div>
 
         <div className="overflow-x-auto py-2">
-          <div className="mx-auto w-[794px] min-h-[1123px] border-2 border-black bg-white p-5 text-[12px] text-black document-preview-a4 print:mx-0 print:min-h-0 print:w-full">
+          <div className="mx-auto w-[794px] min-h-[1123px] border-2 border-black bg-white p-4 text-[11px] text-black document-preview-a4 print:mx-0 print:min-h-0 print:w-full">
             {(documentKind === "invoice" || documentKind === "bundle") && (
               <>
                 <div className="mb-3 text-center text-xl font-bold">請求書</div>
@@ -980,7 +989,7 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
             )}
             {(documentKind === "shipping-request" || documentKind === "bundle") && (
               <div className="mt-6 break-inside-avoid border-t-2 border-black pt-4 print:break-before-page">
-                <SimpleShippingRequest recipientName={recipientName} issuedDateLabel={issuedDateLabel} items={items} staffName={staffName} />
+                <SimpleShippingRequest invoice={invoice} recipientName={recipientName} issuedDateLabel={issuedDateLabel} items={items} staffName={staffName} />
               </div>
             )}
             {(documentKind === "outbound-instruction" || documentKind === "bundle") && (
@@ -1084,14 +1093,14 @@ export const renderVendorSheet = ({
       <div className="space-y-3 border border-black p-4">
         <div className="flex flex-wrap justify-between gap-4">
           <div className="min-w-[280px] flex-1 space-y-2">
-            <div className="text-lg font-bold text-neutral-900">販売伝票発行（業者）</div>
+            <div className="text-lg font-bold text-neutral-900">請求書</div>
             <div className="text-lg font-semibold text-neutral-900">{recipientName} 御中</div>
             <div className="flex gap-6 text-sm text-neutral-800">
               <span>FAX ―</span>
               <span>TEL ―</span>
             </div>
             <div className="text-xs text-neutral-700">インボイス番号 {buyerInvoiceNumber || "―"}</div>
-            <div className="text-sm font-semibold text-neutral-900">当社の規約に基づき下記の通り売却いたします</div>
+            <div className="text-sm font-semibold text-neutral-900">下記の通りご請求申し上げます。</div>
             <div className="text-xs leading-relaxed text-neutral-800">
               <div>＊キャンセルは理由の如何にかかわらず承りません。</div>
               <div>＊商品の引き渡し後の故障・損傷・破損などについて弊社は一切の責任を負いません。</div>
@@ -1351,6 +1360,8 @@ export const renderSalesContractInvoiceSheet = ({
           <div className="text-[12px]">{issuedDateLabel}</div>
         </div>
       </div>
+
+      <div className="border border-black px-3 py-2 text-[11px]">{`「弊社」と「${recipientName || "買主"}」は下記の条件にて売買契約を締結いたします。`}</div>
 
       <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
         <div className="space-y-2">
