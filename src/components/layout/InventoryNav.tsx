@@ -35,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
     items: [
       { kind: "link", href: "/sales/sales-invoice/create", label: "販売伝票作成" },
       { kind: "link", href: "/sales/sales-invoice/list", label: "販売伝票一覧" },
+      { kind: "link", href: "/sales/pachimart-deals", label: "パチマート成約一覧" },
     ],
   },
   { kind: "link", href: "/sales/profit", label: "利益管理" },
