@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
   formatCurrency,
@@ -46,6 +46,7 @@ const PRINT_ACTIONS = [
   { label: "販売伝票", path: "invoice", requiresSerial: false },
   { label: "書類一括", path: "bundle", requiresSerial: true },
 ] as const;
+type DocumentKind = "invoice" | "contract" | "shipping-request" | "outbound-instruction" | "bundle";
 
 const CONTRACT_COPY_OPTIONS = [
   { value: "both", label: "両方確認" },
@@ -181,8 +182,43 @@ const buildMergedInvoice = (invoices: SalesInvoice[], groupName: string, groupId
   };
 };
 
+const SimpleShippingRequest = ({
+  recipientName,
+  issuedDateLabel,
+  staffName,
+  items,
+}: { recipientName: string; issuedDateLabel: string; staffName: string; items: SalesInvoice["items"] }) => (
+  <div className="text-[12px]">
+    <div className="mb-3 text-center text-xl font-bold">発送依頼書</div>
+    <div className="mb-2 flex justify-between"><div>{recipientName || "〇〇倉庫"} 御中</div><div>作成日：{issuedDateLabel}</div></div>
+    <table className="mb-3 w-full border-collapse"><tbody><tr><th className="border border-black px-2 py-1 text-left">担当者</th><td className="border border-black px-2 py-1">{staffName || "-"}</td><th className="border border-black px-2 py-1 text-left">宛先倉庫</th><td className="border border-black px-2 py-1">{recipientName || "-"}</td></tr></tbody></table>
+    <table className="w-full border-collapse">
+      <thead><tr>{["メーカー", "商品名", "区分", "数量"].map((h) => <th key={h} className="border border-black px-2 py-1 text-left">{h}</th>)}</tr></thead>
+      <tbody>{(items ?? []).map((it, i) => <tr key={i}><td className="border border-black px-2 py-1">{it.maker || "-"}</td><td className="border border-black px-2 py-1">{it.productName || "-"}</td><td className="border border-black px-2 py-1">{it.type || "-"}</td><td className="border border-black px-2 py-1 text-right">{it.quantity || "-"}</td></tr>)}</tbody>
+    </table>
+  </div>
+);
+
+const SimpleOutboundInstruction = ({
+  invoice,
+  recipientName,
+  issuedDateLabel,
+  pachimartDealId,
+}: { invoice: SalesInvoice; recipientName: string; issuedDateLabel: string; pachimartDealId: string }) => (
+  <div className="text-[12px]">
+    <div className="mb-3 text-center text-xl font-bold">出庫指示書</div>
+    <table className="w-full border-collapse"><tbody>
+      <tr><th className="border border-black px-2 py-1 text-left">作成日</th><td className="border border-black px-2 py-1">{issuedDateLabel}</td><th className="border border-black px-2 py-1 text-left">出庫予定日</th><td className="border border-black px-2 py-1">{invoice.paymentDueDate || "-"}</td></tr>
+      <tr><th className="border border-black px-2 py-1 text-left">販売伝票ID</th><td className="border border-black px-2 py-1">{invoice.invoiceId}</td><th className="border border-black px-2 py-1 text-left">パチマート取引ID</th><td className="border border-black px-2 py-1">{pachimartDealId || "-"}</td></tr>
+      <tr><th className="border border-black px-2 py-1 text-left">販売先</th><td className="border border-black px-2 py-1">{recipientName}</td><th className="border border-black px-2 py-1 text-left">倉庫</th><td className="border border-black px-2 py-1">{invoice.storageLocation || "-"}</td></tr>
+    </tbody></table>
+  </div>
+);
+
 export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [invoice, setInvoice] = useState<SalesInvoice | null>(null);
   const [invoiceGroup, setInvoiceGroup] = useState<SalesInvoiceGroup | null>(null);
   const [inventories, setInventories] = useState<Map<string, InventoryRecord>>(new Map());
@@ -388,6 +424,13 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
   const warehousingDateLabel = formatMonthDay(invoice?.issuedDate || invoice?.createdAt);
   const transferDateLabel = formatFullDate(invoice?.transferDate);
   const cancelSelectionCount = selectedCancelRows.size;
+  const documentKind = (searchParams?.get("document") as DocumentKind | null) ?? "invoice";
+
+  const setDocumentKind = (kind: DocumentKind) => {
+    const params = new URLSearchParams(searchParams?.toString() ?? "");
+    params.set("document", kind);
+    router.replace(`${pathname}?${params.toString()}`);
+  };
 
   const handlePrintMenu = (label: string) => {
     const action = PRINT_ACTIONS.find((entry) => entry.label === label);
@@ -885,7 +928,18 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
           menuLabel="メニュー："
           actions={PRINT_ACTIONS.map((action) => ({
             label: action.label,
-            onClick: () => handlePrintMenu(action.label),
+            onClick: () => {
+              const map: Record<string, DocumentKind> = {
+                請求書: "invoice",
+                売買契約書: "contract",
+                発送依頼書: "shipping-request",
+                出庫指示書: "outbound-instruction",
+                書類一括: "bundle",
+                販売伝票: "invoice",
+              };
+              setDocumentKind(map[action.label] ?? "invoice");
+              handlePrintMenu(action.label);
+            },
             disabled: action.requiresSerial && !serialStatus.allComplete,
           }))}
           sideLabel="機械番号明細："
@@ -911,45 +965,32 @@ export function SalesInvoiceDetailView({ invoiceId, title, expectedType }: Props
         </div>
         <div className="border border-gray-300 bg-white"><div className="bg-slate-600 px-3 py-2 text-sm font-bold text-white">履歴・アクティビティ</div><ul className="list-disc space-y-1 px-6 py-3 text-xs">{[`${issuedDateLabel} 販売伝票を作成`,...(isPachimartInvoice ? [`${issuedDateLabel} パチマート成約から販売伝票を作成`] : []),`${paymentDueDateLabel} ${isPachimartInvoice ? "出庫予定を作成" : "出庫指示を作成"}`,`${issuedDateLabel} 帳票プレビューを生成`,`${transferDateLabel} ${statusLabel}`].map((t)=><li key={t}>{t}</li>)}</ul></div>
 
-        <div className="flex justify-center">
-          <div className="w-full max-w-5xl border border-black bg-white p-6 shadow-sm">
-            {invoice.invoiceType === "vendor"
-              ? renderVendorSheet({
-                  recipientName,
-                  staffName,
-                  manager,
-                  items,
-                  subtotal,
-                  tax,
-                  shippingInsurance,
-                  grandTotal,
-                  issuedDateLabel,
-                  paymentDueDateLabel,
-                  invoiceOriginalRequiredLabel,
-                  sellerInvoiceNumber,
-                  buyerInvoiceNumber,
-                })
-              : renderHallSheet({
-                  recipientName,
-                  staffName,
-                  manager,
-                  items,
-                  subtotal,
-                  tax,
-                  shippingInsurance,
-                  grandTotal,
-                  issuedDateLabel,
-                  paymentDueDateLabel,
-                  invoiceOriginalRequiredLabel,
-                  paymentDateLabel,
-                  warehousingDateLabel,
-                  sellerInvoiceNumber,
-                  buyerInvoiceNumber,
-                })}
-
-            <div className="mb-4 mt-6 min-h-[120px] border border-black p-3 text-[13px]">
-              <div className="mb-2 text-sm font-semibold text-neutral-900">備考</div>
-              <div className="whitespace-pre-wrap text-neutral-800">{remarks || "―"}</div>
+        <div className="overflow-x-auto py-2">
+          <div className="mx-auto w-[794px] min-h-[1123px] border-2 border-black bg-white p-5 text-[12px] text-black document-preview-a4 print:mx-0 print:min-h-0 print:w-full">
+            {(documentKind === "invoice" || documentKind === "bundle") && (
+              <>
+                <div className="mb-3 text-center text-xl font-bold">請求書</div>
+                {renderVendorSheet({ recipientName, staffName, manager, items, subtotal, tax, shippingInsurance, grandTotal, issuedDateLabel, paymentDueDateLabel, invoiceOriginalRequiredLabel, sellerInvoiceNumber, buyerInvoiceNumber })}
+              </>
+            )}
+            {(documentKind === "contract" || documentKind === "bundle") && (
+              <div className="mt-6 break-inside-avoid border-t-2 border-black pt-4 print:break-before-page">
+                {renderSalesContractInvoiceSheet({ title: "売買契約書", issuedDateLabel, recipientName, staffName, items, subtotal, tax, grandTotal, paymentDueDateLabel, sellerInvoiceNumber, buyerInvoiceNumber })}
+              </div>
+            )}
+            {(documentKind === "shipping-request" || documentKind === "bundle") && (
+              <div className="mt-6 break-inside-avoid border-t-2 border-black pt-4 print:break-before-page">
+                <SimpleShippingRequest recipientName={recipientName} issuedDateLabel={issuedDateLabel} items={items} staffName={staffName} />
+              </div>
+            )}
+            {(documentKind === "outbound-instruction" || documentKind === "bundle") && (
+              <div className="mt-6 break-inside-avoid border-t-2 border-black pt-4 print:break-before-page">
+                <SimpleOutboundInstruction invoice={invoice} recipientName={recipientName} issuedDateLabel={issuedDateLabel} pachimartDealId={pachimartDealId} />
+              </div>
+            )}
+            <div className="mb-4 mt-6 min-h-[90px] border border-black p-3 text-[12px]">
+              <div className="mb-2 font-semibold">備考</div>
+              <div className="whitespace-pre-wrap">{remarks || "―"}</div>
             </div>
           </div>
         </div>
