@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { PACHIMART_DEMO_DEALS, buildPachimartDealInvoiceMap } from "@/lib/demo-data/pachimartDeals";
 import { loadAllSalesInvoices } from "@/lib/demo-data/salesInvoices";
+import { outboundStatusLabel } from "@/features/inventory/labels";
+import type { OutboundStatus } from "@prisma/client";
 import type { SalesInvoice } from "@/types/salesInvoices";
 
 type SummaryValue = number | "-" | "取得不可";
@@ -31,6 +33,20 @@ const buildInvoiceDetailHref = (invoiceId: string) =>
       : invoiceId.startsWith("S-G-")
         ? `/sales/sales-invoice/group/${invoiceId}`
         : "/sales/sales-invoice/list";
+
+
+
+const toDemoOutboundStatusLabel = (status: string | null | undefined) => {
+  if (!status) return "-";
+  const normalized = status.toUpperCase();
+  if (normalized === "未発送") return "出庫待ち";
+  if (normalized === "READY") return "出庫準備中";
+  if (normalized === "COMPLETED") return "出庫完了";
+  const knownStatuses: OutboundStatus[] = ["PLANNED", "PICKING", "READY_TO_SHIP", "SHIPPED", "DELIVERED", "CANCELED"];
+  return knownStatuses.includes(normalized as OutboundStatus)
+    ? outboundStatusLabel(normalized as OutboundStatus)
+    : "-";
+};
 
 const resolveInvoiceTimestamp = (invoice: SalesInvoice) => {
   const source = invoice.createdAt || invoice.issuedDate;
@@ -118,15 +134,15 @@ export default function SalesDemoFlowPage() {
   );
 
   const steps = [
-    { step: "STEP1", title: "パチマート成約一覧を見る", description: "パチマートで成約した案件が一覧に入ります。", href: "/sales/pachimart-deals", cta: "成約一覧を開く", badges: ["デモ可", "確認済"] },
+    { step: "STEP1", title: "パチマート成約一覧を開く", description: "パチマートで成約した案件が一覧に入ります。", href: "/sales/pachimart-deals", cta: "成約一覧を開く", badges: ["デモ可", "確認済"] },
     { step: "STEP2", title: "販売伝票を作成する", description: "未伝票化の成約から販売伝票を作成します。", href: "/sales/pachimart-deals", cta: "販売伝票を作成する", badges: [summary.uninvoicedCount === 0 ? "作成済" : "未伝票化あり"] },
     { step: "STEP3", title: "販売伝票詳細ハブを見る", description: "販売先、明細、粗利、出庫、履歴、帳票を確認できます。", href: salesInvoiceHref, cta: "販売伝票詳細を開く", badges: [latestInvoiceId ? "確認済" : "一覧誘導"] },
-    { step: "STEP4", title: "出庫予定を作成/同期する", description: "販売伝票から倉庫側の出庫予定を作成します。", href: "/sales/pachimart-deals", cta: "出庫予定を作成する", badges: [summary.unscheduledCount === 0 ? "作成済" : "未作成あり"] },
-    { step: "STEP5", title: "倉庫側の出庫予定を見る", description: "営業側で作成した出庫予定が倉庫一覧へ表示されます。", href: "/inventory/outbound", cta: "出庫予定一覧を開く", badges: ["デモ可"] },
+    { step: "STEP4", title: "出庫予定を作成/同期する", description: "販売伝票から倉庫側の出庫予定を作成します。未作成の案件がある場合はここから同期できます。", href: "/sales/pachimart-deals", cta: "出庫予定を作成する", badges: [summary.unscheduledCount === 0 ? "作成済" : "未作成あり"] },
+    { step: "STEP5", title: "倉庫側の出庫予定一覧を開く", description: "営業側で作成した出庫予定が倉庫一覧へ表示されます。", href: "/inventory/outbound", cta: "出庫予定一覧を開く", badges: ["デモ可"] },
     {
       step: "STEP6",
-      title: "出庫予定詳細/倉庫作業を見る",
-      description: "STEP5の一覧から対象予定を開いた画面です。倉庫担当が出庫対象・発送先・Unit/QR確認を行います。直近予定がある場合は詳細へ直接進めます。",
+      title: "出庫予定詳細を開く",
+      description: "STEP5の一覧から対象予定を開いた画面です。倉庫担当が出庫対象・発送先・Unit/QR確認を行います。直近予定がある場合は詳細へ直接進めます。販売伝票由来の直近出庫予定を優先表示します。",
       href: step6Href,
       cta: latestOutbound ? "出庫予定詳細を開く" : "出庫予定一覧を開く",
       badges: [latestOutbound ? "直近あり" : "一覧から選択"],
@@ -139,7 +155,8 @@ export default function SalesDemoFlowPage() {
         <h1 className="text-xl font-bold">営業デモフロー</h1>
         <p className="text-sm text-slate-100">パチマート成約から販売伝票、出庫予定、帳票までの推奨デモ順を確認できます。</p>
       </div>
-      <p className="border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700">推奨デモ順: STEP1 → STEP2 → STEP3 → STEP4 → STEP5 → STEP6 → STEP7 の順にクリックすると、パチマート成約から帳票出力まで一連の流れを説明できます。</p>
+      <p className="border border-slate-300 bg-slate-50 px-3 py-2 text-xs text-slate-700">推奨デモ順: STEP1から順番にクリックすると、パチマート成約から販売伝票、倉庫出庫、帳票出力まで一連の流れを説明できます。</p>
+      <p className="border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">デモ中は、出庫完了・取消などの確定操作は押さず、画面確認を中心に進めてください。</p>
       <div className="grid gap-2 md:grid-cols-5">
         {[{ label: "パチマート成約", value: summary.dealCount }, { label: "未伝票化", value: summary.uninvoicedCount }, { label: "出庫予定未作成", value: summary.unscheduledCount }, { label: "出庫予定", value: summary.scheduledCount }, { label: "帳票プレビュー", value: summary.documentStatus }].map((item) => (
           <div key={item.label} className="border border-slate-300 bg-white px-3 py-2">
@@ -160,19 +177,24 @@ export default function SalesDemoFlowPage() {
           </thead>
           <tbody>
             {steps.map((item) => (
-              <tr key={item.step} className="border-b border-slate-200 align-top">
+              <tr
+                key={item.step}
+                className={`border-b border-slate-200 align-top ${
+                  item.step === "STEP4" && summary.unscheduledCount !== 0 ? "bg-amber-50/70" : ""
+                }`}
+              >
                 <td className="px-3 py-3 font-semibold text-slate-700">{item.step}</td>
                 <td className="px-3 py-3">
                   <p className="font-semibold text-slate-900">{item.title}</p>
                   <p className="text-xs text-slate-600">{item.description}</p>
                   {item.step === "STEP6" && latestOutbound ? (
-                    <p className="mt-1 text-xs text-slate-600">販売伝票ID: {latestOutbound.sourceId ?? "-"} / 販売先: {latestOutbound.buyerName ?? "-"} / 機種名: {latestOutbound.modelNameSnapshot} / ステータス: {latestOutbound.status}</p>
+                    <p className="mt-1 text-xs text-slate-600">販売伝票ID: {latestOutbound.sourceId ?? "-"} / 販売先: {latestOutbound.buyerName ?? "-"} / 機種名: {latestOutbound.modelNameSnapshot} / ステータス: {toDemoOutboundStatusLabel(latestOutbound.status)}</p>
                   ) : null}
                 </td>
                 <td className="px-3 py-3">
                   <div className="flex flex-wrap gap-1">
                     {item.badges.map((badge) => (
-                      <span key={badge} className="border border-slate-300 bg-slate-50 px-2 py-0.5 text-xs text-slate-700">{badge}</span>
+                      <span key={badge} className={`border px-2 py-0.5 text-xs ${badge === "未作成あり" ? "border-amber-300 bg-amber-100 text-amber-900 font-semibold" : "border-slate-300 bg-slate-50 text-slate-700"}`}>{badge}</span>
                     ))}
                   </div>
                 </td>
