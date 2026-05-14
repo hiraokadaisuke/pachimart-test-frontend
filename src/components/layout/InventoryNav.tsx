@@ -39,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { kind: "link", href: "/sales/profit", label: "利益管理" },
+  { kind: "link", href: "/sales/demo-flow", label: "営業デモフロー" },
   {
     kind: "menu",
     label: "詳細設定",
