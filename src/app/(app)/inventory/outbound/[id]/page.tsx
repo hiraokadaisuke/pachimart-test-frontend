@@ -56,7 +56,7 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
     {linkMissing ? <LinkInventoryPanel scheduleId={schedule.id} candidates={candidates} /> : null}
     <div className="rounded border bg-white p-4 text-sm space-y-1">
       <h2 className="font-semibold">対象個体</h2>
-      <p>個体番号: {unit?.displayCode ?? "-"}</p><p>QR(補助): {unit?.rawQr ?? "-"}</p><p>ステータス: {unit?.status ?? "-"}</p><p>コード種別: {unit?.codeType ?? "-"}</p><p>メモ: {unit?.memo ?? "-"}</p>
+      <p>個体番号: {unit?.displayCode ?? "-"}</p><p>個体QR: {unit?.rawQr ?? "-"}</p><p>状態: {unit?.status ?? "-"}</p><p>コード種別: {unit?.codeType ?? "-"}</p><p>メモ: {unit?.memo ?? "-"}</p>
     </div>
     <div className="rounded border bg-white p-4 text-sm">
       <h2 className="font-semibold">倉庫作業デモ手順</h2>
@@ -68,7 +68,7 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
     <div className="flex flex-wrap gap-2 text-sm">
       {salesInvoiceRoute ? <Link href={salesInvoiceRoute.href} className="underline">{salesInvoiceRoute.label}</Link> : null}
       <Link href={`/inventory/outbound/${schedule.id}/work`} className="underline">出庫作業へ</Link>
-      <form action={async () => {"use server"; await completeOutboundSchedule(schedule.id); redirect(`/inventory/outbound/${schedule.id}/work`);}}><Button type="submit" disabled={linkMissing}>出庫完了</Button></form>
+      <form action={async () => {"use server"; await completeOutboundSchedule(schedule.id); redirect(`/inventory/outbound/${schedule.id}/work`);}}><Button type="submit" disabled={linkMissing}>{linkMissing ? "個体未選択のため出庫完了不可" : "出庫完了"}</Button></form>
       <form action={async () => {"use server"; if (["SHIPPED", "DELIVERED"].includes(schedule.status)) { await cancelCompletedOutboundSchedule(schedule.id); } else { await cancelOutboundSchedule(schedule.id); } redirect("/inventory/outbound");}}><Button type="submit" variant="outline">取消</Button></form>
       <Link href="/inventory/outbound" className="underline">一覧へ戻る</Link>
     </div>
