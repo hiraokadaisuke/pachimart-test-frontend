@@ -2,8 +2,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { InventoryTabs } from "@/components/inventory-demo/InventoryTabs";
+import { LinkInventoryPanel } from "./LinkInventoryPanel";
 import { formatQuantity, outboundStatusLabel, shippingMethodLabel } from "@/features/inventory/labels";
-import { cancelCompletedOutboundSchedule, cancelOutboundSchedule, completeOutboundSchedule, getOutboundScheduleById } from "@/features/inventory/server";
+import { cancelCompletedOutboundSchedule, cancelOutboundSchedule, completeOutboundSchedule, getOutboundLinkCandidates, getOutboundScheduleById } from "@/features/inventory/server";
 
 type InvoiceRouteInfo = { href: string; label: string };
 
@@ -38,9 +39,10 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
   const salesInvoiceRoute = buildSalesInvoiceRoute(schedule.sourceId);
   const sourceLabel = isSalesDerived ? "販売伝票" : schedule.sourceType ?? "MANUAL";
   const linkMissing = !schedule.inventoryItemId || !unit;
+  const candidates = await getOutboundLinkCandidates(schedule.id);
 
   return <div className="mx-auto max-w-5xl space-y-4 px-4 py-6"><InventoryTabs /><h1 className="text-2xl font-bold">出庫予定詳細</h1>
-    {linkMissing ? <div className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-semibold">紐付け在庫なし / Unit未紐付け</p><p className="mt-1">この出庫予定は販売伝票から作成されていますが、まだ在庫・Unitに紐付いていません。</p><p>在庫未紐付けのため出庫完了できません。対象在庫またはUnitを紐付けてください。</p></div> : null}
+    {linkMissing ? <div className="rounded border border-amber-300 bg-amber-50 p-4 text-sm text-amber-900"><p className="font-semibold">紐付け在庫なし / 個体未紐付け</p><p className="mt-1">この出庫予定は販売伝票から作成されていますが、まだ在庫・個体に紐付いていません。</p><p>在庫未紐付けのため出庫完了できません。対象在庫または個体を紐付けてください。</p></div> : null}
     <div className="grid gap-2 rounded border bg-white p-4 text-sm md:grid-cols-2">
       <p>出庫予定ID: {schedule.id}</p><p>予定日: {schedule.expectedDate.toISOString().slice(0, 10)}</p>
       <p>ステータス: {outboundStatusLabel(schedule.status)}</p><p>由来: {sourceLabel}{pmDealId ? " / パチマート成約由来" : ""}</p>
@@ -51,14 +53,15 @@ export default async function OutboundDetailPage({ params }: { params: Promise<{
       <p>運送会社: -</p><p>発送先: {schedule.buyerName ?? "-"}</p>
       <p className="md:col-span-2">備考: {schedule.note ?? "-"}</p>
     </div>
+    {linkMissing ? <LinkInventoryPanel scheduleId={schedule.id} candidates={candidates} /> : null}
     <div className="rounded border bg-white p-4 text-sm space-y-1">
-      <h2 className="font-semibold">対象Unit</h2>
-      <p>Unit番号: {unit?.displayCode ?? "-"}</p><p>QR(補助): {unit?.rawQr ?? "-"}</p><p>status: {unit?.status ?? "-"}</p><p>codeType: {unit?.codeType ?? "-"}</p><p>メモ: {unit?.memo ?? "-"}</p>
+      <h2 className="font-semibold">対象個体</h2>
+      <p>個体番号: {unit?.displayCode ?? "-"}</p><p>QR(補助): {unit?.rawQr ?? "-"}</p><p>ステータス: {unit?.status ?? "-"}</p><p>コード種別: {unit?.codeType ?? "-"}</p><p>メモ: {unit?.memo ?? "-"}</p>
     </div>
     <div className="rounded border bg-white p-4 text-sm">
       <h2 className="font-semibold">倉庫作業デモ手順</h2>
       <ol className="mt-2 list-decimal space-y-1 pl-5">
-        {linkMissing ? <><li>対象在庫を紐付け</li><li>Unit番号を確認</li></> : <><li>出庫対象を確認</li><li>Unit番号を確認</li></>}
+        {linkMissing ? <><li>対象在庫を紐付け</li><li>個体番号を確認</li></> : <><li>出庫対象を確認</li><li>個体番号を確認</li></>}
         <li>QR確認（デモ）</li><li>発送先確認</li><li>出庫完了</li>
       </ol>
     </div>
