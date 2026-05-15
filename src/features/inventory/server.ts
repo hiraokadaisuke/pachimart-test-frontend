@@ -664,6 +664,87 @@ export async function getOutboundScheduleById(id: string) {
   }
 }
 
+export type OutboundLinkCandidate = {
+  inventoryItemId: string;
+  inventoryUnitId: string | null;
+  managementCode: string;
+  makerName: string;
+  modelName: string;
+  quantityOnHand: number;
+  storageName: string;
+  unitDisplayCode: string;
+  unitQr: string;
+  unitStatus: string;
+  note: string;
+  matchReasons: string[];
+  isDemoFallback: boolean;
+};
+
+const buildDemoOutboundLinkCandidates = (schedule: { id: string; makerNameSnapshot: string | null; modelNameSnapshot: string; originLocation?: { name: string } | null }): OutboundLinkCandidate[] => [
+  {
+    inventoryItemId: `demo-item-${schedule.id}`,
+    inventoryUnitId: `demo-unit-${schedule.id}`,
+    managementCode: `DEMO-${schedule.id.slice(-6).toUpperCase()}`,
+    makerName: schedule.makerNameSnapshot ?? "デモメーカー",
+    modelName: schedule.modelNameSnapshot,
+    quantityOnHand: 1,
+    storageName: schedule.originLocation?.name ?? "デモ倉庫",
+    unitDisplayCode: `DEMO-KOTAI-${schedule.id.slice(-4).toUpperCase()}`,
+    unitQr: `DEMO-QR-${schedule.id.slice(-8).toUpperCase()}`,
+    unitStatus: "IN_STOCK",
+    note: "demo fallback候補（実データ優先）",
+    matchReasons: ["デモ候補"],
+    isDemoFallback: true,
+  },
+];
+
+export async function getOutboundLinkCandidates(outboundScheduleId: string): Promise<OutboundLinkCandidate[]> {
+  const ownerUserId = await resolveCurrentUserId();
+  const schedule = await getOutboundScheduleById(outboundScheduleId);
+  if (!schedule) return [];
+  const model = schedule.modelNameSnapshot.toLowerCase();
+  const maker = (schedule.makerNameSnapshot ?? "").toLowerCase();
+
+  const items = await prismaClient.inventoryItem.findMany({
+    where: { ownerUserId, inventoryStatus: { in: ["IN_STOCK", "NEGOTIATING", "RESERVED", "OUTBOUND_SCHEDULED"] } },
+    include: { maker: true, storageLocation: true, inventoryUnits: true },
+    take: 80,
+  });
+
+  const candidates: OutboundLinkCandidate[] = items.flatMap((item): OutboundLinkCandidate[] => {
+    const reasons: string[] = [];
+    if (item.modelNameSnapshot.toLowerCase().includes(model) || model.includes(item.modelNameSnapshot.toLowerCase())) reasons.push("機種名一致");
+    if (maker && (item.makerNameSnapshot ?? item.maker?.name ?? "").toLowerCase().includes(maker)) reasons.push("メーカー一致");
+    if (schedule.originLocationId && item.storageLocationId === schedule.originLocationId) reasons.push("倉庫一致");
+    if (reasons.length === 0) return [];
+    const units = item.inventoryUnits.filter((u) => !["SHIPPED", "CANCELED"].includes(u.status));
+    if (units.length === 0) {
+      return [{ inventoryItemId: item.id, inventoryUnitId: null, managementCode: item.id, makerName: item.makerNameSnapshot ?? item.maker?.name ?? "-", modelName: item.modelNameSnapshot, quantityOnHand: item.quantityOnHand, storageName: item.storageLocation?.name ?? "-", unitDisplayCode: "-", unitQr: "-", unitStatus: "個体なし", note: item.note ?? "", matchReasons: reasons, isDemoFallback: false }];
+    }
+    return units.map((u) => ({ inventoryItemId: item.id, inventoryUnitId: u.id, managementCode: item.id, makerName: item.makerNameSnapshot ?? item.maker?.name ?? "-", modelName: item.modelNameSnapshot, quantityOnHand: item.quantityOnHand, storageName: u.storageLocationId === item.storageLocationId ? (item.storageLocation?.name ?? "-") : (item.storageLocation?.name ?? "-"), unitDisplayCode: u.displayCode ?? "-", unitQr: u.rawQr ?? "-", unitStatus: u.status, note: u.memo ?? item.note ?? "", matchReasons: [...reasons, "個体未出庫"], isDemoFallback: false }));
+  });
+
+  return candidates.length > 0 ? candidates : buildDemoOutboundLinkCandidates(schedule);
+}
+
+export async function linkInventoryToOutboundSchedule(input: { outboundScheduleId: string; inventoryItemId: string; inventoryUnitId?: string | null }) {
+  const ownerUserId = await resolveCurrentUserId();
+  const schedule = await prismaClient.outboundSchedule.findFirst({ where: { id: input.outboundScheduleId, ownerUserId } });
+  if (!schedule) throw new Error("出庫予定が見つかりません。");
+  const item = await prismaClient.inventoryItem.findFirst({ where: { id: input.inventoryItemId, ownerUserId } });
+  if (!item) throw new Error("在庫が見つかりません。");
+  if (input.inventoryUnitId) {
+    const unit = await prismaClient.inventoryUnit.findFirst({ where: { id: input.inventoryUnitId, ownerUserId } });
+    if (!unit) throw new Error("対象個体が見つかりません。");
+    if (unit.inventoryItemId !== item.id) throw new Error("対象在庫と個体の組み合わせが不正です。");
+    const alreadyLinked = await prismaClient.inventoryUnit.findFirst({ where: { ownerUserId, id: unit.id, outboundScheduleId: { not: schedule.id } } });
+    if (alreadyLinked) throw new Error("対象個体は他の出庫予定に紐付け済みです。");
+    await prismaClient.inventoryUnit.update({ where: { id: unit.id }, data: { outboundScheduleId: schedule.id } });
+  }
+  await prismaClient.outboundSchedule.update({ where: { id: schedule.id }, data: { inventoryItemId: item.id } });
+  revalidatePath(`/inventory/outbound/${schedule.id}`);
+}
+
 const summarizeByStatus = <T extends { status: string; quantity: number }>(rows: T[]) =>
   rows.reduce<Record<string, { count: number; quantity: number }>>((acc, row) => {
     const current = acc[row.status] ?? { count: 0, quantity: 0 };
