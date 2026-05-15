@@ -9,7 +9,7 @@ export function evaluateOutboundUnitCheck(input: {
   rawQrInput?: string | null;
 }): { result: OutboundUnitCheckResult; matchedBy: "DISPLAY_CODE" | "RAW_QR" | null; warning: string | null } {
   if (!input.unitDisplayCode && !input.unitRawQr) {
-    return { result: "NO_UNIT", matchedBy: null, warning: "対象Unitが未紐づきです。" };
+    return { result: "NO_UNIT", matchedBy: null, warning: "対象個体が選択されていません。" };
   }
 
   const normalizedDisplayInput = normalizeDisplayCode(input.displayCodeInput ?? "");
@@ -29,5 +29,5 @@ export function evaluateOutboundUnitCheck(input: {
     return { result: "QR_MATCHED", matchedBy: "RAW_QR", warning: "QR一致です（補助一致）。可能なら番号も確認してください。" };
   }
 
-  return { result: "MISMATCH", matchedBy: null, warning: "入力内容が対象Unitと一致しません。" };
+  return { result: "MISMATCH", matchedBy: null, warning: "入力内容が対象個体と一致しません。" };
 }

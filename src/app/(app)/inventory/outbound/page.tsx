@@ -43,7 +43,7 @@ export default async function OutboundSchedulesPage() {
         <table className="min-w-[1100px] w-full text-xs">
           <thead className="bg-slate-100">
             <tr>
-              {["予定日", "ステータス", "由来", "販売伝票ID", "販売先/買主", "機種名", "台数", "Unit番号", "QR(補助)", "保管先", "出庫方法", "運送会社", "備考", "リンク", "操作"].map((h) => (
+              {["予定日", "ステータス", "由来", "販売伝票ID", "販売先/買主", "機種名", "台数", "個体番号", "個体QR", "保管先", "出庫方法", "運送会社", "備考", "リンク", "操作"].map((h) => (
                 <th key={h} className="border-r border-slate-200 px-2 py-1.5 text-left font-semibold">{h}</th>
               ))}
             </tr>
@@ -88,7 +88,7 @@ export default async function OutboundSchedulesPage() {
                         <form action={async () => {"use server"; await completeOutboundSchedule(s.id); redirect("/inventory/outbound");}}>
                           <Button type="submit" disabled={missingLink} className="h-7 px-2 text-xs">出庫完了</Button>
                         </form>
-                        {missingLink ? <span className="text-xs text-amber-700">紐付け在庫なし</span> : null}
+                        {missingLink ? <span className="text-xs text-amber-700">在庫/個体未紐付け</span> : null}
                       </div>
                     )}
                   </td>
