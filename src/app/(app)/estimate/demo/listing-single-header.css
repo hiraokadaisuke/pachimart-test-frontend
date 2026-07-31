@@ -1,0 +1,130 @@
+/* 一括掲載の機種別情報は、先頭行だけに項目名を表示する。 */
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:not(:first-of-type)
+  > div.grid
+  > label
+  > span:first-child {
+  display: none !important;
+}
+
+/* 2件目以降は入力欄だけのコンパクトな1物件1行にする。 */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:not(:first-of-type)
+  > div.grid
+  > label {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 3px 2px !important;
+  justify-content: center !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:not(:first-of-type)
+  > div:first-child {
+  min-height: 34px !important;
+  height: 34px !important;
+  padding: 3px 6px !important;
+  align-items: center !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:not(:first-of-type)
+  > div.grid
+  input,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:not(:first-of-type)
+  > div.grid
+  select,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:not(:first-of-type)
+  > div.grid
+  textarea {
+  height: 27px !important;
+  min-height: 27px !important;
+  max-height: 27px !important;
+}
+
+/* 左端の機種名列にも、先頭行だけ列名を表示する。 */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:first-of-type
+  > div:first-child {
+  position: sticky !important;
+  padding-top: 19px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:first-of-type
+  > div:first-child::before {
+  content: '機種名';
+  position: absolute;
+  top: 3px;
+  left: 7px;
+  color: #111827;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 14px;
+}
+
+/* 先頭行をヘッダー行として認識しやすくする。 */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:first-of-type
+  > div.grid
+  > label {
+  background: #f1f5f9 !important;
+}
+
+/* 2行目以降は薄い交互背景にして横方向を追いやすくする。 */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:nth-of-type(even)
+  > div.grid
+  > label,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:nth-of-type(even)
+  > div:first-child {
+  background: #f8fafc !important;
+}
