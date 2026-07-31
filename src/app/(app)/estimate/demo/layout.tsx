@@ -4,11 +4,17 @@ import './item-inline-table.css';
 import './dense-operations.css';
 import './review-cleanup.css';
 import './listing-single-header.css';
+import './inapp-estimate-flow.css';
+import EstimateDemoWorkspace from './EstimateDemoWorkspace';
 
 export default function EstimateDemoLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <div className="estimate-demo-compact">{children}</div>;
+  return (
+    <div className="estimate-demo-compact">
+      <EstimateDemoWorkspace>{children}</EstimateDemoWorkspace>
+    </div>
+  );
 }
