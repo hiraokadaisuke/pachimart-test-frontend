@@ -1,0 +1,568 @@
+/*
+ * /estimate/demo UI foundation
+ * Daily-use business system: compact, predictable and readable.
+ */
+
+.estimate-demo-compact {
+  --estimate-ink: #172033;
+  --estimate-muted: #526177;
+  --estimate-line: #c8d1dc;
+  --estimate-line-strong: #9eacbb;
+  --estimate-surface: #ffffff;
+  --estimate-surface-subtle: #f5f7fa;
+  --estimate-header: #e9eef4;
+  --estimate-primary: #174f7f;
+  --estimate-primary-hover: #103e67;
+  --estimate-primary-soft: #eaf4fb;
+  --estimate-success: #18704b;
+  --estimate-success-soft: #edf8f2;
+  --estimate-warning: #8b5a00;
+  --estimate-warning-soft: #fff8e6;
+  --estimate-danger: #b4233c;
+  --estimate-row-selected: #eaf5fc;
+  --estimate-focus: #fffbe6;
+  color: var(--estimate-ink) !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif;
+  font-size: 13px;
+  line-height: 1.45;
+  font-variant-numeric: tabular-nums;
+}
+
+.estimate-demo-compact button,
+.estimate-demo-compact input,
+.estimate-demo-compact select,
+.estimate-demo-compact textarea {
+  font-family: inherit;
+  color: var(--estimate-ink) !important;
+}
+
+.estimate-demo-compact button:focus-visible,
+.estimate-demo-compact input:focus-visible,
+.estimate-demo-compact select:focus-visible,
+.estimate-demo-compact textarea:focus-visible {
+  outline: 2px solid #2686c0 !important;
+  outline-offset: 1px;
+}
+
+.estimate-demo-compact input:focus,
+.estimate-demo-compact select:focus,
+.estimate-demo-compact textarea:focus {
+  border-color: #2686c0 !important;
+  background: var(--estimate-focus) !important;
+  box-shadow: inset 0 0 0 1px #2686c0 !important;
+}
+
+/* Workspace -------------------------------------------------------------- */
+.estimate-workspace-head,
+.estimate-workspace-page {
+  width: min(1500px, calc(100% - 28px)) !important;
+}
+
+.estimate-workspace-head {
+  padding-top: 14px !important;
+}
+
+.estimate-workspace-title {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  min-height: 34px;
+}
+
+.estimate-workspace-title h1 {
+  flex: 0 0 auto;
+  font-size: 22px !important;
+  letter-spacing: .01em;
+}
+
+.estimate-workspace-title p {
+  margin: 0 !important;
+  color: var(--estimate-muted) !important;
+  font-size: 13px !important;
+}
+
+.estimate-workspace-tabs {
+  gap: 0;
+  margin-top: 8px !important;
+  border-bottom: 2px solid var(--estimate-primary) !important;
+}
+
+.estimate-workspace-tabs > button {
+  min-width: 94px;
+  height: 34px !important;
+  margin: 0 3px 0 0 !important;
+  padding: 0 16px !important;
+  border: 1px solid var(--estimate-line) !important;
+  border-bottom: 0 !important;
+  background: #f7f9fb !important;
+  color: #334155 !important;
+  font-size: 13px !important;
+  font-weight: 700;
+}
+
+.estimate-workspace-tabs > button:hover {
+  background: #eef3f7 !important;
+}
+
+.estimate-workspace-tabs > button.is-active {
+  border-color: var(--estimate-primary) !important;
+  background: var(--estimate-primary) !important;
+  color: #fff !important;
+}
+
+.estimate-received-count {
+  min-width: 18px;
+  height: 18px;
+  margin-left: 7px;
+  padding: 0 5px;
+  border-radius: 9px !important;
+  background: #d92d4c;
+  font-size: 10px;
+  line-height: 18px;
+}
+
+.estimate-workspace-notice {
+  min-height: 36px !important;
+  margin: 8px 0 !important;
+  padding: 6px 10px !important;
+  border-color: #8fc8aa !important;
+  background: var(--estimate-success-soft) !important;
+  color: #14563c !important;
+  font-size: 12px !important;
+}
+
+.estimate-workspace-notice > button {
+  width: 28px;
+  height: 26px !important;
+  padding: 0 !important;
+  background: transparent !important;
+}
+
+/* Standard panels and tables --------------------------------------------- */
+.estimate-panel,
+.estimate-demo-register section {
+  border-color: var(--estimate-line) !important;
+  background: var(--estimate-surface) !important;
+}
+
+.estimate-panel-title {
+  min-height: 36px !important;
+  padding: 7px 10px !important;
+  border-bottom-color: var(--estimate-line) !important;
+  background: var(--estimate-header) !important;
+  color: var(--estimate-ink) !important;
+  font-size: 13px !important;
+}
+
+.estimate-data-table,
+.estimate-demo-register table {
+  color: var(--estimate-ink) !important;
+  font-size: 12px !important;
+}
+
+.estimate-data-table thead,
+.estimate-demo-register thead {
+  color: #26364a !important;
+}
+
+.estimate-data-table th,
+.estimate-demo-register th {
+  height: 32px !important;
+  padding: 5px 7px !important;
+  border-color: var(--estimate-line) !important;
+  background: var(--estimate-header) !important;
+  color: #26364a !important;
+  font-size: 11.5px !important;
+  font-weight: 800 !important;
+  white-space: nowrap;
+}
+
+.estimate-data-table td,
+.estimate-demo-register td {
+  height: 34px !important;
+  padding: 4px 7px !important;
+  border-color: #d7dee7 !important;
+  background: transparent;
+  color: var(--estimate-ink) !important;
+  vertical-align: middle;
+}
+
+.estimate-data-table tbody tr:nth-child(even),
+.estimate-demo-register tbody tr:nth-child(even) {
+  background: #f8fafc !important;
+}
+
+.estimate-data-table tbody tr:hover,
+.estimate-demo-register tbody tr:hover {
+  background: #f0f7fb !important;
+}
+
+.estimate-received-list-table tr.is-selected td {
+  background: var(--estimate-row-selected) !important;
+  box-shadow: inset 0 1px 0 #9bc9e4, inset 0 -1px 0 #9bc9e4 !important;
+}
+
+.estimate-title-link {
+  color: #0c5f96 !important;
+  text-decoration: none !important;
+}
+
+.estimate-title-link:hover {
+  text-decoration: underline !important;
+}
+
+.estimate-status {
+  min-height: 21px;
+  padding: 1px 7px;
+  border-color: #9eacbb;
+  background: #fff;
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.estimate-status.is-unread {
+  border-color: #d92d4c;
+  background: #fff0f3;
+  color: #a31532;
+}
+
+.estimate-status.is-progress {
+  border-color: #d79b24;
+  background: var(--estimate-warning-soft);
+  color: #785000;
+}
+
+.estimate-status.is-agreed {
+  border-color: #72b894;
+  background: var(--estimate-success-soft);
+  color: #14563c;
+}
+
+/* Register form ----------------------------------------------------------- */
+.estimate-demo-register > main {
+  width: min(1500px, calc(100% - 28px)) !important;
+  margin: 0 auto !important;
+  padding: 8px 0 24px !important;
+}
+
+.estimate-demo-register > main > section {
+  border: 1px solid var(--estimate-line) !important;
+}
+
+.estimate-demo-register > main > section > div:first-child {
+  min-height: 44px;
+  padding: 7px 9px !important;
+  border-bottom: 1px solid var(--estimate-line) !important;
+  background: var(--estimate-surface-subtle) !important;
+}
+
+.estimate-demo-register > main > section > div:first-child button {
+  height: 31px !important;
+  min-height: 31px !important;
+}
+
+.estimate-demo-register tbody tr[class*='bg-sky'] {
+  background: var(--estimate-row-selected) !important;
+}
+
+.estimate-demo-register td input,
+.estimate-demo-register td select {
+  height: 28px !important;
+  min-height: 28px !important;
+  border-color: #aebac7 !important;
+  background: #fff !important;
+  font-size: 12px !important;
+}
+
+.estimate-demo-register input[type='checkbox'],
+.estimate-data-table input[type='checkbox'] {
+  width: 16px !important;
+  height: 16px !important;
+  min-height: 16px !important;
+  accent-color: var(--estimate-primary);
+}
+
+.estimate-demo-register > main > section > div:last-child {
+  padding: 9px !important;
+  border-top: 1px solid var(--estimate-line) !important;
+  background: #f7f9fb !important;
+}
+
+.estimate-demo-register > main > section > div:last-child > div > div:last-child {
+  border-color: #b8c4d1 !important;
+  background: #fff !important;
+}
+
+/* Buttons ---------------------------------------------------------------- */
+.estimate-demo-compact button {
+  font-weight: 700;
+}
+
+.estimate-demo-register button[class*='bg-slate-900'],
+.estimate-demo-compact .estimate-received-action-buttons button.primary,
+.estimate-demo-compact .fixed.inset-0 button[class*='bg-slate-900'] {
+  border-color: var(--estimate-primary) !important;
+  background: var(--estimate-primary) !important;
+  color: #fff !important;
+}
+
+.estimate-demo-register button[class*='bg-slate-900']:hover,
+.estimate-demo-compact .estimate-received-action-buttons button.primary:hover,
+.estimate-demo-compact .fixed.inset-0 button[class*='bg-slate-900']:hover {
+  background: var(--estimate-primary-hover) !important;
+}
+
+.estimate-demo-register button[class*='border-sky'],
+.estimate-received-action-buttons button.secondary {
+  border-color: #4d91bc !important;
+  background: #fff !important;
+  color: #0b5d8e !important;
+}
+
+.estimate-demo-register button[class*='border-amber'] {
+  border-color: #c18a22 !important;
+  background: #fff8e7 !important;
+  color: #704a00 !important;
+}
+
+.estimate-demo-register button:disabled,
+.estimate-demo-compact .fixed.inset-0 button:disabled {
+  border-color: #c7ced7 !important;
+  background: #e6e9ed !important;
+  color: #8a96a5 !important;
+  opacity: 1 !important;
+}
+
+/* Received detail --------------------------------------------------------- */
+.estimate-received-page {
+  gap: 10px !important;
+  padding-top: 0;
+}
+
+.estimate-received-detail-head {
+  min-height: 52px !important;
+  padding: 7px 10px !important;
+  border-color: var(--estimate-line) !important;
+  background: var(--estimate-header) !important;
+}
+
+.estimate-received-detail-head h2 {
+  font-size: 15px !important;
+}
+
+.estimate-received-detail-head p,
+.estimate-received-detail-head dl {
+  color: #3f4d60 !important;
+}
+
+.estimate-received-message {
+  padding: 7px 10px !important;
+  border-color: var(--estimate-line) !important;
+  background: #fffdf4;
+  color: #2d3748 !important;
+  font-size: 12px !important;
+}
+
+.estimate-received-items-table input[type='number'] {
+  height: 28px !important;
+  min-height: 28px !important;
+  border-color: #aebac7 !important;
+}
+
+.estimate-received-actions {
+  min-height: 48px !important;
+  padding: 7px 10px !important;
+  border-color: var(--estimate-line) !important;
+  background: #f5f7fa !important;
+}
+
+.estimate-received-actions strong {
+  margin-left: 12px;
+  color: #102f4c;
+  font-size: 15px;
+}
+
+.estimate-received-action-buttons button {
+  height: 32px !important;
+  min-height: 32px !important;
+  padding: 0 12px !important;
+}
+
+/* Workflow modal ---------------------------------------------------------- */
+.estimate-demo-compact .fixed.inset-0 {
+  background: rgb(15 23 42 / 45%) !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div {
+  border: 1px solid #8291a3 !important;
+  background: #f4f6f8 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > header,
+.estimate-demo-compact .fixed.inset-0 > div > div:first-child {
+  min-height: 52px;
+  padding: 8px 12px !important;
+  border-bottom: 1px solid var(--estimate-line) !important;
+  background: #fff !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > header > div > div:first-child,
+.estimate-demo-compact .fixed.inset-0 > div > div:first-child > div > div:first-child {
+  border-radius: 2px !important;
+  background: var(--estimate-primary) !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 h2 {
+  color: var(--estimate-ink) !important;
+  font-size: 16px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 h2 + p {
+  display: block !important;
+  margin-top: 2px !important;
+  color: var(--estimate-muted) !important;
+  font-size: 11.5px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:nth-child(2) {
+  padding: 0 8px !important;
+  border-bottom: 1px solid var(--estimate-line) !important;
+  background: #eef2f6 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:nth-child(2) > div {
+  gap: 0 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:nth-child(2) > div > div {
+  min-height: 32px !important;
+  padding: 6px 10px !important;
+  border: 0 !important;
+  border-right: 1px solid #cbd5e1 !important;
+  background: transparent !important;
+  color: #536174 !important;
+  font-size: 11.5px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:nth-child(2) > div > div:first-child {
+  border-left: 1px solid #cbd5e1 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:nth-child(2) > div > div[class*='bg-sky'] {
+  border-bottom: 3px solid var(--estimate-primary) !important;
+  background: #fff !important;
+  color: var(--estimate-primary) !important;
+  font-weight: 800 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:nth-child(2) > div > div[class*='bg-emerald'] {
+  background: var(--estimate-success-soft) !important;
+  color: var(--estimate-success) !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:nth-child(2) span[class*='rounded-full'] {
+  display: none !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div[class*='overflow-y-auto'] {
+  padding: 8px !important;
+  background: #f4f6f8 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 section {
+  border: 1px solid var(--estimate-line) !important;
+  background: #fff !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 section > div:first-child[class*='border-b'] {
+  min-height: 31px;
+  margin: 0 0 7px !important;
+  padding: 4px 6px !important;
+  background: var(--estimate-header) !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 label > span:first-child {
+  color: #26364a !important;
+  font-weight: 800 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 input,
+.estimate-demo-compact .fixed.inset-0 select {
+  height: 29px !important;
+  min-height: 29px !important;
+  background: #fff !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 textarea {
+  background: #fff !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > footer,
+.estimate-demo-compact .fixed.inset-0 > div > div:last-child {
+  min-height: 46px;
+  padding: 6px 9px !important;
+  border-top: 1px solid var(--estimate-line) !important;
+  background: #fff !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > footer button,
+.estimate-demo-compact .fixed.inset-0 > div > div:last-child button {
+  height: 32px !important;
+  min-height: 32px !important;
+}
+
+/* Dense forms: readable labels and controlled widths. */
+.estimate-demo-compact .fixed.inset-0 [class*='grid-cols-[130px'] {
+  grid-template-columns: 118px minmax(150px, 270px) 110px 100px !important;
+  justify-content: start;
+}
+
+.estimate-demo-compact .fixed.inset-0 [class*='grid-cols-[130px'] > div:last-child {
+  align-self: center;
+  padding-bottom: 0 !important;
+}
+
+/* Accessibility and zoom -------------------------------------------------- */
+@media (max-width: 1100px) {
+  .estimate-workspace-title {
+    display: block;
+  }
+
+  .estimate-workspace-title p {
+    margin-top: 3px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .estimate-workspace-head,
+  .estimate-workspace-page,
+  .estimate-demo-register > main {
+    width: calc(100% - 16px) !important;
+  }
+
+  .estimate-workspace-tabs > button {
+    min-width: 84px;
+    padding: 0 12px !important;
+  }
+
+  .estimate-received-detail-head,
+  .estimate-received-actions {
+    align-items: stretch !important;
+  }
+
+  .estimate-received-action-buttons {
+    width: 100%;
+  }
+
+  .estimate-received-action-buttons button {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .estimate-demo-compact * {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}
