@@ -1,9 +1,10 @@
 'use client';
 
-import { Check, Inbox, Navigation, Reply } from 'lucide-react';
+import { ArrowLeft, Check, Inbox, Navigation, Reply } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 
 type WorkspaceTab = 'register' | 'list' | 'received';
+type ReceivedView = 'list' | 'detail';
 
 type ReceivedItem = {
   id: number;
@@ -101,6 +102,7 @@ function setControlledInput(input: HTMLInputElement, value: string) {
 
 export default function EstimateDemoWorkspace({ children }: { children: ReactNode }) {
   const [tab, setTab] = useState<WorkspaceTab>('register');
+  const [receivedView, setReceivedView] = useState<ReceivedView>('list');
   const [received, setReceived] = useState<ReceivedEstimate[]>(initialReceived);
   const [selectedEstimateId, setSelectedEstimateId] = useState(initialReceived[0].id);
   const [notice, setNotice] = useState('');
@@ -111,6 +113,21 @@ export default function EstimateDemoWorkspace({ children }: { children: ReactNod
     () => selectedItems.reduce((sum, item) => sum + toNumber(item.quantity) * toNumber(item.unitPrice), 0),
     [selectedItems],
   );
+
+  const changeTab = (value: WorkspaceTab) => {
+    setTab(value);
+    if (value === 'received') setReceivedView('list');
+  };
+
+  const openReceivedEstimate = (estimateId: number) => {
+    setSelectedEstimateId(estimateId);
+    setReceivedView('detail');
+    setReceived((current) => current.map((estimate) => (
+      estimate.id === estimateId && estimate.status === '未確認'
+        ? { ...estimate, status: '確認中' }
+        : estimate
+    )));
+  };
 
   const updateItem = (itemId: number, key: 'selected' | 'quantity' | 'unitPrice', value: boolean | string) => {
     setReceived((current) => current.map((estimate) => (
@@ -179,7 +196,7 @@ export default function EstimateDemoWorkspace({ children }: { children: ReactNod
             ['list', '一覧'],
             ['received', '受信'],
           ] as const).map(([value, label]) => (
-            <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className={tab === value ? 'is-active' : ''}>
+            <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => changeTab(value)} className={tab === value ? 'is-active' : ''}>
               {label}
               {value === 'received' ? <span className="estimate-received-count">1</span> : null}
             </button>
@@ -216,21 +233,22 @@ export default function EstimateDemoWorkspace({ children }: { children: ReactNod
         </main>
       ) : null}
 
-      {tab === 'received' ? (
+      {tab === 'received' && receivedView === 'list' ? (
         <main className="estimate-workspace-page estimate-received-page">
           <section className="estimate-panel">
             <div className="estimate-panel-title"><Inbox className="h-4 w-4" />受信見積り</div>
             <div className="estimate-table-scroll">
               <table className="estimate-data-table estimate-received-list-table">
-                <thead><tr><th>状態</th><th>タイトル</th><th>送信元</th><th>担当者</th><th>受信日時</th><th>有効期限</th><th className="number">機種数</th><th className="number">合計</th></tr></thead>
+                <thead><tr><th>状態</th><th>タイトル</th><th>送信元</th><th>担当者</th><th>受信日時</th><th>有効期限</th><th className="number">機種数</th><th className="number">合計</th><th className="action"></th></tr></thead>
                 <tbody>
                   {received.map((estimate) => {
                     const total = estimate.items.reduce((sum, item) => sum + toNumber(item.quantity) * toNumber(item.unitPrice), 0);
                     return (
-                      <tr key={estimate.id} className={estimate.id === selectedEstimate.id ? 'is-selected' : ''}>
+                      <tr key={estimate.id}>
                         <td><Status value={estimate.status} /></td>
-                        <td><button type="button" className="estimate-title-link" onClick={() => setSelectedEstimateId(estimate.id)}>{estimate.title}</button></td>
+                        <td><button type="button" className="estimate-title-link" onClick={() => openReceivedEstimate(estimate.id)}>{estimate.title}</button></td>
                         <td>{estimate.sender}</td><td>{estimate.contact}</td><td>{estimate.receivedAt}</td><td>{estimate.validUntil}</td><td className="number">{estimate.items.length}</td><td className="number">{yen(total)}</td>
+                        <td className="action"><button type="button" className="estimate-open-detail-button" onClick={() => openReceivedEstimate(estimate.id)}>詳細</button></td>
                       </tr>
                     );
                   })}
@@ -238,6 +256,15 @@ export default function EstimateDemoWorkspace({ children }: { children: ReactNod
               </table>
             </div>
           </section>
+        </main>
+      ) : null}
+
+      {tab === 'received' && receivedView === 'detail' ? (
+        <main className="estimate-workspace-page estimate-received-page estimate-received-detail-page">
+          <div className="estimate-detail-navigation">
+            <button type="button" onClick={() => setReceivedView('list')}><ArrowLeft className="h-4 w-4" />受信一覧へ戻る</button>
+            <span><Status value={selectedEstimate.status} /></span>
+          </div>
 
           <section className="estimate-panel estimate-received-detail">
             <div className="estimate-received-detail-head">
