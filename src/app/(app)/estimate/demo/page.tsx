@@ -879,63 +879,134 @@ function NaviItemEditor({ items, onChange }: { items: NaviItem[]; onChange: (ite
     onChange(items.map((item) => (item.sourceId === sourceId ? { ...item, [key]: value } : item)));
   };
 
+  const updateMachine = (sourceId: number, machine: string) => {
+    onChange(
+      items.map((item) =>
+        item.sourceId === sourceId
+          ? { ...item, machine, gameType: inferGameType(machine) }
+          : item,
+      ),
+    );
+  };
+
+  const cellInputClass =
+    'h-8 w-full min-w-0 rounded-none border border-slate-300 bg-white px-2 text-xs text-slate-950 outline-none focus:border-sky-500 focus:bg-sky-50';
+
   return (
-    <div className="space-y-4">
-      <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm leading-6 text-amber-900">
-        以下の物件情報はナビごとに異なるため、機種別に入力します。見積りのメーカー・機種名・台数・単価・メモは引き継いでいます。
-      </div>
-      {items.map((item, index) => (
-        <section key={item.sourceId} className="rounded-xl border border-slate-200 bg-white shadow-sm">
-          <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-4 py-3">
-            <div>
-              <p className="text-xs font-semibold text-violet-700">作成予定ナビ {index + 1}</p>
-              <h3 className="mt-0.5 font-bold text-slate-900">{item.machine}</h3>
-              <p className="text-xs text-slate-500">{item.maker}</p>
-            </div>
-            <span className="rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-semibold text-violet-700">1件のナビとして作成</span>
-          </div>
-          <div className="grid gap-4 p-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            <Field label="分類" required>
-              <ChoiceGroup value={item.gameType} options={['パチンコ', 'スロット'] as const} onChange={(value) => updateItem(item.sourceId, 'gameType', value)} />
-            </Field>
-            <Field label="種別" required>
-              <select className={compactInputClass} value={item.bodyType} onChange={(event) => updateItem(item.sourceId, 'bodyType', event.target.value as NaviItem['bodyType'])}>
-                <option>本体</option><option>枠のみ</option><option>セルのみ</option>
-              </select>
-            </Field>
-            <Field label="撤去状況" required>
-              <ChoiceGroup value={item.removalStatus} options={['未撤去', '撤去済'] as const} onChange={(value) => updateItem(item.sourceId, 'removalStatus', value)} />
-            </Field>
-            <Field label="撤去日" hint="日付が決まっている場合に入力します。">
-              <input type="date" className={compactInputClass} value={item.removalDate} onChange={(event) => updateItem(item.sourceId, 'removalDate', event.target.value)} />
-            </Field>
-            <Field label="メーカー" required>
-              <input className={compactInputClass} value={item.maker} onChange={(event) => updateItem(item.sourceId, 'maker', event.target.value)} />
-            </Field>
-            <Field label="機種名" required className="sm:col-span-2">
-              <input className={compactInputClass} value={item.machine} onChange={(event) => updateItem(item.sourceId, 'machine', event.target.value)} />
-            </Field>
-            <Field label="枠色">
-              <input className={compactInputClass} value={item.frameColor} onChange={(event) => updateItem(item.sourceId, 'frameColor', event.target.value)} />
-            </Field>
-            <Field label="台数" required>
-              <input type="number" min="1" className={compactInputClass} value={item.quantity} onChange={(event) => updateItem(item.sourceId, 'quantity', event.target.value)} />
-            </Field>
-            <Field label="売却単価" required>
-              <div className="relative">
-                <input type="number" min="0" className={`${compactInputClass} pr-8 text-right`} value={item.unitPrice} onChange={(event) => updateItem(item.sourceId, 'unitPrice', event.target.value)} />
-                <span className="absolute right-3 top-2.5 text-xs text-slate-400">円</span>
-              </div>
-            </Field>
-            <Field label="備考" className="sm:col-span-2">
-              <textarea className="min-h-20 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" value={item.memo} onChange={(event) => updateItem(item.sourceId, 'memo', event.target.value)} />
-            </Field>
-            <Field label="特記事項" className="sm:col-span-2">
-              <textarea className="min-h-20 w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-100" value={item.specialNotes} onChange={(event) => updateItem(item.sourceId, 'specialNotes', event.target.value)} />
-            </Field>
-          </div>
-        </section>
-      ))}
+    <div className="overflow-x-auto border border-slate-300 bg-white">
+      <table className="w-full min-w-[1380px] table-fixed border-collapse text-xs text-slate-950">
+        <colgroup>
+          <col className="w-[88px]" />
+          <col className="w-[100px]" />
+          <col className="w-[120px]" />
+          <col className="w-[110px]" />
+          <col className="w-[320px]" />
+          <col className="w-[90px]" />
+          <col className="w-[70px]" />
+          <col className="w-[120px]" />
+          <col className="w-[180px]" />
+          <col className="w-[180px]" />
+        </colgroup>
+        <thead className="sticky top-0 z-10 bg-slate-100 text-left">
+          <tr>
+            <th className="border-b border-r border-slate-300 px-2 py-1.5 font-bold">種別{requiredMark}</th>
+            <th className="border-b border-r border-slate-300 px-2 py-1.5 font-bold">撤去状況{requiredMark}</th>
+            <th className="border-b border-r border-slate-300 px-2 py-1.5 font-bold">撤去日</th>
+            <th className="border-b border-r border-slate-300 px-2 py-1.5 font-bold">メーカー{requiredMark}</th>
+            <th className="border-b border-r border-slate-300 px-2 py-1.5 font-bold">機種名{requiredMark}</th>
+            <th className="border-b border-r border-slate-300 px-2 py-1.5 font-bold">枠色</th>
+            <th className="border-b border-r border-slate-300 px-2 py-1.5 text-right font-bold">台数{requiredMark}</th>
+            <th className="border-b border-r border-slate-300 px-2 py-1.5 text-right font-bold">売却単価{requiredMark}</th>
+            <th className="border-b border-r border-slate-300 px-2 py-1.5 font-bold">備考</th>
+            <th className="border-b border-slate-300 px-2 py-1.5 font-bold">特記事項</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item, index) => (
+            <tr key={item.sourceId} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+              <td className="border-b border-r border-slate-300 p-1">
+                <select
+                  className={cellInputClass}
+                  value={item.bodyType}
+                  onChange={(event) => updateItem(item.sourceId, 'bodyType', event.target.value as NaviItem['bodyType'])}
+                >
+                  <option>本体</option><option>枠のみ</option><option>セルのみ</option>
+                </select>
+              </td>
+              <td className="border-b border-r border-slate-300 p-1">
+                <select
+                  className={cellInputClass}
+                  value={item.removalStatus}
+                  onChange={(event) => updateItem(item.sourceId, 'removalStatus', event.target.value as NaviItem['removalStatus'])}
+                >
+                  <option>未撤去</option><option>撤去済</option>
+                </select>
+              </td>
+              <td className="border-b border-r border-slate-300 p-1">
+                <input
+                  type="date"
+                  className={cellInputClass}
+                  value={item.removalDate}
+                  onChange={(event) => updateItem(item.sourceId, 'removalDate', event.target.value)}
+                />
+              </td>
+              <td className="border-b border-r border-slate-300 p-1">
+                <input
+                  className={cellInputClass}
+                  value={item.maker}
+                  onChange={(event) => updateItem(item.sourceId, 'maker', event.target.value)}
+                />
+              </td>
+              <td className="border-b border-r border-slate-300 p-1">
+                <input
+                  className={cellInputClass}
+                  value={item.machine}
+                  onChange={(event) => updateMachine(item.sourceId, event.target.value)}
+                />
+              </td>
+              <td className="border-b border-r border-slate-300 p-1">
+                <input
+                  className={cellInputClass}
+                  value={item.frameColor}
+                  onChange={(event) => updateItem(item.sourceId, 'frameColor', event.target.value)}
+                />
+              </td>
+              <td className="border-b border-r border-slate-300 p-1">
+                <input
+                  type="number"
+                  min="1"
+                  className={`${cellInputClass} text-right`}
+                  value={item.quantity}
+                  onChange={(event) => updateItem(item.sourceId, 'quantity', event.target.value)}
+                />
+              </td>
+              <td className="border-b border-r border-slate-300 p-1">
+                <input
+                  type="number"
+                  min="0"
+                  className={`${cellInputClass} text-right`}
+                  value={item.unitPrice}
+                  onChange={(event) => updateItem(item.sourceId, 'unitPrice', event.target.value)}
+                />
+              </td>
+              <td className="border-b border-r border-slate-300 p-1">
+                <input
+                  className={cellInputClass}
+                  value={item.memo}
+                  onChange={(event) => updateItem(item.sourceId, 'memo', event.target.value)}
+                />
+              </td>
+              <td className="border-b border-slate-300 p-1">
+                <input
+                  className={cellInputClass}
+                  value={item.specialNotes}
+                  onChange={(event) => updateItem(item.sourceId, 'specialNotes', event.target.value)}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
@@ -964,13 +1035,13 @@ function NaviPreview({ items, form }: { items: NaviItem[]; form: NaviCommon }) {
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse text-sm">
               <thead className="bg-slate-50 text-left text-xs text-slate-600">
-                <tr><th className="px-3 py-2">機種</th><th className="px-3 py-2">分類・種別</th><th className="px-3 py-2 text-right">台数</th><th className="px-3 py-2 text-right">単価</th><th className="px-3 py-2">撤去</th></tr>
+                <tr><th className="px-3 py-2">機種</th><th className="px-3 py-2">種別</th><th className="px-3 py-2 text-right">台数</th><th className="px-3 py-2 text-right">単価</th><th className="px-3 py-2">撤去</th></tr>
               </thead>
               <tbody>
                 {items.map((item) => (
                   <tr key={item.sourceId} className="border-t border-slate-200">
                     <td className="px-3 py-2"><p className="font-semibold">{item.machine}</p><p className="text-xs text-slate-500">{item.maker}</p></td>
-                    <td className="px-3 py-2">{item.gameType}・{item.bodyType}</td>
+                    <td className="px-3 py-2">{item.bodyType}</td>
                     <td className="px-3 py-2 text-right">{item.quantity}台</td>
                     <td className="px-3 py-2 text-right">{formatYen(toNumber(item.unitPrice))}</td>
                     <td className="px-3 py-2">{item.removalStatus}{item.removalDate ? `（${item.removalDate}）` : ''}</td>
