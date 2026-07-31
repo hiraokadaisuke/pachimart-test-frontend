@@ -1,0 +1,604 @@
+/* /estimate/demo の業務入力画面を、表計算ソフトに近い密度へ整える */
+
+.estimate-demo-compact .fixed.inset-0 {
+  padding: 2px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div {
+  width: calc(100vw - 4px) !important;
+  max-width: none !important;
+  max-height: calc(100vh - 4px) !important;
+}
+
+/* ヘッダー・工程表示・フッターを圧縮して入力領域を確保 */
+.estimate-demo-compact .fixed.inset-0 > div > div:first-child {
+  min-height: 48px !important;
+  padding: 5px 10px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:first-child > div:first-child {
+  gap: 7px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:first-child h2 {
+  font-size: 14px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:first-child p {
+  margin-top: 0 !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:nth-child(2) {
+  padding: 3px 6px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:nth-child(2) > div > div {
+  min-height: 24px !important;
+  padding: 2px 6px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div[class*='overflow-y-auto'] {
+  padding: 4px 6px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 > div > div:last-child {
+  min-height: 38px !important;
+  padding: 4px 7px !important;
+}
+
+/* 入力部品は高さを統一。ズーム時は幅だけ縮み、縦方向に肥大化させない */
+.estimate-demo-compact .fixed.inset-0 input,
+.estimate-demo-compact .fixed.inset-0 select,
+.estimate-demo-compact .fixed.inset-0 button {
+  height: 25px !important;
+  min-height: 25px !important;
+  font-size: 11px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 textarea {
+  min-height: 38px !important;
+  max-height: 76px !important;
+  padding: 3px 5px !important;
+  font-size: 11px !important;
+  line-height: 1.25 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 label > span:first-child {
+  font-size: 10.5px !important;
+  line-height: 1.15 !important;
+}
+
+/* セクションはカードではなく、罫線で区切る */
+.estimate-demo-compact .fixed.inset-0 > div > div[class*='overflow-y-auto'] section {
+  padding: 3px 6px !important;
+  border-width: 0 0 1px !important;
+  background: #fff !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 [class*='space-y-4'] > :not([hidden]) ~ :not([hidden]),
+.estimate-demo-compact .fixed.inset-0 [class*='space-y-3'] > :not([hidden]) ~ :not([hidden]) {
+  margin-top: 2px !important;
+}
+
+/* サマリーは大きなカードにせず、1行の集計欄にする */
+.estimate-demo-compact .fixed.inset-0 div.grid[class*='sm:grid-cols-3'] {
+  gap: 3px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 div.grid[class*='sm:grid-cols-3'] > div {
+  min-height: 43px !important;
+  padding: 4px 7px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 div.grid[class*='sm:grid-cols-3'] > div p:first-child {
+  font-size: 10px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 div.grid[class*='sm:grid-cols-3'] > div p:last-child {
+  margin-top: 1px !important;
+  font-size: 15px !important;
+  line-height: 1.15 !important;
+}
+
+/* 確認テーブル全般 */
+.estimate-demo-compact .fixed.inset-0 table {
+  line-height: 1.1 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 th,
+.estimate-demo-compact .fixed.inset-0 td {
+  height: 24px !important;
+  padding: 2px 5px !important;
+  color: #111827 !important;
+  font-size: 10.5px !important;
+}
+
+/* CSV確認は19列を必要以上に広げない */
+.estimate-demo-compact .fixed.inset-0 table[class*='min-w-[2500px]'] {
+  min-width: 1740px !important;
+  table-layout: auto !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 div[class*='max-h-[46vh]'] {
+  max-height: calc(100vh - 205px) !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 div[class*='border-b'][class*='px-4'][class*='py-3'] {
+  padding: 3px 6px !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 div[class*='border-b'][class*='px-4'][class*='py-3'] p {
+  display: none !important;
+}
+
+/* --------------------------------------------------
+   一括ナビ作成：共通条件
+   1項目を「ラベル｜入力欄」の1行にそろえる
+-------------------------------------------------- */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]']) {
+  width: 100% !important;
+  max-width: 980px !important;
+  margin: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section {
+  width: 100% !important;
+  max-width: 980px !important;
+  padding: 2px 5px !important;
+}
+
+/* Fieldを横1行に統一 */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  label {
+  display: grid !important;
+  grid-template-columns: clamp(118px, 11vw, 155px) minmax(180px, 520px) !important;
+  align-items: center !important;
+  gap: 4px 7px !important;
+  width: min(100%, 700px) !important;
+  min-height: 28px !important;
+  padding: 1px 0 !important;
+  margin: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  label
+  > span:first-child {
+  grid-column: 1 !important;
+  margin: 0 !important;
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  label
+  > input,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  label
+  > select,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  label
+  > textarea,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  label
+  > div {
+  grid-column: 2 !important;
+  width: 100% !important;
+  max-width: 520px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  label
+  > span[class*='mt-1'] {
+  display: none !important;
+}
+
+/* 取引先の補助情報は横並びの細い行 */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(1)
+  > div.grid {
+  display: block !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(1)
+  > div.grid
+  > div {
+  width: min(100%, 700px) !important;
+  max-width: 700px !important;
+  padding: 3px 6px !important;
+  border: 0 !important;
+  border-top: 1px dotted #cbd5e1 !important;
+  background: #fff !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(1)
+  dl {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 4px 18px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(1)
+  dl
+  > div {
+  gap: 5px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(1)
+  dt,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(1)
+  dd {
+  width: auto !important;
+  font-size: 10px !important;
+}
+
+/* 発送・支払いの2カードを解除し、全項目を縦の行へ */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(2)
+  > div.grid,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(2)
+  div.grid[class*='sm:grid-cols-2'] {
+  display: block !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(2)
+  > div.grid
+  > div {
+  width: 100% !important;
+  max-width: 700px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+}
+
+/* 送料・手数料：1費目1行 */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  div[class*='min-w-[720px]'] {
+  min-width: 0 !important;
+  width: min(100%, 650px) !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  div[class*='grid-cols-[130px_1fr_1fr_140px]'] {
+  grid-template-columns: 135px 220px 105px 85px !important;
+  align-items: center !important;
+  gap: 4px !important;
+  width: 560px !important;
+  padding: 1px 0 !important;
+  min-height: 29px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  div[class*='grid-cols-[130px_1fr_1fr_140px]']
+  > div:first-child,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  div[class*='grid-cols-[130px_1fr_1fr_140px]']
+  > div:last-child {
+  padding: 0 !important;
+  font-size: 10.5px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  div[class*='grid-cols-[130px_1fr_1fr_140px]']
+  label {
+  display: block !important;
+  width: 100% !important;
+  min-height: 25px !important;
+  padding: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  div[class*='grid-cols-[130px_1fr_1fr_140px]']
+  label
+  > span:first-child {
+  display: none !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  div[class*='grid-cols-[130px_1fr_1fr_140px]']
+  label
+  > div,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  div[class*='grid-cols-[130px_1fr_1fr_140px]']
+  label
+  > input {
+  width: 100% !important;
+  max-width: none !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  div[class*='mt-4'][class*='max-w-sm'] {
+  width: min(100%, 560px) !important;
+  max-width: 560px !important;
+  margin-top: 2px !important;
+}
+
+/* 取引条件は選択欄と本文を縦に並べ、本文を低くする */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(4)
+  > div.grid {
+  display: block !important;
+  max-width: 700px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(4)
+  > div.grid
+  > div {
+  width: 100% !important;
+  max-width: 700px !important;
+  margin: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(4)
+  button {
+  display: none !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(4)
+  textarea {
+  min-height: 58px !important;
+  max-height: 70px !important;
+  line-height: 1.15 !important;
+}
+
+/* 担当者・決済も1列の行にする */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+  > section:nth-of-type(5)
+  > div.grid {
+  display: block !important;
+}
+
+/* --------------------------------------------------
+   一括ナビ作成：機種別情報も1ナビ1行の編集表にする
+-------------------------------------------------- */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11)) {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  overflow-x: auto !important;
+  border: 1px solid #b8c2cc !important;
+  background: #fff !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section {
+  display: grid !important;
+  grid-template-columns: 160px max-content !important;
+  width: max-content !important;
+  min-width: 1360px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section
+  > div:first-child {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 4 !important;
+  width: 160px !important;
+  min-width: 160px !important;
+  min-height: 55px !important;
+  padding: 4px 6px !important;
+  border-right: 1px solid #9ca3af !important;
+  background: #f3f4f6 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section
+  > div:first-child
+  span {
+  display: none !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section
+  > div.grid {
+  display: grid !important;
+  grid-template-columns: 142px 88px 142px 108px 100px 220px 86px 60px 100px 150px 150px !important;
+  gap: 0 !important;
+  width: max-content !important;
+  max-width: none !important;
+  padding: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section
+  > div.grid
+  > label {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 1px !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 55px !important;
+  padding: 2px 3px !important;
+  border-left: 1px solid #d1d5db !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section
+  > div.grid
+  > label
+  > span:first-child {
+  display: block !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  font-size: 9.5px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section
+  > div.grid
+  > label
+  > input,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section
+  > div.grid
+  > label
+  > select,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section
+  > div.grid
+  > label
+  > textarea,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > section
+  > div.grid
+  > label
+  > div {
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  input,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  select,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  textarea {
+  height: 26px !important;
+  min-height: 26px !important;
+  max-height: 26px !important;
+  padding: 2px 3px !important;
+  resize: none !important;
+  overflow: hidden !important;
+  white-space: nowrap !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(> section > div.grid > label:nth-child(11))
+  > :not([hidden])
+  ~ :not([hidden]) {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .estimate-demo-compact
+    .fixed.inset-0
+    div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+    label {
+    grid-template-columns: 105px minmax(160px, 1fr) !important;
+    width: 100% !important;
+  }
+
+  .estimate-demo-compact
+    .fixed.inset-0
+    div[class*='space-y-4']:has(> section div[class*='min-w-[720px]'])
+    div[class*='grid-cols-[130px_1fr_1fr_140px]'] {
+    grid-template-columns: 112px 170px 80px 70px !important;
+    width: 450px !important;
+  }
+}
