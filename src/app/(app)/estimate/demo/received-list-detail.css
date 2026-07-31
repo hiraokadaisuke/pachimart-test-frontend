@@ -1,0 +1,76 @@
+/* Received estimates use a list page first, then a dedicated detail page. */
+.estimate-received-page {
+  padding-top: 10px;
+}
+
+.estimate-received-list-table .action {
+  width: 72px;
+}
+
+.estimate-open-detail-button {
+  min-width: 48px;
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--estimate-primary) !important;
+  background: #fff !important;
+  color: var(--estimate-primary) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+}
+
+.estimate-open-detail-button:hover {
+  background: var(--estimate-primary-soft) !important;
+}
+
+.estimate-received-detail-page {
+  display: block !important;
+}
+
+.estimate-detail-navigation {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.estimate-detail-navigation > button {
+  display: inline-flex;
+  height: 30px !important;
+  min-height: 30px !important;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px !important;
+  border: 1px solid var(--estimate-line-strong) !important;
+  background: #fff !important;
+  color: var(--estimate-ink) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+}
+
+.estimate-detail-navigation > button:hover {
+  border-color: var(--estimate-primary) !important;
+  background: var(--estimate-primary-soft) !important;
+  color: var(--estimate-primary) !important;
+}
+
+.estimate-detail-navigation > span {
+  display: inline-flex;
+  align-items: center;
+}
+
+.estimate-received-detail-page .estimate-received-detail {
+  width: 100%;
+}
+
+@media (max-width: 760px) {
+  .estimate-detail-navigation {
+    align-items: flex-start;
+  }
+
+  .estimate-received-list-table {
+    min-width: 1120px;
+  }
+}
