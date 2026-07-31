@@ -8,7 +8,7 @@ import { useDevUser } from "./DevUserContext";
 import { DEV_USERS } from "./users";
 
 export function DevUserSwitcherFloating() {
-  const pathname = usePathname();
+  const pathname = usePathname() ?? "";
   const { current, setCurrent } = useDevUser();
   const [open, setOpen] = useState(false);
   const [amountInput, setAmountInput] = useState(0);
