@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, ChevronRight, Inbox, Navigation, Reply } from 'lucide-react';
+import { Check, Inbox, Navigation, Reply } from 'lucide-react';
 import { useMemo, useState, type ReactNode } from 'react';
 
 type WorkspaceTab = 'register' | 'list' | 'received';
@@ -26,6 +26,8 @@ type ReceivedEstimate = {
   message: string;
   items: ReceivedItem[];
 };
+
+const estimateRowsStorageKey = 'estimate-workflow-demo:rows:v2';
 
 const initialReceived: ReceivedEstimate[] = [
   {
@@ -88,7 +90,13 @@ function toNumber(value: string) {
 }
 
 function Status({ value }: { value: string }) {
-  return <span className="inline-flex border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-semibold text-slate-800">{value}</span>;
+  return <span className="estimate-status">{value}</span>;
+}
+
+function setControlledInput(input: HTMLInputElement, value: string) {
+  const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set;
+  setter?.call(input, value);
+  input.dispatchEvent(new Event('input', { bubbles: true }));
 }
 
 export default function EstimateDemoWorkspace({ children }: { children: ReactNode }) {
@@ -96,7 +104,6 @@ export default function EstimateDemoWorkspace({ children }: { children: ReactNod
   const [received, setReceived] = useState<ReceivedEstimate[]>(initialReceived);
   const [selectedEstimateId, setSelectedEstimateId] = useState(initialReceived[0].id);
   const [notice, setNotice] = useState('');
-  const [showNavi, setShowNavi] = useState(false);
 
   const selectedEstimate = received.find((estimate) => estimate.id === selectedEstimateId) ?? received[0];
   const selectedItems = selectedEstimate.items.filter((item) => item.selected);
@@ -119,39 +126,70 @@ export default function EstimateDemoWorkspace({ children }: { children: ReactNod
 
   const replyAdjustment = () => {
     setReceived((current) => current.map((estimate) => estimate.id === selectedEstimate.id ? { ...estimate, status: '調整依頼中' } : estimate));
-    setNotice('調整後の台数・単価を、送信元へ返信するデモを完了しました。');
+    setNotice('調整後の台数・単価を送信元へ返信するデモを完了しました。');
+  };
+
+  const startExistingNaviFlow = () => {
+    if (selectedItems.length === 0 || typeof window === 'undefined') return;
+
+    const rows = selectedItems.map((item, index) => ({
+      id: index + 1,
+      maker: item.maker,
+      machine: item.machine,
+      quantity: item.quantity,
+      price: item.unitPrice,
+      memo: item.memo,
+    }));
+
+    window.localStorage.setItem(estimateRowsStorageKey, JSON.stringify(rows));
+    setNotice('');
+    setTab('register');
+
+    window.setTimeout(() => {
+      const naviButton = Array.from(document.querySelectorAll<HTMLButtonElement>('.estimate-demo-register button'))
+        .find((button) => button.textContent?.includes('一括ナビ作成'));
+
+      if (!naviButton) {
+        setNotice('一括ナビ作成画面を開けませんでした。登録タブから再度お試しください。');
+        return;
+      }
+
+      naviButton.click();
+
+      window.setTimeout(() => {
+        const buyerLabel = Array.from(document.querySelectorAll<HTMLLabelElement>('.fixed.inset-0 label'))
+          .find((label) => label.textContent?.includes('取引先（買手）会社名'));
+        const buyerInput = buyerLabel?.querySelector<HTMLInputElement>('input');
+        if (buyerInput) setControlledInput(buyerInput, selectedEstimate.sender);
+      }, 250);
+    }, 400);
   };
 
   return (
     <div className="estimate-demo-workspace">
-      <div className="mx-auto w-full max-w-[1480px] px-4 pt-6">
-        <div className="mb-3">
-          <h1 className="text-2xl font-bold text-slate-950">簡単見積り</h1>
-          <p className="mt-1 text-sm text-slate-700">見積りをパチマート内で作成・送受信し、合意した内容を取引ナビへ引き継ぎます。</p>
+      <div className="estimate-workspace-head">
+        <div className="estimate-workspace-title">
+          <h1>簡単見積り</h1>
+          <p>見積りをパチマート内で作成・送受信し、合意した内容を取引ナビへ引き継ぎます。</p>
         </div>
 
-        <div className="mb-2 flex border-b border-slate-300 text-sm font-semibold">
+        <div className="estimate-workspace-tabs" role="tablist" aria-label="簡単見積り">
           {([
             ['register', '登録'],
             ['list', '一覧'],
             ['received', '受信'],
           ] as const).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setTab(value)}
-              className={`relative min-w-20 border border-b-0 px-5 py-2 ${tab === value ? 'bg-slate-900 text-white' : 'border-slate-300 bg-white text-slate-800 hover:bg-slate-50'}`}
-            >
+            <button key={value} type="button" role="tab" aria-selected={tab === value} onClick={() => setTab(value)} className={tab === value ? 'is-active' : ''}>
               {label}
-              {value === 'received' ? <span className="ml-2 inline-flex min-w-5 justify-center bg-rose-600 px-1 text-[10px] text-white">1</span> : null}
+              {value === 'received' ? <span className="estimate-received-count">1</span> : null}
             </button>
           ))}
         </div>
 
         {notice ? (
-          <div className="mb-2 flex items-center justify-between border border-emerald-400 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900">
-            <span className="flex items-center gap-2"><Check className="h-4 w-4" />{notice}</span>
-            <button type="button" onClick={() => setNotice('')} className="px-2">×</button>
+          <div className="estimate-workspace-notice">
+            <span><Check className="h-4 w-4" />{notice}</span>
+            <button type="button" onClick={() => setNotice('')} aria-label="閉じる">×</button>
           </div>
         ) : null}
       </div>
@@ -159,135 +197,82 @@ export default function EstimateDemoWorkspace({ children }: { children: ReactNod
       {tab === 'register' ? <div className="estimate-demo-register">{children}</div> : null}
 
       {tab === 'list' ? (
-        <main className="mx-auto w-full max-w-[1480px] px-4 pb-10 text-slate-950">
-          <div className="border border-slate-300 bg-white">
-            <div className="border-b border-slate-300 bg-slate-100 px-3 py-2 text-sm font-bold">作成・送信した見積り</div>
-            <table className="w-full border-collapse text-sm">
-              <thead className="bg-slate-50 text-left text-xs">
-                <tr>
-                  <th className="border-b border-r border-slate-300 px-3 py-2">タイトル</th>
-                  <th className="border-b border-r border-slate-300 px-3 py-2">送信先</th>
-                  <th className="border-b border-r border-slate-300 px-3 py-2">更新日時</th>
-                  <th className="border-b border-r border-slate-300 px-3 py-2">状態</th>
-                  <th className="border-b border-r border-slate-300 px-3 py-2 text-right">合計</th>
-                  <th className="w-24 border-b border-slate-300 px-3 py-2"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {sentRows.map((row) => (
-                  <tr key={row.title} className="border-b border-slate-200 last:border-0">
-                    <td className="border-r border-slate-200 px-3 py-2 font-semibold">{row.title}</td>
-                    <td className="border-r border-slate-200 px-3 py-2">{row.company}</td>
-                    <td className="border-r border-slate-200 px-3 py-2">{row.updatedAt}</td>
-                    <td className="border-r border-slate-200 px-3 py-2"><Status value={row.status} /></td>
-                    <td className="border-r border-slate-200 px-3 py-2 text-right">{yen(row.amount)}</td>
-                    <td className="px-3 py-2 text-center"><button type="button" className="border border-slate-400 bg-white px-3 py-1 text-xs">開く</button></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <main className="estimate-workspace-page">
+          <section className="estimate-panel">
+            <div className="estimate-panel-title">作成・送信した見積り</div>
+            <div className="estimate-table-scroll">
+              <table className="estimate-data-table estimate-sent-table">
+                <thead><tr><th>タイトル</th><th>送信先</th><th>更新日時</th><th>状態</th><th className="number">合計</th><th className="action"></th></tr></thead>
+                <tbody>
+                  {sentRows.map((row) => (
+                    <tr key={row.title}>
+                      <td className="strong">{row.title}</td><td>{row.company}</td><td>{row.updatedAt}</td><td><Status value={row.status} /></td><td className="number">{yen(row.amount)}</td><td className="action"><button type="button">開く</button></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
         </main>
       ) : null}
 
       {tab === 'received' ? (
-        <main className="mx-auto grid w-full max-w-[1480px] grid-cols-[360px_minmax(0,1fr)] gap-3 px-4 pb-10 text-slate-950 max-[900px]:grid-cols-1">
-          <section className="border border-slate-300 bg-white">
-            <div className="flex items-center gap-2 border-b border-slate-300 bg-slate-100 px-3 py-2 text-sm font-bold"><Inbox className="h-4 w-4" />受信見積り</div>
-            <div>
-              {received.map((estimate) => (
-                <button
-                  key={estimate.id}
-                  type="button"
-                  onClick={() => setSelectedEstimateId(estimate.id)}
-                  className={`block w-full border-b border-slate-200 px-3 py-3 text-left last:border-0 ${selectedEstimate.id === estimate.id ? 'bg-sky-50' : 'bg-white hover:bg-slate-50'}`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <span className="text-sm font-bold">{estimate.title}</span>
-                    <Status value={estimate.status} />
-                  </div>
-                  <p className="mt-1 text-xs font-semibold">{estimate.sender}</p>
-                  <p className="mt-1 text-[11px] text-slate-600">{estimate.receivedAt}　{estimate.items.length}機種</p>
-                </button>
-              ))}
+        <main className="estimate-workspace-page estimate-received-page">
+          <section className="estimate-panel">
+            <div className="estimate-panel-title"><Inbox className="h-4 w-4" />受信見積り</div>
+            <div className="estimate-table-scroll">
+              <table className="estimate-data-table estimate-received-list-table">
+                <thead><tr><th>状態</th><th>タイトル</th><th>送信元</th><th>担当者</th><th>受信日時</th><th>有効期限</th><th className="number">機種数</th><th className="number">合計</th></tr></thead>
+                <tbody>
+                  {received.map((estimate) => {
+                    const total = estimate.items.reduce((sum, item) => sum + toNumber(item.quantity) * toNumber(item.unitPrice), 0);
+                    return (
+                      <tr key={estimate.id} className={estimate.id === selectedEstimate.id ? 'is-selected' : ''}>
+                        <td><Status value={estimate.status} /></td>
+                        <td><button type="button" className="estimate-title-link" onClick={() => setSelectedEstimateId(estimate.id)}>{estimate.title}</button></td>
+                        <td>{estimate.sender}</td><td>{estimate.contact}</td><td>{estimate.receivedAt}</td><td>{estimate.validUntil}</td><td className="number">{estimate.items.length}</td><td className="number">{yen(total)}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </section>
 
-          <section className="min-w-0 border border-slate-300 bg-white">
-            <div className="border-b border-slate-300 bg-slate-100 px-3 py-2">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div>
-                  <h2 className="text-base font-bold">{selectedEstimate.title}</h2>
-                  <p className="mt-0.5 text-xs">{selectedEstimate.sender}　{selectedEstimate.contact}</p>
-                </div>
-                <div className="text-right text-xs"><p>受信：{selectedEstimate.receivedAt}</p><p>有効期限：{selectedEstimate.validUntil}</p></div>
-              </div>
+          <section className="estimate-panel estimate-received-detail">
+            <div className="estimate-received-detail-head">
+              <div><h2>{selectedEstimate.title}</h2><p>{selectedEstimate.sender}　{selectedEstimate.contact}</p></div>
+              <dl><div><dt>受信</dt><dd>{selectedEstimate.receivedAt}</dd></div><div><dt>有効期限</dt><dd>{selectedEstimate.validUntil}</dd></div></dl>
             </div>
+            <div className="estimate-received-message">{selectedEstimate.message}</div>
 
-            <div className="border-b border-slate-300 px-3 py-2 text-sm">{selectedEstimate.message}</div>
-
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[940px] table-fixed border-collapse text-xs">
-                <colgroup><col className="w-10" /><col className="w-28" /><col className="w-72" /><col className="w-20" /><col className="w-32" /><col className="w-36" /><col /></colgroup>
-                <thead className="bg-slate-100 text-left">
-                  <tr>
-                    <th className="border-b border-r border-slate-300 px-2 py-2"></th>
-                    <th className="border-b border-r border-slate-300 px-2 py-2">メーカー</th>
-                    <th className="border-b border-r border-slate-300 px-2 py-2">機種名</th>
-                    <th className="border-b border-r border-slate-300 px-2 py-2 text-right">台数</th>
-                    <th className="border-b border-r border-slate-300 px-2 py-2 text-right">単価</th>
-                    <th className="border-b border-r border-slate-300 px-2 py-2 text-right">小計</th>
-                    <th className="border-b border-slate-300 px-2 py-2">メモ</th>
-                  </tr>
-                </thead>
+            <div className="estimate-table-scroll">
+              <table className="estimate-data-table estimate-received-items-table">
+                <colgroup><col className="check" /><col className="maker" /><col className="machine" /><col className="quantity" /><col className="price" /><col className="subtotal" /><col className="memo" /></colgroup>
+                <thead><tr><th></th><th>メーカー</th><th>機種名</th><th className="number">台数</th><th className="number">単価</th><th className="number">小計</th><th>メモ</th></tr></thead>
                 <tbody>
                   {selectedEstimate.items.map((item) => (
-                    <tr key={item.id} className="border-b border-slate-200 last:border-0">
-                      <td className="border-r border-slate-200 px-2 py-1 text-center"><input type="checkbox" checked={item.selected} onChange={(event) => updateItem(item.id, 'selected', event.target.checked)} /></td>
-                      <td className="border-r border-slate-200 px-2 py-1">{item.maker}</td>
-                      <td className="border-r border-slate-200 px-2 py-1 font-semibold">{item.machine}</td>
-                      <td className="border-r border-slate-200 p-1"><input type="number" min="0" value={item.quantity} onChange={(event) => updateItem(item.id, 'quantity', event.target.value)} className="h-8 w-full rounded-none border border-slate-300 px-2 text-right text-xs" /></td>
-                      <td className="border-r border-slate-200 p-1"><input type="number" min="0" value={item.unitPrice} onChange={(event) => updateItem(item.id, 'unitPrice', event.target.value)} className="h-8 w-full rounded-none border border-slate-300 px-2 text-right text-xs" /></td>
-                      <td className="border-r border-slate-200 px-2 py-1 text-right font-bold">{yen(toNumber(item.quantity) * toNumber(item.unitPrice))}</td>
-                      <td className="px-2 py-1">{item.memo || '—'}</td>
+                    <tr key={item.id}>
+                      <td className="check-cell"><input type="checkbox" checked={item.selected} onChange={(event) => updateItem(item.id, 'selected', event.target.checked)} /></td>
+                      <td>{item.maker}</td><td className="strong">{item.machine}</td>
+                      <td><input type="number" min="0" value={item.quantity} onChange={(event) => updateItem(item.id, 'quantity', event.target.value)} /></td>
+                      <td><input type="number" min="0" value={item.unitPrice} onChange={(event) => updateItem(item.id, 'unitPrice', event.target.value)} /></td>
+                      <td className="number strong">{yen(toNumber(item.quantity) * toNumber(item.unitPrice))}</td><td>{item.memo || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
 
-            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-300 bg-slate-50 px-3 py-3">
-              <div className="text-sm"><span className="mr-3">選択：{selectedItems.length}機種</span><strong className="text-base">合計 {yen(selectedTotal)}</strong></div>
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={replyAdjustment} className="inline-flex h-9 items-center gap-2 border border-sky-600 bg-white px-4 text-sm font-bold text-sky-800"><Reply className="h-4 w-4" />調整内容を返信</button>
-                <button type="button" disabled={selectedItems.length === 0} onClick={() => setShowNavi(true)} className="inline-flex h-9 items-center gap-2 bg-slate-900 px-4 text-sm font-bold text-white disabled:bg-slate-400"><Navigation className="h-4 w-4" />選択機種でナビ作成</button>
+            <div className="estimate-received-actions">
+              <div>選択：{selectedItems.length}機種<strong>合計 {yen(selectedTotal)}</strong></div>
+              <div className="estimate-received-action-buttons">
+                <button type="button" className="secondary" onClick={replyAdjustment}><Reply className="h-4 w-4" />調整内容を返信</button>
+                <button type="button" className="primary" disabled={selectedItems.length === 0} onClick={startExistingNaviFlow}><Navigation className="h-4 w-4" />選択機種でナビ作成</button>
               </div>
             </div>
           </section>
         </main>
-      ) : null}
-
-      {showNavi ? (
-        <div className="fixed inset-0 z-[90] flex items-center justify-center bg-slate-950/50 p-4">
-          <div className="w-full max-w-2xl border border-slate-400 bg-white shadow-xl">
-            <div className="flex items-center justify-between border-b border-slate-300 bg-slate-100 px-4 py-3">
-              <h2 className="font-bold">受信見積りからナビ作成</h2>
-              <button type="button" onClick={() => setShowNavi(false)} className="text-xl">×</button>
-            </div>
-            <div className="space-y-3 p-4 text-sm">
-              <p>取引先：<strong>{selectedEstimate.sender}</strong></p>
-              <p>選択機種：<strong>{selectedItems.length}機種</strong>　合計：<strong>{yen(selectedTotal)}</strong></p>
-              <p className="border border-sky-300 bg-sky-50 px-3 py-2">調整後の台数・単価を引き継ぎ、次に発送日・支払日・送料・取引条件などの共通条件を入力します。</p>
-              <table className="w-full border-collapse text-xs">
-                <tbody>{selectedItems.map((item) => <tr key={item.id} className="border-b border-slate-200"><td className="py-2 font-semibold">{item.machine}</td><td className="py-2 text-right">{item.quantity}台</td><td className="py-2 text-right">{yen(toNumber(item.unitPrice))}</td></tr>)}</tbody>
-              </table>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-slate-300 px-4 py-3">
-              <button type="button" onClick={() => setShowNavi(false)} className="h-9 border border-slate-400 bg-white px-4 text-sm">キャンセル</button>
-              <button type="button" onClick={() => { setShowNavi(false); setNotice('受信見積りの内容をナビ作成へ引き継ぐデモを完了しました。'); }} className="inline-flex h-9 items-center gap-2 bg-slate-900 px-4 text-sm font-bold text-white">共通条件入力へ<ChevronRight className="h-4 w-4" /></button>
-            </div>
-          </div>
-        </div>
       ) : null}
     </div>
   );
