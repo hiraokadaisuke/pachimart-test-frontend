@@ -1,0 +1,100 @@
+/* The workspace owns the page title and tabs. */
+.estimate-demo-workspace .estimate-demo-register > main > header,
+.estimate-demo-workspace .estimate-demo-register > main > div.mb-4.inline-flex {
+  display: none !important;
+}
+
+.estimate-demo-workspace .estimate-demo-register > main {
+  padding-top: 0 !important;
+}
+
+/* Send estimates into Pachimart instead of treating the flow as file delivery. */
+.estimate-demo-compact
+  .fixed.inset-0
+  div.grid:has(input[type='checkbox']) {
+  display: block !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div.grid:has(input[type='checkbox'])
+  > section:first-child {
+  max-width: 900px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div.grid:has(input[type='checkbox'])
+  > section:first-child::before {
+  content: 'この見積りは相手会社の「受信」タブへ送信されます。メールは見積り到着のお知らせのみを送る想定です。';
+  display: block;
+  margin: 0 0 10px;
+  padding: 7px 9px;
+  border: 1px solid #7dd3fc;
+  background: #f0f9ff;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+/* Hide attachment-format selection and the old notification card panel. */
+.estimate-demo-compact
+  .fixed.inset-0
+  div.grid:has(input[type='checkbox'])
+  > section:first-child
+  div.grid
+  > label:nth-child(4),
+.estimate-demo-compact
+  .fixed.inset-0
+  div.grid:has(input[type='checkbox'])
+  > section:nth-child(2) {
+  display: none !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div.grid:has(input[type='checkbox'])
+  > section:first-child
+  div.grid
+  > label:nth-child(5) {
+  grid-column: 1 / -1 !important;
+}
+
+/* Final send review: remove attachment/notification rows and state the destination. */
+.estimate-demo-compact
+  .fixed.inset-0
+  div.grid:has(> div > table):has(> section dl.space-y-3)
+  > section
+  dl
+  > div:nth-child(5),
+.estimate-demo-compact
+  .fixed.inset-0
+  div.grid:has(> div > table):has(> section dl.space-y-3)
+  > section
+  dl
+  > div:nth-child(6) {
+  display: none !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div.grid:has(> div > table):has(> section dl.space-y-3)
+  > section
+  dl::after {
+  content: '送信先：相手会社の「受信」タブ';
+  display: block;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid #7dd3fc;
+  background: #f0f9ff;
+  color: #111827;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .estimate-demo-workspace > main.grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
