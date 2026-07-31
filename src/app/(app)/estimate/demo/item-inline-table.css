@@ -1,0 +1,308 @@
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  ) {
+  display: block !important;
+  width: 100% !important;
+  max-width: none !important;
+  overflow-x: auto !important;
+  overflow-y: visible !important;
+  margin: 0 !important;
+  border: 1px solid #b8c2cc !important;
+  background: #ffffff !important;
+  scrollbar-gutter: stable;
+}
+
+/* 機種別確認は「掲載1件＝1行」の編集一覧にする */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section {
+  display: grid !important;
+  grid-template-columns: 155px max-content !important;
+  width: max-content !important;
+  min-width: 1780px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-bottom: 1px solid #cbd5e1 !important;
+  background: #ffffff !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section:last-child {
+  border-bottom: 0 !important;
+}
+
+/* 左端に物件名を固定 */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div:first-child {
+  position: sticky !important;
+  left: 0 !important;
+  z-index: 4 !important;
+  display: flex !important;
+  align-items: flex-start !important;
+  justify-content: flex-start !important;
+  min-width: 155px !important;
+  width: 155px !important;
+  min-height: 56px !important;
+  padding: 5px 7px !important;
+  border: 0 !important;
+  border-right: 1px solid #9ca3af !important;
+  background: #f3f4f6 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div:first-child
+  > div {
+  min-width: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div:first-child
+  p,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div:first-child
+  h3 {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: #111827 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div:first-child
+  p:first-child {
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div:first-child
+  h3 {
+  margin-top: 2px !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div:first-child
+  p:last-child {
+  margin-top: 2px !important;
+  font-size: 10px !important;
+  line-height: 1.1 !important;
+}
+
+/* CSV項目を横一列に配置 */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid {
+  display: grid !important;
+  grid-template-columns:
+    82px 88px 88px 110px 66px 100px 96px 112px 110px
+    66px 66px 98px 88px 88px 98px 98px 150px !important;
+  gap: 0 !important;
+  width: max-content !important;
+  max-width: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  > label {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  justify-content: flex-start !important;
+  gap: 2px !important;
+  width: auto !important;
+  max-width: none !important;
+  min-width: 0 !important;
+  min-height: 56px !important;
+  margin: 0 !important;
+  padding: 3px 4px !important;
+  border-left: 1px solid #d1d5db !important;
+  background: #ffffff !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  > label
+  > span:first-child {
+  display: block !important;
+  grid-column: auto !important;
+  margin: 0 !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+  color: #111827 !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1.15 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  > label
+  > input,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  > label
+  > select,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  > label
+  > textarea,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  > label
+  > div {
+  grid-column: auto !important;
+  width: 100% !important;
+  max-width: none !important;
+  min-width: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  input,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  select,
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  textarea {
+  height: 27px !important;
+  min-height: 27px !important;
+  padding: 2px 4px !important;
+  color: #111827 !important;
+  font-size: 11px !important;
+  line-height: 1.2 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > section
+  > div.grid
+  textarea {
+  resize: none !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+}
+
+/* 一覧編集ではカード間の余白を作らない */
+.estimate-demo-compact
+  .fixed.inset-0
+  div[class*='space-y-4']:has(
+    > section > div.grid > label:nth-child(17)
+  )
+  > :not([hidden])
+  ~ :not([hidden]) {
+  margin-top: 0 !important;
+}
+
+@media (max-width: 900px) {
+  .estimate-demo-compact
+    .fixed.inset-0
+    div[class*='space-y-4']:has(
+      > section > div.grid > label:nth-child(17)
+    )
+    > section {
+    min-width: 1780px !important;
+  }
+}
