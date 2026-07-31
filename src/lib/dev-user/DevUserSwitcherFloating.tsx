@@ -1,12 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { usePathname } from "next/navigation";
 import { formatCurrency } from "@/lib/currency";
 import { useBalance } from "@/lib/balance/BalanceContext";
 import { useDevUser } from "./DevUserContext";
 import { DEV_USERS } from "./users";
 
 export function DevUserSwitcherFloating() {
+  const pathname = usePathname() ?? "";
   const { current, setCurrent } = useDevUser();
   const [open, setOpen] = useState(false);
   const [amountInput, setAmountInput] = useState(0);
@@ -19,7 +21,9 @@ export function DevUserSwitcherFloating() {
   }, [amountInput]);
 
   const isProd = process.env.NEXT_PUBLIC_ENV === "production";
-  if (isProd) return null;
+  const isEstimateDemo =
+    pathname === "/estimate/demo" || pathname.startsWith("/estimate/demo/");
+  if (isProd || isEstimateDemo) return null;
 
   return (
     <div className="fixed bottom-6 right-6 z-[9999]">
