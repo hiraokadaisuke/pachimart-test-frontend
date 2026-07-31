@@ -1,0 +1,346 @@
+.estimate-demo-compact {
+  color: #111827;
+}
+
+/* モーダル内の文字を薄くしすぎない */
+.estimate-demo-compact .fixed.inset-0 > div > div[class*='overflow-y-auto'],
+.estimate-demo-compact .fixed.inset-0 input,
+.estimate-demo-compact .fixed.inset-0 select,
+.estimate-demo-compact .fixed.inset-0 textarea,
+.estimate-demo-compact .fixed.inset-0 label > span:first-child,
+.estimate-demo-compact .fixed.inset-0 section h3,
+.estimate-demo-compact .fixed.inset-0 section p {
+  color: #111827 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 [class*='text-slate-400'],
+.estimate-demo-compact .fixed.inset-0 [class*='text-slate-500'],
+.estimate-demo-compact .fixed.inset-0 [class*='text-slate-600'] {
+  color: #374151 !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 input::placeholder,
+.estimate-demo-compact .fixed.inset-0 textarea::placeholder {
+  color: #6b7280 !important;
+  opacity: 1 !important;
+}
+
+/* 共通設定などのカテゴリ見出しは表示しない */
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div:first-child[class*='mb-4'][class*='border-b'][class*='pb-3'] {
+  display: none !important;
+}
+
+/* 操作説明の大きな案内帯も省略 */
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  > div
+  > div[class*='border-sky-200'][class*='bg-sky-50'] {
+  display: none !important;
+}
+
+/* 共通入力は上から順に1項目ずつ並べる */
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div.grid:not([class*='sm:grid-cols-3']) {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: stretch !important;
+  gap: 4px !important;
+}
+
+/* 各項目は「項目名｜入力欄」の表形式にする */
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div.grid
+  > label {
+  display: grid !important;
+  grid-template-columns: clamp(108px, 12vw, 158px) minmax(220px, 560px) !important;
+  align-items: center !important;
+  column-gap: 8px !important;
+  row-gap: 2px !important;
+  width: min(100%, 740px) !important;
+  min-height: 32px !important;
+  margin: 0 !important;
+  padding: 2px 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div.grid
+  > label
+  > span:first-child {
+  grid-column: 1 !important;
+  margin: 0 !important;
+  color: #111827 !important;
+  font-weight: 600 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div.grid
+  > label
+  > input,
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div.grid
+  > label
+  > select,
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div.grid
+  > label
+  > textarea,
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div.grid
+  > label
+  > div {
+  grid-column: 2 !important;
+  width: 100% !important;
+  max-width: 560px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div.grid
+  > label
+  > span[class*='mt-1'] {
+  grid-column: 2 !important;
+  margin-top: 0 !important;
+}
+
+/* 機種別画面は2列まで。倍率が上がると自動で1列になる */
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div:first-child[class*='bg-slate-50']
+  + div.grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 430px), 1fr)) !important;
+  align-items: start !important;
+  gap: 3px 14px !important;
+  max-width: 980px !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div:first-child[class*='bg-slate-50']
+  + div.grid
+  > label {
+  grid-template-columns: clamp(104px, 10vw, 145px) minmax(190px, 1fr) !important;
+  width: 100% !important;
+}
+
+/* 会社情報などの補助枠もフォーム幅に合わせる */
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section
+  > div.grid
+  > :not(label) {
+  width: min(100%, 740px) !important;
+  max-width: 740px !important;
+}
+
+/* 送料・手数料は横長にせず、表の1行として収める */
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  div[class*='grid-cols-[130px_1fr_1fr_140px]'] {
+  grid-template-columns: 128px minmax(150px, 240px) minmax(90px, 150px) 100px !important;
+  gap: 6px !important;
+  width: min(100%, 660px) !important;
+  max-width: 660px !important;
+  padding: 3px 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  div[class*='grid-cols-[130px_1fr_1fr_140px]']
+  label {
+  display: block !important;
+  width: 100% !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  div[class*='grid-cols-[130px_1fr_1fr_140px]']
+  label
+  > span:first-child {
+  display: block !important;
+  margin-bottom: 1px !important;
+}
+
+/* 送信設定などの左右分割も上から順にする */
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  [class*='lg:grid-cols-[1fr_330px]'],
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  [class*='lg:grid-cols-[1fr_320px]'] {
+  grid-template-columns: minmax(0, 1fr) !important;
+  max-width: 820px !important;
+}
+
+/* セクション間の余白を抑える */
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  section {
+  padding: 5px 8px !important;
+  margin: 0 !important;
+}
+
+.estimate-demo-compact
+  .fixed.inset-0
+  > div
+  > div[class*='overflow-y-auto']
+  [class*='space-y-4']
+  > :not([hidden])
+  ~ :not([hidden]) {
+  margin-top: 4px !important;
+}
+
+/* 入力欄が画面いっぱいに伸びないようにする */
+.estimate-demo-compact .fixed.inset-0 input,
+.estimate-demo-compact .fixed.inset-0 select,
+.estimate-demo-compact .fixed.inset-0 textarea {
+  color: #111827 !important;
+  background: #ffffff !important;
+}
+
+.estimate-demo-compact .fixed.inset-0 textarea {
+  min-height: 44px !important;
+}
+
+@media (max-width: 760px) {
+  .estimate-demo-compact
+    .fixed.inset-0
+    > div
+    > div[class*='overflow-y-auto']
+    section
+    > div.grid
+    > label,
+  .estimate-demo-compact
+    .fixed.inset-0
+    > div
+    > div[class*='overflow-y-auto']
+    section
+    > div:first-child[class*='bg-slate-50']
+    + div.grid
+    > label {
+    grid-template-columns: 1fr !important;
+    width: 100% !important;
+    gap: 2px !important;
+  }
+
+  .estimate-demo-compact
+    .fixed.inset-0
+    > div
+    > div[class*='overflow-y-auto']
+    section
+    > div.grid
+    > label
+    > input,
+  .estimate-demo-compact
+    .fixed.inset-0
+    > div
+    > div[class*='overflow-y-auto']
+    section
+    > div.grid
+    > label
+    > select,
+  .estimate-demo-compact
+    .fixed.inset-0
+    > div
+    > div[class*='overflow-y-auto']
+    section
+    > div.grid
+    > label
+    > textarea,
+  .estimate-demo-compact
+    .fixed.inset-0
+    > div
+    > div[class*='overflow-y-auto']
+    section
+    > div.grid
+    > label
+    > div,
+  .estimate-demo-compact
+    .fixed.inset-0
+    > div
+    > div[class*='overflow-y-auto']
+    section
+    > div.grid
+    > label
+    > span[class*='mt-1'] {
+    grid-column: 1 !important;
+    max-width: none !important;
+  }
+
+  .estimate-demo-compact
+    .fixed.inset-0
+    > div
+    > div[class*='overflow-y-auto']
+    div[class*='grid-cols-[130px_1fr_1fr_140px]'] {
+    grid-template-columns: 110px minmax(120px, 1fr) 88px !important;
+  }
+
+  .estimate-demo-compact
+    .fixed.inset-0
+    > div
+    > div[class*='overflow-y-auto']
+    div[class*='grid-cols-[130px_1fr_1fr_140px]']
+    > div:last-child {
+    display: none !important;
+  }
+}
