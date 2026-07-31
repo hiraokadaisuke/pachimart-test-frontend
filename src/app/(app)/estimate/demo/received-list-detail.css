@@ -65,12 +65,27 @@
   width: 100%;
 }
 
+/* 見積りに有効期限は設けない。受信一覧・詳細・送信フローから非表示にする。 */
+.estimate-received-list-table th:nth-child(6),
+.estimate-received-list-table td:nth-child(6),
+.estimate-received-detail-head dl > div:nth-child(2) {
+  display: none !important;
+}
+
+/* 3工程のモーダルは「見積りを送信」。送信設定の日付欄と最終確認の期限行を隠す。 */
+.estimate-demo-compact .fixed.inset-0 > div:has(> div:nth-child(2) > .grid-cols-3)
+  > div:nth-child(3) section:first-child label:has(input[type='date']),
+.estimate-demo-compact .fixed.inset-0 > div:has(> div:nth-child(2) > .grid-cols-3)
+  > div:nth-child(3) section dl > div:nth-child(4) {
+  display: none !important;
+}
+
 @media (max-width: 760px) {
   .estimate-detail-navigation {
     align-items: flex-start;
   }
 
   .estimate-received-list-table {
-    min-width: 1120px;
+    min-width: 980px;
   }
 }
