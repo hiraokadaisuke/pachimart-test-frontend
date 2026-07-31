@@ -6,6 +6,7 @@ import './review-cleanup.css';
 import './listing-single-header.css';
 import './inapp-estimate-flow.css';
 import './business-ui.css';
+import './received-list-detail.css';
 import EstimateDemoWorkspace from './EstimateDemoWorkspace';
 
 export default function EstimateDemoLayout({
