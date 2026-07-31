@@ -1,5 +1,6 @@
 import './compact.css';
 import './form-flow.css';
+import './item-inline-table.css';
 
 export default function EstimateDemoLayout({
   children,
