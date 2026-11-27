@@ -7,7 +7,7 @@ const encoder = new TextEncoder();
 const headers = {
   "X-Robots-Tag": "noindex, nofollow, noarchive",
   "Cache-Control": "private, no-store",
-  "Referrer-Policy": "no-referrer",
+  "Referrer-Policy": "same-origin",
   "X-Content-Type-Options": "nosniff",
 };
 function protect(response: NextResponse) {

@@ -18,11 +18,13 @@ const check = (response, status) => {
   const gate = await middleware(request("/", {headers:{accept:"text/html"}}));
   check(gate,401);
   assert.match(await gate.text(), /Restricted Access/);
+  assert.equal(gate.headers.get("referrer-policy"), "same-origin");
   for (const path of ["/api/listings", "/inventory", "/favicon.ico", "/_next/static/test.js", "/trade-navi", "/robots.txt", "/sitemap.xml"]) check(await middleware(request(path)),401);
   check(await middleware(request("/api/listings", {method:"POST",headers:{cookie:"__Host-internal-access=9999999999.fake"}})),401);
   const post = (password, origin=base) => request("/__internal-access",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded",origin},body:new URLSearchParams({password}).toString()});
   check(await middleware(post("wrong")),401);
   check(await middleware(post(process.env.INTERNAL_ACCESS_PASSWORD,"https://other.invalid")),403);
+  check(await middleware(post(process.env.INTERNAL_ACCESS_PASSWORD,"null")),403);
   const success = await middleware(post(process.env.INTERNAL_ACCESS_PASSWORD));
   check(success,303);
   const cookie = success.headers.get("set-cookie");
