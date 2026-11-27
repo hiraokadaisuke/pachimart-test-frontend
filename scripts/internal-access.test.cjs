@@ -1,0 +1,46 @@
+const assert = require("node:assert/strict");
+const { NextRequest } = require("next/server");
+const { middleware } = require("../src/middleware.ts");
+
+const base = "https://test.invalid";
+const request = (path, options = {}) => new NextRequest(base + path, options);
+const check = (response, status) => {
+  assert.equal(response.status, status);
+  assert.match(response.headers.get("x-robots-tag"), /noindex/);
+  assert.match(response.headers.get("cache-control"), /no-store/);
+};
+(async () => {
+  delete process.env.INTERNAL_ACCESS_PASSWORD;
+  delete process.env.INTERNAL_ACCESS_SECRET;
+  check(await middleware(request("/")), 503);
+  process.env.INTERNAL_ACCESS_PASSWORD = "fixture-only-password-1234567890";
+  process.env.INTERNAL_ACCESS_SECRET = "fixture-only-signing-secret-1234567890";
+  const gate = await middleware(request("/", {headers:{accept:"text/html"}}));
+  check(gate,401);
+  assert.match(await gate.text(), /Restricted Access/);
+  assert.equal(gate.headers.get("referrer-policy"), "same-origin");
+  for (const path of ["/api/listings", "/inventory", "/favicon.ico", "/_next/static/test.js", "/trade-navi", "/robots.txt", "/sitemap.xml"]) check(await middleware(request(path)),401);
+  check(await middleware(request("/api/listings", {method:"POST",headers:{cookie:"__Host-internal-access=9999999999.fake"}})),401);
+  const post = (password, origin=base) => request("/__internal-access",{method:"POST",headers:{"content-type":"application/x-www-form-urlencoded",origin},body:new URLSearchParams({password}).toString()});
+  check(await middleware(post("wrong")),401);
+  check(await middleware(post(process.env.INTERNAL_ACCESS_PASSWORD,"https://other.invalid")),403);
+  check(await middleware(post(process.env.INTERNAL_ACCESS_PASSWORD,"null")),403);
+  const success = await middleware(post(process.env.INTERNAL_ACCESS_PASSWORD));
+  check(success,303);
+  const cookie = success.headers.get("set-cookie");
+  assert.match(cookie,/HttpOnly/i);
+  assert.match(cookie,/Secure/i);
+  assert.match(cookie,/SameSite=strict/i);
+  assert.match(cookie,/Max-Age=2592000/i);
+  const session = cookie.split(";")[0];
+  check(await middleware(request("/api/listings",{headers:{cookie:session}})),200);
+  const legacy = await middleware(request("/trade-navi/abc",{headers:{cookie:session}}));
+  check(legacy,307);
+  assert.equal(legacy.headers.get("location"),base+"/market/navi/abc");
+  const logout = await middleware(request("/__internal-logout",{method:"POST",headers:{cookie:session,origin:base}}));
+  check(logout,303);
+  assert.match(logout.headers.get("set-cookie"),/Max-Age=0/i);
+  process.env.INTERNAL_ACCESS_PASSWORD += "-rotated";
+  check(await middleware(request("/api/listings",{headers:{cookie:session}})),401);
+  console.log("Internal access middleware checks passed");
+})().catch(error=>{console.error(error);process.exitCode=1;});

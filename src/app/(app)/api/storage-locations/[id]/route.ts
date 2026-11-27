@@ -15,9 +15,9 @@ const parseNumber = (value: unknown) => {
   return NaN;
 };
 
-export async function PATCH(request: Request, context: { params: { id: string } }) {
+export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   const ownerUserId = getCurrentUserId(request);
-  const { id } = context.params;
+  const { id } = (await context.params);
 
   if (!ownerUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -91,9 +91,9 @@ export async function PATCH(request: Request, context: { params: { id: string } 
   }
 }
 
-export async function DELETE(request: Request, context: { params: { id: string } }) {
+export async function DELETE(request: Request, context: { params: Promise<{ id: string }> }) {
   const ownerUserId = getCurrentUserId(request);
-  const { id } = context.params;
+  const { id } = (await context.params);
 
   if (!ownerUserId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

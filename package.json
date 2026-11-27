@@ -13,7 +13,9 @@
     "migrate:storage-locations": "ts-node scripts/migrate-storage-locations.ts",
     "seed:preview": "SEED_MODE=preview prisma db seed",
     "seed:dev": "SEED_MODE=development prisma db seed",
-    "test:unit": "ts-node -P tsconfig.test.json src/features/inventory/profit.test.ts"
+    "test:unit": "ts-node -P tsconfig.test.json src/features/inventory/profit.test.ts",
+    "postbuild": "node scripts/assert-internal-middleware.cjs && npm run test:internal-access",
+    "test:internal-access": "TS_NODE_COMPILER_OPTIONS='{\"module\":\"CommonJS\",\"moduleResolution\":\"node\"}' node -r ts-node/register/transpile-only scripts/internal-access.test.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.1.0",
@@ -22,7 +24,7 @@
     "@prisma/client": "^6.0.0",
     "html5-qrcode": "2.3.8",
     "lucide-react": "^0.563.0",
-    "next": "14.2.5",
+    "next": "15.5.29",
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "react-hook-form": "7.53.0",
@@ -34,7 +36,7 @@
     "@types/react-dom": "18.3.0",
     "autoprefixer": "10.4.20",
     "eslint": "8.57.0",
-    "eslint-config-next": "14.2.5",
+    "eslint-config-next": "15.5.29",
     "postcss": "8.4.38",
     "prettier": "3.3.3",
     "prisma": "^6.0.0",

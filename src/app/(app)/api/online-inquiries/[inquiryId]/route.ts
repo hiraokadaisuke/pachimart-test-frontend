@@ -94,7 +94,8 @@ const buildInquiryDetail = async (inquiry: {
   };
 };
 
-export async function GET(request: Request, { params }: { params: { inquiryId: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ inquiryId: string }> }) {
+  const params = await props.params;
   const currentUserId = getCurrentUserId(request);
 
   if (!currentUserId) {
@@ -126,7 +127,8 @@ export async function GET(request: Request, { params }: { params: { inquiryId: s
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { inquiryId: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ inquiryId: string }> }) {
+  const params = await props.params;
   const currentUserId = getCurrentUserId(request);
 
   if (!currentUserId) {

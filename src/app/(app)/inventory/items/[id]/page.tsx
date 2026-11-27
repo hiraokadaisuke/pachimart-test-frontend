@@ -30,7 +30,8 @@ const isListingBlocked = (inventoryStatus: InventoryStatus, quantityOnHand: numb
 const isDuplicateListingRisk = (listingStatus: InventoryListingStatus) =>
   listingStatus === "LISTED" || listingStatus === "NEGOTIATING" || listingStatus === "CONTRACTED";
 
-export default async function InventoryDetailPage({ params }: { params: { id: string } }) {
+export default async function InventoryDetailPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const item = await getInventoryItemById(params.id);
   if (!item) notFound();
 

@@ -90,7 +90,8 @@ const resolveBuyerUserId = (dealing: NaviRecord): string | null => {
   return null;
 };
 
-export async function PATCH(request: Request, { params }: { params: { naviId: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ naviId: string }> }) {
+  const params = await props.params;
   const naviId = parseNaviId(params.naviId);
   const actorUserId = getCurrentUserId(request);
 

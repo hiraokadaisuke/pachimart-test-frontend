@@ -20,11 +20,12 @@ function isDestinationMissingOpenSchedule(schedule: { destinationLocationId: str
   return schedule.destinationLocationId === null && schedule.status !== "RECEIVED" && schedule.status !== "CANCELED";
 }
 
-export default async function InboundSchedulesPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ filter?: string }>;
-}) {
+export default async function InboundSchedulesPage(
+  props: {
+    searchParams?: Promise<{ filter?: string }>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const [schedules, summary, params] = await Promise.all([getInboundSchedules(), getInboundScheduleSummary(), searchParams]);
   const filter: FilterType = params?.filter === "destination-missing" ? "destination-missing" : "all";
 

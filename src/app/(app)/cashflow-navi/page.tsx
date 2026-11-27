@@ -17,11 +17,12 @@ const buildSearchString = (searchParams: SearchParams) => {
   return query ? `?${query}` : "";
 };
 
-export default function CashflowNaviRedirectPage({
-  searchParams,
-}: {
-  searchParams: SearchParams;
-}) {
+export default async function CashflowNaviRedirectPage(
+  props: {
+    searchParams: Promise<SearchParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
   const search = buildSearchString(searchParams);
   redirect(`/payments${search}`);
 }

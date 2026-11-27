@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, use } from "react";
 
 import { ExhibitSubTabs } from "@/components/exhibits/ExhibitSubTabs";
 import { SellForm } from "@/components/exhibits/SellForm";
@@ -11,7 +11,8 @@ import type { Exhibit } from "@/lib/exhibits/types";
 
 type ExhibitType = "PACHINKO" | "SLOT";
 
-export default function EditExhibitPage({ params }: { params: { id: string } }) {
+export default function EditExhibitPage(props: { params: Promise<{ id: string }> }) {
+  const params = use(props.params);
   const currentUser = useCurrentDevUser();
   const [exhibit, setExhibit] = useState<Exhibit | null>(null);
   const [error, setError] = useState<string | null>(null);

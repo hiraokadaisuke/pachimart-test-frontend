@@ -5,8 +5,9 @@ import { DevUserProvider } from '@/lib/dev-user/DevUserContext';
 import { DevUserSwitcherFloating } from '@/lib/dev-user/DevUserSwitcherFloating';
 
 export const metadata: Metadata = {
-  title: 'パチマート | 中古機売買サービス（クローンUI）',
-  description: 'パチンコ・スロット中古機売買サービス「パチマート」のクローンUIデモ',
+  title: 'Restricted Access',
+  description: '',
+  robots: { index: false, follow: false, nocache: true },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
