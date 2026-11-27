@@ -4,7 +4,8 @@ import { getInventoryFormMasters, getInventoryItemById, parseInventoryFormData, 
 
 import { InventoryItemForm } from "../../InventoryItemForm";
 
-export default async function EditInventoryItemPage({ params }: { params: { id: string } }) {
+export default async function EditInventoryItemPage(props: { params: Promise<{ id: string }> }) {
+  const params = await props.params;
   const item = await getInventoryItemById(params.id);
   if (!item) notFound();
   const masters = await getInventoryFormMasters();

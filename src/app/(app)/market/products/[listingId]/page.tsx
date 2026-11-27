@@ -38,8 +38,9 @@ const resolveInquiryStatus = (exhibit: Exhibit, isSellerViewing: boolean) => {
   return { available: true as const, reason: "" };
 };
 
-export default async function ProductDetailPage({ params }: { params: { listingId: string } }) {
-  const currentCookies = cookies();
+export default async function ProductDetailPage(props: { params: Promise<{ listingId: string }> }) {
+  const params = await props.params;
+  const currentCookies = await cookies();
   const devUserId = currentCookies.get("dev_user_id")?.value ?? DEV_USERS.A.id;
   const exhibit = await getPublicListingById(params.listingId);
 

@@ -2,13 +2,14 @@ import { redirect } from "next/navigation";
 
 // ⚠️ Legacy route redirect: /mypage/exhibits moved under /market/mypage/exhibits.
 // Routing change warning intentionally kept per request.
-export default function LegacyExhibitsRedirect({
-  params,
-  searchParams,
-}: {
-  params: { path?: string[] };
-  searchParams?: Record<string, string | string[]>;
-}) {
+export default async function LegacyExhibitsRedirect(
+  props: {
+    params: Promise<{ path?: string[] }>;
+    searchParams?: Promise<Record<string, string | string[]>>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const suffix = params.path?.length ? `/${params.path.join("/")}` : "";
   const query = new URLSearchParams();
   if (searchParams) {

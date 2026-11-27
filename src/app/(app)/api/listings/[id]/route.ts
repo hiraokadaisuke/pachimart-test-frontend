@@ -137,7 +137,8 @@ const toDto = (exhibit: any) => ({
   updatedAt: new Date(exhibit.updatedAt).toISOString(),
 });
 
-export async function GET(request: Request, { params }: { params: { id?: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ id?: string }> }) {
+  const params = await props.params;
   try {
     const id = params?.id;
     if (!id) {
@@ -175,7 +176,8 @@ export async function GET(request: Request, { params }: { params: { id?: string 
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { id?: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ id?: string }> }) {
+  const params = await props.params;
   const id = params?.id;
 
   if (!id) {
@@ -332,7 +334,8 @@ export async function PATCH(request: Request, { params }: { params: { id?: strin
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: { id?: string } }) {
+export async function DELETE(request: Request, props: { params: Promise<{ id?: string }> }) {
+  const params = await props.params;
   const id = params?.id;
 
   if (!id) {

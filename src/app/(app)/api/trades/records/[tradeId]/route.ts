@@ -109,7 +109,8 @@ const parseId = (raw: string) => {
 const handleUnknownError = (error: unknown) =>
   error instanceof Error ? error.message : "An unexpected error occurred";
 
-export async function PATCH(request: Request, { params }: { params: { tradeId: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ tradeId: string }> }) {
+  const params = await props.params;
   const tradeId = parseId(params.tradeId);
   const currentUserId = getCurrentUserId(request);
 

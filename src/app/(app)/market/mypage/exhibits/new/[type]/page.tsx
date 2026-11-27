@@ -20,13 +20,14 @@ const toPositiveInt = (value: string | undefined) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 };
 
-export default function NewExhibitFormPage({
-  params,
-  searchParams,
-}: {
-  params: { type?: string };
-  searchParams?: SearchParams;
-}) {
+export default async function NewExhibitFormPage(
+  props: {
+    params: Promise<{ type?: string }>;
+    searchParams?: Promise<SearchParams>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const routeType = params?.type ? typeMap[params.type] : undefined;
 
   if (!routeType) {

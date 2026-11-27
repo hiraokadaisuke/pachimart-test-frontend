@@ -2,13 +2,14 @@ import { redirect } from "next/navigation";
 
 // ⚠️ Legacy route redirect: /products moved under /market/products.
 // Routing change warning intentionally kept per request.
-export default function LegacyProductsRedirect({
-  params,
-  searchParams,
-}: {
-  params: { path?: string[] };
-  searchParams?: Record<string, string | string[]>;
-}) {
+export default async function LegacyProductsRedirect(
+  props: {
+    params: Promise<{ path?: string[] }>;
+    searchParams?: Promise<Record<string, string | string[]>>;
+  }
+) {
+  const searchParams = await props.searchParams;
+  const params = await props.params;
   const suffix = params.path?.length ? `/${params.path.join("/")}` : "";
   const query = new URLSearchParams();
   if (searchParams) {

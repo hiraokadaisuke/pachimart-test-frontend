@@ -175,7 +175,8 @@ const toNumber = (value: unknown, fallback = 0): number => {
 const toString = (value: unknown, fallback = ""): string =>
   typeof value === "string" ? value : fallback;
 
-export async function GET(request: Request, { params }: { params: { naviId: string } }) {
+export async function GET(request: Request, props: { params: Promise<{ naviId: string }> }) {
+  const params = await props.params;
   const id = parseNaviId(params.naviId);
 
   if (!id) {
@@ -213,7 +214,8 @@ export async function GET(request: Request, { params }: { params: { naviId: stri
   }
 }
 
-export async function PATCH(request: Request, { params }: { params: { naviId: string } }) {
+export async function PATCH(request: Request, props: { params: Promise<{ naviId: string }> }) {
+  const params = await props.params;
   const id = parseNaviId(params.naviId);
 
   const currentUserId = getCurrentUserId(request);

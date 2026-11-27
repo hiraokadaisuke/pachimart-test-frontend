@@ -538,11 +538,7 @@ export default function LpPage() {
       {OPPORTUNITY_CARDS.map((card) => (
         <div
           key={card.title}
-          className="group rounded-2xl border border-slate-200 bg-white/95 p-10
-            shadow-[0_14px_36px_rgba(15,23,42,0.10)]
-            backdrop-blur-sm
-            transition hover:-translate-y-0.5 hover:border-slate-300
-            hover:shadow-[0_18px_44px_rgba(15,23,42,0.12)]"
+          className="group rounded-2xl border border-slate-200 bg-white/95 p-10 shadow-[0_14px_36px_rgba(15,23,42,0.10)] backdrop-blur-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-[0_18px_44px_rgba(15,23,42,0.12)]"
         >
           <div className="flex items-center gap-3 border-b border-[#E6F2F7] pb-4">
             <div className={`h-6 w-1.5 rounded-full ${card.tone.accent}`} />
@@ -824,10 +820,7 @@ export default function LpPage() {
           {/* ヘッダー */}
           <div className="mx-auto max-w-3xl text-center space-y-6" data-reveal>
             <div
-              className="inline-flex items-center gap-3 rounded-full 
-                bg-[#2A8FA0] px-8 py-3 
-                text-base font-semibold text-white 
-                shadow-lg shadow-[#2A8FA0]/30"
+              className="inline-flex items-center gap-3 rounded-full bg-[#2A8FA0] px-8 py-3 text-base font-semibold text-white shadow-lg shadow-[#2A8FA0]/30"
             >
               体験キャンペーン実施中
             </div>
