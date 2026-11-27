@@ -31,14 +31,39 @@ export async function middleware(request: NextRequest) {
   const {pathname} = request.nextUrl;
   const password = process.env.INTERNAL_ACCESS_PASSWORD;
   const secret = process.env.INTERNAL_ACCESS_SECRET;
-  if (!password || password.length < 16 || !secret || secret.length < 32) {
+  if (!password || password.length < 16 || password.length > 256 || !secret || secret.length < 32) {
     return protect(new NextResponse("Restricted Access", {status:503}));
   }
   const key = secret + ":" + password;
   if (pathname === "/__internal-access" && request.method === "POST") {
     if (request.headers.get("origin") !== request.nextUrl.origin) return protect(new NextResponse("Forbidden", {status:403}));
-    const form = await request.formData().catch(() => null);
-    const input = form?.get("password");
+    if (request.headers.get("content-type")?.split(";")[0].trim().toLowerCase() !== "application/x-www-form-urlencoded") return protect(new NextResponse("Unsupported Media Type", {status:415}));
+    const declaredLength = Number(request.headers.get("content-length") || 0);
+    if (!Number.isFinite(declaredLength) || declaredLength < 0 || declaredLength > 4096) return protect(new NextResponse("Payload Too Large", {status:413}));
+    const reader = request.body?.getReader();
+    if (!reader) return login(true);
+    let size = 0;
+    const decoder = new TextDecoder();
+    let body = "";
+    try {
+      for (;;) {
+        const {done, value} = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > 4096) {
+          await reader.cancel();
+          return protect(new NextResponse("Payload Too Large", {status:413}));
+        }
+        body += decoder.decode(value, {stream:true});
+      }
+      body += decoder.decode();
+    } catch {
+      return login(true);
+    } finally {
+      reader.releaseLock();
+    }
+    const form = new URLSearchParams(body);
+    const input = form.getAll("password").length === 1 ? form.get("password") : null;
     if (typeof input !== "string" || input.length > 256 || !equal(await sign(input,secret),await sign(password,secret))) return login(true);
     const expiration = String(Math.floor(Date.now()/1000)+ttl);
     const response = NextResponse.redirect(new URL("/",request.url),303);
