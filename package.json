@@ -13,7 +13,8 @@
     "migrate:storage-locations": "ts-node scripts/migrate-storage-locations.ts",
     "seed:preview": "SEED_MODE=preview prisma db seed",
     "seed:dev": "SEED_MODE=development prisma db seed",
-    "test:unit": "ts-node -P tsconfig.test.json src/features/inventory/profit.test.ts"
+    "test:unit": "ts-node -P tsconfig.test.json src/features/inventory/profit.test.ts",
+    "postbuild": "node scripts/assert-internal-middleware.cjs"
   },
   "dependencies": {
     "@dnd-kit/core": "6.1.0",

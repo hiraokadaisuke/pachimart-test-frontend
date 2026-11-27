@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const { NextRequest } = require("next/server");
-const { middleware } = require("../middleware.ts");
+const { middleware } = require("../src/middleware.ts");
 
 const base = "https://test.invalid";
 const request = (path, options = {}) => new NextRequest(base + path, options);
