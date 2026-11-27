@@ -9,6 +9,7 @@ export default function Footer() {
             {link}
           </span>
         ))}
+        <a href="/__internal-logout" className="text-neutral-500 hover:text-slate-800">ログアウト</a>
       </div>
     </footer>
   );
